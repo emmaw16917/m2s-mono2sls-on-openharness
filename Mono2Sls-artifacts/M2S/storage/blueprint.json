@@ -1,0 +1,49 @@
+{
+  "metadata": {
+    "application_name": "TODO",
+    "architecture_pattern": "Basic Serverless Architecture",
+    "has_authentication": true,
+    "has_database": true,
+    "has_file_storage": false,
+    "has_async_flows": false,
+    "notes": "Node.js Express TODO monolith. Every todo endpoint is a single-domain Worker Lambda operating on the TodoItems table. The monolith's partition key 'cognito-username' (application username from the JWT) is replaced by 'userId' = Cognito Sub (UUID) injected from API Gateway authorizer claims. Domain grouping: todo CRUD. Auth endpoints dropped in favor of Cognito. No cross-Lambda relationships, so no sync invoke, SQS, or EventBridge resources."
+  },
+  "lambda_functions": [
+    {"name": "todo-list-items", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": ["todo/routes/todo.js", "todo/config/db.js"], "entry_points": ["GET /item"], "environment_variables": {"TODO_TABLE": "${TodoItemsTable}", "AWS_REGION": "${AWS::Region}"}},
+    {"name": "todo-get-item", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": ["todo/routes/todo.js", "todo/config/db.js"], "entry_points": ["GET /item/{id}"], "environment_variables": {"TODO_TABLE": "${TodoItemsTable}", "AWS_REGION": "${AWS::Region}"}},
+    {"name": "todo-create-item", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": ["todo/routes/todo.js", "todo/config/db.js"], "entry_points": ["POST /item"], "environment_variables": {"TODO_TABLE": "${TodoItemsTable}", "AWS_REGION": "${AWS::Region}"}},
+    {"name": "todo-update-item", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": ["todo/routes/todo.js", "todo/config/db.js"], "entry_points": ["PUT /item/{id}"], "environment_variables": {"TODO_TABLE": "${TodoItemsTable}", "AWS_REGION": "${AWS::Region}"}},
+    {"name": "todo-mark-done", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": ["todo/routes/todo.js", "todo/config/db.js"], "entry_points": ["POST /item/{id}/done"], "environment_variables": {"TODO_TABLE": "${TodoItemsTable}", "AWS_REGION": "${AWS::Region}"}},
+    {"name": "todo-delete-item", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": ["todo/routes/todo.js", "todo/config/db.js"], "entry_points": ["DELETE /item/{id}"], "environment_variables": {"TODO_TABLE": "${TodoItemsTable}", "AWS_REGION": "${AWS::Region}"}}
+  ],
+  "lambda_invoke_permissions": [],
+  "sqs_queues": [],
+  "eventbridge_rules": [],
+  "dynamodb_tables": [
+    {"logical_name": "TodoItems", "purpose": "Store todo items per authenticated user. Partition key userId = Cognito Sub; sort key id = item UUID.", "partition_key": {"name": "userId", "type": "S"}, "sort_key": {"name": "id", "type": "S"}, "gsi": []}
+  ],
+  "s3_buckets": [],
+  "cognito": {
+    "enabled": true,
+    "user_pool_attributes": ["email", "name"],
+    "password_policy": {"minimum_length": 8, "require_lowercase": true, "require_uppercase": true, "require_numbers": true, "require_symbols": false, "temporary_password_validity_days": 7}
+  },
+  "api_gateway": {
+    "type": "REST",
+    "cors": {"allow_origins": ["*"], "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]},
+    "authorizer": "Cognito",
+    "authorizer_type": "COGNITO_USER_POOLS",
+    "user_pool_arn": "${CognitoUserPool.Arn}",
+    "token_validation": "Automatic at API Gateway layer",
+    "identity_source": "Authorization header (Bearer token)"
+  },
+  "dropped_functions": [
+    {"item": "POST /register", "type": "endpoint", "reason": "Replaced by Cognito - frontend calls AWS Amplify/Cognito SDK directly"},
+    {"item": "POST /login", "type": "endpoint", "reason": "Replaced by Cognito User Pool authentication (frontend SDK)"},
+    {"item": "Users table (username hash key)", "type": "table", "reason": "User credentials moved to Cognito User Pool - table deleted entirely"},
+    {"item": "authenticateToken middleware (todo/middleware/auth.js)", "type": "code", "reason": "Replaced by API Gateway Cognito Authorizer - token validation at gateway layer"},
+    {"item": "jwt.js generateToken/verifyToken (todo/utils/jwt.js)", "type": "code", "reason": "Token issuance/validation handled by Cognito"},
+    {"item": "scripts/init-db.js", "type": "script", "reason": "Infrastructure script - table creation handled by SAM template CloudFormation resources"},
+    {"item": "server.js", "type": "code", "reason": "Express server bootstrap replaced by API Gateway route wiring"}
+  ]
+}

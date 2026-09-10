@@ -1,0 +1,26 @@
+{
+  "_description": "Semantic/target serverless API contract used for cross-implementation evaluation (EP/ER/F1 and universal E2E). It is derived from the monolith's BUSINESS semantics, but intentionally abstracts away the auth implementation detail. Business endpoints MUST exist and MUST require authentication; how the token is obtained may differ (Cognito, custom JWT, etc.). Auth endpoints (register/login) are treated as a serverless anti-pattern and count against precision when present.",
+  "businessEndpoints": [
+    { "method": "GET",    "semanticPath": "/item",          "description": "List all todos for authenticated user" },
+    { "method": "GET",    "semanticPath": "/item/{id}",     "description": "Get a specific todo by ID" },
+    { "method": "POST",   "semanticPath": "/item",          "description": "Create a new todo" },
+    { "method": "PUT",    "semanticPath": "/item/{id}",     "description": "Update an existing todo" },
+    { "method": "POST",   "semanticPath": "/item/{id}/done","description": "Mark a todo as completed" },
+    { "method": "DELETE", "semanticPath": "/item/{id}",     "description": "Delete a todo" }
+  ],
+  "authEndpoints_shouldNotExist": [
+    { "method": "POST", "semanticPath": "/auth/register", "description": "User registration — should be handled by managed auth service" },
+    { "method": "POST", "semanticPath": "/auth/login",    "description": "User login — should be handled by managed auth service" }
+  ],
+  "dataModel": {
+    "tableName": "todo",
+    "partitionKey": "user_id (cognito-username)",
+    "sortKey": "id (uuid)",
+    "fields": {
+      "item": { "type": "string", "required": true, "description": "Todo text content" },
+      "completed": { "type": "boolean", "required": false, "default": false },
+      "creation_date": { "type": "string (ISO 8601)", "auto": true },
+      "lastupdate_date": { "type": "string (ISO 8601)", "auto": true }
+    }
+  }
+}

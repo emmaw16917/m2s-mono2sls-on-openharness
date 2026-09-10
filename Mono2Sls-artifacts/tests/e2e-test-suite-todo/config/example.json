@@ -1,0 +1,22 @@
+{
+  "_comment": "Template for a target config file. Copy to e.g. my_target_todo.json and fill in the values after deploying your SAM project.",
+  "configType": "target",
+  "name": "My Target - Todo",
+  "shortName": "my_target_todo",
+  "baseUrl": "https://YOUR_API_ID.execute-api.YOUR_REGION.amazonaws.com/YOUR_STAGE",
+  "pathPrefix": "",
+  "artifactTemplate": "../results/YOUR_VARIANT/todo/output/template.yaml",
+  "authType": "cognito",
+  "authConfig": {
+    "userPoolId": "YOUR_REGION_XXXXXXXXX",
+    "clientId": "YOUR_APP_CLIENT_ID",
+    "region": "YOUR_REGION",
+    "userEmailDomain": "example.com",
+    "defaultPassword": "TestPass123!"
+  },
+  "timeouts": {
+    "requestTimeoutMs": 30000,
+    "eventualConsistencyTimeoutMs": 30000,
+    "pollIntervalMs": 2000
+  }
+}

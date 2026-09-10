@@ -1,0 +1,138 @@
+{
+  "configType": "normalized_contract",
+  "_description": "Normalized business contract used for cross-implementation evaluation. It is derived from the source monolith semantics, but abstracts away auth implementation details such as Cognito versus custom JWT issuance. Functional correctness is judged against these business endpoints and response semantics, while auth endpoint generation is tracked separately as an endpoint design penalty.",
+  "resource": "todo",
+  "businessEndpoints": [
+    {
+      "id": "TC-CREATE",
+      "method": "POST",
+      "semanticPath": "/item",
+      "auth": "required",
+      "successStatus": 200,
+      "requestBody": {
+        "item": "string (required)",
+        "completed": "boolean (optional)"
+      },
+      "response": {
+        "todoLocation": [
+          "item",
+          "Item",
+          "data.item"
+        ],
+        "requiredTodoFields": [
+          "id",
+          "item",
+          "completed"
+        ]
+      }
+    },
+    {
+      "id": "TC-LIST",
+      "method": "GET",
+      "semanticPath": "/item",
+      "auth": "required",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "Items",
+          "items",
+          "data.items",
+          "$"
+        ]
+      }
+    },
+    {
+      "id": "TC-GET",
+      "method": "GET",
+      "semanticPath": "/item/{id}",
+      "auth": "required",
+      "successStatus": 200,
+      "notFoundStatus": 404,
+      "response": {
+        "todoLocation": [
+          "Item",
+          "item",
+          "data.item",
+          "$"
+        ],
+        "requiredTodoFields": [
+          "id",
+          "item",
+          "completed"
+        ]
+      }
+    },
+    {
+      "id": "TC-UPDATE",
+      "method": "PUT",
+      "semanticPath": "/item/{id}",
+      "auth": "required",
+      "successStatus": 200,
+      "requestBody": {
+        "item": "string (required)",
+        "completed": "boolean (required)"
+      },
+      "response": {
+        "todoLocation": [
+          "Attributes",
+          "item",
+          "Item",
+          "data.item"
+        ],
+        "requiredTodoFields": [
+          "id",
+          "item",
+          "completed"
+        ]
+      }
+    },
+    {
+      "id": "TC-DONE",
+      "method": "POST",
+      "semanticPath": "/item/{id}/done",
+      "auth": "required",
+      "successStatus": 200,
+      "response": {
+        "todoLocation": [
+          "Attributes",
+          "item",
+          "Item",
+          "data.item"
+        ],
+        "requiredTodoFields": [
+          "id",
+          "item",
+          "completed"
+        ]
+      }
+    },
+    {
+      "id": "TC-DELETE",
+      "method": "DELETE",
+      "semanticPath": "/item/{id}",
+      "auth": "required",
+      "successStatus": 200
+    }
+  ],
+  "validationRules": {
+    "unauthenticatedStatus": [
+      401,
+      403
+    ],
+    "invalidCreatePayloadStatus": 400,
+    "invalidIdStatus": 400,
+    "postDeleteGetStatus": 404
+  },
+  "antiPatternEndpoints": [
+    {
+      "method": "POST",
+      "semanticPath": "/auth/register",
+      "category": "auth_reimplementation"
+    },
+    {
+      "method": "POST",
+      "semanticPath": "/auth/login",
+      "category": "auth_reimplementation"
+    }
+  ]
+}

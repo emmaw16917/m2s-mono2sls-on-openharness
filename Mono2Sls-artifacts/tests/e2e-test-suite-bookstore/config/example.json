@@ -1,0 +1,31 @@
+{
+  "_comment": "Template for a target config file. Copy to e.g. my_target_bookstore.json and fill in the values after deploying your SAM project.",
+  "configType": "target",
+  "name": "My Target - Bookstore",
+  "shortName": "my_target_bookstore",
+  "baseUrl": "https://YOUR_API_ID.execute-api.YOUR_REGION.amazonaws.com/YOUR_STAGE",
+  "pathPrefix": "",
+  "region": "YOUR_REGION",
+  "artifactTemplate": "../results/YOUR_VARIANT/bookstore/output/template.yaml",
+  "authType": "cognito",
+  "booksTable": "YOUR-STACK-NAME-books",
+  "cartTable": "YOUR-STACK-NAME-cart",
+  "ordersTable": "YOUR-STACK-NAME-orders",
+  "bestsellersTable": "YOUR-STACK-NAME-bestsellers",
+  "authConfig": {
+    "userPoolId": "YOUR_REGION_XXXXXXXXX",
+    "clientId": "YOUR_APP_CLIENT_ID",
+    "region": "YOUR_REGION",
+    "userEmailDomain": "example.com",
+    "defaultPassword": "TestPass123!"
+  },
+  "capabilities": {
+    "supportsAuthCompatibility": false,
+    "asyncBestsellersAfterOrder": true
+  },
+  "timeouts": {
+    "requestTimeoutMs": 30000,
+    "eventualConsistencyTimeoutMs": 30000,
+    "pollIntervalMs": 2000
+  }
+}

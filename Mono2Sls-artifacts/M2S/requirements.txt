@@ -1,0 +1,18 @@
+# Pipeline runtime dependencies for Mono2Sls (M2S).
+# Derived from actual imports in src/, since no lockfile ships with the artifact.
+# Versions intentionally unpinned; let pip resolve latest compatible releases.
+
+crewai
+crewai-tools
+llama-index-core
+llama-index-embeddings-huggingface
+sentence-transformers
+python-dotenv
+PyYAML
+pydantic
+ollama
+
+# SAM template validation and deployment tooling
+cfn-lint
+aws-sam-cli
+awscli

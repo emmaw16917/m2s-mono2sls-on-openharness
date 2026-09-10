@@ -1,0 +1,45 @@
+{
+  "target": "m2s_sonnet46_shopping_cart",
+  "runId": "1773578815327-yc74hk",
+  "generatedAt": "2026-03-15T12:46:55.327Z",
+  "fixtures": {
+    "primaryProductId": "e2e-m2s-sonnet46-shopping-cart-1773578815327-yc74hk-primary",
+    "secondaryProductId": "e2e-m2s-sonnet46-shopping-cart-1773578815327-yc74hk-secondary",
+    "tertiaryProductId": "e2e-m2s-sonnet46-shopping-cart-1773578815327-yc74hk-tertiary",
+    "quaternaryProductId": "e2e-m2s-sonnet46-shopping-cart-1773578815327-yc74hk-quaternary"
+  },
+  "products": [
+    {
+      "id": "e2e-m2s-sonnet46-shopping-cart-1773578815327-yc74hk-primary",
+      "name": "E2E Primary Product",
+      "description": "Primary product for anonymous cart CRUD",
+      "category": "testing",
+      "price": 19.99,
+      "image": "https://example.com/e2e-primary.png"
+    },
+    {
+      "id": "e2e-m2s-sonnet46-shopping-cart-1773578815327-yc74hk-secondary",
+      "name": "E2E Secondary Product",
+      "description": "Secondary product for cart migration visibility",
+      "category": "testing",
+      "price": 29.99,
+      "image": "https://example.com/e2e-secondary.png"
+    },
+    {
+      "id": "e2e-m2s-sonnet46-shopping-cart-1773578815327-yc74hk-tertiary",
+      "name": "E2E Tertiary Product",
+      "description": "Tertiary product for checkout flow",
+      "category": "testing",
+      "price": 39.99,
+      "image": "https://example.com/e2e-tertiary.png"
+    },
+    {
+      "id": "e2e-m2s-sonnet46-shopping-cart-1773578815327-yc74hk-quaternary",
+      "name": "E2E Quaternary Product",
+      "description": "Quaternary product for migration aggregate invariants",
+      "category": "testing",
+      "price": 49.99,
+      "image": "https://example.com/e2e-quaternary.png"
+    }
+  ]
+}

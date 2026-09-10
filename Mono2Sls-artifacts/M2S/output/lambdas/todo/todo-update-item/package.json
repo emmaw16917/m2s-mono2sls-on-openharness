@@ -1,0 +1,12 @@
+{
+  "name": "todo-update-item",
+  "version": "1.0.0",
+  "description": "Update an existing todo item for the authenticated user",
+  "main": "handler.js",
+  "dependencies": {
+    "@aws-sdk/lib-dynamodb": "^3.617.0"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

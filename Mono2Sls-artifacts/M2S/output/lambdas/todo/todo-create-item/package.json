@@ -1,0 +1,13 @@
+{
+  "name": "todo-create-item",
+  "version": "1.0.0",
+  "description": "Create a new todo item for the authenticated user",
+  "main": "handler.js",
+  "dependencies": {
+    "@aws-sdk/lib-dynamodb": "^3.617.0",
+    "uuid": "^10.0.0"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

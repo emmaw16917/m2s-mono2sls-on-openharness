@@ -1,0 +1,154 @@
+{
+  "configType": "normalized_contract",
+  "_description": "Evaluation contract for shopping-cart. Core business tests are derived from the source monolith observable semantics, while auth endpoint presence is treated separately as endpoint precision rather than functional correctness.",
+  "resource": "shopping-cart",
+  "fixtures": {
+    "invalidProductId": "NO_SUCH_PRODUCT_12345"
+  },
+  "businessEndpoints": [
+    {
+      "id": "TC-01",
+      "method": "GET",
+      "semanticPath": "/product",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "$",
+          "products",
+          "data.products",
+          "items"
+        ],
+        "requiredProductFields": [
+          "id",
+          "name",
+          "price"
+        ]
+      }
+    },
+    {
+      "id": "TC-02",
+      "method": "GET",
+      "semanticPath": "/product/{product_id}",
+      "auth": "none",
+      "successStatus": 200,
+      "notFoundStatus": [
+        404
+      ],
+      "response": {
+        "objectLocation": [
+          "$",
+          "product",
+          "data.product",
+          "item",
+          "Item"
+        ],
+        "requiredProductFields": [
+          "id",
+          "name",
+          "price"
+        ]
+      }
+    },
+    {
+      "id": "TC-04",
+      "method": "GET",
+      "semanticPath": "/cart",
+      "auth": "optional",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "$",
+          "products",
+          "data.products",
+          "items"
+        ]
+      }
+    },
+    {
+      "id": "TC-05",
+      "method": "POST",
+      "semanticPath": "/cart",
+      "auth": "optional",
+      "successStatus": [
+        200,
+        201
+      ]
+    },
+    {
+      "id": "TC-06",
+      "method": "PUT",
+      "semanticPath": "/cart/{product_id}",
+      "auth": "optional",
+      "successStatus": 200
+    },
+    {
+      "id": "TC-08",
+      "method": "POST",
+      "semanticPath": "/cart/migrate",
+      "auth": "required",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "$",
+          "products",
+          "data.products",
+          "items"
+        ]
+      }
+    },
+    {
+      "id": "TC-09",
+      "method": "POST",
+      "semanticPath": "/cart/checkout",
+      "auth": "required",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "$",
+          "products",
+          "data.products",
+          "items"
+        ]
+      }
+    },
+    {
+      "id": "TC-10",
+      "method": "GET",
+      "semanticPath": "/cart/{product_id}/total",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ],
+        "requiredFields": [
+          "product",
+          "quantity"
+        ]
+      }
+    }
+  ],
+  "antiPatternEndpoints": [
+    {
+      "id": "AUTH-01",
+      "method": "POST",
+      "semanticPath": "/auth/register"
+    },
+    {
+      "id": "AUTH-02",
+      "method": "POST",
+      "semanticPath": "/auth/login"
+    }
+  ],
+  "validationRules": {
+    "unauthenticatedStatus": [
+      401,
+      403
+    ],
+    "badRequestStatus": [
+      400
+    ]
+  }
+}

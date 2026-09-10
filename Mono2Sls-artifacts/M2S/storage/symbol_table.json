@@ -1,0 +1,149 @@
+[
+  {
+    "id": "todo.server.USE__auth",
+    "file_path": "todo/server.js",
+    "start_line": 20,
+    "end_line": 29,
+    "kind": "route_handler"
+  },
+  {
+    "id": "todo.server.USE__api",
+    "file_path": "todo/server.js",
+    "start_line": 21,
+    "end_line": 29,
+    "kind": "route_handler"
+  },
+  {
+    "id": "todo.server.GET__",
+    "file_path": "todo/server.js",
+    "start_line": 23,
+    "end_line": 29,
+    "kind": "route_handler"
+  },
+  {
+    "id": "todo.server.process_on_SIGTERM",
+    "file_path": "todo/server.js",
+    "start_line": 51,
+    "end_line": 54,
+    "kind": "event_handler"
+  },
+  {
+    "id": "todo.server.process_on_SIGINT",
+    "file_path": "todo/server.js",
+    "start_line": 56,
+    "end_line": 59,
+    "kind": "event_handler"
+  },
+  {
+    "id": "todo.middleware.auth.authenticateToken",
+    "file_path": "todo/middleware/auth.js",
+    "start_line": 3,
+    "end_line": 29,
+    "kind": "function"
+  },
+  {
+    "id": "todo.routes.auth.POST__register",
+    "file_path": "todo/routes/auth.js",
+    "start_line": 8,
+    "end_line": 68,
+    "kind": "route_handler"
+  },
+  {
+    "id": "todo.routes.auth.POST__login",
+    "file_path": "todo/routes/auth.js",
+    "start_line": 70,
+    "end_line": 117,
+    "kind": "route_handler"
+  },
+  {
+    "id": "todo.routes.todo.GET__item",
+    "file_path": "todo/routes/todo.js",
+    "start_line": 10,
+    "end_line": 38,
+    "kind": "route_handler"
+  },
+  {
+    "id": "todo.routes.todo.GET__item__id",
+    "file_path": "todo/routes/todo.js",
+    "start_line": 40,
+    "end_line": 75,
+    "kind": "route_handler"
+  },
+  {
+    "id": "todo.routes.todo.POST__item",
+    "file_path": "todo/routes/todo.js",
+    "start_line": 77,
+    "end_line": 115,
+    "kind": "route_handler"
+  },
+  {
+    "id": "todo.routes.todo.PUT__item__id",
+    "file_path": "todo/routes/todo.js",
+    "start_line": 117,
+    "end_line": 165,
+    "kind": "route_handler"
+  },
+  {
+    "id": "todo.routes.todo.POST__item__id_done",
+    "file_path": "todo/routes/todo.js",
+    "start_line": 167,
+    "end_line": 206,
+    "kind": "route_handler"
+  },
+  {
+    "id": "todo.routes.todo.DELETE__item__id",
+    "file_path": "todo/routes/todo.js",
+    "start_line": 208,
+    "end_line": 238,
+    "kind": "route_handler"
+  },
+  {
+    "id": "todo.scripts.init-db.tableExists",
+    "file_path": "todo/scripts/init-db.js",
+    "start_line": 18,
+    "end_line": 28,
+    "kind": "function"
+  },
+  {
+    "id": "todo.scripts.init-db.waitForTable",
+    "file_path": "todo/scripts/init-db.js",
+    "start_line": 30,
+    "end_line": 56,
+    "kind": "function"
+  },
+  {
+    "id": "todo.scripts.init-db.createTodoTable",
+    "file_path": "todo/scripts/init-db.js",
+    "start_line": 58,
+    "end_line": 94,
+    "kind": "function"
+  },
+  {
+    "id": "todo.scripts.init-db.createUserTable",
+    "file_path": "todo/scripts/init-db.js",
+    "start_line": 96,
+    "end_line": 129,
+    "kind": "function"
+  },
+  {
+    "id": "todo.scripts.init-db.main",
+    "file_path": "todo/scripts/init-db.js",
+    "start_line": 131,
+    "end_line": 192,
+    "kind": "function"
+  },
+  {
+    "id": "todo.utils.jwt.generateToken",
+    "file_path": "todo/utils/jwt.js",
+    "start_line": 6,
+    "end_line": 12,
+    "kind": "function"
+  },
+  {
+    "id": "todo.utils.jwt.verifyToken",
+    "file_path": "todo/utils/jwt.js",
+    "start_line": 14,
+    "end_line": 21,
+    "kind": "function"
+  }
+]

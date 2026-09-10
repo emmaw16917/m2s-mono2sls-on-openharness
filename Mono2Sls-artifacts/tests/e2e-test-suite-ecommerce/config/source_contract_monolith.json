@@ -1,0 +1,399 @@
+{
+  "configType": "source_contract",
+  "_description": "Frozen source API contract extracted from mono_benchmark/ecommerce. This captures the monolith's externally visible endpoints and should remain unchanged for auditability.",
+  "basePath": "",
+  "endpoints": [
+    {
+      "method": "POST",
+      "path": "/api/auth/register",
+      "auth": "none",
+      "requestBody": {
+        "email": "string (required)",
+        "password": "string (required)",
+        "role": "string (optional, default user)"
+      },
+      "response": {
+        "status": 201,
+        "json": {
+          "success": "boolean",
+          "message": "string",
+          "userId": "string"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/login",
+      "auth": "none",
+      "requestBody": {
+        "email": "string (required)",
+        "password": "string (required)"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "success": "boolean",
+          "accessToken": "string",
+          "refreshToken": "string",
+          "user": "User"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "auth": "required",
+      "response": {
+        "status": 200,
+        "json": {
+          "user": "User"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/products",
+      "auth": "none",
+      "response": {
+        "status": 200,
+        "json": {
+          "products": "Product[]"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/products/{product_id}",
+      "auth": "none",
+      "response": {
+        "status": 200,
+        "json": {
+          "product": "Product"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/products/category/{category}",
+      "auth": "none",
+      "response": {
+        "status": 200,
+        "json": {
+          "products": "Product[]"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/payment-3p/preauth",
+      "auth": "none",
+      "requestBody": {
+        "cardNumber": "string (required, 16 digits)",
+        "amount": "number (required)"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "paymentToken": "string"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/payment-3p/check",
+      "auth": "none",
+      "requestBody": {
+        "paymentToken": "string (required)",
+        "amount": "number (required)"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "ok": "boolean"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/payment/validate",
+      "auth": "required",
+      "requestBody": {
+        "paymentToken": "string (required)",
+        "total": "number (required)"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "ok": "boolean"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders/delivery-pricing",
+      "auth": "required",
+      "requestBody": {
+        "products": "ProductSelection[]",
+        "address": "Address"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "pricing": "number"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/orders",
+      "auth": "required",
+      "requestBody": {
+        "products": "ProductSelection[]",
+        "address": "Address",
+        "deliveryPrice": "number",
+        "paymentToken": "string"
+      },
+      "response": {
+        "status": 201,
+        "json": {
+          "success": "boolean",
+          "message": "string",
+          "order": "Order"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/orders",
+      "auth": "required",
+      "response": {
+        "status": 200,
+        "json": {
+          "orders": "Order[]"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/orders/{order_id}",
+      "auth": "owner",
+      "response": {
+        "status": 200,
+        "json": {
+          "order": "Order"
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/orders/{order_id}",
+      "auth": "owner",
+      "requestBody": {
+        "products": "ProductSelection[] (optional)",
+        "deliveryPrice": "number (optional)"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "success": "boolean",
+          "message": "string",
+          "order": "Order"
+        }
+      }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/orders/{order_id}",
+      "auth": "owner",
+      "response": {
+        "status": 200,
+        "json": {
+          "success": "boolean",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/warehouse/packaging-requests",
+      "auth": "warehouse_or_admin",
+      "response": {
+        "status": 200,
+        "json": {
+          "packagingRequestIds": "string[]"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/warehouse/packaging-requests/{order_id}",
+      "auth": "warehouse_or_admin",
+      "response": {
+        "status": 200,
+        "json": {
+          "packagingRequest": "PackagingRequest"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/warehouse/packaging-requests/{order_id}/start",
+      "auth": "warehouse_or_admin",
+      "response": {
+        "status": 200,
+        "json": {
+          "success": "boolean",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/warehouse/packaging-requests/{order_id}/products",
+      "auth": "warehouse_or_admin",
+      "requestBody": {
+        "productId": "string",
+        "quantity": "number"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "success": "boolean",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/warehouse/packaging-requests/{order_id}/complete",
+      "auth": "warehouse_or_admin",
+      "response": {
+        "status": 200,
+        "json": {
+          "success": "boolean",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/warehouse/packaging-requests/{order_id}/fail",
+      "auth": "warehouse_or_admin",
+      "requestBody": {
+        "reason": "string (optional)"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "success": "boolean",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/delivery/deliveries",
+      "auth": "delivery_or_admin",
+      "response": {
+        "status": 200,
+        "json": {
+          "deliveries": "Delivery[]"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/delivery/deliveries/{order_id}",
+      "auth": "delivery_or_admin",
+      "response": {
+        "status": 200,
+        "json": {
+          "delivery": "Delivery"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/delivery/deliveries/{order_id}/start",
+      "auth": "delivery_or_admin",
+      "response": {
+        "status": 200,
+        "json": {
+          "success": "boolean",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/delivery/deliveries/{order_id}/complete",
+      "auth": "delivery_or_admin",
+      "response": {
+        "status": 200,
+        "json": {
+          "success": "boolean",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/delivery/deliveries/{order_id}/fail",
+      "auth": "delivery_or_admin",
+      "requestBody": {
+        "reason": "string (optional)"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "success": "boolean",
+          "message": "string"
+        }
+      }
+    }
+  ],
+  "models": {
+    "User": {
+      "userId": "string",
+      "email": "string",
+      "role": "string"
+    },
+    "Product": {
+      "productId": "string",
+      "name": "string",
+      "category": "string",
+      "price": "number",
+      "package": "object"
+    },
+    "Order": {
+      "orderId": "string",
+      "userId": "string",
+      "status": "string",
+      "products": "ProductSelection[]",
+      "deliveryPrice": "number",
+      "total": "number",
+      "paymentToken": "string"
+    },
+    "PackagingRequest": {
+      "orderId": "string",
+      "status": "string",
+      "products": "object[]"
+    },
+    "Delivery": {
+      "orderId": "string",
+      "status": "string",
+      "address": "Address"
+    }
+  },
+  "sourcePointers": {
+    "appFactory": "mono_benchmark/ecommerce/app/__init__.py",
+    "authRoutes": "mono_benchmark/ecommerce/app/routes/auth.py",
+    "productRoutes": "mono_benchmark/ecommerce/app/routes/products.py",
+    "orderRoutes": "mono_benchmark/ecommerce/app/routes/orders.py",
+    "warehouseRoutes": "mono_benchmark/ecommerce/app/routes/warehouse.py",
+    "deliveryRoutes": "mono_benchmark/ecommerce/app/routes/delivery.py",
+    "paymentRoutes": "mono_benchmark/ecommerce/app/routes/payment.py",
+    "payment3pRoutes": "mono_benchmark/ecommerce/app/routes/payment_3p.py",
+    "sampleData": "mono_benchmark/ecommerce/init_dynamodb.py"
+  }
+}

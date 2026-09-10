@@ -1,0 +1,349 @@
+{
+  "configType": "normalized_business_contract",
+  "_description": "Normalized contract for cross-target ecommerce E2E. Semantic paths intentionally omit the optional /api prefix so pathPrefix can adapt different deployments.",
+  "businessEndpoints": [
+    {
+      "id": "TC-01",
+      "method": "GET",
+      "semanticPath": "/products",
+      "response": {
+        "successStatus": 200,
+        "listLocation": ["products"],
+        "requiredItemFields": ["productId", "name", "category", "price", "package"]
+      }
+    },
+    {
+      "id": "TC-02",
+      "method": "GET",
+      "semanticPath": "/products/{product_id}",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["product"],
+        "requiredFields": ["productId", "name", "category", "price", "package"]
+      }
+    },
+    {
+      "id": "TC-03",
+      "method": "GET",
+      "semanticPath": "/products/category/{category}",
+      "response": {
+        "successStatus": 200,
+        "listLocation": ["products"],
+        "requiredItemFields": ["productId", "name", "category", "price", "package"]
+      }
+    },
+    {
+      "id": "TC-04",
+      "method": "POST",
+      "semanticPath": "/payment-3p/preauth",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-05",
+      "method": "POST",
+      "semanticPath": "/payment-3p/check",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-06",
+      "method": "POST",
+      "semanticPath": "/orders/delivery-pricing",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-07",
+      "method": "POST",
+      "semanticPath": "/orders",
+      "response": {
+        "successStatus": 201,
+        "objectLocation": ["order", "$"],
+        "requiredOrderFields": ["orderId", "userId", "status", "products", "deliveryPrice", "total", "paymentToken"]
+      }
+    },
+    {
+      "id": "TC-08",
+      "method": "GET",
+      "semanticPath": "/orders/{order_id}",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["order", "$.order"],
+        "requiredOrderFields": ["orderId", "userId", "status", "products", "deliveryPrice", "total", "paymentToken"]
+      }
+    },
+    {
+      "id": "TC-09",
+      "method": "GET",
+      "semanticPath": "/orders",
+      "response": {
+        "successStatus": 200,
+        "listLocation": ["orders"]
+      }
+    },
+    {
+      "id": "TC-10",
+      "method": "PUT",
+      "semanticPath": "/orders/{order_id}",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-11",
+      "method": "DELETE",
+      "semanticPath": "/orders/{order_id}",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-12",
+      "method": "GET",
+      "semanticPath": "/warehouse/packaging-requests",
+      "response": {
+        "successStatus": 200,
+        "listLocation": ["packagingRequestIds", "requests"]
+      }
+    },
+    {
+      "id": "TC-13",
+      "method": "GET",
+      "semanticPath": "/warehouse/packaging-requests/{order_id}",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["packagingRequest"],
+        "requiredPackagingFields": ["orderId", "status", "products"]
+      }
+    },
+    {
+      "id": "TC-14",
+      "method": "POST",
+      "semanticPath": "/warehouse/packaging-requests/{order_id}/start",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-15",
+      "method": "PUT",
+      "semanticPath": "/warehouse/packaging-requests/{order_id}/products",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-16",
+      "method": "POST",
+      "semanticPath": "/warehouse/packaging-requests/{order_id}/complete",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-17",
+      "method": "POST",
+      "semanticPath": "/warehouse/packaging-requests/{order_id}/fail",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-18",
+      "method": "GET",
+      "semanticPath": "/delivery/deliveries",
+      "response": {
+        "successStatus": 200,
+        "listLocation": ["deliveries"]
+      }
+    },
+    {
+      "id": "TC-19",
+      "method": "GET",
+      "semanticPath": "/delivery/deliveries/{order_id}",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["delivery"],
+        "requiredDeliveryFields": ["orderId", "status", "address"]
+      }
+    },
+    {
+      "id": "TC-20",
+      "method": "POST",
+      "semanticPath": "/delivery/deliveries/{order_id}/start",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-21",
+      "method": "POST",
+      "semanticPath": "/delivery/deliveries/{order_id}/complete",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-22",
+      "method": "POST",
+      "semanticPath": "/delivery/deliveries/{order_id}/fail",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-23",
+      "method": "POST",
+      "semanticPath": "/payment/validate",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-24",
+      "method": "POST",
+      "semanticPath": "/payment-3p/processPayment",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-25",
+      "method": "POST",
+      "semanticPath": "/payment-3p/cancelPayment",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    },
+    {
+      "id": "TC-26",
+      "method": "POST",
+      "semanticPath": "/payment-3p/updateAmount",
+      "response": {
+        "successStatus": 200,
+        "objectLocation": ["$"]
+      }
+    }
+  ],
+  "authCompatibilityEndpoints": [
+    {
+      "id": "AUTH-01",
+      "method": "POST",
+      "semanticPath": "/auth/register"
+    },
+    {
+      "id": "AUTH-02",
+      "method": "POST",
+      "semanticPath": "/auth/login"
+    },
+    {
+      "id": "AUTH-03",
+      "method": "GET",
+      "semanticPath": "/auth/me"
+    }
+  ],
+  "antiPatternEndpoints": [
+    {
+      "method": "POST",
+      "semanticPath": "/auth/register"
+    },
+    {
+      "method": "POST",
+      "semanticPath": "/auth/login"
+    },
+    {
+      "method": "GET",
+      "semanticPath": "/auth/me"
+    },
+    {
+      "method": "POST",
+      "semanticPath": "/auth/refresh"
+    }
+  ],
+  "fixtures": {
+    "defaultCardNumber": "4111111111111111",
+    "defaultPassword": "TestPass123!",
+    "defaultAddress": {
+      "name": "E2E User",
+      "companyName": "Research Lab",
+      "streetAddress": "1 Test Street",
+      "postCode": "2100",
+      "city": "Copenhagen",
+      "state": "84",
+      "country": "DK",
+      "phoneNumber": "+4511122233"
+    },
+    "foreignAddress": {
+      "name": "E2E User",
+      "companyName": "Research Lab",
+      "streetAddress": "500 Market Street",
+      "postCode": "94105",
+      "city": "San Francisco",
+      "state": "CA",
+      "country": "US",
+      "phoneNumber": "+14155550101"
+    },
+    "products": {
+      "laptop": {
+        "productId": "prod-laptop-001",
+        "name": "Laptop Computer",
+        "category": "Electronics",
+        "price": 99900,
+        "package": {
+          "width": 400,
+          "length": 300,
+          "height": 50,
+          "weight": 2000
+        }
+      },
+      "mouse": {
+        "productId": "prod-mouse-001",
+        "name": "Wireless Mouse",
+        "category": "Electronics",
+        "price": 2999,
+        "package": {
+          "width": 150,
+          "length": 100,
+          "height": 50,
+          "weight": 100
+        }
+      },
+      "mug": {
+        "productId": "prod-mug-001",
+        "name": "Coffee Mug",
+        "category": "Kitchen",
+        "price": 1299,
+        "package": {
+          "width": 100,
+          "length": 100,
+          "height": 120,
+          "weight": 300
+        }
+      }
+    }
+  },
+  "validationRules": {
+    "unauthenticatedStatus": [401, 403],
+    "forbiddenStatus": [403],
+    "badRequestStatus": [400]
+  }
+}

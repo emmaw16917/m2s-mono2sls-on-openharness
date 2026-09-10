@@ -1,0 +1,29 @@
+{
+  "_comment": "Template for a target config file. Copy to e.g. my_target_airline.json and fill in the values after deploying your SAM project. Run seed-flights.js before testing.",
+  "configType": "target",
+  "name": "My Target - Airline Booking",
+  "shortName": "my_target_airline",
+  "baseUrl": "https://YOUR_API_ID.execute-api.YOUR_REGION.amazonaws.com/YOUR_STAGE",
+  "pathPrefix": "",
+  "artifactTemplate": "../results/YOUR_VARIANT/airline-booking/output/template.yaml",
+  "authType": "cognito",
+  "paymentMode": "simulation",
+  "authConfig": {
+    "userPoolId": "YOUR_REGION_XXXXXXXXX",
+    "clientId": "YOUR_APP_CLIENT_ID",
+    "region": "YOUR_REGION",
+    "userEmailDomain": "example.com",
+    "defaultPassword": "TestPass123!"
+  },
+  "capabilities": {
+    "supportsAuthCompatibility": false,
+    "supportsAdminBootstrap": false,
+    "asyncLoyaltyAfterBooking": true,
+    "asyncSeatReleaseAfterCancel": false
+  },
+  "timeouts": {
+    "requestTimeoutMs": 30000,
+    "eventualConsistencyTimeoutMs": 30000,
+    "pollIntervalMs": 2000
+  }
+}

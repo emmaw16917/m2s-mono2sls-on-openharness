@@ -1,0 +1,45 @@
+{
+  "target": "claudecode_sonnet46_shopping_cart",
+  "runId": "1773578424548-8jvuup",
+  "generatedAt": "2026-03-15T12:40:24.548Z",
+  "fixtures": {
+    "primaryProductId": "e2e-claudecode-sonnet46-shopping-cart-1773578424548-8jvuup-primary",
+    "secondaryProductId": "e2e-claudecode-sonnet46-shopping-cart-1773578424548-8jvuup-secondary",
+    "tertiaryProductId": "e2e-claudecode-sonnet46-shopping-cart-1773578424548-8jvuup-tertiary",
+    "quaternaryProductId": "e2e-claudecode-sonnet46-shopping-cart-1773578424548-8jvuup-quaternary"
+  },
+  "products": [
+    {
+      "id": "e2e-claudecode-sonnet46-shopping-cart-1773578424548-8jvuup-primary",
+      "name": "E2E Primary Product",
+      "description": "Primary product for anonymous cart CRUD",
+      "category": "testing",
+      "price": 19.99,
+      "image": "https://example.com/e2e-primary.png"
+    },
+    {
+      "id": "e2e-claudecode-sonnet46-shopping-cart-1773578424548-8jvuup-secondary",
+      "name": "E2E Secondary Product",
+      "description": "Secondary product for cart migration visibility",
+      "category": "testing",
+      "price": 29.99,
+      "image": "https://example.com/e2e-secondary.png"
+    },
+    {
+      "id": "e2e-claudecode-sonnet46-shopping-cart-1773578424548-8jvuup-tertiary",
+      "name": "E2E Tertiary Product",
+      "description": "Tertiary product for checkout flow",
+      "category": "testing",
+      "price": 39.99,
+      "image": "https://example.com/e2e-tertiary.png"
+    },
+    {
+      "id": "e2e-claudecode-sonnet46-shopping-cart-1773578424548-8jvuup-quaternary",
+      "name": "E2E Quaternary Product",
+      "description": "Quaternary product for migration aggregate invariants",
+      "category": "testing",
+      "price": 49.99,
+      "image": "https://example.com/e2e-quaternary.png"
+    }
+  ]
+}

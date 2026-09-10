@@ -1,0 +1,344 @@
+{
+  "configType": "normalized_contract",
+  "_description": "Evaluation contract for cross-implementation comparison. Core business tests are derived from the source monolith's observable semantics, while auth compatibility and async semantics are reported separately.",
+  "resource": "airline-booking",
+  "fixtures": {
+    "primaryFlightId": "FL001",
+    "secondaryFlightId": "FL002",
+    "searchQuery": {
+      "departureCode": "LAX",
+      "arrivalCode": "SFO",
+      "departureDate": "2025-11-10"
+    },
+    "paymentChargePrefix": "ch_test_e2e_",
+    "invalidFlightId": "NO_SUCH_FLIGHT_12345",
+    "invalidBookingId": "NO_SUCH_BOOKING_12345"
+  },
+  "businessEndpoints": [
+    {
+      "id": "TC-01",
+      "method": "GET",
+      "semanticPath": "/flights/search",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "flights",
+          "data.flights"
+        ],
+        "requiredFlightFields": [
+          "id",
+          "departureAirportCode",
+          "arrivalAirportCode",
+          "seatCapacity",
+          "maximumSeating"
+        ]
+      }
+    },
+    {
+      "id": "TC-03",
+      "method": "GET",
+      "semanticPath": "/flights/{flight_id}",
+      "auth": "none",
+      "successStatus": 200,
+      "notFoundStatus": [
+        400,
+        404
+      ],
+      "response": {
+        "objectLocation": [
+          "$",
+          "flight",
+          "data.flight"
+        ],
+        "requiredFlightFields": [
+          "id",
+          "departureAirportCode",
+          "arrivalAirportCode",
+          "seatCapacity",
+          "maximumSeating"
+        ]
+      }
+    },
+    {
+      "id": "TC-05",
+      "method": "POST",
+      "semanticPath": "/flights/{flight_id}/reserve",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ],
+        "requiredFields": [
+          "status"
+        ]
+      }
+    },
+    {
+      "id": "TC-07",
+      "method": "POST",
+      "semanticPath": "/bookings",
+      "auth": "required",
+      "successStatus": 201,
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ],
+        "requiredFields": [
+          "bookingId",
+          "bookingReference",
+          "status"
+        ]
+      }
+    },
+    {
+      "id": "TC-08",
+      "method": "GET",
+      "semanticPath": "/bookings/{booking_id}",
+      "auth": "required",
+      "successStatus": 200,
+      "notFoundStatus": [
+        400,
+        404
+      ],
+      "response": {
+        "objectLocation": [
+          "$",
+          "booking",
+          "data.booking",
+          "item",
+          "Item"
+        ],
+        "requiredBookingFields": [
+          "id",
+          "customer",
+          "bookingOutboundFlightId",
+          "status"
+        ]
+      }
+    },
+    {
+      "id": "TC-09",
+      "method": "GET",
+      "semanticPath": "/customers/{customer_id}/bookings",
+      "auth": "required",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "bookings",
+          "data.bookings",
+          "items"
+        ]
+      }
+    },
+    {
+      "id": "TC-10",
+      "method": "POST",
+      "semanticPath": "/bookings/{booking_id}/cancel",
+      "auth": "required",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ],
+        "requiredFields": [
+          "bookingId",
+          "status"
+        ]
+      }
+    },
+    {
+      "id": "TC-16",
+      "method": "POST",
+      "semanticPath": "/payments/collect",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "payment",
+          "data.payment"
+        ],
+        "requiredPaymentFields": [
+          "receiptUrl",
+          "price"
+        ]
+      }
+    },
+    {
+      "id": "TC-17",
+      "method": "POST",
+      "semanticPath": "/payments/refund",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "refund",
+          "data.refund"
+        ],
+        "requiredRefundFields": [
+          "refundId"
+        ]
+      }
+    },
+    {
+      "id": "TC-18",
+      "method": "GET",
+      "semanticPath": "/payments/{charge_id}",
+      "auth": "none",
+      "successStatus": 200,
+      "notFoundStatus": [
+        400,
+        404
+      ],
+      "response": {
+        "objectLocation": [
+          "$",
+          "payment",
+          "data.payment"
+        ]
+      }
+    },
+    {
+      "id": "TC-15",
+      "method": "GET",
+      "semanticPath": "/loyalty/{customer_id}",
+      "auth": "owner_or_admin",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "loyalty",
+          "data.loyalty"
+        ],
+        "requiredLoyaltyFields": [
+          "points",
+          "level",
+          "remainingPoints"
+        ]
+      }
+    },
+    {
+      "id": "TC-20",
+      "method": "POST",
+      "semanticPath": "/flights/{flight_id}/release",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ]
+      }
+    },
+    {
+      "id": "TC-21",
+      "method": "POST",
+      "semanticPath": "/bookings/{booking_id}/confirm",
+      "auth": "required",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ]
+      }
+    },
+    {
+      "id": "TC-22",
+      "method": "POST",
+      "semanticPath": "/loyalty/{customer_id}/points",
+      "auth": "admin",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ]
+      }
+    }
+  ],
+  "authCompatibilityEndpoints": [
+    {
+      "id": "AUTH-01",
+      "method": "POST",
+      "semanticPath": "/auth/register"
+    },
+    {
+      "id": "AUTH-02",
+      "method": "POST",
+      "semanticPath": "/auth/login"
+    },
+    {
+      "id": "AUTH-03",
+      "method": "GET",
+      "semanticPath": "/auth/me"
+    },
+    {
+      "id": "AUTH-06",
+      "method": "GET",
+      "semanticPath": "/auth/users"
+    }
+  ],
+  "validationRules": {
+    "unauthenticatedStatus": [
+      401,
+      403
+    ],
+    "badRequestStatus": [
+      400
+    ],
+    "forbiddenOrNotFoundStatus": [
+      403,
+      404
+    ],
+    "flightMissingStatus": [
+      400,
+      404
+    ],
+    "bookingMissingStatus": [
+      400,
+      404
+    ]
+  },
+  "asyncExpectations": {
+    "loyaltyAfterBooking": {
+      "enabledByCapability": "asyncLoyaltyAfterBooking",
+      "timeoutMs": 30000,
+      "pollIntervalMs": 2000,
+      "minPointsIncrease": 1
+    },
+    "seatRestorationAfterCancel": {
+      "enabledByCapability": "asyncSeatReleaseAfterCancel",
+      "timeoutMs": 30000,
+      "pollIntervalMs": 2000
+    }
+  },
+  "antiPatternEndpoints": [
+    {
+      "method": "POST",
+      "semanticPath": "/auth/register",
+      "category": "auth_reimplementation"
+    },
+    {
+      "method": "POST",
+      "semanticPath": "/auth/login",
+      "category": "auth_reimplementation"
+    },
+    {
+      "method": "GET",
+      "semanticPath": "/auth/me",
+      "category": "auth_reimplementation"
+    },
+    {
+      "method": "GET",
+      "semanticPath": "/auth/users",
+      "category": "auth_reimplementation"
+    }
+  ]
+}

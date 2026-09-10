@@ -1,0 +1,277 @@
+{
+  "configType": "source_contract",
+  "_description": "Frozen source API contract extracted from mono_benchmark/airline-booking. This captures the monolith's real externally visible endpoints and should remain unchanged for auditability.",
+  "basePath": "",
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/flights/search",
+      "auth": "none",
+      "query": {
+        "departureCode": "string (required)",
+        "arrivalCode": "string (required)",
+        "departureDate": "string (required, YYYY-MM-DD)"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "flights": "Flight[]"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/flights/{flight_id}",
+      "auth": "none",
+      "response": {
+        "status": 200,
+        "json": "Flight"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/flights/{flight_id}/reserve",
+      "auth": "none",
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "SUCCESS"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/flights/{flight_id}/release",
+      "auth": "none",
+      "response": {
+        "status": 200,
+        "json": {
+          "status": "SUCCESS"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/bookings",
+      "auth": "required",
+      "requestBody": {
+        "outboundFlightId": "string (required)",
+        "chargeId": "string (required)",
+        "name": "string (optional)"
+      },
+      "response": {
+        "status": 201,
+        "json": {
+          "bookingId": "string",
+          "bookingReference": "string",
+          "status": "CONFIRMED",
+          "payment": "object",
+          "notification": "object"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/bookings/{booking_id}",
+      "auth": "owner_or_admin",
+      "response": {
+        "status": 200,
+        "json": "Booking"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/bookings/{booking_id}/confirm",
+      "auth": "owner_or_admin",
+      "response": {
+        "status": 200,
+        "json": {
+          "bookingId": "string",
+          "bookingReference": "string",
+          "status": "CONFIRMED"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/bookings/{booking_id}/cancel",
+      "auth": "owner_or_admin",
+      "response": {
+        "status": 200,
+        "json": {
+          "bookingId": "string",
+          "status": "CANCELLED",
+          "refund": "object",
+          "notification": "object"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/customers/{customer_id}/bookings",
+      "auth": "owner_or_admin",
+      "response": {
+        "status": 200,
+        "json": {
+          "bookings": "Booking[]"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/payments/collect",
+      "auth": "none",
+      "requestBody": {
+        "chargeId": "string (required)"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "receiptUrl": "string",
+          "price": "number"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/payments/refund",
+      "auth": "none",
+      "requestBody": {
+        "chargeId": "string (required)"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "refundId": "string"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/payments/{charge_id}",
+      "auth": "none",
+      "response": {
+        "status": 200,
+        "json": "Payment"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/loyalty/{customer_id}",
+      "auth": "owner_or_admin",
+      "response": {
+        "status": 200,
+        "json": {
+          "points": "number",
+          "level": "string",
+          "remainingPoints": "number"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/loyalty/{customer_id}/points",
+      "auth": "admin",
+      "requestBody": {
+        "points": "number (required)"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "message": "string",
+          "customerId": "string",
+          "pointsAdded": "number"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/auth/register",
+      "auth": "none",
+      "requestBody": {
+        "email": "string (required)",
+        "password": "string (required)",
+        "userId": "string (optional)"
+      },
+      "response": {
+        "status": 201,
+        "json": {
+          "sub": "string",
+          "email": "string",
+          "message": "string"
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "auth": "none",
+      "requestBody": {
+        "email": "string (required)",
+        "password": "string (required)"
+      },
+      "response": {
+        "status": 200,
+        "json": {
+          "access_token": "string",
+          "token_type": "Bearer",
+          "expires_in": "number",
+          "user": "object"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/auth/me",
+      "auth": "required",
+      "response": {
+        "status": 200,
+        "json": {
+          "sub": "string",
+          "email": "string",
+          "groups": "string[]"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/auth/users",
+      "auth": "admin",
+      "response": {
+        "status": 200,
+        "json": {
+          "users": "User[]"
+        }
+      }
+    }
+  ],
+  "models": {
+    "Flight": {
+      "id": "string",
+      "departureDate": "string",
+      "departureAirportCode": "string",
+      "arrivalAirportCode": "string",
+      "ticketPrice": "number",
+      "seatCapacity": "number",
+      "maximumSeating": "number"
+    },
+    "Booking": {
+      "id": "string",
+      "customer": "string",
+      "bookingOutboundFlightId": "string",
+      "status": "string",
+      "paymentToken": "string",
+      "bookingReference": "string|null"
+    },
+    "Payment": {
+      "chargeId": "string",
+      "receiptUrl": "string",
+      "price": "number"
+    }
+  },
+  "sourcePointers": {
+    "routes": "mono_benchmark/airline-booking/app.py",
+    "auth": "mono_benchmark/airline-booking/services/auth.py",
+    "fixtures": "mono_benchmark/airline-booking/data/storage.py"
+  }
+}

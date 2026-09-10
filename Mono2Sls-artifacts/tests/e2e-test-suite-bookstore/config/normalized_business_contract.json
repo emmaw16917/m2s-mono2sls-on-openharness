@@ -1,0 +1,230 @@
+{
+  "configType": "normalized_contract",
+  "_description": "Evaluation contract for bookstore. Core business tests are derived from the source monolith observable semantics, while auth compatibility is handled via providers and async bestseller behavior is reported separately.",
+  "resource": "bookstore",
+  "fixtures": {
+    "primaryBookId": "book-001",
+    "secondaryBookId": "book-004",
+    "searchKeyword": "javascript",
+    "category": "programming",
+    "invalidBookId": "NO_SUCH_BOOK_12345"
+  },
+  "businessEndpoints": [
+    {
+      "id": "TC-01",
+      "method": "GET",
+      "semanticPath": "/books",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "$",
+          "items",
+          "data.items"
+        ],
+        "requiredBookFields": [
+          "id",
+          "name",
+          "author",
+          "category",
+          "price"
+        ]
+      }
+    },
+    {
+      "id": "TC-02",
+      "method": "GET",
+      "semanticPath": "/books",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "$",
+          "items",
+          "data.items"
+        ]
+      }
+    },
+    {
+      "id": "TC-03",
+      "method": "GET",
+      "semanticPath": "/books/{book_id}",
+      "auth": "none",
+      "successStatus": 200,
+      "notFoundStatus": [
+        404
+      ],
+      "response": {
+        "objectLocation": [
+          "$",
+          "book",
+          "data.book",
+          "item",
+          "Item"
+        ],
+        "requiredBookFields": [
+          "id",
+          "name",
+          "author",
+          "category",
+          "price"
+        ]
+      }
+    },
+    {
+      "id": "TC-05",
+      "method": "GET",
+      "semanticPath": "/search",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ],
+        "requiredFields": [
+          "total",
+          "hits"
+        ]
+      }
+    },
+    {
+      "id": "TC-07",
+      "method": "GET",
+      "semanticPath": "/cart",
+      "auth": "required",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "$",
+          "items",
+          "data.items"
+        ]
+      }
+    },
+    {
+      "id": "TC-07B",
+      "method": "GET",
+      "semanticPath": "/cart/{book_id}",
+      "auth": "required",
+      "successStatus": 200,
+      "notFoundStatus": [
+        404
+      ],
+      "response": {
+        "objectLocation": [
+          "$",
+          "item",
+          "data.item",
+          "updatedItem"
+        ],
+        "requiredFields": [
+          "bookId",
+          "quantity"
+        ]
+      }
+    },
+    {
+      "id": "TC-07C",
+      "method": "POST",
+      "semanticPath": "/cart",
+      "auth": "required",
+      "successStatus": [
+        200,
+        201
+      ]
+    },
+    {
+      "id": "TC-07D",
+      "method": "PUT",
+      "semanticPath": "/cart",
+      "auth": "required",
+      "successStatus": 200
+    },
+    {
+      "id": "TC-07E",
+      "method": "DELETE",
+      "semanticPath": "/cart",
+      "auth": "required",
+      "successStatus": 200
+    },
+    {
+      "id": "TC-08",
+      "method": "POST",
+      "semanticPath": "/orders",
+      "auth": "required",
+      "successStatus": [
+        200,
+        201
+      ],
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ],
+        "requiredFields": [
+          "orderId"
+        ]
+      }
+    },
+    {
+      "id": "TC-09",
+      "method": "GET",
+      "semanticPath": "/orders",
+      "auth": "required",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "$",
+          "items",
+          "data.items"
+        ]
+      }
+    },
+    {
+      "id": "TC-10",
+      "method": "GET",
+      "semanticPath": "/bestsellers",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "$",
+          "items",
+          "data.items"
+        ]
+      }
+    }
+  ],
+  "antiPatternEndpoints": [
+    {
+      "id": "AUTH-01",
+      "method": "POST",
+      "semanticPath": "/auth/register"
+    },
+    {
+      "id": "AUTH-02",
+      "method": "POST",
+      "semanticPath": "/auth/login"
+    },
+    {
+      "id": "AUTH-03",
+      "method": "POST",
+      "semanticPath": "/auth/refresh"
+    },
+    {
+      "id": "AUTH-04",
+      "method": "GET",
+      "semanticPath": "/auth/me"
+    }
+  ],
+  "validationRules": {
+    "unauthenticatedStatus": [
+      401,
+      403
+    ],
+    "badRequestStatus": [
+      400
+    ]
+  }
+}

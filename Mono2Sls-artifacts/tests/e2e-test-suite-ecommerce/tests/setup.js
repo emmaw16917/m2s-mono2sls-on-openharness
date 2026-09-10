@@ -1,0 +1,88 @@
+const path = require('path');
+const { execFileSync } = require('child_process');
+const { createAuthProvider } = require('../auth');
+
+const TARGET = process.env.TARGET;
+if (!TARGET) {
+  throw new Error('TARGET env var is required. Example: TARGET=m2s_dsv3_ecommerce');
+}
+
+const rawConfig = require(path.resolve(__dirname, `../config/${TARGET}.json`));
+if (rawConfig.configType !== 'target') {
+  throw new Error(`Config ${TARGET} is not a runnable target configuration`);
+}
+
+const config = applyEnvOverrides(rawConfig);
+const contract = require(path.resolve(__dirname, '../config/normalized_business_contract.json'));
+const authProvider = createAuthProvider(config);
+
+let preparePromise = null;
+
+function buildUrl(endpointPath) {
+  const baseUrl = String(config.baseUrl).replace(/\/$/, '');
+  const pathPrefix = config.pathPrefix ? `/${String(config.pathPrefix).replace(/^\/|\/$/g, '')}` : '';
+  const normalizedPath = endpointPath.startsWith('/') ? endpointPath : `/${endpointPath}`;
+  return `${baseUrl}${pathPrefix}${normalizedPath}`;
+}
+
+function buildPath(template, params = {}) {
+  return Object.entries(params).reduce((current, [key, value]) => {
+    return current.replace(`{${key}}`, encodeURIComponent(String(value)));
+  }, template);
+}
+
+function getTimeout(name, fallback) {
+  return (config.timeouts && config.timeouts[name]) || fallback;
+}
+
+function getCapability(name) {
+  return Boolean(config.capabilities && config.capabilities[name]);
+}
+
+async function prepareTarget() {
+  if (!preparePromise) {
+    preparePromise = Promise.resolve().then(() => {
+      execFileSync('node', ['seed-ecommerce-state.js', TARGET], {
+        cwd: path.resolve(__dirname, '..'),
+        env: { ...process.env, TARGET },
+        stdio: 'inherit',
+      });
+    });
+  }
+  return preparePromise;
+}
+
+module.exports = {
+  config,
+  contract,
+  authProvider,
+  buildUrl,
+  buildPath,
+  getTimeout,
+  getCapability,
+  prepareTarget,
+};
+
+function applyEnvOverrides(baseConfig) {
+  return {
+    ...baseConfig,
+    baseUrl: process.env.BASE_URL || baseConfig.baseUrl,
+    pathPrefix: process.env.PATH_PREFIX || baseConfig.pathPrefix,
+    region: process.env.AWS_REGION || baseConfig.region,
+    productsTable: process.env.PRODUCTS_TABLE || baseConfig.productsTable,
+    ordersTable: process.env.ORDERS_TABLE || baseConfig.ordersTable,
+    warehouseTable: process.env.WAREHOUSE_TABLE || baseConfig.warehouseTable,
+    deliveryTable: process.env.DELIVERY_TABLE || baseConfig.deliveryTable,
+    payment3pTable: process.env.PAYMENT_3P_TABLE || baseConfig.payment3pTable,
+    authConfig: {
+      ...(baseConfig.authConfig || {}),
+      userPoolId: process.env.USER_POOL_ID || baseConfig.authConfig?.userPoolId,
+      clientId: process.env.USER_POOL_CLIENT_ID || baseConfig.authConfig?.clientId,
+      region: process.env.AWS_REGION || baseConfig.authConfig?.region,
+      defaultPassword: process.env.DEFAULT_PASSWORD || baseConfig.authConfig?.defaultPassword,
+      supportsRoleBootstrap: process.env.SUPPORTS_ROLE_BOOTSTRAP
+        ? process.env.SUPPORTS_ROLE_BOOTSTRAP === 'true'
+        : baseConfig.authConfig?.supportsRoleBootstrap,
+    },
+  };
+}

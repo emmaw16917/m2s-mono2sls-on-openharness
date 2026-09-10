@@ -1,0 +1,45 @@
+{
+  "target": "cursor_sonnet45tk_shopping_cart",
+  "runId": "1773578554779-wclla5",
+  "generatedAt": "2026-03-15T12:42:34.779Z",
+  "fixtures": {
+    "primaryProductId": "e2e-cursor-sonnet45tk-shopping-cart-1773578554779-wclla5-primary",
+    "secondaryProductId": "e2e-cursor-sonnet45tk-shopping-cart-1773578554779-wclla5-secondary",
+    "tertiaryProductId": "e2e-cursor-sonnet45tk-shopping-cart-1773578554779-wclla5-tertiary",
+    "quaternaryProductId": "e2e-cursor-sonnet45tk-shopping-cart-1773578554779-wclla5-quaternary"
+  },
+  "products": [
+    {
+      "id": "e2e-cursor-sonnet45tk-shopping-cart-1773578554779-wclla5-primary",
+      "name": "E2E Primary Product",
+      "description": "Primary product for anonymous cart CRUD",
+      "category": "testing",
+      "price": 19.99,
+      "image": "https://example.com/e2e-primary.png"
+    },
+    {
+      "id": "e2e-cursor-sonnet45tk-shopping-cart-1773578554779-wclla5-secondary",
+      "name": "E2E Secondary Product",
+      "description": "Secondary product for cart migration visibility",
+      "category": "testing",
+      "price": 29.99,
+      "image": "https://example.com/e2e-secondary.png"
+    },
+    {
+      "id": "e2e-cursor-sonnet45tk-shopping-cart-1773578554779-wclla5-tertiary",
+      "name": "E2E Tertiary Product",
+      "description": "Tertiary product for checkout flow",
+      "category": "testing",
+      "price": 39.99,
+      "image": "https://example.com/e2e-tertiary.png"
+    },
+    {
+      "id": "e2e-cursor-sonnet45tk-shopping-cart-1773578554779-wclla5-quaternary",
+      "name": "E2E Quaternary Product",
+      "description": "Quaternary product for migration aggregate invariants",
+      "category": "testing",
+      "price": 49.99,
+      "image": "https://example.com/e2e-quaternary.png"
+    }
+  ]
+}

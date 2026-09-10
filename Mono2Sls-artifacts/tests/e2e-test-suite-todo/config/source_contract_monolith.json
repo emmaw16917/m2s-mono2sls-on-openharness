@@ -1,0 +1,86 @@
+{
+  "configType": "source_contract",
+  "_description": "Source (monolith) API contract extracted from mono_benchmark/todo. This reflects the actual externally visible endpoints of the monolithic application before migration. It is stored for transparency/auditability and should remain frozen once extracted.",
+  "basePath": "",
+  "mounts": {
+    "auth": "/auth",
+    "todo": "/api"
+  },
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/",
+      "auth": "none",
+      "response": { "status": 200, "json": { "message": "string", "version": "string", "timestamp": "string (ISO)" } }
+    },
+    {
+      "method": "POST",
+      "path": "/auth/register",
+      "auth": "none",
+      "requestBody": { "username": "string", "password": "string (>=6)", "email": "string (optional)" },
+      "response": { "status": 201, "json": { "message": "string", "token": "string (JWT)", "username": "string" } }
+    },
+    {
+      "method": "POST",
+      "path": "/auth/login",
+      "auth": "none",
+      "requestBody": { "username": "string", "password": "string" },
+      "response": { "status": 200, "json": { "message": "string", "token": "string (JWT)", "username": "string" } }
+    },
+    {
+      "method": "GET",
+      "path": "/api/item",
+      "auth": "jwt",
+      "response": { "status": 200, "json": { "Items": "TodoItem[]", "Count": "number" } }
+    },
+    {
+      "method": "GET",
+      "path": "/api/item/{id}",
+      "auth": "jwt",
+      "response": { "status": 200, "json": { "Item": "TodoItem" } }
+    },
+    {
+      "method": "POST",
+      "path": "/api/item",
+      "auth": "jwt",
+      "requestBody": { "item": "string (required)", "completed": "boolean (optional)" },
+      "response": { "status": 200, "json": { "message": "string", "item": "TodoItem" } }
+    },
+    {
+      "method": "PUT",
+      "path": "/api/item/{id}",
+      "auth": "jwt",
+      "requestBody": { "item": "string (required)", "completed": "boolean (required)" },
+      "response": { "status": 200, "json": { "message": "string", "Attributes": "TodoItem" } }
+    },
+    {
+      "method": "POST",
+      "path": "/api/item/{id}/done",
+      "auth": "jwt",
+      "response": { "status": 200, "json": { "message": "string", "Attributes": "TodoItem" } }
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/item/{id}",
+      "auth": "jwt",
+      "response": { "status": 200, "json": { "message": "string" } }
+    }
+  ],
+  "models": {
+    "TodoItem": {
+      "cognito-username": "string (partition key; monolith uses JWT username)",
+      "id": "string (uuid)",
+      "item": "string",
+      "completed": "boolean",
+      "creation_date": "string (ISO)",
+      "lastupdate_date": "string (ISO)"
+    }
+  },
+  "sourcePointers": {
+    "routeMounts": "mono_benchmark/todo/server.js (app.use('/auth', ...); app.use('/api', ...))",
+    "authRoutes": "mono_benchmark/todo/routes/auth.js",
+    "todoRoutes": "mono_benchmark/todo/routes/todo.js",
+    "authMiddleware": "mono_benchmark/todo/middleware/auth.js"
+  }
+}
+

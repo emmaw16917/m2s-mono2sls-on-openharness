@@ -1,0 +1,26 @@
+{
+  "name": "m2s-e2e-coffee",
+  "version": "1.0.0",
+  "description": "Contract-based E2E suite for coffee serverless migration evaluation",
+  "scripts": {
+    "test": "jest --runInBand --forceExit",
+    "test:target": "node run-target.js",
+    "test:m2s-dsv3-coffee": "node run-target.js m2s_dsv3_coffee",
+    "test:m2s-sonnet46-coffee": "node run-target.js m2s_sonnet46_coffee",
+    "test:cursor-coffee": "node run-target.js cursor_sonnet45tk_coffee",
+    "test:claudecode-coffee": "node run-target.js claudecode_sonnet46_coffee",
+    "test:all": "node run-all.js",
+    "test:report": "node generate-report.js",
+    "seed:state": "node seed-coffee-state.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.882.0",
+    "@aws-sdk/client-dynamodb": "^3.882.0",
+    "@aws-sdk/lib-dynamodb": "^3.882.0",
+    "axios": "^1.11.0",
+    "cognito-srp-helper": "^2.3.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

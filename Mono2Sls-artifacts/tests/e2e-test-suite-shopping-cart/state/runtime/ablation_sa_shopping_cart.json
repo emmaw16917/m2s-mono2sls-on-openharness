@@ -1,0 +1,45 @@
+{
+  "target": "ablation_sa_shopping_cart",
+  "runId": "1773991689002-9tg33h",
+  "generatedAt": "2026-03-20T07:28:09.002Z",
+  "fixtures": {
+    "primaryProductId": "e2e-ablation-sa-shopping-cart-1773991689002-9tg33h-primary",
+    "secondaryProductId": "e2e-ablation-sa-shopping-cart-1773991689002-9tg33h-secondary",
+    "tertiaryProductId": "e2e-ablation-sa-shopping-cart-1773991689002-9tg33h-tertiary",
+    "quaternaryProductId": "e2e-ablation-sa-shopping-cart-1773991689002-9tg33h-quaternary"
+  },
+  "products": [
+    {
+      "id": "e2e-ablation-sa-shopping-cart-1773991689002-9tg33h-primary",
+      "name": "E2E Primary Product",
+      "description": "Primary product for anonymous cart CRUD",
+      "category": "testing",
+      "price": 19.99,
+      "image": "https://example.com/e2e-primary.png"
+    },
+    {
+      "id": "e2e-ablation-sa-shopping-cart-1773991689002-9tg33h-secondary",
+      "name": "E2E Secondary Product",
+      "description": "Secondary product for cart migration visibility",
+      "category": "testing",
+      "price": 29.99,
+      "image": "https://example.com/e2e-secondary.png"
+    },
+    {
+      "id": "e2e-ablation-sa-shopping-cart-1773991689002-9tg33h-tertiary",
+      "name": "E2E Tertiary Product",
+      "description": "Tertiary product for checkout flow",
+      "category": "testing",
+      "price": 39.99,
+      "image": "https://example.com/e2e-tertiary.png"
+    },
+    {
+      "id": "e2e-ablation-sa-shopping-cart-1773991689002-9tg33h-quaternary",
+      "name": "E2E Quaternary Product",
+      "description": "Quaternary product for migration aggregate invariants",
+      "category": "testing",
+      "price": 49.99,
+      "image": "https://example.com/e2e-quaternary.png"
+    }
+  ]
+}

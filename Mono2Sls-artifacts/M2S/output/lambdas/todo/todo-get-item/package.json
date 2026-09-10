@@ -1,0 +1,12 @@
+{
+  "name": "todo-get-item",
+  "version": "1.0.0",
+  "description": "Get a specific todo item by ID for the authenticated user",
+  "main": "handler.js",
+  "dependencies": {
+    "@aws-sdk/lib-dynamodb": "^3.617.0"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

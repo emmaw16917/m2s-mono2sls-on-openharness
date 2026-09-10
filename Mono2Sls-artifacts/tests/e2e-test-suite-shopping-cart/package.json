@@ -1,0 +1,25 @@
+{
+  "name": "m2s-e2e-shopping-cart",
+  "version": "1.0.0",
+  "description": "Contract-based E2E suite for shopping-cart serverless migration evaluation",
+  "scripts": {
+    "test": "jest --runInBand --forceExit",
+    "test:target": "node run-target.js",
+    "test:m2s-dsv3-shopping-cart": "node run-target.js m2s_dsv3_shopping_cart",
+    "test:m2s-sonnet46-shopping-cart": "node run-target.js m2s_sonnet46_shopping_cart",
+    "test:cursor-shopping-cart": "node run-target.js cursor_sonnet45tk_shopping_cart",
+    "test:claudecode-shopping-cart": "node run-target.js claudecode_sonnet46_shopping_cart",
+    "test:all": "node run-all.js",
+    "seed:products": "node seed-products.js",
+    "reset:state": "node reset-shopping-cart-state.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-cognito-identity-provider": "^3.600.0",
+    "@aws-sdk/client-dynamodb": "^3.1008.0",
+    "axios": "^1.7.0",
+    "cognito-srp-helper": "^2.3.5"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  }
+}

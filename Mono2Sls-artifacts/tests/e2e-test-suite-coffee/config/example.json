@@ -1,0 +1,34 @@
+{
+  "_comment": "Template for a target config file. Copy to e.g. my_target_coffee.json and fill in the values after deploying your SAM project.",
+  "configType": "target",
+  "name": "My Target - Coffee",
+  "shortName": "my_target_coffee",
+  "baseUrl": "https://YOUR_API_ID.execute-api.YOUR_REGION.amazonaws.com/YOUR_STAGE",
+  "pathPrefix": "",
+  "region": "YOUR_REGION",
+  "artifactTemplate": "../results/YOUR_VARIANT/coffee/output/template.yaml",
+  "authType": "cognito",
+  "validatorTable": "YOUR-STACK-NAME-ValidatorTable-SUFFIX",
+  "configTable": "YOUR-STACK-NAME-ConfigTable-SUFFIX",
+  "countingTable": "YOUR-STACK-NAME-CountingTable-SUFFIX",
+  "ordersTable": "YOUR-STACK-NAME-OrdersTable-SUFFIX",
+  "orderJourneyTable": "YOUR-STACK-NAME-OrderJourneyEventsTable-SUFFIX",
+  "authConfig": {
+    "userPoolId": "YOUR_REGION_XXXXXXXXX",
+    "clientId": "YOUR_APP_CLIENT_ID",
+    "region": "YOUR_REGION",
+    "userEmailDomain": "example.com",
+    "defaultPassword": "TestPass123!",
+    "adminGroupName": "admin"
+  },
+  "capabilities": {
+    "supportsAuthCompatibility": false,
+    "supportsAdminBootstrap": true,
+    "asyncOrderJourney": false
+  },
+  "timeouts": {
+    "requestTimeoutMs": 30000,
+    "eventualConsistencyTimeoutMs": 30000,
+    "pollIntervalMs": 2000
+  }
+}

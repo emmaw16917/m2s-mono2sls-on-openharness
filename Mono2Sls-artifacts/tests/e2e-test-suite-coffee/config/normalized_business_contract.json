@@ -1,0 +1,258 @@
+{
+  "configType": "normalized_contract",
+  "_description": "Contract-based E2E suite for coffee. Core business tests exclude auth endpoints so Cognito- and JWT-based migrations can be compared with the same business cases.",
+  "resource": "coffee",
+  "fixtures": {
+    "eventIdPrefix": "E2E",
+    "validDrink": "Americano",
+    "validModifiers": [
+      "Oat"
+    ],
+    "invalidDrink": "MochaDoesNotExist",
+    "invalidOrderId": "missing-order-id",
+    "adminGroupName": "admin"
+  },
+  "businessEndpoints": [
+    {
+      "id": "TC-01",
+      "method": "GET",
+      "semanticPath": "/config",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "config",
+          "data.config"
+        ],
+        "requiredFields": [
+          "PK",
+          "menu",
+          "drinksPerBarcode",
+          "storeOpen"
+        ]
+      }
+    },
+    {
+      "id": "TC-02",
+      "method": "GET",
+      "semanticPath": "/config/all",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "$",
+          "configs",
+          "items",
+          "data.items"
+        ]
+      }
+    },
+    {
+      "id": "TC-03",
+      "method": "GET",
+      "semanticPath": "/order-journey/{order_id}",
+      "auth": "none",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ],
+        "requiredFields": [
+          "orderId",
+          "eventCount",
+          "events"
+        ]
+      }
+    },
+    {
+      "id": "TC-04",
+      "method": "POST",
+      "semanticPath": "/orders",
+      "auth": "required",
+      "successStatus": 201,
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ],
+        "requiredFields": [
+          "orderId",
+          "message"
+        ]
+      }
+    },
+    {
+      "id": "TC-05",
+      "method": "GET",
+      "semanticPath": "/myOrders",
+      "auth": "required",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "$",
+          "orders",
+          "items",
+          "data.items"
+        ]
+      }
+    },
+    {
+      "id": "TC-06",
+      "method": "GET",
+      "semanticPath": "/qr-code",
+      "auth": "admin",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ],
+        "requiredFields": [
+          "qrCode"
+        ]
+      }
+    },
+    {
+      "id": "TC-07",
+      "method": "POST",
+      "semanticPath": "/qr-code",
+      "auth": "required",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ],
+        "requiredFields": [
+          "orderId",
+          "availableTokens"
+        ]
+      }
+    },
+    {
+      "id": "TC-08",
+      "method": "GET",
+      "semanticPath": "/orders",
+      "auth": "admin",
+      "successStatus": 200,
+      "response": {
+        "listLocation": [
+          "$",
+          "orders",
+          "items",
+          "data.items"
+        ]
+      }
+    },
+    {
+      "id": "TC-09",
+      "method": "GET",
+      "semanticPath": "/orders/{order_id}",
+      "auth": "admin",
+      "successStatus": 200,
+      "notFoundStatus": [
+        404
+      ],
+      "response": {
+        "objectLocation": [
+          "$",
+          "order",
+          "data.order",
+          "data",
+          "item"
+        ],
+        "requiredFields": [
+          "orderId",
+          "orderState"
+        ]
+      }
+    },
+    {
+      "id": "TC-10",
+      "method": "PUT",
+      "semanticPath": "/orders/{order_id}",
+      "auth": "admin",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "data"
+        ],
+        "requiredFields": [
+          "message",
+          "orderId"
+        ]
+      }
+    },
+    {
+      "id": "TC-11",
+      "method": "PUT",
+      "semanticPath": "/config",
+      "auth": "admin",
+      "successStatus": 200,
+      "response": {
+        "objectLocation": [
+          "$",
+          "config",
+          "data",
+          "data.config"
+        ]
+      }
+    }
+  ],
+  "authCompatibilityEndpoints": [
+    {
+      "id": "AUTH-01",
+      "method": "POST",
+      "semanticPath": "/register"
+    },
+    {
+      "id": "AUTH-02",
+      "method": "POST",
+      "semanticPath": "/login"
+    },
+    {
+      "id": "AUTH-03",
+      "method": "GET",
+      "semanticPath": "/me"
+    }
+  ],
+  "validationRules": {
+    "unauthenticatedStatus": [
+      401,
+      403
+    ],
+    "badRequestStatus": [
+      400
+    ],
+    "forbiddenStatus": [
+      403
+    ]
+  },
+  "asyncExpectations": {
+    "orderJourneyVisible": {
+      "enabledByCapability": "asyncOrderJourney",
+      "timeoutMs": 30000,
+      "pollIntervalMs": 2000
+    }
+  },
+  "antiPatternEndpoints": [
+    {
+      "method": "POST",
+      "semanticPath": "/register",
+      "category": "auth_reimplementation"
+    },
+    {
+      "method": "POST",
+      "semanticPath": "/login",
+      "category": "auth_reimplementation"
+    },
+    {
+      "method": "GET",
+      "semanticPath": "/me",
+      "category": "auth_reimplementation"
+    }
+  ]
+}

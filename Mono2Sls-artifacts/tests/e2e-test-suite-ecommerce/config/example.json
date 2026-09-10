@@ -1,0 +1,33 @@
+{
+  "_comment": "Template for a target config file. Copy to e.g. my_target_ecommerce.json and fill in the values after deploying your SAM project.",
+  "configType": "target",
+  "name": "My Target - Ecommerce",
+  "shortName": "my_target_ecommerce",
+  "baseUrl": "https://YOUR_API_ID.execute-api.YOUR_REGION.amazonaws.com/YOUR_STAGE",
+  "pathPrefix": "",
+  "region": "YOUR_REGION",
+  "artifactTemplate": "../results/YOUR_VARIANT/ecommerce/output/template.yaml",
+  "authType": "cognito",
+  "productsTable": "YOUR-STACK-NAME-products",
+  "ordersTable": "YOUR-STACK-NAME-orders",
+  "warehouseTable": "YOUR-STACK-NAME-warehouse",
+  "deliveryTable": "YOUR-STACK-NAME-delivery",
+  "payment3pTable": "YOUR-STACK-NAME-payment-3p",
+  "authConfig": {
+    "userPoolId": "YOUR_REGION_XXXXXXXXX",
+    "clientId": "YOUR_APP_CLIENT_ID",
+    "region": "YOUR_REGION",
+    "userEmailDomain": "example.com",
+    "defaultPassword": "TestPass123!",
+    "supportsRoleBootstrap": false
+  },
+  "capabilities": {
+    "supportsAuthCompatibility": false,
+    "supportsRoleBootstrap": false
+  },
+  "timeouts": {
+    "requestTimeoutMs": 30000,
+    "eventualConsistencyTimeoutMs": 30000,
+    "pollIntervalMs": 2000
+  }
+}
