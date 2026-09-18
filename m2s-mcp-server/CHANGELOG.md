@@ -163,3 +163,19 @@ S1 用"具体完整参考答案"的版本修好之后，跑了一次干净的全
 **验证**：两次独立的隔离测试（每次都清空 `storage/`、重新跑 P0，再单独 spawn 架构师）。第一次发现一个新的小问题——`entry_points` 被写成 `{"method":"GET","path":"/item"}` 对象而不是 `"GET /item"` 字符串（因为这版 prompt 只用文字描述了这个字段、没给具体例子，又一次印证"具体例子 > 文字描述"），补了一个 JSON 例子后，**第二次隔离测试 `gate(blueprint)` 干净通过（PASS，0 个机械失败）**：6 个 Lambda 严格一对一映射真实端点，`auth` 判断正确，`runtime` 没有用过时版本，`dropped_functions` 正确覆盖认证相关端点，全部 8 个 `analysis_report.json` 端点被完整覆盖不重不漏。
 
 至此 S1 阶段已经用新机制稳定复现通过两次；下一步是用同样干净的工作区重新跑一次完整的 P0→S4 全链，检验这套结构性修复能不能让流水线真正走到底。
+
+### 全链跑通：P0→S4 一次性走完，`gate(final)` 独立复核 PASS
+
+清空 `runs/todo-oh`，跑 `/m2s-migrate`，这次 P0→S1→S2→S3a→S3b→S3c→S4 全部一次性顺利完成，**6 个 `stage_reports/*.json`（S1/S2/S3a/S3b/S3c/S4）全部齐全**，没有触发任何一次回炉。
+
+**没有听 orchestrator 自己的总结就直接采信**——独立跑了三项复核：
+
+1. `gates.run_gate("final", WS)` → `{"status": "PASS", "mechanical_failures": [], ...}`，`stage_report.files` 六份报告齐全。
+2. `wrap_m2s.validate_sam(template.yaml)` → `{"ok": true, "errors": [], "warnings": []}`，真实 cfn-lint 复验，不是从 gate 报告推断出来的。
+3. 直接读 `blueprint.json`：6 个 Lambda 严格一对一映射 `analysis_report.json` 的 8 个端点（其余 2 个认证端点 + 若干中间件/建表脚本正确进了 `dropped_functions`），`runtime` 全部 `nodejs22.x`，`auth` 全部判断正确。
+
+`output/consistency_report.json` 本身也是 `{"status": "PASS", "total_checks": 12, "findings": [], "fixes_applied": 0, "sam_validation": "PASS"}`，跟独立复核的结论一致。
+
+**至此，P3（todo 全链离线跑通）达成**：从 P0 静态分析到 S4 一致性校验，全部阶段一次性走完，产出可通过全部 12 项一致性检查和 cfn-lint 校验的 `template.yaml` + 6 个 Lambda handler，`gate(final) = PASS` 且经过独立工具复核，不依赖模型自述。全程没有触碰 OpenHarness 或 M2S 的源码，改动全部集中在 `m2s-mcp-server/`（新工具）、`.openharness/skills/`（编排+知识 skill）、`~/.openharness/agents/`（四个 agent 定义，已镜像进仓库）。
+
+（顺带记录一个良性小插曲：本次运行的日志里再次出现了此前 S4 阶段那种"大段连续点号"的输出，但这次没有耗尽 `max_turns`，流水线仍在 200 轮预算内正常收尾——目前判断这更像 `-p` 文本输出格式下某种等待/进度提示的渲染现象，不是资源泄漏性质的死循环，暂不需要针对性修复，后续如果再复现导致真正卡死再处理。）
