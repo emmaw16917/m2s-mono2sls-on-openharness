@@ -4,6 +4,7 @@
   "description": "Mark a todo item as completed for the authenticated user",
   "main": "handler.js",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.617.0",
     "@aws-sdk/lib-dynamodb": "^3.617.0"
   },
   "engines": {

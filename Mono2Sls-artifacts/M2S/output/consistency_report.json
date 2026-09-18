@@ -1,0 +1,100 @@
+{
+  "status": "PASS",
+  "total_checks": 12,
+  "findings": [
+    {
+      "check_id": "C1",
+      "severity": "ERROR",
+      "description": "Directory/Function coverage is bidirectional and complete. 6 Lambda directories under output/lambdas/todo/ (todo-list-items, todo-get-item, todo-create-item, todo-update-item, todo-mark-done, todo-delete-item) each map to exactly one AWS::Serverless::Function with a matching CodeUri; no orphan Functions.",
+      "affected_resource": "template.yaml",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C2",
+      "severity": "ERROR",
+      "description": "All six CodeUri values end with '/' and match existing on-disk directories (lambdas/todo/<name>/).",
+      "affected_resource": "TodoListItemsFunction, TodoGetItemFunction, TodoCreateItemFunction, TodoUpdateItemFunction, TodoMarkDoneFunction, TodoDeleteItemFunction",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C3",
+      "severity": "ERROR",
+      "description": "Handler value 'handler.handler' resolves correctly: all six handler.js files export 'exports.handler'.",
+      "affected_resource": "output/lambdas/todo/*/handler.js",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C4",
+      "severity": "ERROR",
+      "description": "Environment variable completeness verified. Handlers reference process.env.TODO_TABLE and process.env.AWS_REGION. TODO_TABLE is declared in Environment.Variables for every Function; AWS_REGION is provided by the Lambda runtime; ENVIRONMENT is defined at Globals level (infrastructure parameter, not flagged). No missing keys.",
+      "affected_resource": "all todo Functions",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C5",
+      "severity": "ERROR",
+      "description": "IAM policy alignment verified. All six handlers use DynamoDB via DynamoDBDocumentClient (Query/Get/Put/Update/Delete commands); each Function declares DynamoDBCrudPolicy on TodoItems. No S3/Lambda/SQS/EventBridge calls present.",
+      "affected_resource": "all todo Functions",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C6",
+      "severity": "ERROR",
+      "description": "Layer consistency verified. Handlers do not import from a shared layer; output/layers/shared/ does not exist on disk and template.yaml contains no SharedUtilsLayer reference. Consistent.",
+      "affected_resource": "template.yaml",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C7",
+      "severity": "ERROR",
+      "description": "API event matching verified. All six blueprint entry_points are covered exactly once by an Api Event: GET /item, GET /item/{id}, POST /item, PUT /item/{id}, POST /item/{id}/done, DELETE /item/{id}.",
+      "affected_resource": "all todo Functions",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C7b",
+      "severity": "ERROR",
+      "description": "Per-endpoint auth override verified. All six blueprint lambdas have auth='required'; none of the Api Events contain 'Auth: Authorizer: NONE', so all correctly inherit the DefaultAuthorizer (CognitoAuthorizer). No public endpoints exist.",
+      "affected_resource": "all todo Functions",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C8",
+      "severity": "ERROR",
+      "description": "SQS resource consistency verified. blueprint.json sqs_queues is empty and has_async_flows is false; template.yaml contains no SQS resources, policies, or event mappings. Consistent.",
+      "affected_resource": "template.yaml",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C9",
+      "severity": "ERROR",
+      "description": "EventBridge resource consistency verified. blueprint.json eventbridge_rules is empty; template.yaml contains no Events::Rule, Lambda::Permission, or EventBridgePutEventsPolicy. Consistent.",
+      "affected_resource": "template.yaml",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C10",
+      "severity": "ERROR",
+      "description": "Dependency file hygiene verified. No requirements.txt files exist. All six package.json files contain only legitimate packaged dependencies (@aws-sdk/client-dynamodb, @aws-sdk/lib-dynamodb, and uuid in todo-create-item). No Python runtime built-ins and no improper entries present.",
+      "affected_resource": "output/lambdas/todo/*/package.json",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C11",
+      "severity": "ERROR",
+      "description": "Node.js module system verified. All six handler.js files use CommonJS (require/exports.handler); no ESM syntax and no package.json contains \"type\": \"module\".",
+      "affected_resource": "output/lambdas/todo/*/handler.js, output/lambdas/todo/*/package.json",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C12",
+      "severity": "ERROR",
+      "description": "Node.js runtime import/dependency resolution verified. Bare requires are @aws-sdk/client-dynamodb and @aws-sdk/lib-dynamodb (declared in every package.json) and uuid (declared in todo-create-item/package.json). No aws-sdk v2 usage, no unresolved modules.",
+      "affected_resource": "output/lambdas/todo/*/handler.js",
+      "action_taken": "NO_ACTION_NEEDED"
+    }
+  ],
+  "fixes_applied": 0,
+  "sam_validation": "PASS",
+  "summary": "All 12 cross-checks executed between output/lambdas/ and output/template.yaml. Directory/Function coverage, CodeUri accuracy, handler validity, environment variables, IAM policies, layer consistency, API event matching, per-endpoint auth, and async resource checks all pass. Dependency file hygiene, Node.js module system (CommonJS), and runtime import resolution all pass. No ERROR-level mismatches were found, so no fixes were required. output/template.yaml validated successfully with SAMValidateTool (Validation Successful! No errors found)."
+}

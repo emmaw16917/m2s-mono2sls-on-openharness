@@ -95,3 +95,149 @@ Resources:
 # sqs_queue_logical_names: NONE
 # eventbridge_rule_names: NONE
 # --- END METADATA ---
+  # ----- Domain: todo -----
+  TodoListItemsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-todo-list-items'
+      CodeUri: lambdas/todo/todo-list-items/
+      Handler: handler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /item
+            Method: GET
+
+  TodoGetItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-todo-get-item'
+      CodeUri: lambdas/todo/todo-get-item/
+      Handler: handler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /item/{id}
+            Method: GET
+
+  TodoCreateItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-todo-create-item'
+      CodeUri: lambdas/todo/todo-create-item/
+      Handler: handler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /item
+            Method: POST
+
+  TodoUpdateItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-todo-update-item'
+      CodeUri: lambdas/todo/todo-update-item/
+      Handler: handler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /item/{id}
+            Method: PUT
+
+  TodoMarkDoneFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-todo-mark-done'
+      CodeUri: lambdas/todo/todo-mark-done/
+      Handler: handler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /item/{id}/done
+            Method: POST
+
+  TodoDeleteItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-todo-delete-item'
+      CodeUri: lambdas/todo/todo-delete-item/
+      Handler: handler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /item/{id}
+            Method: DELETE
+
+# --- FUNCTIONS_METADATA ---
+# total_functions: 6
+# logical_names: TodoListItemsFunction, TodoGetItemFunction, TodoCreateItemFunction, TodoUpdateItemFunction, TodoMarkDoneFunction, TodoDeleteItemFunction
+# --- END METADATA ---
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref UserPoolClient
+
+  TodoItemsTableName:
+    Description: DynamoDB TodoItems table name
+    Value: !Ref TodoItems
+
+  TodoItemsTableArn:
+    Description: DynamoDB TodoItems table ARN
+    Value: !GetAtt TodoItems.Arn

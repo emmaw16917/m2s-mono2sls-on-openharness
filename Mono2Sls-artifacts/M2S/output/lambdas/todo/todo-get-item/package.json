@@ -4,6 +4,7 @@
   "description": "Get a specific todo item by ID for the authenticated user",
   "main": "handler.js",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.617.0",
     "@aws-sdk/lib-dynamodb": "^3.617.0"
   },
   "engines": {

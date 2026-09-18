@@ -1,10 +1,10 @@
-const AWS = require('aws-sdk');
+const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { v1: uuidv1 } = require('uuid');
 
 // Initialize DynamoDB DocumentClient outside the handler for reuse
 const ddbDocClient = DynamoDBDocumentClient.from(
-  new AWS.DynamoDB({
+  new DynamoDBClient({
     region: process.env.AWS_REGION || 'us-east-1'
   })
 );
