@@ -22,11 +22,16 @@ convention, rooted at $M2S_WORKSPACE instead of the M2S repo root):
         |-- template.yaml                                (merged, via m2s_merge.py)
         `-- consistency_report.json                       (validator output)
 
-Only the mechanical checks (B0, C1, C2, C3, C10, C11, C12, C7) produce a
-pass/fail verdict here. C4-C9 are "suspects": mechanically extracted data
-handed to the m2s-validator agent for semantic judgment, per the plan's
-hybrid grading design -- this module does not decide whether they're
-actually wrong, only surfaces candidates.
+Only checks that cross-reference structured data (blueprint.json vs
+template.yaml vs the on-disk directory layout) produce a pass/fail verdict
+here: B0, C1, C2, C3, C7, C7b, C8, C9, C10, C11, C12. C4/C5/C6 are
+"suspects": mechanically extracted data handed to the m2s-validator agent
+for semantic judgment, because they require interpreting arbitrary
+generated code (env var usage, IAM-relevant SDK calls, layer imports)
+rather than comparing two structured documents -- regex-based extraction
+of that is inherently lossier, and a false ERROR here would burn a scarce
+retry (N=2 cap) on a misfire instead of a validator noticing it with more
+context.
 """
 
 from __future__ import annotations
@@ -277,6 +282,23 @@ def check_c1_template(workspace: Path, template: dict[str, Any]) -> list[dict[st
     return findings
 
 
+def _lambda_name_to_logical(resources: dict[str, Any]) -> dict[str, str]:
+    """Map a blueprint lambda_functions[].name (e.g. "todo-create-item") to its
+    template.yaml logical resource name (e.g. "TodoCreateItemFunction"), via
+    the CodeUri directory's basename. Used by C8/C9 to cross-reference
+    blueprint-level facts (publishes_to, trigger_type) against the Function's
+    template properties (Policies, Environment, Events)."""
+    mapping: dict[str, str] = {}
+    for logical_name, resource in resources.items():
+        if not isinstance(resource, dict) or resource.get("Type") != "AWS::Serverless::Function":
+            continue
+        code_uri = (resource.get("Properties", {}) or {}).get("CodeUri", "")
+        dir_name = Path(str(code_uri).rstrip("/")).name if code_uri else None
+        if dir_name:
+            mapping[dir_name] = logical_name
+    return mapping
+
+
 # ---------------------------------------------------------------------------
 # C2 - CodeUri accuracy
 # ---------------------------------------------------------------------------
@@ -399,6 +421,200 @@ def check_c7(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
     for key, logical_names in template_endpoints.items():
         if key not in blueprint_endpoints:
             findings.append(_finding("C7", "ERROR", f"Api Event '{key}' has no corresponding blueprint entry_point.", str(logical_names)))
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# C7b - Per-endpoint auth override
+# ---------------------------------------------------------------------------
+
+
+def _has_authorizer_none(event_properties: dict[str, Any]) -> bool:
+    auth = event_properties.get("Auth")
+    if not isinstance(auth, dict):
+        return False
+    return str(auth.get("Authorizer", "")).upper() == "NONE"
+
+
+def check_c7b(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+    blueprint_path = workspace / "storage" / "blueprint.json"
+    if not blueprint_path.exists():
+        return [_finding("C7b", "ERROR", "storage/blueprint.json does not exist.", str(blueprint_path))]
+    blueprint = json.loads(blueprint_path.read_text(encoding="utf-8"))
+
+    # normalized "METHOD path" -> (fn_name, auth)
+    blueprint_auth: dict[str, tuple[str, str]] = {}
+    for fn in blueprint.get("lambda_functions", []) or []:
+        if not isinstance(fn, dict):
+            continue
+        auth = fn.get("auth")
+        for ep in fn.get("entry_points", []) or []:
+            method, _, path = ep.partition(" ")
+            key = f"{method.upper()} {_normalize_path(path)}"
+            blueprint_auth[key] = (fn.get("name", ""), auth)
+
+    resources = template.get("Resources", {}) or {}
+    for logical_name, resource in resources.items():
+        if not isinstance(resource, dict) or resource.get("Type") != "AWS::Serverless::Function":
+            continue
+        for event in ((resource.get("Properties", {}) or {}).get("Events", {}) or {}).values():
+            if not isinstance(event, dict) or event.get("Type") != "Api":
+                continue
+            props = event.get("Properties", {}) or {}
+            method = str(props.get("Method", "")).upper()
+            path = str(props.get("Path", ""))
+            key = f"{method} {_normalize_path(path)}"
+            match = blueprint_auth.get(key)
+            if match is None:
+                continue  # unmatched events are already flagged by C7
+            _fn_name, auth = match
+            none_override = _has_authorizer_none(props)
+            if auth == "none" and not none_override:
+                findings.append(
+                    _finding(
+                        "C7b",
+                        "ERROR",
+                        f"{logical_name} ({key}): blueprint auth='none' but Api Event is missing "
+                        "'Auth: Authorizer: NONE' -- this endpoint will incorrectly require Cognito auth.",
+                        logical_name,
+                    )
+                )
+            elif auth == "required" and none_override:
+                findings.append(
+                    _finding(
+                        "C7b",
+                        "ERROR",
+                        f"{logical_name} ({key}): blueprint auth='required' but Api Event has "
+                        "'Auth: Authorizer: NONE' -- this endpoint will incorrectly bypass Cognito auth.",
+                        logical_name,
+                    )
+                )
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# C8 - SQS resource consistency (structural: blueprint <-> template only,
+# no handler code reading -- tasks.yaml groups this in "Phase D: Async
+# resource checks", separate from the code-reading Phase B checks).
+# ---------------------------------------------------------------------------
+
+
+def check_c8(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+    blueprint_path = workspace / "storage" / "blueprint.json"
+    if not blueprint_path.exists():
+        return [_finding("C8", "ERROR", "storage/blueprint.json does not exist.", str(blueprint_path))]
+    blueprint = json.loads(blueprint_path.read_text(encoding="utf-8"))
+    resources = template.get("Resources", {}) or {}
+
+    queue_resource_names = {
+        name for name, r in resources.items() if isinstance(r, dict) and r.get("Type") == "AWS::SQS::Queue"
+    }
+    for q in blueprint.get("sqs_queues", []) or []:
+        logical_name = q.get("logical_name") if isinstance(q, dict) else None
+        if not logical_name or logical_name not in queue_resource_names:
+            findings.append(
+                _finding("C8", "ERROR", f"blueprint sqs_queues entry '{logical_name}' has no matching AWS::SQS::Queue resource.", str(logical_name))
+            )
+
+    name_to_logical = _lambda_name_to_logical(resources)
+    for fn in blueprint.get("lambda_functions", []) or []:
+        if not isinstance(fn, dict):
+            continue
+        name = fn.get("name", "")
+        publishes_to = [str(p).lower() for p in (fn.get("publishes_to") or [])]
+        logical = name_to_logical.get(name)
+
+        if any("sqs" in p for p in publishes_to):
+            if logical is None:
+                findings.append(_finding("C8", "ERROR", f"Lambda '{name}' publishes_to SQS but has no matching template Function.", name))
+            else:
+                props = (resources.get(logical, {}) or {}).get("Properties", {}) or {}
+                policies = props.get("Policies", []) or []
+                has_sqs_policy = any(isinstance(p, dict) and "SQSSendMessagePolicy" in p for p in policies)
+                env_vars = (props.get("Environment", {}) or {}).get("Variables", {}) or {}
+                has_queue_url = any("QUEUE_URL" in str(k).upper() for k in env_vars)
+                if not has_sqs_policy:
+                    findings.append(_finding("C8", "ERROR", f"{logical}: publishes to SQS but missing SQSSendMessagePolicy.", logical))
+                if not has_queue_url:
+                    findings.append(_finding("C8", "ERROR", f"{logical}: publishes to SQS but missing a QUEUE_URL environment variable.", logical))
+
+        if fn.get("trigger_type") == "sqs":
+            if logical is None:
+                findings.append(_finding("C8", "ERROR", f"Lambda '{name}' has trigger_type=sqs but has no matching template Function.", name))
+            else:
+                events = ((resources.get(logical, {}) or {}).get("Properties", {}) or {}).get("Events", {}) or {}
+                has_sqs_event = any(isinstance(e, dict) and e.get("Type") == "SQS" for e in events.values())
+                if not has_sqs_event:
+                    findings.append(_finding("C8", "ERROR", f"{logical}: trigger_type=sqs but no SQS Event source mapping found.", logical))
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# C9 - EventBridge resource consistency (structural, same rationale as C8)
+# ---------------------------------------------------------------------------
+
+
+def check_c9(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
+    findings: list[dict[str, Any]] = []
+    blueprint_path = workspace / "storage" / "blueprint.json"
+    if not blueprint_path.exists():
+        return [_finding("C9", "ERROR", "storage/blueprint.json does not exist.", str(blueprint_path))]
+    blueprint = json.loads(blueprint_path.read_text(encoding="utf-8"))
+    resources = template.get("Resources", {}) or {}
+
+    rule_resources = {name: r for name, r in resources.items() if isinstance(r, dict) and r.get("Type") == "AWS::Events::Rule"}
+    permission_resources = [r for r in resources.values() if isinstance(r, dict) and r.get("Type") == "AWS::Lambda::Permission"]
+
+    for rule in blueprint.get("eventbridge_rules", []) or []:
+        rule_name = rule.get("logical_name") if isinstance(rule, dict) else None
+        if not rule_name or rule_name not in rule_resources:
+            findings.append(
+                _finding("C9", "ERROR", f"blueprint eventbridge_rules entry '{rule_name}' has no matching AWS::Events::Rule resource.", str(rule_name))
+            )
+            continue
+        targets = (rule_resources[rule_name].get("Properties", {}) or {}).get("Targets", []) or []
+        if not targets:
+            findings.append(_finding("C9", "ERROR", f"AWS::Events::Rule '{rule_name}' has no Targets.", rule_name))
+        has_events_permission = any(
+            (isinstance(p, dict) and (p.get("Properties", {}) or {}).get("Principal") == "events.amazonaws.com")
+            for p in permission_resources
+        )
+        if not has_events_permission:
+            findings.append(
+                _finding("C9", "ERROR", f"No AWS::Lambda::Permission grants events.amazonaws.com invoke for rule '{rule_name}'.", rule_name)
+            )
+
+    name_to_logical = _lambda_name_to_logical(resources)
+    all_target_text = " ".join(
+        json.dumps(t) for rule in rule_resources.values() for t in (rule.get("Properties", {}) or {}).get("Targets", []) or []
+    )
+    for fn in blueprint.get("lambda_functions", []) or []:
+        if not isinstance(fn, dict):
+            continue
+        name = fn.get("name", "")
+        logical = name_to_logical.get(name)
+        publishes_to = [str(p).lower() for p in (fn.get("publishes_to") or [])]
+
+        if fn.get("trigger_type") == "eventbridge":
+            if logical is None or logical not in all_target_text:
+                findings.append(
+                    _finding("C9", "ERROR", f"Lambda '{name}' has trigger_type=eventbridge but does not appear as a Target in any Rule.", name)
+                )
+
+        if any("eventbridge" in p for p in publishes_to):
+            if logical is None:
+                findings.append(_finding("C9", "ERROR", f"Lambda '{name}' publishes_to EventBridge but has no matching template Function.", name))
+            else:
+                props = (resources.get(logical, {}) or {}).get("Properties", {}) or {}
+                policies = props.get("Policies", []) or []
+                has_policy = any(
+                    (isinstance(p, dict) and "EventBridgePutEventsPolicy" in p) or p == "EventBridgePutEventsPolicy"
+                    for p in policies
+                )
+                if not has_policy:
+                    findings.append(_finding("C9", "ERROR", f"{logical}: publishes to EventBridge but missing EventBridgePutEventsPolicy.", logical))
     return findings
 
 
@@ -617,24 +833,13 @@ def suspects_c6_layers(workspace: Path, template: dict[str, Any]) -> dict[str, A
     return {"functions_referencing_shared_layer": referencing, "shared_layer_dir_exists": shared_layer_exists}
 
 
-def suspects_c8_sqs(workspace: Path, template: dict[str, Any]) -> dict[str, Any]:
-    blueprint_path = workspace / "storage" / "blueprint.json"
-    blueprint = json.loads(blueprint_path.read_text(encoding="utf-8")) if blueprint_path.exists() else {}
-    queue_resources = [
-        name for name, r in (template.get("Resources", {}) or {}).items()
-        if isinstance(r, dict) and r.get("Type") == "AWS::SQS::Queue"
-    ]
-    return {"blueprint_sqs_queues": blueprint.get("sqs_queues", []), "template_sqs_resources": queue_resources}
-
-
-def suspects_c9_eventbridge(workspace: Path, template: dict[str, Any]) -> dict[str, Any]:
-    blueprint_path = workspace / "storage" / "blueprint.json"
-    blueprint = json.loads(blueprint_path.read_text(encoding="utf-8")) if blueprint_path.exists() else {}
-    rule_resources = [
-        name for name, r in (template.get("Resources", {}) or {}).items()
-        if isinstance(r, dict) and r.get("Type") == "AWS::Events::Rule"
-    ]
-    return {"blueprint_eventbridge_rules": blueprint.get("eventbridge_rules", []), "template_rule_resources": rule_resources}
+# NOTE: C8 (SQS) and C9 (EventBridge) were originally planned as suspects
+# prescreens like C4/C5/C6, but on review they don't belong in that group:
+# they only cross-reference blueprint.json against template.yaml (structured
+# data), with no free-form handler-code parsing involved -- the same
+# category as C1/C2/C7. tasks.yaml itself puts them in a separate "Phase D:
+# Async resource checks" precisely because they need no handler reading.
+# They're implemented as hard checks above (check_c8, check_c9) instead.
 
 
 # ---------------------------------------------------------------------------
@@ -693,6 +898,9 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c2(ws, template)
                 + check_c3(ws, template)
                 + check_c7(ws, template)
+                + check_c7b(ws, template)
+                + check_c8(ws, template)
+                + check_c9(ws, template)
                 + check_c10(ws)
                 + check_c11(ws, template)
                 + check_c12(ws, template)
@@ -701,8 +909,6 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 "C4": suspects_c4_env(ws, template),
                 "C5": suspects_c5_iam(ws),
                 "C6": suspects_c6_layers(ws, template),
-                "C8": suspects_c8_sqs(ws, template),
-                "C9": suspects_c9_eventbridge(ws, template),
             }
             mechanical_errors = sum(1 for f in checks if f["severity"] == "ERROR")
             severe = mechanical_errors > _MECHANICAL_LIMIT_FOR_SEVERE
@@ -718,6 +924,9 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c2(ws, template)
                 + check_c3(ws, template)
                 + check_c7(ws, template)
+                + check_c7b(ws, template)
+                + check_c8(ws, template)
+                + check_c9(ws, template)
                 + check_c10(ws)
                 + check_c11(ws, template)
                 + check_c12(ws, template)

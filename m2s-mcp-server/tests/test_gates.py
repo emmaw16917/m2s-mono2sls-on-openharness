@@ -332,6 +332,261 @@ def test_c7_param_style_normalization_does_not_false_positive(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# C7b
+# ---------------------------------------------------------------------------
+
+
+def _write_blueprint_only(tmp_path, blueprint: dict) -> None:
+    storage = tmp_path / "storage"
+    storage.mkdir(parents=True, exist_ok=True)
+    (storage / "blueprint.json").write_text(json.dumps(blueprint), encoding="utf-8")
+
+
+def _public_endpoint_blueprint(auth: str) -> dict:
+    bp = json.loads(json.dumps(GOOD_BLUEPRINT))
+    bp["lambda_functions"] = [
+        {
+            "name": "todo-public",
+            "trigger_type": "api",
+            "runtime": "nodejs22.x",
+            "handler": "handler.lambda_handler",
+            "auth": auth,
+            "source_files": [],
+            "entry_points": ["GET /public"],
+            "environment_variables": {},
+        }
+    ]
+    return bp
+
+
+def _api_event_template(auth_none: bool) -> dict:
+    properties: dict = {"RestApiId": "MyApi", "Path": "/public", "Method": "GET"}
+    if auth_none:
+        properties["Auth"] = {"Authorizer": "NONE"}
+    return {
+        "Resources": {
+            "PublicFunction": {
+                "Type": "AWS::Serverless::Function",
+                "Properties": {
+                    "CodeUri": "lambdas/todo/todo-public/",
+                    "Handler": "handler.handler",
+                    "Events": {"Api": {"Type": "Api", "Properties": properties}},
+                },
+            }
+        }
+    }
+
+
+def test_c7b_public_endpoint_with_override_passes(tmp_path):
+    _write_blueprint_only(tmp_path, _public_endpoint_blueprint("none"))
+    findings = gates.check_c7b(tmp_path, _api_event_template(auth_none=True))
+    assert findings == []
+
+
+def test_c7b_public_endpoint_missing_override_fails(tmp_path):
+    _write_blueprint_only(tmp_path, _public_endpoint_blueprint("none"))
+    findings = gates.check_c7b(tmp_path, _api_event_template(auth_none=False))
+    assert len(findings) == 1
+    assert findings[0]["check_id"] == "C7b"
+    assert "missing" in findings[0]["description"]
+
+
+def test_c7b_required_endpoint_with_bad_override_fails(tmp_path):
+    _write_blueprint_only(tmp_path, _public_endpoint_blueprint("required"))
+    findings = gates.check_c7b(tmp_path, _api_event_template(auth_none=True))
+    assert len(findings) == 1
+    assert findings[0]["check_id"] == "C7b"
+    assert "bypass" in findings[0]["description"]
+
+
+def test_c7b_required_endpoint_without_override_passes(tmp_path):
+    _write_blueprint_only(tmp_path, _public_endpoint_blueprint("required"))
+    findings = gates.check_c7b(tmp_path, _api_event_template(auth_none=False))
+    assert findings == []
+
+
+# ---------------------------------------------------------------------------
+# C8 - SQS resource consistency
+# ---------------------------------------------------------------------------
+
+
+def _sqs_blueprint(*, with_queue: bool = True) -> dict:
+    bp = json.loads(json.dumps(GOOD_BLUEPRINT))
+    bp["sqs_queues"] = [{"logical_name": "WorkQueue", "purpose": "fixture"}] if with_queue else []
+    bp["lambda_functions"] = [
+        {
+            "name": "todo-producer",
+            "trigger_type": "api",
+            "runtime": "nodejs22.x",
+            "handler": "handler.lambda_handler",
+            "auth": "required",
+            "source_files": [],
+            "entry_points": ["POST /produce"],
+            "environment_variables": {},
+            "publishes_to": ["sqs"],
+        },
+        {
+            "name": "todo-consumer",
+            "trigger_type": "sqs",
+            "runtime": "nodejs22.x",
+            "handler": "handler.lambda_handler",
+            "auth": "required",
+            "source_files": [],
+            "entry_points": [],
+            "environment_variables": {},
+        },
+    ]
+    return bp
+
+
+def _sqs_template(*, with_queue_resource=True, with_policy=True, with_queue_url_env=True, with_sqs_event=True) -> dict:
+    resources: dict = {}
+    if with_queue_resource:
+        resources["WorkQueue"] = {"Type": "AWS::SQS::Queue", "Properties": {}}
+    producer_props: dict = {"CodeUri": "lambdas/todo/todo-producer/", "Handler": "handler.handler"}
+    if with_policy:
+        producer_props["Policies"] = [{"SQSSendMessagePolicy": {"QueueName": "WorkQueue"}}]
+    if with_queue_url_env:
+        producer_props["Environment"] = {"Variables": {"QUEUE_URL": "url"}}
+    resources["ProducerFunction"] = {"Type": "AWS::Serverless::Function", "Properties": producer_props}
+
+    consumer_props: dict = {"CodeUri": "lambdas/todo/todo-consumer/", "Handler": "handler.handler"}
+    if with_sqs_event:
+        consumer_props["Events"] = {"QueueTrigger": {"Type": "SQS", "Properties": {"Queue": "WorkQueue"}}}
+    resources["ConsumerFunction"] = {"Type": "AWS::Serverless::Function", "Properties": consumer_props}
+    return {"Resources": resources}
+
+
+def test_c8_good_workspace_passes(tmp_path):
+    _write_blueprint_only(tmp_path, _sqs_blueprint())
+    findings = gates.check_c8(tmp_path, _sqs_template())
+    assert findings == []
+
+
+def test_c8_missing_queue_resource(tmp_path):
+    _write_blueprint_only(tmp_path, _sqs_blueprint())
+    findings = gates.check_c8(tmp_path, _sqs_template(with_queue_resource=False))
+    assert any("WorkQueue" in f["affected_resource"] for f in findings)
+
+
+def test_c8_missing_send_policy(tmp_path):
+    _write_blueprint_only(tmp_path, _sqs_blueprint())
+    findings = gates.check_c8(tmp_path, _sqs_template(with_policy=False))
+    assert any("SQSSendMessagePolicy" in f["description"] for f in findings)
+
+
+def test_c8_missing_queue_url_env(tmp_path):
+    _write_blueprint_only(tmp_path, _sqs_blueprint())
+    findings = gates.check_c8(tmp_path, _sqs_template(with_queue_url_env=False))
+    assert any("QUEUE_URL" in f["description"] for f in findings)
+
+
+def test_c8_missing_sqs_event_source(tmp_path):
+    _write_blueprint_only(tmp_path, _sqs_blueprint())
+    findings = gates.check_c8(tmp_path, _sqs_template(with_sqs_event=False))
+    assert any("SQS Event source mapping" in f["description"] for f in findings)
+
+
+def test_c8_no_async_flows_passes(tmp_path):
+    _write_good_workspace(tmp_path)
+    template = gates.load_template(tmp_path / "output" / "template.yaml")
+    assert gates.check_c8(tmp_path, template) == []
+
+
+# ---------------------------------------------------------------------------
+# C9 - EventBridge resource consistency
+# ---------------------------------------------------------------------------
+
+
+def _eventbridge_blueprint() -> dict:
+    bp = json.loads(json.dumps(GOOD_BLUEPRINT))
+    bp["eventbridge_rules"] = [{"logical_name": "OrderRule", "purpose": "fixture"}]
+    bp["lambda_functions"] = [
+        {
+            "name": "todo-emitter",
+            "trigger_type": "api",
+            "runtime": "nodejs22.x",
+            "handler": "handler.lambda_handler",
+            "auth": "required",
+            "source_files": [],
+            "entry_points": ["POST /emit"],
+            "environment_variables": {},
+            "publishes_to": ["eventbridge"],
+        },
+        {
+            "name": "todo-target",
+            "trigger_type": "eventbridge",
+            "runtime": "nodejs22.x",
+            "handler": "handler.lambda_handler",
+            "auth": "required",
+            "source_files": [],
+            "entry_points": [],
+            "environment_variables": {},
+        },
+    ]
+    return bp
+
+
+def _eventbridge_template(*, with_rule=True, with_targets=True, with_permission=True, with_put_events_policy=True) -> dict:
+    resources: dict = {}
+    if with_rule:
+        resources["OrderRule"] = {
+            "Type": "AWS::Events::Rule",
+            "Properties": {"Targets": [{"Arn": {"Fn::GetAtt": ["TargetFunction", "Arn"]}}] if with_targets else []},
+        }
+    if with_permission:
+        resources["EventBridgeInvokePermission"] = {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {"Principal": "events.amazonaws.com", "FunctionName": {"Ref": "TargetFunction"}},
+        }
+    emitter_props: dict = {"CodeUri": "lambdas/todo/todo-emitter/", "Handler": "handler.handler"}
+    if with_put_events_policy:
+        emitter_props["Policies"] = ["EventBridgePutEventsPolicy"]
+    resources["EmitterFunction"] = {"Type": "AWS::Serverless::Function", "Properties": emitter_props}
+    resources["TargetFunction"] = {
+        "Type": "AWS::Serverless::Function",
+        "Properties": {"CodeUri": "lambdas/todo/todo-target/", "Handler": "handler.handler"},
+    }
+    return {"Resources": resources}
+
+
+def test_c9_good_workspace_passes(tmp_path):
+    _write_blueprint_only(tmp_path, _eventbridge_blueprint())
+    findings = gates.check_c9(tmp_path, _eventbridge_template())
+    assert findings == []
+
+
+def test_c9_missing_rule_resource(tmp_path):
+    _write_blueprint_only(tmp_path, _eventbridge_blueprint())
+    findings = gates.check_c9(tmp_path, _eventbridge_template(with_rule=False))
+    assert any("OrderRule" in f["affected_resource"] for f in findings)
+
+
+def test_c9_rule_without_targets(tmp_path):
+    _write_blueprint_only(tmp_path, _eventbridge_blueprint())
+    findings = gates.check_c9(tmp_path, _eventbridge_template(with_targets=False))
+    assert any("no Targets" in f["description"] for f in findings)
+
+
+def test_c9_missing_invoke_permission(tmp_path):
+    _write_blueprint_only(tmp_path, _eventbridge_blueprint())
+    findings = gates.check_c9(tmp_path, _eventbridge_template(with_permission=False))
+    assert any("Lambda::Permission" in f["description"] for f in findings)
+
+
+def test_c9_missing_put_events_policy(tmp_path):
+    _write_blueprint_only(tmp_path, _eventbridge_blueprint())
+    findings = gates.check_c9(tmp_path, _eventbridge_template(with_put_events_policy=False))
+    assert any("EventBridgePutEventsPolicy" in f["description"] for f in findings)
+
+
+def test_c9_no_async_flows_passes(tmp_path):
+    _write_good_workspace(tmp_path)
+    template = gates.load_template(tmp_path / "output" / "template.yaml")
+    assert gates.check_c9(tmp_path, template) == []
+
+
+# ---------------------------------------------------------------------------
 # C10
 # ---------------------------------------------------------------------------
 
@@ -447,7 +702,7 @@ def test_run_gate_template_pass_and_suspects_present(tmp_path):
     _write_good_workspace(tmp_path)
     result = gates.run_gate("template", str(tmp_path))
     assert result["status"] == "PASS"
-    assert set(result["suspects"].keys()) == {"C4", "C5", "C6", "C8", "C9"}
+    assert set(result["suspects"].keys()) == {"C4", "C5", "C6"}
 
 
 def test_run_gate_template_severe_when_many_mechanical_failures(tmp_path):
