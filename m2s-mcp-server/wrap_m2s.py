@@ -38,17 +38,20 @@ def analyze(monolith_root: str, workspace: str) -> dict[str, Any]:
         raise FileNotFoundError(f"monolith_root not found: {monolith_path}")
 
     ws = Path(workspace).resolve()
-    ws.mkdir(parents=True, exist_ok=True)
+    storage_dir = ws / "storage"
+    storage_dir.mkdir(parents=True, exist_ok=True)
 
     report = run_static_analysis(monolith_path)
 
     # Mirror static_analyzer.main(): pop symbol_table, write it separately.
+    # Nested under storage/ to match M2S's own storage/-output/ convention,
+    # which the architect/code-developer/sam-engineer agents (P2) also follow.
     symbol_table = report.pop("symbol_table", [])
-    symbol_table_path = ws / "symbol_table.json"
+    symbol_table_path = storage_dir / "symbol_table.json"
     with symbol_table_path.open("w", encoding="utf-8") as f:
         json.dump(symbol_table, f, indent=2, ensure_ascii=False)
 
-    report_path = ws / "analysis_report.json"
+    report_path = storage_dir / "analysis_report.json"
     with report_path.open("w", encoding="utf-8") as f:
         json.dump(report, f, indent=2, ensure_ascii=False)
 

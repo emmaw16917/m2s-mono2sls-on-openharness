@@ -1,0 +1,16 @@
+{
+  "cognito": {
+    "enabled": true,
+    "user_pool_attributes": ["email"],
+    "password_policy": {"minimum_length": 8, "require_lowercase": true, "require_uppercase": true, "require_numbers": true, "require_symbols": false, "temporary_password_validity_days": 7}
+  },
+  "metadata": {
+    "application_name": "TODO",
+    "architecture_pattern": "Basic Serverless Architecture",
+    "has_authentication": true,
+    "has_database": true,
+    "has_file_storage": false,
+    "has_async_flows": false,
+    "notes": "residue fixture: this file is what was left behind after a botched split-write, per the historical crash this plan's B0 gate exists to catch."
+  }
+}
