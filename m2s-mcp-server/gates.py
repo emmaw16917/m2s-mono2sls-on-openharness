@@ -191,37 +191,61 @@ def check_b0(workspace: Path) -> list[dict[str, Any]]:
                 for ep in analysis.get("entry_points", [])
                 if isinstance(ep, dict)
             }
-            blueprint_endpoints: set[str] = set()
+            # Endpoint spelling differs between analyzer ("GET /item/:id") and
+            # blueprint ("GET /item/{id}") -- normalize :param and {param} the
+            # same way before comparing, to avoid false positives.
+            def _normalize(ep: str) -> str:
+                return re.sub(r"(:([A-Za-z0-9_]+)|\{([A-Za-z0-9_]+)\})", "{param}", ep)
+
+            # Track WHO claims each normalized endpoint, not just whether it's
+            # claimed, so a double assignment (the same endpoint given to two
+            # different lambda_functions entries, e.g. from an accidental
+            # array-append duplicate) is caught as an ERROR rather than
+            # silently passing coverage. Caught once in practice: architect
+            # resubmitted its whole lambda_functions list via
+            # merge_blueprint_key after renaming one function, producing 12
+            # entries where "GET /item" was claimed by two different names.
+            claimants: dict[str, list[str]] = {}
             for fn in blueprint.get("lambda_functions", []) or []:
-                if isinstance(fn, dict):
-                    blueprint_endpoints.update(
-                        ep for ep in (fn.get("entry_points") or []) if isinstance(ep, str)
-                    )
-            dropped_endpoints = {
+                if not isinstance(fn, dict):
+                    continue
+                fn_name = fn.get("name", "<unnamed>")
+                for ep in fn.get("entry_points") or []:
+                    if isinstance(ep, str):
+                        claimants.setdefault(_normalize(ep), []).append(fn_name)
+
+            dropped_endpoints_raw = {
                 item.get("item", "")
                 for item in blueprint.get("dropped_functions", []) or []
                 if isinstance(item, dict) and item.get("type") == "endpoint"
             }
-            covered = blueprint_endpoints | dropped_endpoints
-            uncovered = analyzed_endpoints - covered
-            # Endpoint spelling differs between analyzer ("GET /item/:id") and
-            # blueprint ("GET /item/{id}") -- normalize :param and {param} the
-            # same way before flagging, to avoid false positives.
-            def _normalize(ep: str) -> str:
-                return re.sub(r"(:([A-Za-z0-9_]+)|\{([A-Za-z0-9_]+)\})", "{param}", ep)
+            for ep in dropped_endpoints_raw:
+                claimants.setdefault(_normalize(ep), []).append("dropped_functions")
 
-            normalized_covered = {_normalize(ep) for ep in covered}
-            uncovered = {ep for ep in uncovered if _normalize(ep) not in normalized_covered}
-            for ep in sorted(uncovered):
-                findings.append(
-                    _finding(
-                        "B0",
-                        "ERROR",
-                        f"Analyzed endpoint '{ep}' is not covered by any lambda_functions.entry_points "
-                        "nor dropped_functions.",
-                        ep,
+            for normalized_ep, owners in claimants.items():
+                if len(owners) > 1:
+                    findings.append(
+                        _finding(
+                            "B0",
+                            "ERROR",
+                            f"Endpoint '{normalized_ep}' is claimed by more than one place: {owners}. "
+                            "Each endpoint must map to exactly one lambda_functions entry OR be dropped, not both/multiple.",
+                            normalized_ep,
+                        )
                     )
-                )
+
+            normalized_covered = set(claimants.keys())
+            for ep in sorted(analyzed_endpoints):
+                if _normalize(ep) not in normalized_covered:
+                    findings.append(
+                        _finding(
+                            "B0",
+                            "ERROR",
+                            f"Analyzed endpoint '{ep}' is not covered by any lambda_functions.entry_points "
+                            "nor dropped_functions.",
+                            ep,
+                        )
+                    )
 
     return findings
 

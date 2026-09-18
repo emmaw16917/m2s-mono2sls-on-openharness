@@ -224,6 +224,31 @@ def test_b0_invalid_auth_value(tmp_path):
     assert any("auth" in f["description"] for f in findings)
 
 
+def test_b0_double_coverage_two_functions_same_endpoint(tmp_path):
+    """Real incident: architect resubmitted its whole lambda_functions list
+    via merge_blueprint_key after renaming one function, so 'GET /item' ended
+    up claimed by two different lambda names."""
+    blueprint = json.loads(json.dumps(GOOD_BLUEPRINT))
+    duplicate_fn = json.loads(json.dumps(blueprint["lambda_functions"][0]))
+    duplicate_fn["name"] = "todo-get-items"  # same entry_points, different name
+    blueprint["lambda_functions"].append(duplicate_fn)
+    _write_good_workspace(tmp_path)
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(blueprint), encoding="utf-8")
+    findings = gates.check_b0(tmp_path)
+    assert any("claimed by more than one place" in f["description"] for f in findings)
+
+
+def test_b0_double_coverage_function_and_dropped(tmp_path):
+    blueprint = json.loads(json.dumps(GOOD_BLUEPRINT))
+    blueprint["dropped_functions"].append(
+        {"item": blueprint["lambda_functions"][0]["entry_points"][0], "type": "endpoint", "reason": "duplicate"}
+    )
+    _write_good_workspace(tmp_path)
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(blueprint), encoding="utf-8")
+    findings = gates.check_b0(tmp_path)
+    assert any("claimed by more than one place" in f["description"] for f in findings)
+
+
 # ---------------------------------------------------------------------------
 # C1
 # ---------------------------------------------------------------------------

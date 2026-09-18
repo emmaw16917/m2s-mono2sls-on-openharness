@@ -25,6 +25,25 @@ def test_merge_blueprint_key_appends_arrays(tmp_path):
     assert merged["lambda_functions"] == [{"name": "fn1"}, {"name": "fn2"}]
 
 
+def test_merge_blueprint_key_rejects_duplicate_name_append(tmp_path):
+    m2s_merge.merge_blueprint_key(str(tmp_path), "lambda_functions", json.dumps([{"name": "todo-list-items"}]))
+    try:
+        m2s_merge.merge_blueprint_key(str(tmp_path), "lambda_functions", json.dumps([{"name": "todo-list-items"}]))
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "todo-list-items" in str(exc)
+    # nothing should have been appended
+    merged = json.loads((tmp_path / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    assert merged["lambda_functions"] == [{"name": "todo-list-items"}]
+
+
+def test_merge_blueprint_key_allows_distinct_names_after_append(tmp_path):
+    m2s_merge.merge_blueprint_key(str(tmp_path), "lambda_functions", json.dumps([{"name": "fn1"}]))
+    m2s_merge.merge_blueprint_key(str(tmp_path), "lambda_functions", json.dumps([{"name": "fn2"}]))
+    merged = json.loads((tmp_path / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    assert [f["name"] for f in merged["lambda_functions"]] == ["fn1", "fn2"]
+
+
 def test_merge_blueprint_key_overwrites_non_array(tmp_path):
     m2s_merge.merge_blueprint_key(str(tmp_path), "cognito", json.dumps({"enabled": False}))
     m2s_merge.merge_blueprint_key(str(tmp_path), "cognito", json.dumps({"enabled": True}))

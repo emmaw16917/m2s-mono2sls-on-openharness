@@ -149,6 +149,30 @@ def merge_blueprint_key(workspace: str, key: str, value_json: str) -> dict[str, 
         data = {}
 
     if key in data and isinstance(data[key], list) and isinstance(parsed_value, list):
+        # Guard against accidental duplicate submission: arrays concatenate
+        # rather than replace, so resubmitting an item you already sent
+        # (e.g. after renaming it) silently doubles it up instead of fixing
+        # it. Caught once in practice: the architect re-submitted its whole
+        # lambda_functions list after renaming one function, producing 12
+        # entries (6 real + 6 near-duplicates) instead of 6. Only checked
+        # for dict items carrying a "name" field (lambda_functions,
+        # dynamodb_tables, s3_buckets, sqs_queues all use one).
+        existing_names = {
+            item.get("name") for item in data[key] if isinstance(item, dict) and item.get("name")
+        }
+        new_names = {item.get("name") for item in parsed_value if isinstance(item, dict) and item.get("name")}
+        collision = existing_names & new_names
+        if collision:
+            raise ValueError(
+                f"'{key}' already contains an item named {sorted(collision)}. "
+                "merge_blueprint_key APPENDS to arrays, it does not replace items -- "
+                "resubmitting the same name (e.g. after renaming or editing it) would "
+                "create a duplicate, not a correction. If you need to change an item "
+                "you already submitted, you must include the FULL corrected array "
+                "including all previously-submitted items you want to keep, and the "
+                "workspace's blueprint.json needs to be reset for this key first "
+                "(ask the orchestrator, or start this key over from a clean run)."
+            )
         data[key].extend(parsed_value)
         action = "appended to"
     else:
