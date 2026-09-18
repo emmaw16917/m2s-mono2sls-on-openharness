@@ -122,7 +122,9 @@ storage/stage_reports/S4.json         S4 工作报告
 
 ## §6 验收
 
-`gate(final)` 返回 `status: PASS` 且 `output/consistency_report.json` 里 `status == "PASS"`，即为验收通过。**不做任何 AWS 部署**（离线范围）。失败时，把 gate(final) 的完整报告摘要作为最终回复输出给用户。
+`gate(final)` 返回 `status: PASS` 且 `output/consistency_report.json` 里 `status == "PASS"`，即为验收通过。**不做任何 AWS 部署**（离线范围）。
+
+**`gate(final)` 不是 `PASS`，就是没有验收通过，没有例外，不允许任何形式的自我宣布成功**。不管前面 P0-S3 完成得多顺利、`gate(template)` 多么干净、代码和模板看起来多完整，只要 `gate(final)` 失败（包括"S4 没跑完导致 `consistency_report.json` 不存在"这种情况），你的最终回复就必须明确说"迁移未完成/失败"，把 `gate(final)` 的完整报告原样贴出来。**禁止说"核心产物已经就绪"、"流水线已成功执行"、"验证步骤不影响产出质量"这类淡化失败的措辞**——`consistency_report.json` 缺失本身就是失败，不是"次要的收尾步骤"。如果 S4 因为你自己的 turn/时间预算不够而没等到完成，如实说明"S4 尚未跑完，不是失败，但也还没验收通过"，不要因为等不下去了就把它包装成成功。
 
 ## §7 蓝图防截断双保险
 
