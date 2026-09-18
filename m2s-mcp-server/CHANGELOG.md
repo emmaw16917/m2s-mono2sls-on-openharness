@@ -112,6 +112,21 @@
 2. **真实 spawn 验证**：用 `oh -p` 让主 Agent 通过 `agent` 工具 spawn 一次 `m2s-validator` 的身份确认空跑（明确要求它不读写文件、不调用工具）。`task_get` 返回的 `argv` 字段里能看到 `--task-worker --system-prompt '## 身份与使命\n\n你是一名严谨的 QA 工程师...'`——**证实 `--system-prompt` 整体覆盖确实生效，不是文档猜测**。子 Agent 的回复正确复述了 `m2s-validator.md` 里写的身份（QA 工程师）、MCP 工具全名（`validate_sam`/`run_gate`）、skill 名（`m2s-sam-kb`/`m2s-lambda-coding-kb`），并且这次严格遵守了"不调用工具"的指令，没有重演 P0 那次乱调 `mcp_auth` 的问题（这次任务本身更简单，不代表模型可靠性问题已经解决，见下方风险提醒）。
 3. 顺带拿到了 `task_get` 的真实字段名（`id`/`type`/`status`/`description`/`return_code`/`ended_at`/`prompt`/`argv`），`type` 确认是 `"local_agent"`，与之前核实的事实一致。
 
+## P3 — todo 全链离线跑通（进行中，2026-09-18）
+
+### S1（architect）两次失败 + 一次修复，一个重要的 prompt 工程教训
+
+清空 `runs/todo-oh` 后跑 `/m2s-migrate`，S1 阶段（architect 设计 blueprint）连续两次失败，两次错误完全不同：
+
+1. **第一次**：发明了 `auth_info`/`nodejs_dependencies`/`dynamodb_info`/顶层 `entry_points` 这些不存在的字段，完全没写 `lambda_functions`。当时 `m2s-architect.md` 里只用**文字**描述了 blueprint.json 的 schema。
+2. **加了一个抽象 JSON 骨架示例**（`{"metadata": {...}, "lambda_functions": [...]}` 这种带 `...` 占位符的骨架，并且逐条写明"不要发明新 key"）之后重跑，**换了另一种完全不同的错误**：`blueprint_sections/` 里写出的是 `async_patterns.json`/`data_flow.json`/`deployment_topology.json`/`domain_decomposition.json`/`security_considerations.json`/`service_boundaries.json`——像一份通用"架构评审文档大纲"，跟骨架示例的字段名一个都不沾边。工作区根目录还多出一个不该存在的 `blueprint.json`（不在 `storage/` 下），字段名倒是对了，但 `lambda_functions` 被设计成按服务分组的对象（`auth-service`/`todo-service`各塞好几个端点），违反"一个端点一个 Lambda"，还编造了不存在的跨服务 EventBridge/Lambda 调用关系，runtime 也用了明确禁止的 `nodejs18.x`。
+
+有意思的旁证：翻同一次失败的原始日志，模型自己的推理文字里**其实正确列出了全部 10 个必需 key**（"I need to create a blueprint.json that includes: metadata, lambda_functions, ..."），但最终写入文件的内容却是完全不相关的另一套。合理猜测：它同时加载了 `m2s-async-patterns-kb`（skill 内容本身有"Async & Event-Driven Serverless Patterns"这类章节标题），被这份知识库自己的文档结构带偏，把"应该讨论的架构话题"误当成了"应该写进 blueprint_sections 的字段"。
+
+**真正的修复**：把 `m2s-architect.md` 里的抽象骨架**换成了这个具体单体（todo）的完整参考答案**——不是占位符骨架，是真实、完整、已知能通过所有 gate 的两个分节文件全文（对应 M2S 自己的 `storage/blueprint.json`），并加了一段"核对清单"逐条对照禁止项。重新隔离测试（spawn m2s-architect → 合并 → `run_gate(phase="blueprint")`），**一次通过**：`storage/blueprint_sections/` 用了跟示例一致的文件名（`01_infra.json`/`02_functions.json`），内容跟参考答案高度一致，`gate(blueprint)` 返回 `PASS`。
+
+**教训**：对这个模型（qwen-plus），"文字描述 schema" < "抽象 JSON 骨架 + 反例警告" < "具体完整的参考答案直接放在眼前"。三次尝试、三种不同结果，只有第三种真正稳定生效。这是本次移植过程中除了 `mcp_auth` 之外第二个证实"prompt 精确度不够、模型就会跑偏，而且每次跑偏的方向都不一样"的具体案例——为 P4 风险清单和后续 S2-S4 的 prompt 设计提供了明确的方向：能给具体例子就不要只给抽象描述。
+
 ### 已知缺口 / 留给 P3-P4 的说明
 
 - **四个 agent `.md` 的运行位置（`C:\Users\36029\.openharness\agents\`）本身不在仓库版本控制范围内**（照抄计划文件清单的路径约定，跟 `~/.openharness/settings.json` 一样是用户级配置，OpenHarness 只认这个固定路径，无法指向仓库内路径）。为了不丢失这份内容，已经把内容原样镜像了一份到 `m2s-mcp-server/agents/`（`m2s-architect.md`/`m2s-code-developer.md`/`m2s-sam-engineer.md`/`m2s-validator.md`），作为版本控制下的 source of truth；`~/.openharness/agents/` 下的是"部署副本"。**这两处目前需要手动保持同步**——以后改了 agent 定义，两边都要改（或者写个同步脚本，留给 P4）。

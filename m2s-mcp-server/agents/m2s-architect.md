@@ -38,19 +38,78 @@ model: inherit
 
 ## 输出契约
 
-**只写 `<WS>/storage/blueprint_sections/` 目录下的多个 JSON 文件，绝不直接写 `storage/blueprint.json`**（合并是主 Agent 用 `m2s_merge.py` 做的，见下方防截断说明）。
+**只写 `<WS>/storage/blueprint_sections/` 目录下的多个 JSON 文件，绝不直接写 `storage/blueprint.json`，也绝不写在 `<WS>` 根目录下**（合并是主 Agent 用 `m2s_merge.py` 做的，见下方防截断说明，合并产物只会出现在 `storage/blueprint.json`）。
 
-建议按下面两个文件分节（每个文件内容 <4000 字符；如果 lambda_functions 太多导致单文件超限，可以再拆成 `02a_functions.json`/`02b_functions.json` 等）：
+**下面是这次要迁移的这个具体单体（todo）的完整参考答案**——这不是一个抽象骨架，是真实、完整、已经验证过能通过所有 gate 的两个分节文件。**你的任务就是照着这两个文件原样重新产出一份**（字段名、嵌套层级、每个字段的类型全部照抄）。如果你自己读 `analysis_report.json` 后发现某些具体值跟下面不一样（比如端点数量、表名），以你自己分析到的事实为准去改具体的值，但**字段名和 JSON 结构必须跟下面完全一致，不能改名、不能拍平、不能换成别的字段**：
 
+**`storage/blueprint_sections/01_infra.json`**：
+
+```json
+{
+  "metadata": {
+    "application_name": "TODO",
+    "architecture_pattern": "Basic Serverless Architecture",
+    "has_authentication": true,
+    "has_database": true,
+    "has_file_storage": false,
+    "has_async_flows": false,
+    "notes": "Node.js Express TODO monolith. Every todo endpoint is a single-domain Worker Lambda operating on the TodoItems table. The monolith's partition key 'cognito-username' (application username from the JWT) is replaced by 'userId' = Cognito Sub (UUID) injected from API Gateway authorizer claims. Domain grouping: todo CRUD. Auth endpoints dropped in favor of Cognito. No cross-Lambda relationships, so no sync invoke, SQS, or EventBridge resources."
+  },
+  "lambda_invoke_permissions": [],
+  "sqs_queues": [],
+  "eventbridge_rules": [],
+  "dynamodb_tables": [
+    {"logical_name": "TodoItems", "purpose": "Store todo items per authenticated user. Partition key userId = Cognito Sub; sort key id = item UUID.", "partition_key": {"name": "userId", "type": "S"}, "sort_key": {"name": "id", "type": "S"}, "gsi": []}
+  ],
+  "s3_buckets": [],
+  "cognito": {
+    "enabled": true,
+    "user_pool_attributes": ["email", "name"],
+    "password_policy": {"minimum_length": 8, "require_lowercase": true, "require_uppercase": true, "require_numbers": true, "require_symbols": false, "temporary_password_validity_days": 7}
+  },
+  "api_gateway": {
+    "type": "REST",
+    "cors": {"allow_origins": ["*"], "allow_methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"]},
+    "authorizer": "Cognito",
+    "authorizer_type": "COGNITO_USER_POOLS",
+    "user_pool_arn": "${CognitoUserPool.Arn}",
+    "token_validation": "Automatic at API Gateway layer",
+    "identity_source": "Authorization header (Bearer token)"
+  }
+}
 ```
-storage/blueprint_sections/01_infra.json
-    { "metadata", "cognito", "api_gateway", "dynamodb_tables", "s3_buckets",
-      "sqs_queues", "eventbridge_rules", "lambda_invoke_permissions" }
-storage/blueprint_sections/02_functions.json
-    { "lambda_functions", "dropped_functions" }
+
+**`storage/blueprint_sections/02_functions.json`**：
+
+```json
+{
+  "lambda_functions": [
+    {"name": "todo-list-items", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": ["todo/routes/todo.js", "todo/config/db.js"], "entry_points": ["GET /item"], "environment_variables": {"TODO_TABLE": "${TodoItemsTable}", "AWS_REGION": "${AWS::Region}"}},
+    {"name": "todo-get-item", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": ["todo/routes/todo.js", "todo/config/db.js"], "entry_points": ["GET /item/{id}"], "environment_variables": {"TODO_TABLE": "${TodoItemsTable}", "AWS_REGION": "${AWS::Region}"}},
+    {"name": "todo-create-item", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": ["todo/routes/todo.js", "todo/config/db.js"], "entry_points": ["POST /item"], "environment_variables": {"TODO_TABLE": "${TodoItemsTable}", "AWS_REGION": "${AWS::Region}"}},
+    {"name": "todo-update-item", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": ["todo/routes/todo.js", "todo/config/db.js"], "entry_points": ["PUT /item/{id}"], "environment_variables": {"TODO_TABLE": "${TodoItemsTable}", "AWS_REGION": "${AWS::Region}"}},
+    {"name": "todo-mark-done", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": ["todo/routes/todo.js", "todo/config/db.js"], "entry_points": ["POST /item/{id}/done"], "environment_variables": {"TODO_TABLE": "${TodoItemsTable}", "AWS_REGION": "${AWS::Region}"}},
+    {"name": "todo-delete-item", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": ["todo/routes/todo.js", "todo/config/db.js"], "entry_points": ["DELETE /item/{id}"], "environment_variables": {"TODO_TABLE": "${TodoItemsTable}", "AWS_REGION": "${AWS::Region}"}}
+  ],
+  "dropped_functions": [
+    {"item": "POST /register", "type": "endpoint", "reason": "Replaced by Cognito - frontend calls AWS Amplify/Cognito SDK directly"},
+    {"item": "POST /login", "type": "endpoint", "reason": "Replaced by Cognito User Pool authentication (frontend SDK)"},
+    {"item": "Users table (username hash key)", "type": "table", "reason": "User credentials moved to Cognito User Pool - table deleted entirely"},
+    {"item": "authenticateToken middleware (todo/middleware/auth.js)", "type": "code", "reason": "Replaced by API Gateway Cognito Authorizer - token validation at gateway layer"},
+    {"item": "jwt.js generateToken/verifyToken (todo/utils/jwt.js)", "type": "code", "reason": "Token issuance/validation handled by Cognito"},
+    {"item": "scripts/init-db.js", "type": "script", "reason": "Infrastructure script - table creation handled by SAM template CloudFormation resources"},
+    {"item": "server.js", "type": "code", "reason": "Express server bootstrap replaced by API Gateway route wiring"}
+  ]
+}
 ```
 
-这 10 个 key 合起来必须覆盖 blueprint.json 的完整 schema（`metadata` 是对象；`lambda_functions`/`dynamodb_tables`/`s3_buckets`/`sqs_queues`/`eventbridge_rules`/`lambda_invoke_permissions`/`dropped_functions` 是数组，`lambda_functions` 不能为空；`cognito`/`api_gateway` 是对象）。每个 `lambda_functions[]` 条目必须有非空 `name`、非空 `entry_points`、`auth` 只能是 `"required"` 或 `"none"`、非空 `runtime`。
+**核对清单（写完之后自己过一遍，不要跳过）**：
+1. 顶层 key 只能是这 10 个：`metadata`/`lambda_functions`/`dynamodb_tables`/`s3_buckets`/`sqs_queues`/`eventbridge_rules`/`lambda_invoke_permissions`/`cognito`/`api_gateway`/`dropped_functions`。**不要出现 `auth_info`/`nodejs_dependencies`/`dynamodb_info`/`async_patterns`/`data_flow`/`deployment_topology`/`domain_decomposition`/`security_considerations`/`service_boundaries` 或任何其他名字——这些都不是合法字段，出现了 gate 一定会判失败。**
+2. `lambda_functions` 是**数组**（`[...]`），不是按服务名分组的对象（`{"auth-service": {...}}` 这种写法是错的）——每一项对应**一个** endpoint，不要把多个 endpoint 塞进同一项的 `entry_points` 数组里合并成"一个服务"（上面示例里 6 个函数各自只有 1 个 entry_point，这是有意为之，不是简化）。
+3. `analysis_report.json.entry_points` 里的每一个端点，必须能在 `lambda_functions[].entry_points` 或 `dropped_functions`（type="endpoint"）里找到，两边加起来覆盖全部、不重不漏。
+4. 认证相关的端点/中间件/工具函数放进 `dropped_functions`，**不要**给它们设计 Lambda，也不要保留自建的登录鉴权逻辑——认证交给 Cognito。
+5. `runtime` 只能是 `nodejs22.x` 或 `python3.12`，不能是 `nodejs18.x`/`nodejs20.x`。
+6. 不要凭空编造跨 Lambda 的调用关系、EventBridge 规则或 Lambda 调用权限——`entry_point_dependencies`/`call_graph` 里没有的调用关系就不要写。
 
 写完分节文件后，输出契约的最后一步：写 `<WS>/storage/stage_reports/S1.json`：
 
@@ -74,6 +133,7 @@ storage/blueprint_sections/02_functions.json
 - 不要读取或修改 `output/` 下的任何代码文件——那是 S2/S3 的工作范围。
 - 不要自己调用 `m2s_merge.py`——合并是主 Agent 的职责。
 - 不要凭训练知识"脑补"跨 Lambda 调用关系，必须严格依据 `entry_point_dependencies`。
+- **不要发明输出契约里 10 个 key 之外的任何顶层字段**（`auth_info`/`nodejs_dependencies`/`dynamodb_info`/顶层 `entry_points` 这类都是错的），也不要把嵌套结构拍平成单层字段——严格照抄骨架示例的字段名和嵌套层级。
 
 ## 完成信号
 
