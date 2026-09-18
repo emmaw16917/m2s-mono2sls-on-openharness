@@ -10,6 +10,85 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import m2s_merge  # noqa: E402
 
 
+def test_merge_blueprint_key_sets_new_key(tmp_path):
+    result = m2s_merge.merge_blueprint_key(str(tmp_path), "metadata", json.dumps({"application_name": "TODO"}))
+    assert result["action"] == "set"
+    merged = json.loads((tmp_path / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    assert merged == {"metadata": {"application_name": "TODO"}}
+
+
+def test_merge_blueprint_key_appends_arrays(tmp_path):
+    m2s_merge.merge_blueprint_key(str(tmp_path), "lambda_functions", json.dumps([{"name": "fn1"}]))
+    result = m2s_merge.merge_blueprint_key(str(tmp_path), "lambda_functions", json.dumps([{"name": "fn2"}]))
+    assert result["action"] == "appended to"
+    merged = json.loads((tmp_path / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    assert merged["lambda_functions"] == [{"name": "fn1"}, {"name": "fn2"}]
+
+
+def test_merge_blueprint_key_overwrites_non_array(tmp_path):
+    m2s_merge.merge_blueprint_key(str(tmp_path), "cognito", json.dumps({"enabled": False}))
+    m2s_merge.merge_blueprint_key(str(tmp_path), "cognito", json.dumps({"enabled": True}))
+    merged = json.loads((tmp_path / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    assert merged["cognito"] == {"enabled": True}
+
+
+def test_merge_blueprint_key_rejects_invented_key(tmp_path):
+    try:
+        m2s_merge.merge_blueprint_key(str(tmp_path), "auth_info", json.dumps({"used": True}))
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "not a valid blueprint.json top-level key" in str(exc)
+    # nothing should have been written
+    assert not (tmp_path / "storage" / "blueprint.json").exists()
+
+
+def test_merge_blueprint_key_rejects_invalid_json_value(tmp_path):
+    try:
+        m2s_merge.merge_blueprint_key(str(tmp_path), "metadata", "{not valid json")
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "not valid JSON" in str(exc)
+
+
+def test_merge_blueprint_key_reports_missing_keys(tmp_path):
+    result = m2s_merge.merge_blueprint_key(str(tmp_path), "metadata", json.dumps({"application_name": "TODO"}))
+    assert "metadata" not in result["missing_keys"]
+    assert "lambda_functions" in result["missing_keys"]
+    assert len(result["missing_keys"]) == len(m2s_merge.BLUEPRINT_KEYS) - 1
+
+
+def test_merge_blueprint_key_builds_full_valid_blueprint(tmp_path):
+    """End-to-end: build up the real todo blueprint one key at a time and
+    confirm gates.py's B0 check passes, the same way the architect agent
+    will build it via the MCP tool."""
+    import gates
+
+    storage = tmp_path / "storage"
+    storage.mkdir(parents=True)
+    (storage / "analysis_report.json").write_text(
+        json.dumps({"entry_points": [{"method": "GET", "path": "/item"}]}), encoding="utf-8"
+    )
+
+    sections = {
+        "metadata": {
+            "application_name": "TODO", "architecture_pattern": "Basic Serverless Architecture",
+            "has_authentication": True, "has_database": True, "has_file_storage": False,
+            "has_async_flows": False, "notes": "fixture",
+        },
+        "dynamodb_tables": [{"logical_name": "TodoItems", "purpose": "x", "partition_key": {"name": "userId", "type": "S"}, "sort_key": {"name": "id", "type": "S"}, "gsi": []}],
+        "s3_buckets": [], "sqs_queues": [], "eventbridge_rules": [], "lambda_invoke_permissions": [],
+        "cognito": {"enabled": True, "user_pool_attributes": ["email"], "password_policy": {}},
+        "api_gateway": {"type": "REST"},
+        "lambda_functions": [{"name": "todo-list-items", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": [], "entry_points": ["GET /item"], "environment_variables": {}}],
+        "dropped_functions": [],
+    }
+    for key, value in sections.items():
+        m2s_merge.merge_blueprint_key(str(tmp_path), key, json.dumps(value))
+
+    findings = gates.check_b0(tmp_path)
+    assert findings == []
+
+
 def test_merge_blueprint_unions_sections(tmp_path):
     sections = tmp_path / "storage" / "blueprint_sections"
     sections.mkdir(parents=True)

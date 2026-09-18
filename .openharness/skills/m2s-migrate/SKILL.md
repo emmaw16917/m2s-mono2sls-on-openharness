@@ -24,6 +24,7 @@ MCP 工具全名（唯一合法拼写，`m2s-server` 中间是连字符）：
 mcp__m2s-server__analyze_project
 mcp__m2s-server__validate_sam
 mcp__m2s-server__run_gate
+mcp__m2s-server__merge_blueprint_key
 ```
 
 Agent 名精确契约（`subagent_type` 必须逐字符匹配，拼错不会报错，只会得到一个没有专属 system prompt 的通用 Agent）：
@@ -104,8 +105,7 @@ Spawn 之间保持 15 秒冷却，不要连续 spawn。
 ```
 storage/analysis_report.json          P0 产出（你自己调 MCP 工具写的）
 storage/symbol_table.json             P0 产出
-storage/blueprint_sections/*.json     S1 产出（architect 分节写，每节 <4000 字符）
-storage/blueprint.json                S1 产出（用 MERGE 合并 blueprint_sections 后生成，不是 architect 直接写的）
+storage/blueprint.json                S1 产出（architect 用 mcp__m2s-server__merge_blueprint_key 逐字段写，不再需要分节文件+主 Agent 合并这一步）
 storage/stage_reports/S1.json         S1 工作报告
 output/lambdas/<domain>/<name>/...    S2 产出（handler.js|py + package.json|requirements.txt）
 output/layers/shared/...              S2 产出（仅当 blueprint 判定需要共享层时才有）
@@ -126,19 +126,12 @@ storage/stage_reports/S4.json         S4 工作报告
 
 **`gate(final)` 不是 `PASS`，就是没有验收通过，没有例外，不允许任何形式的自我宣布成功**。不管前面 P0-S3 完成得多顺利、`gate(template)` 多么干净、代码和模板看起来多完整，只要 `gate(final)` 失败（包括"S4 没跑完导致 `consistency_report.json` 不存在"这种情况），你的最终回复就必须明确说"迁移未完成/失败"，把 `gate(final)` 的完整报告原样贴出来。**禁止说"核心产物已经就绪"、"流水线已成功执行"、"验证步骤不影响产出质量"这类淡化失败的措辞**——`consistency_report.json` 缺失本身就是失败，不是"次要的收尾步骤"。如果 S4 因为你自己的 turn/时间预算不够而没等到完成，如实说明"S4 尚未跑完，不是失败，但也还没验收通过"，不要因为等不下去了就把它包装成成功。
 
-## §7 蓝图防截断双保险
+## §7 防截断/防残骸机制
 
-这是为了防止历史上出现过的崩溃（architect 把 blueprint 分写到 blueprint2/3/4.json 却从没合并，blueprint.json 只剩残骸）：
+**蓝图（S1）**：这条曾经出过历史崩溃——architect 把 blueprint 分写到 blueprint2/3/4.json 却从没合并，blueprint.json 只剩残骸。现在的解法是 `mcp__m2s-server__merge_blueprint_key` 工具本身：architect 一次只写一个顶层字段，工具在 Python 里做确定性合并、每次调用后立即重新解析校验 JSON 合法性，还会拒绝不在 10 个合法 key 之内的字段名——不再需要"分节文件 + 主 Agent 事后合并"这一层，S1 阶段你不需要自己跑任何合并命令。S1 收到 `STAGE_COMPLETE` 后，直接 `Read WS/storage/blueprint.json` 回读一次确认非空、10 个 key 齐全，再进入 `gate(blueprint)`。
 
-1. m2s-architect 只往 `storage/blueprint_sections/` 下写多个小文件（每个 <4000 字符），**绝不直接写 `storage/blueprint.json`**。
-2. 你（主 Agent）在 S1 阶段收到 `STAGE_COMPLETE` 后，亲自跑一次 Bash：
-   ```
-   python "MERGE" blueprint "WS"
-   ```
-   （把 `MERGE`/`WS` 换成 §0 里的实际绝对路径）
-3. 合并后 `Read WS/storage/blueprint.json` 回读一次，确认它不是空壳，再进入 `gate(blueprint)`。
-4. 同样的双保险用于 S3a→S3b→S3c 之间：S3c 阶段你要亲自跑：
-   ```
-   python "MERGE" template "WS"
-   ```
-   再进入 `gate(template)`。**不要让 sam-engineer 自己调用 m2s_merge.py**——合并是主 Agent 的职责，子 Agent 只管产出分片文件，这样即使子 Agent 中途失败，合并这一步也不会跟着崩。
+**模板（S3）**：这一层仍然需要主 Agent 亲自合并，因为 SAM 模板是 YAML 而不是 JSON，`merge_blueprint_key` 这套 JSON 增量合并机制不适用。S3c 阶段你要亲自跑：
+```
+python "MERGE" template "WS"
+```
+（把 `MERGE`/`WS` 换成 §0 里的实际绝对路径）再进入 `gate(template)`。**不要让 sam-engineer 自己调用 m2s_merge.py**——合并是主 Agent 的职责，子 Agent 只管产出 `template.part1.yaml`/`template.part2.yaml` 分片文件，这样即使子 Agent 中途失败，合并这一步也不会跟着崩。

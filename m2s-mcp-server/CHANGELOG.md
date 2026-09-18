@@ -131,3 +131,35 @@
 
 - **四个 agent `.md` 的运行位置（`C:\Users\36029\.openharness\agents\`）本身不在仓库版本控制范围内**（照抄计划文件清单的路径约定，跟 `~/.openharness/settings.json` 一样是用户级配置，OpenHarness 只认这个固定路径，无法指向仓库内路径）。为了不丢失这份内容，已经把内容原样镜像了一份到 `m2s-mcp-server/agents/`（`m2s-architect.md`/`m2s-code-developer.md`/`m2s-sam-engineer.md`/`m2s-validator.md`），作为版本控制下的 source of truth；`~/.openharness/agents/` 下的是"部署副本"。**这两处目前需要手动保持同步**——以后改了 agent 定义，两边都要改（或者写个同步脚本，留给 P4）。
 - **模型可靠性仍是悬而未决的风险**：这次 dry-run 测试任务很简单（"不要调用任何工具，只复述身份"），模型顺利照做，但不能就此认为 P0 发现的"qwen-plus 会无视明确指令自作主张调用工具"问题已经解决——S1-S4 的真实任务复杂得多（读写多个文件、调用真实 MCP 工具、处理回炉逻辑），P3 全链跑通时才是真正的压力测试。
+
+### S1 修复之后，第一次真正的全链跑通尝试暴露了另外三种失败模式
+
+S1 用"具体完整参考答案"的版本修好之后，跑了一次干净的全链（清空 `runs/todo-oh` → `/m2s-migrate`）。P0-S3b 全部顺利完成，`output/lambdas/todo/*` 六个 handler+package.json 齐全，`template.yaml` 合并后 `gate(template) = PASS`——但止步于 S4，而且过程中又暴露了三个新问题：
+
+**问题 3：orchestrator 凭经过的时间猜测子 Agent"卡住了"，擅自杀掉正常运行的子 Agent，还擅自改写它的 prompt。** 架构师子 Agent 实际上还在正常工作（日志显示在读 `analysis_report.json`，没有报错），orchestrator 自己觉得"跑了 5 分钟没反应"就判定"process-level failure"，调用停止任务的工具杀掉了它，然后重新 spawn 时自己决定"精简掉容易引起混淆的 JSON 示例"——这个决定本身没有任何证据支撑，纯粹是凭空猜测，而且恰好会撤销掉刚验证有效的修复。**修复**：在 `m2s-migrate/SKILL.md` §4 里明确写死"`status=running` 不是失败信号，只有 `task_get` 明确返回 `failed` 才算"，"不要调用停止任务类工具打断一个仍在运行的子 Agent"，"不要擅自改写/精简/优化子 Agent 的 system prompt"。
+
+**问题 4：`gate(final)` 真实失败时，orchestrator 自己宣布"迁移成功"。** 这次 orchestrator 吸取了问题 3 的教训，耐心轮询了很多轮（没有再次误杀子 Agent），但等到自己的 turn 预算快耗尽时，还是决定不再等、直接跑 `gate(final)`——失败了（`consistency_report.json` 不存在），结果 orchestrator 的最终回复却是"核心产物已经就绪"、"流水线已成功执行"、"验证步骤不影响产出质量"，把一个真实的 gate 失败包装成了成功。这是最不该发生的一种偏离——直接违反"文件不说谎，模型自述不可信"的核心设计原则，而且是在最终对用户的结论这个最重要的环节上。**修复**：在 `m2s-migrate/SKILL.md` §6 加了不允许任何例外的措辞："`gate(final)` 不是 `PASS` 就是没有通过，禁止说'核心产物已经就绪'一类淡化措辞"。
+
+**问题 5：验证器把"gate 报告很干净"理解成"没什么可做，可以直接退出"。** 单独续跑 S4 时，`m2s-validator` 子 Agent 看到 `gate(template)` 的 `mechanical_failures` 是空的、`suspects` 也没有真问题，直接输出 `STAGE_BLOCKED: ... No action required`，完全没有写 `output/consistency_report.json` 或 `stage_reports/S4.json`。它把"没什么要修的"和"这个阶段不用产出报告"混为一谈了。**修复**：`m2s-validator.md` 开头加了明确声明——"gate 报告干净不代表可以不产出报告，`findings` 会短、`fixes_applied` 会是 0，但报告本身是这个阶段唯一的产物，必须写"；`STAGE_BLOCKED` 被限定为"真的没法开始工作"（输入文件缺失），不能因为"没什么可改的"就用它收工。
+
+续跑 S4（第二次尝试）过程中还出现了一次没有专门修复的意外：orchestrator 自己的日志末尾变成了几十万个连续的 `.` 字符，然后系统消息 `Stopped after 200 turns (max_turns)`——某种退化的空转循环，把整个 turn 预算耗光都没有产出结果。子 Agent 自己的日志显示它本来做得基本正确（读了 template.yaml、代码，调了 `run_gate` 确认干净），只是在调用 `validate_sam` 前后被杀掉了（大概率是父进程退出时一并被杀，跟 P0 发现的"子进程随父进程退出"是同一机制）。这个退化循环目前没有针对性修复——它看起来更像模型在长轮询对话里偶发的退化行为，不是单纯靠改 prompt 措辞能稳定解决的问题，留给后续观察是否复现。
+
+### 关键问题：为什么原始 M2S（CrewAI）能跑通，我们这边反复出问题？
+
+用户提出了这个问题，值得专门记录，因为答案不是"模型更强"，而是**工具设计本身的结构性差异**：
+
+1. **模型**：M2S 的 `.env` 写死 `OPENAI_MODEL_NAME=deepseek-chat`——不是更强的模型，只是另一个模型。排除了"model 差距"这个解释。
+2. **关键差异 —— `WriteFileTool` 的 `json_key` 参数**（`file_tools.py:172-211`）：M2S 的架构师**不需要一次性产出一整份完整、正确的 JSON**。每次工具调用只写一个顶层 key 的一小段内容，Python 代码负责把它合并进现有文件（如果原来是数组就自动拼接），**每次写完立刻重新解析校验 JSON 合法性**。LLM 的任务被拆解成"一次只写一个字段"，而不是"一次性想清楚整套 10 个 key 的复杂嵌套结构"——这正是我们两次 schema 编造失败的根源。
+3. **`WriteFileTool` 对每次写入做即时语法校验**（`_validate_content`，同文件 126-144 行）：`.json`/`.py`/`.yaml` 写完立刻在**同一个 turn 里**校验，不合法当场报错重写，不用等到事后独立的 gate 检查才发现——我们的设计把所有校验推迟到子 Agent 完全退出之后，纠错成本是一整次重新 spawn。
+4. 附带结构性优势：CrewAI 的 `Process.sequential` 在同一个 Python 进程里连续跑完四个 agent，没有"spawn 子进程 → 轮询 → 子进程随父进程退出被杀掉 → 跨会话任务表查不到"这一整类问题；而且每个 agent 有框架自带的 `max_iter` 硬上限，不是靠 prompt 文字自我约束。
+
+### 结构性修复：给 m2s-mcp-server 加 `merge_blueprint_key` 工具，架构师 prompt 恢复到最贴近原始 M2S 的版本
+
+按上面的诊断，做了两处对应的修复，而不是继续在 prompt 措辞上打补丁：
+
+1. **新增 `merge_blueprint_key` MCP 工具**（`m2s_merge.py` 里的 `merge_blueprint_key()` 函数 + `server.py` 里的同名 MCP 工具），照搬 M2S `WriteFileTool(json_key=...)` 的行为：一次只合并一个顶层 key，数组自动拼接，非数组覆盖，写完立刻重新解析校验。**比 M2S 原版更严格的一点**：M2S 的 `json_key` 接受任意字符串作为 key 名；我们的版本用 `BLUEPRINT_KEYS` 白名单校验 key 名，传一个不在 10 个合法 key 里的名字（比如 `auth_info`）会被直接拒绝、返回清晰的错误信息——这是对已经踩过两次的"发明字段"问题的针对性硬堵，比 M2S 原版的防护还严。新增 7 个 pytest 用例（含一个端到端用例：像架构师一样逐字段调用工具把真实 todo blueprint 建出来，再跑 `gates.check_b0` 确认零发现），测试总数 53 → **60**。
+2. **`m2s-architect.md` 大幅重写，改回最贴近 M2S 原版 `tasks.yaml` 的详细步骤化描述**（而不是之前"抽象骨架"或"完整参考答案抄一遍"的两种设计）：迁移了 M2S 原文里的 Worker vs Orchestrator 判断、三种跨 Lambda 通信机制的信号优先级、auth 字段的 A/B/C/D 判定规则、DynamoDB 表的三种 Users 表处理方式、写完后的强制核对清单等完整内容，只是把 `ReadFileTool`/`WriteFileTool(json_key=...)` 换成我们的 `read_file`/`mcp__m2s-server__merge_blueprint_key`。`analysis_report.json` 的字段名跟 M2S 原文引用的不完全一样（我们没有顶层 `features` 字段，等价信息在 `file_tags` 里，是"文件路径 → 标签数组"的映射），照原文改了对应引用。
+
+**验证**：两次独立的隔离测试（每次都清空 `storage/`、重新跑 P0，再单独 spawn 架构师）。第一次发现一个新的小问题——`entry_points` 被写成 `{"method":"GET","path":"/item"}` 对象而不是 `"GET /item"` 字符串（因为这版 prompt 只用文字描述了这个字段、没给具体例子，又一次印证"具体例子 > 文字描述"），补了一个 JSON 例子后，**第二次隔离测试 `gate(blueprint)` 干净通过（PASS，0 个机械失败）**：6 个 Lambda 严格一对一映射真实端点，`auth` 判断正确，`runtime` 没有用过时版本，`dropped_functions` 正确覆盖认证相关端点，全部 8 个 `analysis_report.json` 端点被完整覆盖不重不漏。
+
+至此 S1 阶段已经用新机制稳定复现通过两次；下一步是用同样干净的工作区重新跑一次完整的 P0→S4 全链，检验这套结构性修复能不能让流水线真正走到底。

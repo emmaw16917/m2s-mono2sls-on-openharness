@@ -5,6 +5,7 @@ Registered in OpenHarness as `m2s-server`, so tool names resolve to:
     mcp__m2s-server__analyze_project
     mcp__m2s-server__validate_sam
     mcp__m2s-server__run_gate
+    mcp__m2s-server__merge_blueprint_key
 
 Workspace resolution: all relative paths are resolved against $M2S_WORKSPACE
 (default: ./runs/todo-oh relative to this file's parent dir) so tool output
@@ -20,6 +21,7 @@ from pathlib import Path
 from mcp.server.fastmcp import FastMCP
 
 import wrap_m2s
+import m2s_merge
 
 # Only import gates lazily / guard for P0: gates.py is a P1 deliverable.
 try:
@@ -74,6 +76,36 @@ def validate_sam(template_path: str) -> str:
     """
     result = wrap_m2s.validate_sam(template_path)
     return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def merge_blueprint_key(key: str, value_json: str) -> str:
+    """Merge one section into storage/blueprint.json, one top-level key at a time.
+
+    Build the blueprint incrementally instead of writing one giant JSON
+    document in a single shot: call this once per top-level key (e.g. once
+    for "metadata", once for "cognito", once or more for "lambda_functions"
+    if you want to add functions in a few batches -- if the key already
+    holds a list and value_json is also a list, they're concatenated rather
+    than overwritten). The file is validated as JSON on every call, so a
+    malformed value_json is rejected immediately instead of surfacing later
+    in run_gate.
+
+    Args:
+        key: one of metadata, lambda_functions, dynamodb_tables, s3_buckets,
+            sqs_queues, eventbridge_rules, lambda_invoke_permissions,
+            cognito, api_gateway, dropped_functions. Any other key is
+            rejected -- do not invent new top-level keys.
+        value_json: a JSON string holding the value for that key (an object
+            for metadata/cognito/api_gateway, an array for the rest).
+
+    Returns: JSON string {action, key, output_path, current_keys, missing_keys}.
+    """
+    try:
+        result = m2s_merge.merge_blueprint_key(str(_workspace()), key, value_json)
+    except ValueError as exc:
+        return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+    return json.dumps({"ok": True, **result}, ensure_ascii=False)
 
 
 @mcp.tool()

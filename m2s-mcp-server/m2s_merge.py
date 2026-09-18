@@ -86,6 +86,91 @@ def merge_blueprint(workspace: str) -> dict[str, Any]:
     }
 
 
+#: The only legal top-level keys in blueprint.json. Mirrors M2S's own
+#: schema (storage/blueprint.json) -- rejecting anything else here is an
+#: improvement over M2S's WriteFileTool.json_key, which accepts an
+#: arbitrary key name. This is a direct fix for a real failure mode: the
+#: architect agent twice invented its own top-level keys (auth_info,
+#: nodejs_dependencies, async_patterns, ...) when asked to produce a
+#: complete blueprint.json in one shot. Rejecting bad keys immediately,
+#: in the same tool-call turn, is cheaper than catching it via a later
+#: run_gate(phase="blueprint") call after the agent has already exited.
+BLUEPRINT_KEYS: frozenset[str] = frozenset(
+    {
+        "metadata",
+        "lambda_functions",
+        "dynamodb_tables",
+        "s3_buckets",
+        "sqs_queues",
+        "eventbridge_rules",
+        "lambda_invoke_permissions",
+        "cognito",
+        "api_gateway",
+        "dropped_functions",
+    }
+)
+
+
+def merge_blueprint_key(workspace: str, key: str, value_json: str) -> dict[str, Any]:
+    """Merge one section into storage/blueprint.json, one top-level key at a time.
+
+    Ported from M2S's WriteFileTool(json_key=...) (src/tools/file_tools.py:
+    _run_json_merge): the agent supplies a small JSON fragment for a single
+    key instead of producing one giant, internally-consistent document in
+    one shot. If the key already holds a list and the new value is also a
+    list, they're concatenated (so lambda_functions can be built up a few
+    functions at a time); otherwise the key is set/overwritten. The file is
+    created as {} if it doesn't exist yet, and is re-parsed after writing to
+    guarantee it's never left invalid.
+    """
+    if key not in BLUEPRINT_KEYS:
+        raise ValueError(
+            f"'{key}' is not a valid blueprint.json top-level key. "
+            f"Valid keys are: {sorted(BLUEPRINT_KEYS)}. "
+            "Do not invent new keys -- if none of these fit what you're "
+            "trying to record, put it in 'metadata.notes' instead."
+        )
+
+    try:
+        parsed_value = json.loads(value_json)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"value_json is not valid JSON: {exc}") from exc
+
+    ws = Path(workspace).resolve()
+    target = ws / "storage" / "blueprint.json"
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    if target.exists():
+        raw = target.read_text(encoding="utf-8")
+        data = json.loads(raw) if raw.strip() else {}
+        if not isinstance(data, dict):
+            data = {}
+    else:
+        data = {}
+
+    if key in data and isinstance(data[key], list) and isinstance(parsed_value, list):
+        data[key].extend(parsed_value)
+        action = "appended to"
+    else:
+        data[key] = parsed_value
+        action = "set"
+
+    target.write_text(json.dumps(data, indent=2, ensure_ascii=False), encoding="utf-8")
+
+    # Re-read and re-parse to guarantee the file on disk is valid JSON,
+    # exactly mirroring M2S's own post-write verification.
+    written = target.read_text(encoding="utf-8")
+    reparsed = json.loads(written)
+
+    return {
+        "action": action,
+        "key": key,
+        "output_path": str(target),
+        "current_keys": sorted(reparsed.keys()),
+        "missing_keys": sorted(BLUEPRINT_KEYS - reparsed.keys()),
+    }
+
+
 def merge_template(workspace: str) -> dict[str, Any]:
     ws = Path(workspace).resolve()
     output_dir = ws / "output"
