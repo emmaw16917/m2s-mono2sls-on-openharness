@@ -1,0 +1,6 @@
+__pycache__/
+*.py[cod]
+
+# M2S MCP server runtime workspace (regenerable pipeline output, not source)
+m2s-mcp-server/runs/
+Mono2Sls-artifacts/M2S/runs/
