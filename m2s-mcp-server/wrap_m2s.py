@@ -92,6 +92,16 @@ def _find_cfn_lint() -> str:
     )
 
 
+#: cfn-lint on this project's templates normally finishes in low single-digit
+#: seconds. Observed once hanging indefinitely (root cause not confirmed --
+#: cfn-lint exposes no obvious auto-network behavior via --help, so it may be
+#: an environment fluke rather than a network stall) with no timeout on the
+#: subprocess call, which then hung the calling agent (and the orchestrator
+#: polling it) forever, since nothing in this pipeline can distinguish "still
+#: legitimately working" from "will never return" without an explicit bound.
+_VALIDATE_SAM_TIMEOUT_SECONDS = 90
+
+
 def validate_sam(template_path: str) -> dict[str, Any]:
     """Run cfn-lint against a SAM template. Returns {ok, errors, warnings, raw}."""
     template = Path(template_path).resolve()
@@ -104,11 +114,24 @@ def validate_sam(template_path: str) -> dict[str, Any]:
         }
 
     cfn_lint = _find_cfn_lint()
-    proc = subprocess.run(
-        [cfn_lint, str(template)],
-        capture_output=True,
-        text=True,
-    )
+    try:
+        proc = subprocess.run(
+            [cfn_lint, str(template)],
+            capture_output=True,
+            text=True,
+            timeout=_VALIDATE_SAM_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "ok": False,
+            "errors": [
+                f"cfn-lint did not finish within {_VALIDATE_SAM_TIMEOUT_SECONDS}s and was killed. "
+                "This is not a template problem -- retry the call; if it keeps timing out, "
+                "investigate the cfn-lint installation/environment rather than editing the template."
+            ],
+            "warnings": [],
+            "raw": "",
+        }
 
     raw = (proc.stdout or "") + (proc.stderr or "")
     lines = [line for line in raw.splitlines() if line.strip()]
