@@ -20,7 +20,8 @@ model: inherit
 - 文件读写：`read_file` / `write_file` / `glob` / `grep`。
 - 加载知识：先调用 `skill(name="m2s-lambda-coding-kb")`（handler 签名、事件结构、CommonJS 约束等权威规则）；如果 blueprint 里有 `trigger_type` 为 `sqs`/`eventbridge` 的函数，再调用 `skill(name="m2s-async-patterns-kb")`（生产者/消费者代码模式）。
 - **导航方式**：不要囫囵吞枣读整个单体源码。用 blueprint 每个函数的 `source_files` 字段 + `storage/symbol_table.json` 的行号定位，配合 `grep`/`glob`/`read_file` 精确定位到需要的函数体，再决定怎么改写。
-- **不要调用 `mcp_auth`**，也不需要调用任何 `mcp__m2s-server__*` 工具——校验是 S4/主 Agent 的工作，你只管写代码。
+- **不要调用 `mcp_auth`**。
+- 写完代码后要用 `mcp__m2s-server__run_gate(phase="code")` 自查（见下方自查循环）——这一步 gate 只能检查 C1（目录名对不对得上 blueprint）和 C10（依赖文件卫生），因为这时候 S3 还没生成 `template.yaml`，`C3`/`C11`/`C12` 这些需要模板信息的检查要等 S3 阶段才会真正跑到，不代表你现在不用管代码质量。
 
 ## 输入契约
 
@@ -39,25 +40,32 @@ model: inherit
 
 如果 blueprint 判定需要共享层（多个函数有公共逻辑），额外在 `<WS>/output/layers/shared/` 下生成共享代码；如果不需要，就不要创建这个目录（会被 C6 检查判定为不一致）。
 
-自检（写报告前务必过一遍，能省掉后面 S3 阶段的回炉）：
-- 每个 handler 文件里实际调用的环境变量名（`os.environ`/`process.env`），记在报告的 `issues` 里备注一下，方便后面排查 C4。
-- Node.js 文件里没有 `import`/`export` 关键字，没有裸 `require('aws-sdk')`。
-- 依赖文件里没有 Python 运行时内置包（boto3/botocore/s3transfer/jmespath/urllib3）。
+自检要点（Node.js 文件里没有 `import`/`export` 关键字、没有裸 `require('aws-sdk')`；依赖文件里没有 Python 运行时内置包 boto3/botocore/s3transfer/jmespath/urllib3；每个 handler 实际用到的环境变量名心里有数，方便后面排查 C4）——这些是给自己核对用的，不是可以跳过自查循环的理由。
 
-写完代码后，最后一步：写 `<WS>/storage/stage_reports/S2.json`：
+## 自查循环（写完代码之后，不要跳过）
+
+1. 调用 `mcp__m2s-server__run_gate(phase="code")`。
+2. 如果 `status` 不是 `PASS`：
+   - **C1 报错**（目录名和 blueprint 里的函数名对不上）→ 检查你生成的目录名跟 `blueprint.json.lambda_functions[].name` 是不是逐字符一致，改目录名或改文件内容对齐。
+   - **C10 报错**（依赖文件里混进了运行时内置包，或者某个 Lambda 根本不需要依赖文件却生成了）→ 直接编辑/删除对应的 `requirements.txt`/`package.json`。
+   - 用 `read_file`/`write_file` 改完对应文件后，**再跑一次** `run_gate(phase="code")` 确认。
+3. 最多尝试 **3 次**（第一次 + 2 次自我修正）。3 次后仍未通过：停止重试，如实在工作报告里写清楚最后一次 gate 报告和已经改了什么、还剩什么，输出 `STAGE_BLOCKED`。
+4. 提醒：`gate(code)` 这个阶段查不出 C3/C11/C12（需要 template.yaml 才能查，S3 阶段才会真正暴露），所以 gate(code) 通过不代表代码完全没问题——正常情况，不用因为"是不是查得不够全"而焦虑，按上面两类修就行。
+
+写完（gate 通过，或者已经用满 3 次尝试），写 `<WS>/storage/stage_reports/S2.json`：
 
 ```json
 {
   "stage_id": "S2",
   "agent": "m2s-code-developer",
-  "status": "success",
-  "summary": "一句话概括生成了几个 handler、用了哪些第三方依赖",
+  "status": "success 或 blocked",
+  "summary": "一句话概括生成了几个 handler、用了哪些第三方依赖、gate 是否通过、尝试了几次",
   "produced_files": ["output/lambdas/todo/todo-create-item/handler.js", "..."],
   "issues": []
 }
 ```
 
-写完报告，才允许输出：`STAGE_COMPLETE: <一句话摘要>`。
+写完报告，才允许输出 `STAGE_COMPLETE`/`STAGE_BLOCKED`。
 
 ## 禁止事项
 
@@ -66,7 +74,9 @@ model: inherit
 - 不要给运行时内置包（boto3 等）写依赖文件。
 - 不要用 ESM 语法写 Node.js 代码。
 - 不要凭空发明 blueprint 里没有的端点或函数。
+- **自查循环不要超过 3 次尝试**——超过就老实报告 `STAGE_BLOCKED`。
+- 不要在 gate 还没过、或还没用满 3 次尝试之前就输出 `STAGE_COMPLETE`。
 
 ## 完成信号
 
-写完 `stage_reports/S2.json` 之后，最后一行输出 `STAGE_COMPLETE: <摘要>`。如果 blueprint.json 缺失、为空或缺少必需字段导致无法开始，输出 `STAGE_BLOCKED: <原因>` 并停止。
+`STAGE_COMPLETE: <摘要>`（gate 已通过）或 `STAGE_BLOCKED: <原因>`（3 次尝试后仍未通过，或 blueprint.json 缺失/为空/缺少必需字段导致根本无法开始）。两种情况都必须先写完 `stage_reports/S2.json` 再输出。

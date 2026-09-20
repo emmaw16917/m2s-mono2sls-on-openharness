@@ -79,17 +79,15 @@ def validate_sam(template_path: str) -> str:
 
 
 @mcp.tool()
-def merge_blueprint_key(key: str, value_json: str) -> str:
+def merge_blueprint_key(key: str, value_json: str, mode: str = "append") -> str:
     """Merge one section into storage/blueprint.json, one top-level key at a time.
 
     Build the blueprint incrementally instead of writing one giant JSON
     document in a single shot: call this once per top-level key (e.g. once
     for "metadata", once for "cognito", once or more for "lambda_functions"
-    if you want to add functions in a few batches -- if the key already
-    holds a list and value_json is also a list, they're concatenated rather
-    than overwritten). The file is validated as JSON on every call, so a
-    malformed value_json is rejected immediately instead of surfacing later
-    in run_gate.
+    if you want to add functions in a few batches). The file is validated as
+    JSON on every call, so a malformed value_json is rejected immediately
+    instead of surfacing later in run_gate.
 
     Args:
         key: one of metadata, lambda_functions, dynamodb_tables, s3_buckets,
@@ -98,11 +96,19 @@ def merge_blueprint_key(key: str, value_json: str) -> str:
             rejected -- do not invent new top-level keys.
         value_json: a JSON string holding the value for that key (an object
             for metadata/cognito/api_gateway, an array for the rest).
+        mode: "append" (default) -- for array values, concatenates onto
+            whatever is already there, and rejects the call if an item with
+            the same "name" already exists (use this for genuinely NEW
+            items). "replace" -- overwrites the key wholesale regardless of
+            type, no duplicate check. Use "replace" when you're
+            self-correcting something you already submitted (e.g. after
+            run_gate flagged a problem with one function you already wrote):
+            pass the FULL corrected array, not just the changed item.
 
     Returns: JSON string {action, key, output_path, current_keys, missing_keys}.
     """
     try:
-        result = m2s_merge.merge_blueprint_key(str(_workspace()), key, value_json)
+        result = m2s_merge.merge_blueprint_key(str(_workspace()), key, value_json, mode=mode)
     except ValueError as exc:
         return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
     return json.dumps({"ok": True, **result}, ensure_ascii=False)

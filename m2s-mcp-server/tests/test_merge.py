@@ -44,6 +44,31 @@ def test_merge_blueprint_key_allows_distinct_names_after_append(tmp_path):
     assert [f["name"] for f in merged["lambda_functions"]] == ["fn1", "fn2"]
 
 
+def test_merge_blueprint_key_replace_mode_bypasses_duplicate_check(tmp_path):
+    m2s_merge.merge_blueprint_key(str(tmp_path), "lambda_functions", json.dumps([{"name": "fn1", "auth": "none"}]))
+    result = m2s_merge.merge_blueprint_key(
+        str(tmp_path), "lambda_functions", json.dumps([{"name": "fn1", "auth": "required"}]), mode="replace"
+    )
+    assert result["action"] == "replaced"
+    merged = json.loads((tmp_path / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    assert merged["lambda_functions"] == [{"name": "fn1", "auth": "required"}]
+
+
+def test_merge_blueprint_key_replace_mode_on_fresh_key(tmp_path):
+    result = m2s_merge.merge_blueprint_key(str(tmp_path), "s3_buckets", json.dumps([]), mode="replace")
+    assert result["action"] == "replaced"
+    merged = json.loads((tmp_path / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    assert merged["s3_buckets"] == []
+
+
+def test_merge_blueprint_key_rejects_invalid_mode(tmp_path):
+    try:
+        m2s_merge.merge_blueprint_key(str(tmp_path), "metadata", "{}", mode="overwrite")
+        assert False, "expected ValueError"
+    except ValueError as exc:
+        assert "mode" in str(exc)
+
+
 def test_merge_blueprint_key_overwrites_non_array(tmp_path):
     m2s_merge.merge_blueprint_key(str(tmp_path), "cognito", json.dumps({"enabled": False}))
     m2s_merge.merge_blueprint_key(str(tmp_path), "cognito", json.dumps({"enabled": True}))

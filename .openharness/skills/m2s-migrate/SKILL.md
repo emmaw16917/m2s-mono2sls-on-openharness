@@ -8,7 +8,11 @@ argument-hint: "[可选：从某个阶段重跑，例如 'from S2']"
 
 # m2s-migrate：Mono2Sls → OpenHarness 迁移编排协议
 
-你（主 Agent）负责编排这条流水线。你自己不写业务代码、不写 blueprint、不写 template——那些工作全部通过 `agent` 工具 spawn 给下面定义的四个子 Agent。你只做：调度、轮询、跑 gate、按 gate 结果裁决下一步。
+你（主 Agent）负责编排这条流水线。你自己不写业务代码、不写 blueprint、不写 template——那些工作全部通过 `agent` 工具 spawn 给下面定义的四个子 Agent。
+
+**重要变化**：S1（架构师）、S2（代码开发）、S3c（模板组装）现在都会**自己**跑对应的 gate 并自我修正（最多 3 次尝试）才会报 `STAGE_COMPLETE`——不再是"子 Agent 写完就交差、主 Agent 发现问题再决定回炉哪个阶段"。这是为了两件事：①把重试留在同一个 agent 的同一次会话里，它比重新 spawn 一个全新 agent 更清楚自己刚才写错了什么；②避免主 Agent 在多个阶段之间来回猜"这个报错到底是谁的锅"（这条路线上真实出过一次误判：sam-engineer 的 CodeUri 路径写错，主 Agent 却一路回炉到了 architect）。
+
+所以你的职责简化为：**spawn、轮询、每个阶段报完成后自己做一次独立的 gate 复核（不要只信子 Agent 自己说的"过了"）、S4 完成后亲自跑 `gate(final)` 做最终裁决**。
 
 ## §0 常量（每次 spawn 前先在心里/prompt 里替换成绝对路径，不要用相对路径）
 
@@ -66,22 +70,24 @@ P0 是你唯一自己直接调用 MCP 工具的地方；S1-S4 全部通过 `agen
 2. Agent 名：例如 `m2s-architect`（写进 `subagent_type` 参数，不是写进 prompt 文本）
 3. 绝对路径清单：`MONOLITH`、`WS`（用 §0 的实际路径，不要用变量名字面量）
 4. 任务摘要：这一阶段具体要产出什么文件（引用 §5 文件契约表）
-5. 回炉信息（如果是第 2/3 次 spawn 同一阶段）：**上一次的工作报告全文 + gate 报告全文**，拼接进 prompt，不要只给结论
+5. 回炉信息（如果是你自己发起的第 2 次 spawn 同一阶段——见 §3，你自己最多回炉 1 次）：**上一次的工作报告全文 + 你复核用的 gate 报告全文**，拼接进 prompt，不要只给结论
 6. 明确写："完成后必须写 `WS/storage/stage_reports/<STAGE_ID>.json`，再输出 `STAGE_COMPLETE: <一句话摘要>`"
 7. **明确写："如果调用工具或等待过程中遇到网络错误（例如 'Network error: Connection error'），重试 1-2 次再继续，不要因为一次网络错误就直接放弃或提前结束"**——这是实测过的真实故障模式：单次简单请求通常没问题，但长流程里调用次数一多，偶发的连接错误就会打断正在正常工作的子 Agent（不是逻辑错误，是外部网络抖动）。这条提醒必须写进**每一次** spawn 的 prompt 里，子 Agent 自己的 `.md` 没有这条规则。
 
-## §3 分层裁决规则
+## §3 分层裁决规则（已大幅简化——回炉判断大部分下放给子 Agent 自己了）
 
-跑完每个阶段的 gate 之后，按下表判断：
+S1/S2/S3c 现在自己负责"跑 gate → 不过就自己改 → 最多 3 次"这一整套（细节见各自的 `.md`），所以你不需要再去猜"这个 check_id 失败该回炉哪个阶段"——写错东西的那个 agent 自己会在同一次会话里发现并修正，比你事后靠 check_id 分类猜测准得多。
 
-| 阶段 | gate phase | 重伤判定（来自 gates.py） | 重伤时怎么办 | 轻伤时怎么办 |
-|---|---|---|---|---|
-| S1 architect | `blueprint` | B0 任一 ERROR | 回炉 spawn m2s-architect（带上 gate 报告全文） | B0 本身没有"轻伤"这一档——任一失败都视为重伤，因为 validator 修不了蓝图语义 |
-| S2 code-developer | `code` | C1（code 方向）失败 | 回炉 spawn m2s-code-developer | 若只是 C3/C10/C11/C12 且 ≤2 项：记下报告，先往下走到 S3，最后连同 S4 一起注入 validator prompt 修 |
-| S3 sam-engineer×3 | `template` | 机械失败 >2 项 | 看失败的 check_id：全部是 C1(template)/C2/C7/C7b/C8/C9 → 回炉 sam-engineer（从 S3a 重新走三步）；出现 C3/C10/C11/C12 → 回炉 code-developer（说明代码本身有问题，不是模板问题） | ≤2 项：记下报告，往下走到 S4，注入 validator prompt |
-| S4 validator | `final` | 任一失败 | 回炉 spawn m2s-validator（带上 gate 报告，≤2 次） | 不适用——final 是终局裁决，没有"轻伤放过" |
+你收到某阶段的 `STAGE_COMPLETE`/`STAGE_BLOCKED` 之后，按下面这套简化流程处理：
 
-**重试上限**：每阶段最多 spawn 3 次（初次 + 2 次回炉，N=2）。达到上限仍失败：停止流水线，把该阶段的完整 gate 报告和工作报告原样输出给用户，不要继续往后走，也不要自己动手改文件。
+1. **先做独立复核**：不管子 Agent 报的是 `STAGE_COMPLETE` 还是别的，你自己跑一次对应的 `mcp__m2s-server__run_gate(phase=...)`（S1→blueprint，S2→code，S3c 之后→template）。**这一步不能省**——子 Agent 自己说"过了"不代表真过了，`run_gate` 才是权威。
+2. **复核通过** → 直接进入下一阶段，不用做任何回炉判断。
+3. **复核没过，分两种情况**：
+   - 子 Agent 报的是 `STAGE_BLOCKED` 且在报告里**明确指出**"这不是我这阶段的问题，是上游 XX 阶段的问题"（比如 S3c 自查后发现 C3/C10/C11/C12 报错是 handler 代码本身写错了，不是模板路径问题）→ 相信这个判断，回炉到它指出的那个更早的阶段，重新走一遍（该阶段会再自己走一次完整的 3 次自查循环）。
+   - 其他情况（子 Agent 报 `STAGE_COMPLETE` 但你的复核不通过，或者报 `STAGE_BLOCKED` 没有说清楚是谁的问题）→ 把你这次复核的 gate 报告和子 Agent 的工作报告一起塞进新的 spawn prompt，**对同一个阶段再 spawn 一次**（它会重新走一遍自己的 3 次自查循环，这次带着更多上下文）。
+4. **每个阶段最多让你自己重新 spawn 1 次**（子 Agent 内部已经自己尝试过 3 次了，所以一个阶段全流程最多是"子 Agent 自查 3 次 + 你重新 spawn 1 次（该次又是 3 次自查）"）。这一次之后仍然不通过：停止流水线，把完整的 gate 报告和工作报告原样交给用户，不要继续往后走，也不要自己动手改文件。
+
+S4（validator）不适用上面这套——`final` 是终局裁决，`gate(final)` 永远由你亲自跑，不下放、没有"轻伤放过"。validator 自己没通过就报 `STAGE_BLOCKED`，你按第 4 条的次数上限回炉，用满次数仍不过就如实报告失败（见 §6）。
 
 ## §4 完成度协议（三层信号）
 
@@ -115,7 +121,7 @@ output/template.part1.yaml            S3a 产出（AWSTemplateFormatVersion..Glo
 storage/stage_reports/S3a.json        S3a 工作报告
 output/template.part2.yaml            S3b 产出（Function 资源 + FUNCTIONS_METADATA 块 + Outputs）
 storage/stage_reports/S3b.json        S3b 工作报告
-output/template.yaml                  S3c 产出（用 MERGE 合并 part1+part2 后生成，S3c 自己不手写模板内容，只负责合并+调 validate_sam）
+output/template.yaml                  S3c 产出（用 MERGE 合并 part1+part2 后生成，S3c 自己不手写原始模板内容，但会为了过 gate(template)/validate_sam 直接编辑修正这份合并产物）
 storage/stage_reports/S3c.json        S3c 工作报告
 output/consistency_report.json        S4 产出
 storage/stage_reports/S4.json         S4 工作报告
@@ -131,8 +137,8 @@ storage/stage_reports/S4.json         S4 工作报告
 
 **蓝图（S1）**：这条曾经出过历史崩溃——architect 把 blueprint 分写到 blueprint2/3/4.json 却从没合并，blueprint.json 只剩残骸。现在的解法是 `mcp__m2s-server__merge_blueprint_key` 工具本身：architect 一次只写一个顶层字段，工具在 Python 里做确定性合并、每次调用后立即重新解析校验 JSON 合法性，还会拒绝不在 10 个合法 key 之内的字段名——不再需要"分节文件 + 主 Agent 事后合并"这一层，S1 阶段你不需要自己跑任何合并命令。S1 收到 `STAGE_COMPLETE` 后，直接 `Read WS/storage/blueprint.json` 回读一次确认非空、10 个 key 齐全，再进入 `gate(blueprint)`。
 
-**模板（S3）**：这一层仍然需要主 Agent 亲自合并，因为 SAM 模板是 YAML 而不是 JSON，`merge_blueprint_key` 这套 JSON 增量合并机制不适用。S3c 阶段你要亲自跑：
+**模板（S3）**：合并职责现在下放给 S3c 自己（因为 S3c 已经是一个会自查+重试的完整会话，不再是"写完就走人"的一次性动作，不需要主 Agent 再介入这一步）。S3c 自己会用 Bash 跑：
 ```
 python "MERGE" template "WS"
 ```
-（把 `MERGE`/`WS` 换成 §0 里的实际绝对路径）再进入 `gate(template)`。**不要让 sam-engineer 自己调用 m2s_merge.py**——合并是主 Agent 的职责，子 Agent 只管产出 `template.part1.yaml`/`template.part2.yaml` 分片文件，这样即使子 Agent 中途失败，合并这一步也不会跟着崩。
+（`MERGE`/`WS` 换成 §0 里的实际绝对路径），然后自己跑 `gate(template)` + `validate_sam` 的自查循环。你只需要在 S3c 报 `STAGE_COMPLETE` 之后做一次独立复核（§3 第 1 步），不需要自己跑合并命令。

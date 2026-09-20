@@ -67,7 +67,10 @@ model: inherit
 
 - 文件读写：`read_file` / `glob` / `grep`。
 - 加载知识：先 `skill(name="m2s-basic-serverless-kb")`；如果 `entry_point_dependencies` 非空，再 `skill(name="m2s-async-patterns-kb")`。
-- **写 blueprint 用 `mcp__m2s-server__merge_blueprint_key(key=..., value_json=...)`，一次只写一个顶层字段**，见下方输出契约——**不要用 `write_file` 直接整份写 `storage/blueprint.json`**，那样一旦某个字段想错了就是一整份重来，而且工具本身不会告诉你写错了哪里；`merge_blueprint_key` 每次调用都会立即校验 JSON 合法性、校验 key 名是否合法，错了会当场报错，你可以马上改正再调一次。
+- **写 blueprint 用 `mcp__m2s-server__merge_blueprint_key(key=..., value_json=..., mode=...)`，一次只写一个顶层字段**，见下方输出契约——**不要用 `write_file` 直接整份写 `storage/blueprint.json`**，那样一旦某个字段想错了就是一整份重来，而且工具本身不会告诉你写错了哪里；`merge_blueprint_key` 每次调用都会立即校验 JSON 合法性、校验 key 名是否合法，错了会当场报错，你可以马上改正再调一次。
+  - `mode="append"`（默认）：数组类型的字段会拼接到已有内容后面，**同名条目会被拒绝**（防止你不小心把已经提交过的函数又整份重新提交一遍导致重复）。
+  - `mode="replace"`：整体覆盖这个字段，跳过重复检测——**自查发现某个已提交字段有问题、需要修正时用这个**，传完整的修正后数组（不是只传改动的那一项）。
+- 自查/修正阶段用 `mcp__m2s-server__run_gate(phase="blueprint")` 检查自己写的 blueprint 有没有 B0 类问题，见下方"自查循环"。
 - **不要调用 `mcp_auth`**：`m2s-server` 是本地进程，不需要认证。
 
 ## 输入契约
@@ -117,29 +120,39 @@ eventbridge_rules, lambda_invoke_permissions, cognito, api_gateway, dropped_func
    SQS/EventBridge 消费者 Lambda 没有 `entry_points`/`auth`，例如 `{"name": "update-bestsellers", "trigger_type": "sqs", "sqs_source": "BestsellerUpdateQueue", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "source_files": ["utils/bestsellers.js"]}`。
 10. `merge_blueprint_key(key="dropped_functions", value_json=<数组>)` —— 每项 `{item, type: "endpoint"|"code"|"table"|"script", reason}`。
 
-## 写完之后的强制核对（不要跳过）
+## 自查循环（写完之后，不要跳过——这是你的任务的一部分，不是可选步骤）
+
+写完全部 10 个字段后，**你自己负责把 gate 跑到过，而不是把半成品甩给主 Agent**：
+
+1. 调用 `mcp__m2s-server__run_gate(phase="blueprint")`。
+2. 如果 `status` 不是 `PASS`：读懂 `mechanical_failures` 里每一条 B0 报错，定位是哪个字段的问题，用 `merge_blueprint_key(..., mode="replace")` 传完整修正后的值改掉那个字段（**不要用 `mode="append"`去"补"一个已经提交过的字段**，会变成重复而不是修正）。改完**再跑一次** `run_gate(phase="blueprint")` 确认。
+3. 最多在这个循环里尝试 **3 次**（第一次 + 2 次自我修正）。3 次之后仍然是 `PASS` 以外的状态：停止重试，如实在工作报告里写清楚最后一次的 gate 报告和你已经改过什么、还剩什么没解决，输出 `STAGE_BLOCKED`（见下方完成信号），把决定权交还主 Agent，不要继续无限自查。
+4. 常见 B0 报错的对应修法：
+   - "missing required key" → 那个 key 你根本没调用 `merge_blueprint_key` 写过，直接补写（`mode="append"` 即可，因为是全新字段）。
+   - "endpoint 未被覆盖" → 有端点既没进 `lambda_functions[].entry_points` 也没进 `dropped_functions`，用 `mode="replace"` 把 `lambda_functions` 或 `dropped_functions` 改成包含它的完整版本。
+   - "claimed by more than one place" → 同一个端点被两个地方（两个函数、或函数+dropped_functions）同时认领了，通常是你之前提交过一次又改名重提交导致的——用 `mode="replace"` 传去重后的完整数组。
+   - "auth 必须是 required/none" / "runtime 缺失或用了过时版本" → 定位到具体那个函数，`mode="replace"` 传修正后的完整 `lambda_functions` 数组。
+
+## 写完之后的强制核对（在 gate 通过之后，写报告之前）
 
 1. 调用 `read_file` 读回 `storage/blueprint.json`，确认 10 个 key 全部存在。
-2. **覆盖检查**：`analysis_report.json.entry_points` 里的每一个端点，必须要么出现在某个 `lambda_functions[].entry_points` 里，要么出现在 `dropped_functions`（type="endpoint"）里——两边加起来覆盖全部、不重不漏，一个都不能漏。
-3. 认证端点/中间件/建表脚本确实进了 `dropped_functions`，没有被误设计成 Lambda。
-4. 如果 `dynamodb_info.used=false`，确认 `dynamodb_tables=[]`；没有文件存储标签，确认 `s3_buckets=[]`；没有跨 Lambda 关系，确认 `sqs_queues`/`eventbridge_rules`/`lambda_invoke_permissions` 都是 `[]`。
-5. 每个 `api` 类型的 Lambda 都有 `auth` 字段，值只能是 `"required"`/`"none"`。
-6. `runtime` 没有用到 `nodejs18.x`/`nodejs20.x`。
+2. 认证端点/中间件/建表脚本确实进了 `dropped_functions`，没有被误设计成 Lambda。
+3. 如果 `dynamodb_info.used=false`，确认 `dynamodb_tables=[]`；没有文件存储标签，确认 `s3_buckets=[]`；没有跨 Lambda 关系，确认 `sqs_queues`/`eventbridge_rules`/`lambda_invoke_permissions` 都是 `[]`。
 
-核对完，写 `<WS>/storage/stage_reports/S1.json`：
+核对完（gate 已经是 PASS，或者已经用满 3 次尝试），写 `<WS>/storage/stage_reports/S1.json`：
 
 ```json
 {
   "stage_id": "S1",
   "agent": "m2s-architect",
-  "status": "success",
-  "summary": "一句话概括设计了几个 Lambda、有没有异步流程",
+  "status": "success 或 blocked",
+  "summary": "一句话概括设计了几个 Lambda、有没有异步流程、gate 是否通过、尝试了几次",
   "produced_files": ["storage/blueprint.json"],
   "issues": []
 }
 ```
 
-写完报告，才允许输出：`STAGE_COMPLETE: <一句话摘要>`。
+写完报告，才允许输出 `STAGE_COMPLETE`/`STAGE_BLOCKED`。
 
 ## 禁止事项
 
@@ -149,7 +162,9 @@ eventbridge_rules, lambda_invoke_permissions, cognito, api_gateway, dropped_func
 - 不要凭训练知识"脑补"跨 Lambda 调用关系，必须依据 `entry_point_dependencies`/`call_graph`，必要时读源码确认。
 - 不要把任何用户凭据字段迁移进 DynamoDB。
 - 不要给 Cognito 加 `post_confirmation` 触发器或任何 Cognito 触发的 Lambda。
+- **自查循环不要超过 3 次尝试**——超过就老实报告 `STAGE_BLOCKED`，不要陷入自己跟自己死磕的循环。
+- 不要在 gate 还没过、或还没用满 3 次尝试之前就输出 `STAGE_COMPLETE`。
 
 ## 完成信号
 
-`STAGE_COMPLETE: <摘要>`。如果 `analysis_report.json`/`symbol_table.json` 缺失或损坏导致无法开始，输出 `STAGE_BLOCKED: <原因>` 并停止。
+`STAGE_COMPLETE: <摘要>`（gate 已通过）或 `STAGE_BLOCKED: <原因>`（3 次尝试后仍未通过，或 `analysis_report.json`/`symbol_table.json` 缺失/损坏导致根本无法开始）。两种情况都必须先写完 `stage_reports/S1.json` 再输出。

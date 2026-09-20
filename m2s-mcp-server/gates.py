@@ -899,10 +899,15 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
         severe = any(f["severity"] == "ERROR" for f in checks)
 
     elif phase == "code":
-        checks = check_c1_code(ws)
+        # check_c10 doesn't take `template` at all (it's a plain filesystem
+        # scan of requirements.txt/package.json), so it must not be gated
+        # behind template.yaml existing -- S2 (code-developer) runs before
+        # S3 ever produces a template, so gate(phase="code") would otherwise
+        # never be able to catch a C10 problem at the point it's most
+        # useful (before the code-developer's own self-check loop exits).
+        checks = check_c1_code(ws) + check_c10(ws)
         if template_error is None and template:
             checks += check_c3(ws, template)
-            checks += check_c10(ws)
             checks += check_c11(ws, template)
             checks += check_c12(ws, template)
         c1_code_failed = any(f["check_id"] == "C1" for f in checks)

@@ -111,17 +111,25 @@ BLUEPRINT_KEYS: frozenset[str] = frozenset(
 )
 
 
-def merge_blueprint_key(workspace: str, key: str, value_json: str) -> dict[str, Any]:
+def merge_blueprint_key(workspace: str, key: str, value_json: str, mode: str = "append") -> dict[str, Any]:
     """Merge one section into storage/blueprint.json, one top-level key at a time.
 
     Ported from M2S's WriteFileTool(json_key=...) (src/tools/file_tools.py:
     _run_json_merge): the agent supplies a small JSON fragment for a single
     key instead of producing one giant, internally-consistent document in
     one shot. If the key already holds a list and the new value is also a
-    list, they're concatenated (so lambda_functions can be built up a few
-    functions at a time); otherwise the key is set/overwritten. The file is
-    created as {} if it doesn't exist yet, and is re-parsed after writing to
-    guarantee it's never left invalid.
+    list, they're concatenated by default (so lambda_functions can be built
+    up a few functions at a time); otherwise the key is set/overwritten. The
+    file is created as {} if it doesn't exist yet, and is re-parsed after
+    writing to guarantee it's never left invalid.
+
+    Args:
+        mode: "append" (default) concatenates array values and rejects a
+            duplicate item name (see below). "replace" always overwrites the
+            key wholesale, bypassing both the concat and the duplicate check
+            -- use this when you're correcting something you already
+            submitted (e.g. fixing one function's entry_points after
+            self-checking against run_gate), not adding something new.
     """
     if key not in BLUEPRINT_KEYS:
         raise ValueError(
@@ -130,6 +138,8 @@ def merge_blueprint_key(workspace: str, key: str, value_json: str) -> dict[str, 
             "Do not invent new keys -- if none of these fit what you're "
             "trying to record, put it in 'metadata.notes' instead."
         )
+    if mode not in {"append", "replace"}:
+        raise ValueError(f"mode must be 'append' or 'replace', got {mode!r}.")
 
     try:
         parsed_value = json.loads(value_json)
@@ -148,7 +158,10 @@ def merge_blueprint_key(workspace: str, key: str, value_json: str) -> dict[str, 
     else:
         data = {}
 
-    if key in data and isinstance(data[key], list) and isinstance(parsed_value, list):
+    if mode == "replace":
+        data[key] = parsed_value
+        action = "replaced"
+    elif key in data and isinstance(data[key], list) and isinstance(parsed_value, list):
         # Guard against accidental duplicate submission: arrays concatenate
         # rather than replace, so resubmitting an item you already sent
         # (e.g. after renaming it) silently doubles it up instead of fixing
@@ -156,7 +169,9 @@ def merge_blueprint_key(workspace: str, key: str, value_json: str) -> dict[str, 
         # lambda_functions list after renaming one function, producing 12
         # entries (6 real + 6 near-duplicates) instead of 6. Only checked
         # for dict items carrying a "name" field (lambda_functions,
-        # dynamodb_tables, s3_buckets, sqs_queues all use one).
+        # dynamodb_tables, s3_buckets, sqs_queues all use one). Use
+        # mode="replace" instead of resubmitting via "append" to fix an
+        # item you already sent.
         existing_names = {
             item.get("name") for item in data[key] if isinstance(item, dict) and item.get("name")
         }
@@ -165,13 +180,12 @@ def merge_blueprint_key(workspace: str, key: str, value_json: str) -> dict[str, 
         if collision:
             raise ValueError(
                 f"'{key}' already contains an item named {sorted(collision)}. "
-                "merge_blueprint_key APPENDS to arrays, it does not replace items -- "
-                "resubmitting the same name (e.g. after renaming or editing it) would "
-                "create a duplicate, not a correction. If you need to change an item "
-                "you already submitted, you must include the FULL corrected array "
-                "including all previously-submitted items you want to keep, and the "
-                "workspace's blueprint.json needs to be reset for this key first "
-                "(ask the orchestrator, or start this key over from a clean run)."
+                "mode='append' (the default) only adds new items, it does not replace "
+                "existing ones -- resubmitting the same name (e.g. after renaming or "
+                "editing it) would create a duplicate, not a correction. If you're "
+                "fixing something you already submitted, call this again with "
+                "mode='replace' and the FULL corrected array (including every item you "
+                "want to keep, not just the one you're changing)."
             )
         data[key].extend(parsed_value)
         action = "appended to"

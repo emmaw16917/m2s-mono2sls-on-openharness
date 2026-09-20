@@ -67,29 +67,37 @@ Outputs:
 
 **S3b 禁止事项**：不要生成 `AWSTemplateFormatVersion`/`Globals`/共享资源（那是 S3a 的产物，你这个文件不需要顶层模板结构，只需要能被拼接进 Resources 段的资源块）。禁止调用 `mcp__m2s-server__validate_sam`（同 S3a，`template.part2.yaml` 单独不是合法模板）。
 
-### 如果 STAGE_ID = S3c（组装 + 校验阶段）
+### 如果 STAGE_ID = S3c（组装 + 自查循环）
 
-**你不手写任何模板内容**。你的工作是：
+**你不手写模板的原始内容**（那是 S3a/S3b 已经写好的 `template.part1.yaml`/`template.part2.yaml`），但你负责把它们组装成最终的 `template.yaml`、跑通验证、并且自己把发现的问题改掉——这是这次调整后新加的职责，你不能只做组装+校验就交差。
 
-1. 确认 `<WS>/output/template.part1.yaml` 和 `template.part2.yaml` 都存在（`glob`/`read_file` 检查一下）。
-2. 调用 `mcp__m2s-server__validate_sam(template_path="<WS>/output/template.yaml")` 校验——**注意**：合并这一步由主 Agent 用 `m2s_merge.py` 完成，不是你自己拼接文件；你只需要在 spawn prompt 明确写"主 Agent 已经合并好了"之后，直接对合并出来的 `template.yaml` 跑校验。
-3. 如果 `validate_sam` 返回 `ok: false`，读懂 `errors` 里的 cfn-lint 报错，直接编辑 `output/template.yaml` 修正（常见模式：`AllowCredentials` 和 `AllowOrigin: '*'` 冲突时，直接删掉 `AllowCredentials`，不要改成 `false`；遇到 "Invalid property" 直接删掉那个属性；类型不匹配就改成正确类型），最多重试 3 次。
-4. 3 次以内校验通过，或者用满 3 次仍失败：都要停下来写报告，不要无限重试。
+1. 确认 `<WS>/output/template.part1.yaml` 和 `template.part2.yaml` 都存在（`glob`/`read_file` 检查一下）；缺了任何一个说明 S3a/S3b 没做完，直接 `STAGE_BLOCKED`，不要自己临时补写内容。
+2. 用 Bash 跑合并命令（把 `WS` 换成 spawn prompt 里给的绝对路径）：
+   ```
+   "C:\Users\36029\miniconda3\envs\mono2sls\python.exe" "D:\Emma\MyLab\Mono2SLs\m2s-mcp-server\m2s_merge.py" template "WS"
+   ```
+   这一步是纯文本拼接 `template.part1.yaml` + `template.part2.yaml`，产出 `output/template.yaml`——不涉及你自己编造内容，放心跑。
+3. **自查循环**：
+   a. 调用 `mcp__m2s-server__run_gate(phase="template")`。如果有 `mechanical_failures`（C1/C2/C7/C7b/C8/C9 这类结构性问题——比如 `CodeUri` 路径拼错、Path/Method 对不上 blueprint），直接编辑 `output/template.yaml` 改正（**不要去改 `template.part1.yaml`/`template.part2.yaml`，改完之后的 `template.yaml` 才是最终产物，分片文件不用保持同步**）。
+   b. 调用 `mcp__m2s-server__validate_sam(template_path="<WS>/output/template.yaml")`。如果 `ok: false`，读懂 `errors` 里的 cfn-lint 报错直接修（常见模式：`AllowCredentials` 和 `AllowOrigin: '*'` 冲突时，直接删掉 `AllowCredentials`，不要改成 `false`；"Invalid property" 直接删掉那个属性；类型不匹配就改成正确类型）。
+   c. 两边都过了才算通过；只要有一边没过，改完之后**两个都要重新跑一次**（`run_gate` 和 `validate_sam` 都要）再判断。
+4. 最多在 3a 步骤上循环 **3 次**（第一次 + 2 次自我修正）。3 次后仍未两边都通过：停止重试，如实在工作报告里写清楚最后一次 `run_gate`/`validate_sam` 的结果和已经改了什么，输出 `STAGE_BLOCKED`。
+5. **常见的一个具体坑**：`CodeUri` 路径必须是相对 `output/` 的路径且以 `/` 结尾（例如 `lambdas/todo/todo-get-item/`），不要漏掉 `lambdas/` 这一段前缀，也不要写成绝对路径——如果 `run_gate` 报 C1/C2 说某个 `CodeUri` 指向的目录不存在，先检查是不是这个前缀漏了。
 
-**S3c 禁止事项**：不要自己调用 `python m2s_merge.py`——那是主 Agent 的职责（保证子 Agent 崩溃不会连累合并这一步）；如果发现 `template.yaml` 还不存在，说明主 Agent 还没跑合并，直接在报告里写 `STAGE_BLOCKED`，不要自己临时拼接。
+**S3c 禁止事项**：不要去改 `template.part1.yaml`/`template.part2.yaml`（那是 S3a/S3b 的产物，修正只作用于合并后的 `template.yaml`）。
 
 ## 硬性工具说明（三个子阶段共用）
 
-- 文件读写：`read_file` / `write_file` / `glob` / `grep`。
+- 文件读写：`read_file` / `write_file` / `glob` / `grep`；S3c 还需要 Bash（跑合并命令）。
 - 知识：`skill(name="m2s-sam-kb")`（S3a/S3b 都要先加载这个）。
-- MCP 工具：只有 S3c 需要 `mcp__m2s-server__validate_sam`；S3a/S3b 不调用任何 MCP 工具。
+- MCP 工具：S3c 需要 `mcp__m2s-server__validate_sam` 和 `mcp__m2s-server__run_gate`；S3a/S3b 不调用任何 MCP 工具。
 - **不要调用 `mcp_auth`**。
 
 ## 输入契约
 
 - `<WS>/storage/blueprint.json`
 - S3b/S3c 还需要：`<WS>/output/lambdas/` 下 S2 阶段生成的真实代码
-- S3c 还需要：`<WS>/output/template.part1.yaml`、`template.part2.yaml`（由主 Agent 确认已合并出 `template.yaml`）
+- S3c 还需要：`<WS>/output/template.part1.yaml`、`template.part2.yaml`（S3a/S3b 的产物，S3c 自己负责合并，不依赖主 Agent 先合并好）
 
 ## 输出契约
 
@@ -99,15 +107,20 @@ Outputs:
 {
   "stage_id": "S3a",
   "agent": "m2s-sam-engineer",
-  "status": "success",
-  "summary": "一句话概括这个子阶段做了什么",
+  "status": "success 或 blocked",
+  "summary": "一句话概括这个子阶段做了什么（S3c 还要写清楚 gate/validate 是否通过、尝试了几次）",
   "produced_files": ["output/template.part1.yaml"],
   "issues": []
 }
 ```
 
-写完报告，才允许输出：`STAGE_COMPLETE: <一句话摘要>`。
+写完报告，才允许输出 `STAGE_COMPLETE`/`STAGE_BLOCKED`。
+
+## 禁止事项（S3c 自查循环相关）
+
+- S3c 的自查循环不要超过 3 次尝试——超过就老实报告 `STAGE_BLOCKED`。
+- S3c 不要在 `run_gate(phase="template")` 和 `validate_sam` 都通过之前、或还没用满 3 次尝试之前就输出 `STAGE_COMPLETE`。
 
 ## 完成信号
 
-`STAGE_COMPLETE: <摘要>`，或阻塞时 `STAGE_BLOCKED: <原因>`。
+`STAGE_COMPLETE: <摘要>`（S3a/S3b：产物写完即可；S3c：两项检查都通过）或 `STAGE_BLOCKED: <原因>`（S3a/S3b 输入缺失；S3c 3 次尝试后仍未通过）。
