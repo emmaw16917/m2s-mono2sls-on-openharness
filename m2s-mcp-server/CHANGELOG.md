@@ -179,3 +179,52 @@ S1 用"具体完整参考答案"的版本修好之后，跑了一次干净的全
 **至此，P3（todo 全链离线跑通）达成**：从 P0 静态分析到 S4 一致性校验，全部阶段一次性走完，产出可通过全部 12 项一致性检查和 cfn-lint 校验的 `template.yaml` + 6 个 Lambda handler，`gate(final) = PASS` 且经过独立工具复核，不依赖模型自述。全程没有触碰 OpenHarness 或 M2S 的源码，改动全部集中在 `m2s-mcp-server/`（新工具）、`.openharness/skills/`（编排+知识 skill）、`~/.openharness/agents/`（四个 agent 定义，已镜像进仓库）。
 
 （顺带记录一个良性小插曲：本次运行的日志里再次出现了此前 S4 阶段那种"大段连续点号"的输出，但这次没有耗尽 `max_turns`，流水线仍在 200 轮预算内正常收尾——目前判断这更像 `-p` 文本输出格式下某种等待/进度提示的渲染现象，不是资源泄漏性质的死循环，暂不需要针对性修复，后续如果再复现导致真正卡死再处理。）
+
+## 重构：gate 自查循环下沉到 S1/S2/S3c，orchestrator 只做一次独立复核（2026-09-20）
+
+### 动机：一次真实的误诊事故
+
+在把 gate 检查全部留在顶层 orchestrator 手里的旧设计下，跑到 S3c 之后出现过一次典型的误诊：`gate(final)` 报的是 C3 症状（模板里的 `CodeUri` 路径跟实际 Lambda 目录对不上），但 orchestrator 只看 `check_id` 分类就把责任归给了 code-developer（S2）甚至 architect（S1）——真正的 bug 是 S3c 合并模板时用错了路径前缀（漏掉 `lambdas/` 这一级），跟 S1/S2 的产物完全无关。顶层单靠 gate 报告的 check_id 做路由式重试，诊断力不够、代价却是整段重跑。
+
+### 新设计
+
+把"跑 gate → 诊断 → 自我修正"的循环下沉到每个产出阶段自己的子 Agent 里：
+
+- **m2s-architect（S1）**：写完全部 10 个 blueprint 字段后自己跑 `run_gate(phase="blueprint")`，针对具体 B0 错误模式用 `merge_blueprint_key(mode="replace")` 自我修正，最多重试 3 次，再落 `stage_reports/S1.json`。
+- **m2s-code-developer（S2）**：自己跑 `run_gate(phase="code")`，修 C1（命名不匹配）/C10（依赖卫生）问题，最多 3 次；明确注明 C3/C11/C12 这时候还测不了（S2 阶段还没有 template.yaml）。
+- **m2s-sam-engineer（S3c）**：合并逻辑本身也从 orchestrator 移到了 S3c 自己跑（`python m2s_merge.py template <WS>`），随后自己跑 `run_gate(phase="template")` **和** `validate_sam`，直接改 `output/template.yaml`（绝不碰 part1/part2），最多 3 次。
+
+顶层 orchestrator（`SKILL.md` §3）职责大幅简化：spawn → 耐心轮询（不得凭经过时间判定"卡住"、不得杀正在运行的子 Agent、不得改写子 Agent 的 prompt）→ 对每个阶段只做**一次**独立 gate 复核（绝不采信子 Agent 自述）→ 只有复核结果不一致、或子 Agent 明确把责任甩给别的阶段时，才整阶段重新 spawn 一次（子 Agent 内部已经自重试过 3 次了）→ `gate(final)` 永远是顶层自己独占的最后一道关卡，不下放给任何子 Agent（因为它存在的意义就是独立于自评）。
+
+### 验证
+
+自查循环重构 + 把 `qwen-plus` 切到 `qwen3.8-flash`（账户侧 `qwen-plus` 出现 Arrearage/AccessDenied 问题后用户要求切换）之后，重新跑了一次全链，`bp9e0inru`：P0→S1→S2→S3a→S3b→S3c→S4 一次性走完，独立复核 `gates.run_gate("final", ...)` → `PASS`，`consistency_report.json` 同样 `PASS`（`total_checks: 12`，`fixes_applied: 0`），6 份 `stage_reports/*.json` 齐全。3 条 WARNING 均为非阻塞信息（C7：M2S 静态分析器本身识别不出 Express 的 `app.use('/api', router)` 路由前缀，属已知分析器局限，不是本次流水线引入的新问题；C1：Cognito 密码策略略严于参考模板；ENV：如实记录了下面这条 `validate_sam` 环境缺陷）。
+
+## Bug：`validate_sam` 在 MCP task-worker 场景下从未真正返回过（发现于 S3c，2026-09-20）
+
+### 现象
+
+`bp9e0inru` 这次全链里，S3c 自己的自查循环对 `run_gate(phase="template")` 一次即 PASS，但 `validate_sam` 连续 6 次全部在 90 秒后超时（即 `cf03883` 那次加的超时保护生效了——不再无限挂起——但仍然拿不到真正的校验结果）。
+
+### S3c 自己做的根因诊断
+
+S3c 没有满足于"超时了就报 BLOCKED"，而是自己做了一整套排除法（记录在 `stage_reports/S3c.json` 的 `validate_sam_investigation` 里）：
+
+1. MCP 之外直接跑同一个 `cfn-lint.exe` 二进制、同一个模板 → **exit 0，4.1~5.6 秒**（三个不同 cwd 各测一次）。
+2. MCP 之外直接 `import wrap_m2s` 调用被包装的函数本体（而不是走 cfn-lint.exe 命令行）→ **`ok: true`，3.9 秒**，且确认 `_find_cfn_lint()` 两条路径解析到的是同一个 exe，排除"用了不同版本的 cfn-lint"。
+3. 换成一个跟本项目毫无关系的 7 行 `AWS::SQS::Queue` 探针模板 → MCP 版 `validate_sam` **照样超时**，证明跟模板内容零相关。
+4. 进程取证：本机存在 **7 组自 2026-09-18 20:47 起就挂死的 `cfn-lint.exe → python.exe`（6MB，卡在解释器启动阶段）父子对**，全部是历次 task-worker 会话调用 `validate_sam`留下的僵尸——即这个工具在 MCP/task-worker 场景下**从来没有真正成功返回过**，`cf03883` 的超时只是把"无限挂起"变成了"90 秒后清清楚楚地失败"，没有解决根本问题。清理僵尸进程后重试依然超时，排除资源耗尽。
+
+S3c 的结论：问题出在 `wrap_m2s.py` 里 `subprocess.run()` 派生 cfn-lint 子进程的方式本身，只在 MCP stdio server 的子进程环境下触发，跟 S1/S2/S3a/S3b 的任何产物都无关；它自己无法在当前会话内验证修复，因为存活的 MCP server 进程已经 import 完旧代码，`McpClientManager.call_tool` 不会懒重启 server。因此如实报告 `STAGE_BLOCKED`，附完整证据链和建议补丁，而不是伪造 PASS 或绕过校验。
+
+### 修复
+
+按 S3c 的建议，把 `wrap_m2s.validate_sam()` 从 `subprocess.run(timeout=...)` 改成 `subprocess.Popen` + `communicate(timeout=...)`：
+
+- 加 `stdin=subprocess.DEVNULL`——推测子进程在 task-worker 场景下会阻塞在继承来的、被 MCP stdio server 占用的 stdin 上，显式关闭它是主要修复点。
+- Windows 上加 `creationflags=subprocess.CREATE_NO_WINDOW`。
+- 超时分支从"只杀直接子进程"改成 `_kill_process_tree()`（Windows 用 `taskkill /T /F /PID`，非 Windows 用进程组 `pkill -P` + `SIGKILL` 兜底），避免 cfn-lint.exe 自己派生的 python.exe 孙进程继续以僵尸形式泄漏。
+
+`tests/test_wrap_m2s.py` 同步改为 mock `subprocess.Popen`（而非 `subprocess.run`），新增用例验证超时分支会调用 `_kill_process_tree(pid)`，以及正常路径确实传了 `stdin=subprocess.DEVNULL`。全量 71 个测试通过；直接（非 MCP）调用 `wrap_m2s.validate_sam()` 复验现有 `template.yaml` 仍然 `ok: true`，未破坏原有行为。
+
+**尚待验证**：这个修复能否真正解决 MCP/task-worker 场景下的挂起，只能在一次全新的 OpenHarness 会话里验证（当前/任何已存活的 MCP server 进程都不会重新加载这份新代码）——计划先用一次单独针对 S3c 或直接调用 `mcp__m2s-server__validate_sam` 的低成本隔离测试来确认，再决定是否值得重跑一次完整的多小时全链。
