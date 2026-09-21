@@ -51,6 +51,14 @@ spawn prompt 里会内嵌 `mcp__m2s-server__run_gate` 跑出的 gate 报告（�
 }
 ```
 
+**`severity` 的含义（严格按这个标，别把"我核对过了"标成 WARNING）**：
+
+- `INFO`：这一项**核对过、没有发现问题**（`action_taken` 必为 `NO_ACTION_NEEDED`）。绝大多数 check 在模板干净时都应该是 INFO。
+- `WARNING`：**真的发现了问题**，但不会导致部署失败（比如某个值虽然不理想但能用）。
+- `ERROR`：**真的发现了会导致部署失败的问题**——`action_taken` 是 `FIXED` 说明你已修好，`UNABLE_TO_FIX` 说明没修好。
+
+判定 `status`：只要还有 `UNABLE_TO_FIX` 的 `ERROR`，就是 `FAIL`，否则 `PASS`。读报告的人会用 `severity` 来数"有几个问题"，标高了会让人以为有 12 个问题。
+
 再写 `<WS>/storage/stage_reports/S4.json`：
 
 ```json

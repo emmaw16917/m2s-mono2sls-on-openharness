@@ -275,3 +275,13 @@ P0 → S3c 在一个会话里连续通过，S4 连续两次（首次 + orchestra
 ### 结论
 
 run7 证明：网络稳定时，这套流水线可以在一个会话里从 P0 无人介入地跑到 `gate(final)` PASS，一次数据点。加上 run5（P0–S3c 一个会话 + S4 续跑）、run6（外部网络中断）以及此前的 `bp9e0inru`，目前是 3 次独立的 `gate(final)` PASS，其中 1 次是完整的单会话。样本仍少，尚不足以说明稳定。
+
+## 修复 run7 遗留的两个问题（2026-09-22）
+
+1. **`Globals.Function.Handler` 占位值（`index.handler`）残留。** 根因：blueprint 里的 `handler` 是架构师的占位值，S3a 在读不到代码的阶段把它抄进了 `Globals`，S3b 之后每个函数各自覆盖成真实的 `handler.handler`，所以运行不出错，但 gate 抓不到。M2S 自己的参考模板 `Globals` 里本来就没有 `Handler`。修复分三层：
+   - `gates.py` 的 `check_c3`：抽出 `_handler_problem()`；现在按"函数自己的 `Handler`，否则继承 `Globals`"算有效 handler 再对照磁盘（此前一个靠 `Globals` 继承 handler 的函数会被误报成"malformed"）；另外，若 `Globals.Function.Handler` 没有任何函数继承、且在所有函数目录里都解析不到，则报 `ERROR`。新增 3 个 pytest（测试总数 71 → 74）。真实数据复核：run7 旧模板被抓出，M2S 参考模板仍 `PASS`。
+   - `m2s-sam-engineer.md`：S3a 增加"`Globals.Function` 里不要写 `Handler`"，S3c 增加对应的修法（删掉那一行，不要改各函数的 `Handler`）。
+   - run7 的 `template.yaml` 里删掉了那一行（旧文件备份于 `temp/`），四个 gate、`validate_sam`、`consistency_report` 复核全部仍 PASS。
+2. **S4 把 12 条"已核对无问题"的 finding 全标成 `WARNING`。** `m2s-validator.md` 增加 `severity` 定义：`INFO` = 核对过没问题，`WARNING` = 有问题但不致部署失败，`ERROR` = 会致部署失败；`status` 只在存在 `UNABLE_TO_FIX` 的 `ERROR` 时为 `FAIL`。
+
+**未验证的部分：** 第 1 点的 gate 有测试和真实数据验证；但两处 prompt 改动（S3a 不写 Globals Handler、S4 按新定义标 severity）是否真的改变了模型行为，需要重新跑全链才能确认，目前没有跑。已同步到 `~/.openharness/agents/`。

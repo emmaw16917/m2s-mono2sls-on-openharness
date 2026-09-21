@@ -41,6 +41,8 @@ model: inherit
 # --- END METADATA ---
 ```
 
+**`Globals.Function` 里不要写 `Handler`**：blueprint 里的 `handler` 只是架构师的占位值（例如 `index.handler`），磁盘上真实的文件名和导出名要到 S3b 读了 `output/lambdas/` 才知道，S3b 会给每个函数单独写真实的 `Handler`。在 Globals 里照抄占位值会留下一个哪里都解析不到的默认值（`run_gate` 的 C3 会报错）。`Globals.Function` 只放 `Runtime`/`Timeout`/`MemorySize`/`Tracing`/`Environment` 这类真正共享的配置。
+
 **S3a 禁止事项**：禁止读 `output/lambdas/` 或 `output/` 下任何 handler 代码——这一步纯粹基于 `blueprint.json` 设计共享基础设施，不需要看代码。禁止调用 `mcp__m2s-server__validate_sam`（`template.part1.yaml` 本身不是合法完整模板，验证会失败且没有意义）。
 
 ### 如果 STAGE_ID = S3b（函数资源阶段）
@@ -82,7 +84,8 @@ Outputs:
    b. 调用 `mcp__m2s-server__validate_sam(template_path="<WS>/output/template.yaml")`。如果 `ok: false`，读懂 `errors` 里的 cfn-lint 报错直接修（常见模式：`AllowCredentials` 和 `AllowOrigin: '*'` 冲突时，直接删掉 `AllowCredentials`，不要改成 `false`；"Invalid property" 直接删掉那个属性；类型不匹配就改成正确类型）。
    c. 两边都过了才算通过；只要有一边没过，改完之后**两个都要重新跑一次**（`run_gate` 和 `validate_sam` 都要）再判断。
 4. 最多在 3a 步骤上循环 **3 次**（第一次 + 2 次自我修正）。3 次后仍未两边都通过：停止重试，如实在工作报告里写清楚最后一次 `run_gate`/`validate_sam` 的结果和已经改了什么，输出 `STAGE_BLOCKED`。
-5. **常见的一个具体坑**：`CodeUri` 路径必须是相对 `output/` 的路径且以 `/` 结尾（例如 `lambdas/todo/todo-get-item/`），不要漏掉 `lambdas/` 这一段前缀，也不要写成绝对路径——如果 `run_gate` 报 C1/C2 说某个 `CodeUri` 指向的目录不存在，先检查是不是这个前缀漏了。
+5. **另一个常见的坑**：`Globals.Function.Handler` 是占位值（如 `index.handler`）、磁盘上根本没有对应文件——`run_gate` 的 C3 会报 "Globals.Function.Handler ... resolves to no real handler"。直接把 `output/template.yaml` 里 `Globals.Function` 下的那一行 `Handler:` 删掉（每个函数自己已经有真实的 `Handler`），不要去改各个函数的 `Handler`。
+6. **常见的一个具体坑**：`CodeUri` 路径必须是相对 `output/` 的路径且以 `/` 结尾（例如 `lambdas/todo/todo-get-item/`），不要漏掉 `lambdas/` 这一段前缀，也不要写成绝对路径——如果 `run_gate` 报 C1/C2 说某个 `CodeUri` 指向的目录不存在，先检查是不是这个前缀漏了。
 
 **S3c 禁止事项**：不要去改 `template.part1.yaml`/`template.part2.yaml`（那是 S3a/S3b 的产物，修正只作用于合并后的 `template.yaml`）。
 

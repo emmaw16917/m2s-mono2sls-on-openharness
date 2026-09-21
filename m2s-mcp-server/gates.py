@@ -356,41 +356,65 @@ _PY_HANDLER_RE = re.compile(r"^def\s+(\w+)\s*\(", re.MULTILINE)
 _NODE_HANDLER_RE = re.compile(r"(?:exports\.(\w+)\s*=|module\.exports\.(\w+)\s*=|module\.exports\s*=\s*\{[^}]*?(\w+)\s*:)")
 
 
+def _handler_problem(lambda_dir: Path, handler: Any, label: str) -> str | None:
+    """Return a description of why `handler` does not resolve under lambda_dir, or None if it does."""
+    if not handler or not isinstance(handler, str) or "." not in handler:
+        return f"{label}.Handler '{handler}' is malformed."
+    module_name, _, func_name = handler.rpartition(".")
+    py_file = lambda_dir / f"{module_name}.py"
+    js_file = lambda_dir / f"{module_name}.js"
+    if py_file.exists():
+        names = set(_PY_HANDLER_RE.findall(py_file.read_text(encoding="utf-8", errors="replace")))
+        if func_name not in names:
+            return f"{label}: function '{func_name}' not found in {py_file.name}."
+        return None
+    if js_file.exists():
+        content = js_file.read_text(encoding="utf-8", errors="replace")
+        has_exports_handler = bool(re.search(r"exports\.\s*" + re.escape(func_name) + r"\s*=", content))
+        has_module_exports = bool(re.search(r"module\.exports\.\s*" + re.escape(func_name) + r"\s*=", content))
+        if not (has_exports_handler or has_module_exports):
+            return f"{label}: 'exports.{func_name}' not found in {js_file.name}."
+        return None
+    return f"{label}: handler file '{module_name}.py/.js' not found under {lambda_dir.name}."
+
+
 def check_c3(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
     resources = template.get("Resources", {}) or {}
+    globals_handler = ((template.get("Globals", {}) or {}).get("Function", {}) or {}).get("Handler")
+
+    lambda_dirs: list[Path] = []
+    any_function_inherits = False
     for logical_name, resource in resources.items():
         if not isinstance(resource, dict) or resource.get("Type") != "AWS::Serverless::Function":
             continue
         props = resource.get("Properties", {}) or {}
         code_uri = props.get("CodeUri")
-        handler = props.get("Handler")
-        if not code_uri or not handler or "." not in handler:
-            findings.append(_finding("C3", "ERROR", f"{logical_name}.Handler '{handler}' is malformed.", logical_name))
+        own_handler = props.get("Handler")
+        handler = own_handler or globals_handler
+        if own_handler is None and globals_handler is not None:
+            any_function_inherits = True
+        if not code_uri:
+            findings.append(_finding("C3", "ERROR", f"{logical_name}.CodeUri is missing.", logical_name))
             continue
-        module_name, _, func_name = handler.rpartition(".")
         lambda_dir = workspace / "output" / code_uri
+        lambda_dirs.append(lambda_dir)
+        problem = _handler_problem(lambda_dir, handler, logical_name)
+        if problem:
+            findings.append(_finding("C3", "ERROR", problem, logical_name))
 
-        py_file = lambda_dir / f"{module_name}.py"
-        js_file = lambda_dir / f"{module_name}.js"
-        if py_file.exists():
-            content = py_file.read_text(encoding="utf-8", errors="replace")
-            names = set(_PY_HANDLER_RE.findall(content))
-            if func_name not in names:
-                findings.append(
-                    _finding("C3", "ERROR", f"{logical_name}: function '{func_name}' not found in {py_file.name}.", logical_name)
-                )
-        elif js_file.exists():
-            content = js_file.read_text(encoding="utf-8", errors="replace")
-            has_exports_handler = bool(re.search(r"exports\.\s*" + re.escape(func_name) + r"\s*=", content))
-            has_module_exports = bool(re.search(r"module\.exports\.\s*" + re.escape(func_name) + r"\s*=", content))
-            if not (has_exports_handler or has_module_exports):
-                findings.append(
-                    _finding("C3", "ERROR", f"{logical_name}: 'exports.{func_name}' not found in {js_file.name}.", logical_name)
-                )
-        else:
+    # A Globals handler that no function inherits and that resolves nowhere is
+    # dead-but-wrong config: harmless today, a landmine for the next function added.
+    if globals_handler is not None and not any_function_inherits and lambda_dirs:
+        if all(_handler_problem(d, globals_handler, "Globals.Function") for d in lambda_dirs):
             findings.append(
-                _finding("C3", "ERROR", f"{logical_name}: handler file '{module_name}.py/.js' not found under {code_uri}.", logical_name)
+                _finding(
+                    "C3",
+                    "ERROR",
+                    f"Globals.Function.Handler '{globals_handler}' resolves to no real handler in any function's "
+                    "CodeUri (every function overrides it). Remove it, or set it to the real handler.",
+                    "Globals.Function.Handler",
+                )
             )
     return findings
 

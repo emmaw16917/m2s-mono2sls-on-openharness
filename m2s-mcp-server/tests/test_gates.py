@@ -325,6 +325,38 @@ def test_c3_wrong_export_name(tmp_path):
     assert any(f["affected_resource"] == "TodoListItemsFunction" for f in findings)
 
 
+def test_c3_stale_globals_handler_overridden_everywhere_is_flagged(tmp_path):
+    """Real run7 finding: Globals.Function.Handler was the blueprint's
+    placeholder 'index.handler' (no such file on disk); every function
+    overrode it, so nothing broke, but any function added later would
+    inherit a handler that resolves nowhere."""
+    _write_good_workspace(tmp_path)
+    template = gates.load_template(tmp_path / "output" / "template.yaml")
+    template.setdefault("Globals", {}).setdefault("Function", {})["Handler"] = "index.handler"
+    findings = gates.check_c3(tmp_path, template)
+    assert any(f["severity"] == "ERROR" and f["affected_resource"] == "Globals.Function.Handler" for f in findings)
+
+
+def test_c3_valid_globals_handler_is_not_flagged(tmp_path):
+    _write_good_workspace(tmp_path)
+    template = gates.load_template(tmp_path / "output" / "template.yaml")
+    template.setdefault("Globals", {}).setdefault("Function", {})["Handler"] = "handler.handler"
+    assert gates.check_c3(tmp_path, template) == []
+
+
+def test_c3_function_inheriting_globals_handler_is_resolved_against_disk(tmp_path):
+    _write_good_workspace(tmp_path)
+    template = gates.load_template(tmp_path / "output" / "template.yaml")
+    template.setdefault("Globals", {}).setdefault("Function", {})["Handler"] = "handler.handler"
+    del template["Resources"]["TodoListItemsFunction"]["Properties"]["Handler"]
+    assert gates.check_c3(tmp_path, template) == []
+
+    template["Globals"]["Function"]["Handler"] = "index.handler"
+    findings = gates.check_c3(tmp_path, template)
+    assert any(f["affected_resource"] == "TodoListItemsFunction" for f in findings)
+    assert not any(f["affected_resource"] == "Globals.Function.Handler" for f in findings)
+
+
 # ---------------------------------------------------------------------------
 # C7
 # ---------------------------------------------------------------------------
