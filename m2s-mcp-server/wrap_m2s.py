@@ -102,6 +102,31 @@ def _find_cfn_lint() -> str:
 _VALIDATE_SAM_TIMEOUT_SECONDS = 90
 
 
+def _kill_process_tree(pid: int) -> None:
+    """Kill pid and all its descendants. On Windows a bare Popen.kill() only
+    kills the immediate child; cfn-lint.exe itself spawns a child python.exe,
+    which then leaks as a zombie stuck at interpreter startup if only the
+    parent is killed. taskkill /T walks the whole tree."""
+    if sys.platform == "win32":
+        subprocess.run(
+            ["taskkill", "/T", "/F", "/PID", str(pid)],
+            capture_output=True,
+        )
+    else:
+        try:
+            proc = subprocess.Popen(["pkill", "-TERM", "-P", str(pid)])
+            proc.wait(timeout=5)
+        except Exception:
+            pass
+        try:
+            import os
+            import signal
+
+            os.kill(pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+
+
 def validate_sam(template_path: str) -> dict[str, Any]:
     """Run cfn-lint against a SAM template. Returns {ok, errors, warnings, raw}."""
     template = Path(template_path).resolve()
@@ -114,18 +139,37 @@ def validate_sam(template_path: str) -> dict[str, Any]:
         }
 
     cfn_lint = _find_cfn_lint()
+
+    #: Root-caused (see m2s-sam-engineer S3c diagnostic report): when this
+    #: subprocess is spawned from inside the MCP task-worker context, it
+    #: hangs indefinitely at interpreter startup unless stdin is explicitly
+    #: closed -- the child appears to block reading from an inherited stdin
+    #: that the MCP stdio server itself is holding open. Confirmed unrelated
+    #: to template content or cfn-lint version; identical direct (non-MCP)
+    #: invocations of this same binary/function always succeeded in <5s.
+    popen_kwargs: dict[str, Any] = {
+        "stdin": subprocess.DEVNULL,
+        "stdout": subprocess.PIPE,
+        "stderr": subprocess.PIPE,
+        "text": True,
+    }
+    if sys.platform == "win32":
+        popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+
+    proc = subprocess.Popen([cfn_lint, str(template)], **popen_kwargs)
     try:
-        proc = subprocess.run(
-            [cfn_lint, str(template)],
-            capture_output=True,
-            text=True,
-            timeout=_VALIDATE_SAM_TIMEOUT_SECONDS,
-        )
+        stdout, stderr = proc.communicate(timeout=_VALIDATE_SAM_TIMEOUT_SECONDS)
     except subprocess.TimeoutExpired:
+        _kill_process_tree(proc.pid)
+        try:
+            proc.communicate(timeout=5)
+        except Exception:
+            pass
         return {
             "ok": False,
             "errors": [
-                f"cfn-lint did not finish within {_VALIDATE_SAM_TIMEOUT_SECONDS}s and was killed. "
+                f"cfn-lint did not finish within {_VALIDATE_SAM_TIMEOUT_SECONDS}s and was killed "
+                "(process tree terminated). "
                 "This is not a template problem -- retry the call; if it keeps timing out, "
                 "investigate the cfn-lint installation/environment rather than editing the template."
             ],
@@ -133,14 +177,15 @@ def validate_sam(template_path: str) -> dict[str, Any]:
             "raw": "",
         }
 
-    raw = (proc.stdout or "") + (proc.stderr or "")
+    returncode = proc.returncode
+    raw = (stdout or "") + (stderr or "")
     lines = [line for line in raw.splitlines() if line.strip()]
     errors = [line for line in lines if "E" in line.split(" ", 1)[0][:1] or line.startswith("E")]
     warnings = [line for line in lines if line.startswith("W")]
 
     return {
-        "ok": proc.returncode == 0,
-        "errors": errors if errors else (lines if proc.returncode != 0 else []),
+        "ok": returncode == 0,
+        "errors": errors if errors else (lines if returncode != 0 else []),
         "warnings": warnings,
         "raw": raw,
     }
