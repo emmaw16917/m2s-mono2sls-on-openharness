@@ -228,3 +228,27 @@ S3c 的结论：问题出在 `wrap_m2s.py` 里 `subprocess.run()` 派生 cfn-lin
 `tests/test_wrap_m2s.py` 同步改为 mock `subprocess.Popen`（而非 `subprocess.run`），新增用例验证超时分支会调用 `_kill_process_tree(pid)`，以及正常路径确实传了 `stdin=subprocess.DEVNULL`。全量 71 个测试通过；直接（非 MCP）调用 `wrap_m2s.validate_sam()` 复验现有 `template.yaml` 仍然 `ok: true`，未破坏原有行为。
 
 **尚待验证**：这个修复能否真正解决 MCP/task-worker 场景下的挂起，只能在一次全新的 OpenHarness 会话里验证（当前/任何已存活的 MCP server 进程都不会重新加载这份新代码）——计划先用一次单独针对 S3c 或直接调用 `mcp__m2s-server__validate_sam` 的低成本隔离测试来确认，再决定是否值得重跑一次完整的多小时全链。
+
+## 修复后首次全链验证：run5（2026-09-21）
+
+`validate_sam` 的 stdin/进程树修复（`69ae5e7`）之后，清空工作区（旧的移到 `runs-prev-bp9e0inru`）重跑全链，模型 `qwen3.8-flash`。
+
+### 结果：`gate(final)` PASS，但不是不间断的单会话
+
+- **P0 → S3c 在一个会话里跑完，S4 是续跑的。** orchestrator 在 S3c 完成之后、spawn S4 之前遇到 `API error: Request timed out.` 退出（原因是运行期间本机网络中断，外部因素，不是流水线逻辑问题）。随后另开会话只续跑 S4。因此这次**没有**证明真正的单会话端到端稳定性。
+- 独立复核（不采信 orchestrator 自述）：`gates.run_gate` 的 blueprint / code / template / final 全部 PASS；直接调用 `wrap_m2s.validate_sam` → `ok: true`；`consistency_report.json` → `status: PASS`，`total_checks: 12`；6 份 `stage_reports/*.json` 齐全。
+
+### 验证到的设计点
+
+1. **`validate_sam` 修复在完整流水线里生效。** S3c 第一次尝试就同时通过 `run_gate(template)` 和 `validate_sam`（返回真实 `ok: true`），S4 validator 也亲自调用得到同样结果。此前这条路径 6/6 次 90 秒超时。
+2. **S1 的"独立复核 + 整阶段重 spawn 一次"兜底生效。** 第一次 spawn 的 `m2s-architect` 在写完 10 个 key 中的 7 个后因网络错误进程死掉，没写 `stage_reports/S1.json`，却以 `completed`（return_code 0）退出——即子 Agent 的"退出状态"本身不可信。orchestrator 独立跑 `gate(blueprint)` 发现 FAIL（缺 `lambda_functions` / `dropped_functions` / `api_gateway`，8 个端点全部未覆盖），重新 spawn 一次后 PASS。这正是 SKILL.md §3"绝不采信子 Agent 自述，只信 gate"要防的场景。
+3. S2 曾出现"gate 已 PASS 但 `S2.json` 稍晚才落盘"的短暂时序差，orchestrator 按 gate 为准继续，之后报告确实补上。
+
+### S4 记录的两处非阻塞偏差
+
+- `blueprint.api_gateway.user_pool_arn` 是占位符 `${CognitoUserPool.Arn}`，模板里资源逻辑名是 `UserPool`（用 `!GetAtt UserPool.Arn` 解析，authorizer 覆盖完整）。
+- `output/template.part1.yaml` / `part2.yaml` 仍留在磁盘，与 `template.yaml` 内容一致（325 行），属无害中间产物。
+
+### 结论与局限
+
+只有一个数据点，且不是不间断会话；不足以说明稳定。下一步：网络稳定时再干净跑一次全链（`run6`），以验证真正的单会话稳定性。
