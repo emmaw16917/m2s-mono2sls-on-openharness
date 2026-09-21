@@ -252,3 +252,26 @@ S3c 的结论：问题出在 `wrap_m2s.py` 里 `subprocess.run()` 派生 cfn-lin
 ### 结论与局限
 
 只有一个数据点，且不是不间断会话；不足以说明稳定。下一步：网络稳定时再干净跑一次全链（`run6`），以验证真正的单会话稳定性。
+
+## run6 / run7：单会话稳定性验证（2026-09-21 ~ 09-22）
+
+### run6（作废）
+
+P0 → S3c 在一个会话里连续通过，S4 连续两次（首次 + orchestrator 的一次整阶段回炉）因子 Agent 端 `API error: Request timed out.` 中断、没有产出任何文件。用户确认运行期间本机网络再次中断，属外部因素，人工停掉，不计入流水线稳定性结论。工作区留存于 `runs-prev-run6-netdrop`。
+
+### run7：一个会话、零回炉，`gate(final)` PASS
+
+清空工作区，同样的启动命令、`qwen3.8-flash`，从 P0 到 `gate(final)` 在**同一个 `oh -p` 会话**里跑完，中途无人介入、无续跑。六个子 Agent（S1/S2/S3a/S3b/S3c/S4）全部第 1 次尝试通过，orchestrator 没有用掉任何一次整阶段重 spawn。
+
+独立复核（不采信 orchestrator 自述）：`run_gate` 的 blueprint / code / template / final 全部 PASS；直接调用 `wrap_m2s.validate_sam` → `ok: true`；`consistency_report.json` → `PASS`，`total_checks: 12`，`fixes_applied: 0`，`sam_validation: PASS`；6 份 `stage_reports/*.json` 齐全；`Handler: handler.handler` 与磁盘上 `handler.js` 的 `exports.handler` 对得上。`validate_sam` 在 S3c、S4 和 orchestrator 自己调用时均秒级返回真实结果，stdin 修复在完整流水线里再次得到确认。
+
+### 需要如实注明的地方
+
+- **run7 不是完全"stock"的一次。** orchestrator 会读 OpenHarness 自己的 memory（`~/.openharness/data/memory/`，其中有一条早先运行自动留下的 `m2s-s4-validator-api-timeout.md`），据此在 spawn S4 时**自行往 prompt 里加了"先落盘临时版报告再做验证"的缓解指令**。这不是 SKILL.md 的固定内容，可能对 S4 一次通过有贡献；结论是"带这条 memory 的流水线稳定"，不是"纯 SKILL.md 稳定"。run7 结束时它还改写了那条 memory（把它标成已被验证有效）。
+- **S4 的 findings 全部标成 `WARNING`**（12 条，内容看起来是"已核对、无需改动"的说明），严重度标注偏高，不影响 `status: PASS` 与 `gate(final)`，但会让下游读报告的人误以为有 12 个问题。
+- **`Globals.Function.Handler` 仍是 `index.handler`**，六个函数各自用 `Handler: handler.handler` 覆盖，实际可用，但全局默认值与磁盘不一致。gate 没有拦，validator 也没有改动（S2 有意把"blueprint 写 `index.handler`、磁盘是 `handler.js`"的差异交接给 S3，S3c/S4 选择不迎合 blueprint）。
+- 上述 memory 机制与 `Globals` 不一致都是**已发现、未处理**，没有针对性修复。
+
+### 结论
+
+run7 证明：网络稳定时，这套流水线可以在一个会话里从 P0 无人介入地跑到 `gate(final)` PASS，一次数据点。加上 run5（P0–S3c 一个会话 + S4 续跑）、run6（外部网络中断）以及此前的 `bp9e0inru`，目前是 3 次独立的 `gate(final)` PASS，其中 1 次是完整的单会话。样本仍少，尚不足以说明稳定。
