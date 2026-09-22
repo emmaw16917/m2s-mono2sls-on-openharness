@@ -1,0 +1,233 @@
+# M2S 性能优化设计方案（v1）
+
+> 状态：设计稿，未实现。本文档记录 v1 的落地范围和 v2 的路标，供后续实现时对照。
+
+## 0. 背景与范围
+
+现状：`m2s-migrate` 流水线（P0 → S1 architect → S2 code-developer → S3a/b/c sam-engineer → S4
+validator）只验证正确性/一致性（blueprint B0、code C1/C10、template C1-C12），完全没有性能维度。
+`gates.py` 的全部 check 都是结构一致性检查，`m2s-sam-kb` 里 `MemorySize: 512` 写死无分级，
+没有 `Architectures` 字段。整套流水线目前也刻意不做真实 AWS 部署（`m2s-migrate` §6）。
+
+**v1 目标（本次要落地的范围）：**
+
+1. 新增一个独立的性能优化 agent：`m2s-perf-optimizer`，用**实测**（而不是纯静态规则）驱动
+   自查循环，测量方法基于本地 Docker + `sam local`（不接真实 AWS，理由见下文"为什么不用真实
+   AWS"）。
+2. 现有三个 agent（architect / code-developer / sam-engineer）注入性能相关的"预防性"知识和
+   默认值，减少 perf-optimizer 事后要修的量，但**不改变它们现有自查循环的判定范围**（S1 仍只
+   认 blueprint B0、S2 仍只认 code C1/C10、S3c 仍只认 template C1-C12 + `validate_sam`）——
+   性能不是这几个阶段自查循环的新增判定项，只是它们生成时参考的知识多了一部分。
+3. 沿用现有"文件系统是唯一真相 + 主 Agent 轮询做汇合点 + agent 自己迭代到收敛"的协作模式，
+   不发明新协议。
+
+**v1 明确不做（留给 v2，见 §7）：**
+
+- 不做按 domain 并行 fan-out。S2 / S3b / perf-optimizer 内部仍是单个 agent 串行处理全部函数。
+- 不做真实 AWS 部署 / 真实压测，继续遵守 `m2s-migrate` §6"不做任何 AWS 部署"的既定边界。
+- 不做架构决策前移（把性能信号塞进 `analyze_project` 静态分析）——v1 先用最小改动验证"实测
+  闭环"这条路子本身跑不跑得通，再决定要不要往架构决策层继续投入。
+- 不做 API Gateway REST → HTTP API 切换、不做 Provisioned Concurrency——涉及 Cognito
+  Authorizer 语法改动和额外费用决策，改动面/风险都超出 v1 范围。
+
+**为什么用本地 Docker + sam，不接真实 AWS：**
+
+- perf-optimizer 的自查循环需要"测一次、改一次、再测一次"，最多 3 次，要求单次迭代足够快、
+  足够便宜。真实 AWS 每次迭代要走 CloudFormation 创建/更新（分钟级）+ 真实 invoke 计费，
+  跟"闭环"这个设计初衷矛盾。
+- 这台机器目前没有 AWS 凭证；即使以后有，让一个自动重试循环无人值守地持有真实云部署权限，
+  风险量级跟"只碰本地 Docker 容器"完全不同，不该塞进自动自查循环。
+- 真实数字噪声大（调度到哪台硬件、AWS 控制面负载、网络抖动都不受代码控制），不利于"改前 vs
+  改后"这种闭环真正需要的相对比较；本地 Docker 虽然绝对值不代表生产环境，但同机同条件下的
+  相对差异是干净可比的。
+- 场景目标是"生成**能直接部署**的高效代码"，交付物是代码+模板本身。真正的部署和生产验收
+  天然是产物交付之后、由使用这份代码的人自己做的事，不该被生成流水线自己吞下来——这也是
+  `m2s-migrate` §6 既有边界的自然延伸，不是新约束。
+
+**环境依赖（v1 需要新装的东西，落地前先确认）：**
+
+- `sam` CLI，装进 `mono2sls` conda env（参考 memory 里记录的 `cfn-lint` PATH 坑：装完要确认
+  该 env 的 `Scripts/` 目录在 PATH 上）。
+- Docker Desktop（`sam local invoke` / `sam local start-api` 都需要）。
+- 可选但建议：LocalStack（单个 Docker 容器统一模拟 DynamoDB / SQS / EventBridge / S3，给
+  E2E Latency 测量提供真实下游，避免手写 mock 层）。
+- 轻量压测工具：Node 生态用 `autocannon`（`npx autocannon` 免安装）。
+
+---
+
+## 1. 总体拓扑（v1）
+
+在既有 S3c 和 S4 之间插入一个新阶段 `S3p`（perf；字母沿用既有 S3a/S3b/S3c 命名习惯，表示
+"S3 之后、S4 之前"，不打乱已有的 `stage_reports/S4.json`、`gate(final)` 这些既定文件契约）：
+
+```
+P0（analyze_project）
+  ↓
+S1  architect               → gate(blueprint)            [不变：自查只认 B0]
+  ↓
+S2  code-developer           → gate(code)                  [不变：自查只认 C1/C10]
+  ↓
+S3  sam-engineer(a/b/c)      → gate(template)+validate_sam [不变：自查只认 C1-C12]
+  ↓
+S3p perf-optimizer（新）      → gate(perf)（新，advisory，不阻断验收）
+  ↓
+S4  validator（不变职责，位置后移到 perf 之后）→ gate(final)（不变：仍只代表正确性验收，不含性能）
+  ↓
+验收
+```
+
+**为什么 perf-optimizer 放在 S3c 之后、S4 之前，而不是 S4 之后：** perf-optimizer 会实际
+修改代码和模板（批量 API 改写、`MemorySize`/`Architectures` 调整），这些修改带有引入新错误
+的风险（哪怕很小）。让 S4（正确性权威裁决）在它之后跑，才能保证 `gate(final)` 检验的是**真正
+要交付的最终态**，而不是"perf 优化之前看起来正确、优化之后没人再验过"的半成品。
+
+**为什么 `gate(perf)` 不影响 `gate(final)` 的 PASS/FAIL：** 吞吐这类指标本地测出来的可信度
+有限（是"回归检测信号"而非"产能数字"），做成 blocking gate 会让流水线因为一个本不该被当真
+数字的指标卡死。`gate(perf)` 的作用是让 perf-optimizer 自己判断"要不要继续迭代"，结果作为
+**独立报告**（`output/perf_report.json`）附加在最终交付物里，不参与验收判定。
+
+---
+
+## 2. 现有三个 agent 的改动点
+
+### 2.1 m2s-architect（S1）
+
+新增一个**可选**字段（加在 `lambda_functions[]` 条目内部，不新增顶层 key，不破坏
+`merge_blueprint_key` 现有的 10-key 白名单约束）：
+
+```json
+{"name": "...", "perf_hint": "hot" | "normal", "...": "..."}
+```
+
+判定规则（写进 `m2s-architect.md`，作为一条轻量启发式，不是强制）：出现在高频交互路径的端点
+（列表查询、下单、登录后首屏数据这类）标 `"hot"`，其余标 `"normal"` 或干脆不写（缺省当
+`"normal"`）。这个字段目前只做一件事——给 S3 sam-engineer 决定 `MemorySize` 分级提供参考
+信号，**不新增 S1 的自查循环判定项**：B0 检查不需要管这个字段填没填、填得准不准。
+
+### 2.2 m2s-code-developer（S2）
+
+不改变 `gate(code)` 自查循环的判定范围（继续只认 C1/C10），只改变**参考知识**：在"硬性工具
+说明"里追加一条，写完代码后除了现有的 `m2s-lambda-coding-kb` / `m2s-async-patterns-kb`，
+再 `skill(name="m2s-performance-kb")`（新增，见 §4）读一遍做自我对照，重点是"原单体里循环
+调用单条 DB 操作的模式，要改写成批量 API"——这条在现有 KB 第 6 节完全没提，是当前最容易被
+忽视的一处。这是"写的时候就写得更好"，不是新增校验步骤。
+
+### 2.3 m2s-sam-engineer（S3）
+
+对 TIER1 参考模板（`m2s-sam-kb`）做三处默认值调整：
+
+1. `Globals.Function` 默认加 `Architectures: [arm64]`（`nodejs22.x`/`python3.12` 都原生
+   支持，同负载更快更省，加这一行代价接近零）。
+2. `MemorySize` 从写死 `512` 改成分级建议：读 blueprint 里的 `perf_hint`，`hot` 给
+   `512-1024`，`normal`/缺省给 `128-256`（纯 CRUD 场景内存加大边际收益低）。**这条只是
+   参考建议，不是强制值**——sam-engineer 仍然可以按实际函数复杂度调整，避免变成新的死板
+   规则。
+3. SQS 事件源默认加 `BatchSize` / `MaximumBatchingWindowInSeconds` 的参考值（当前
+   `m2s-sam-kb` 里 SQS 消费者只给了 `VisibilityTimeout`，没有这两个吞吐相关参数）。
+
+---
+
+## 3. 新增 m2s-perf-optimizer agent
+
+按现有四个 agent `.md`（`m2s-architect.md` / `m2s-code-developer.md` / `m2s-sam-engineer.md`
+/ `m2s-validator.md`）的固定结构给完整定义框架，落地时对应新文件
+`m2s-mcp-server/agents/m2s-perf-optimizer.md`。
+
+**输入契约：**
+
+- `<WS>/storage/blueprint.json`
+- `<WS>/output/lambdas/`（S2 产出，已过 `gate(code)`）
+- `<WS>/output/template.yaml`（S3c 产出，已过 `gate(template)` + `validate_sam`）
+
+**工作流程**（这是它跟其它 agent 最大的不同——不是"写代码/写模板"，是"测量 → 改 → 再测量"）：
+
+1. **代码阶段代理指标测量**（不需要 sam，跑得快，先做）：对每个 handler，跑一次
+   `require()`/`import` 计时（module-level init 代理指标）+ 一次 mock 调用计时（handler
+   执行耗时代理指标）。发现循环里单条 DB 调用模式，直接改成批量 API。
+2. **sam CLI 阶段测量**（需要 sam + Docker，跑得慢，放后面）：`sam build` → `sam local
+   invoke`（冷）+ `sam local start-lambda` 连续两次 invoke（热）算 `T_cold_start` 代理值
+   → `sam local start-api` 测 E2E Latency 代理值（如果 LocalStack 可用就配上真实下游）→
+   可选轻量压测拿 throughput 弱信号。
+3. 根据测量结果决定要不要改：`MemorySize` 往上/下调、去掉未用到的重依赖、批量 API 改写。
+   改完**同一批指标都要重测**（不是只测改动那部分），确认有没有变好。
+4. 最多 3 次尝试（沿用既有自查循环上限约定）。3 次后仍不理想：不阻塞流水线，如实在报告里
+   写清楚"已尝试的改动 + 最后一轮测量数值 + 还剩什么没改"，输出 `STAGE_BLOCKED`（这里的
+   `STAGE_BLOCKED` 语义跟别的阶段不同——不代表流水线要停，只代表"性能这块没收敛"，
+   `gate(final)` 不受影响，主 Agent 直接放行进入 S4）。
+
+**输出契约：**
+
+- `<WS>/output/perf_report.json`：每个函数的测量数值（本地代理指标 + sam CLI 指标，标清楚
+  哪些是真实数字哪些是本地代理值/失真说明）、做过的改动、改动前后对比。
+- `<WS>/storage/stage_reports/S3p.json`：跟其它阶段一样的工作报告格式。
+
+**禁止事项**（照抄既有模式，加性能特有的几条）：
+
+- 不改 `output/lambdas/` 目录结构、Handler/CodeUri 这些正确性相关字段——只改函数体内部
+  逻辑和 `MemorySize`/`Architectures` 这类纯性能配置，不触碰 S4 要验的那些一致性锚点。
+- 不做真实 AWS 部署、不使用真实 AWS 凭证。
+- Architecture 相关的计时结论不采信——arm64 在本机 x86 上是 QEMU 模拟，只用官方公开基准
+  做默认值依据，不拿本地测的 arm64 数字改决策。
+- throughput 数字不写成"结论性"表述（不要出现"吞吐提升 30%"这类），只能写成"本地并发测试
+  未发现明显退化 / 发现 XX 处并发安全问题"。
+
+---
+
+## 4. 新增 m2s-performance-kb skill（大纲）
+
+给 code-developer 和 perf-optimizer 共用：
+
+1. 批量 API 模式（DynamoDB `BatchGetItem`/`BatchWriteItem`/`TransactWriteItems`，对照"循环
+   里的单条 get_item/put_item"识别）。
+2. 依赖精简清单（跟现有 `m2s-lambda-coding-kb` 第 11 节呼应，但聚焦在"这个包会不会显著拖慢
+   cold start"这个判断维度）。
+3. 本地测量方法参考（§5 的内容搬进来，供 perf-optimizer 直接照着操作，不用每次自己发明
+   测量脚本）。
+
+---
+
+## 5. 测量方法
+
+| 指标 | 测法 | 谁测 | 何时能测 |
+|---|---|---|---|
+| 代码级 init 耗时（cold start 代理） | `require()`/`import` 计时 | perf-optimizer | S2 完成即可，不需要 sam |
+| handler 执行耗时（E2E Latency 代理） | mock 调用计时 | perf-optimizer | S2 完成即可，不需要 sam |
+| T_cold_start | `sam local invoke`(冷) − `sam local start-lambda` 连续两次(热) 的差值 | perf-optimizer | 需要 S3c 产出完整 `template.yaml` |
+| E2E Latency（本地模拟栈） | `sam local start-api` + 可选 LocalStack | perf-optimizer | 需要完整 `template.yaml` |
+| Throughput（弱信号） | `sam local start-api` + `autocannon` | perf-optimizer | 需要完整 `template.yaml`，结果仅供参考 |
+
+失真点（写进报告模板，每次都要带上，不能省略）：
+
+- arm64 本地测试受 QEMU 模拟影响不可信，只做官方基准背书的默认值，不拿本地数字改决策。
+- `sam local` 不模拟 Cognito Authorizer，E2E Latency 数字不含真实 JWT 校验耗时。
+- `sam local` 的并发调度模型跟真实 Lambda 弹性扩容完全不同，throughput 只做"有没有明显并发
+  bug"的回归检测用，不能当产能数字用。
+
+---
+
+## 6. `m2s-migrate` 编排 skill 需要同步更新的地方
+
+- §1 阶段拓扑图：插入 `S3p`。
+- §5 文件契约表：加 `output/perf_report.json`、`storage/stage_reports/S3p.json`。
+- §2 spawn prompt 模板要素：新增一条——spawn `m2s-perf-optimizer` 时要在 prompt 里确认
+  `sam`/Docker 是否可用，不可用则明确告诉它跳过 sam CLI 阶段测量，只做代码阶段代理指标
+  （保证流水线在环境不全时也能优雅降级，不是硬性失败）。
+- §3 分层裁决规则：`S3p` 的 `STAGE_BLOCKED` 不触发主 Agent 回炉重 spawn（性能没收敛不算
+  "这个阶段失败"），只需要主 Agent 如实记录进最终报告，直接放行进入 S4。
+
+---
+
+## 7. v2 路标（本次不做，留记录）
+
+- S2 / S3b / perf-optimizer 的函数级测量与修正部分按 domain 并行 fan-out；S3a（共享资源）/
+  S3c（合并+校验）/ perf-optimizer 的全局决策与实测收尾部分保持全局单例——这是已经讨论定型
+  的拓扑，理由：
+  - S3a/S3c 的产物（API Gateway、Cognito、DynamoDB 表等共享资源，以及跨 domain 的一致性
+    校验）天生是全局单例，按 domain 拆会导致资源重复声明/冲突。
+  - perf-optimizer 的 `sam build`/`sam local invoke` 依赖已经合并完整的 `template.yaml`，
+    某个 domain 分支手头只有自己那部分函数时根本跑不了，必须等全部 domain 完成后才能进行。
+- 共享层（`output/layers/shared/`）并发写冲突规避：先串行生成共享层，再并行 fan-out domain。
+- `m2s_merge.py` 扩展成支持 N 个 domain 分片合并（现在是二元 part1+part2），`Outputs:` 段
+  建议改成合并脚本用代码自动生成，而不是让某个 domain agent 猜全局函数列表。
+- 架构决策前移：`analyze_project` 静态分析新增性能相关量化信号（循环内 DB 调用计数等），
+  供 S1 architect 判定 `perf_hint` 时有数据支撑而不是纯启发式猜测。
