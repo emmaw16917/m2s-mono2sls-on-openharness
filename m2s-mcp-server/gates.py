@@ -169,12 +169,24 @@ def check_b0(workspace: Path) -> list[dict[str, Any]]:
             continue
         if not fn.get("name"):
             findings.append(_finding("B0", "ERROR", f"{label} missing non-empty 'name'.", label))
-        if not fn.get("entry_points"):
-            findings.append(_finding("B0", "ERROR", f"{label} missing non-empty 'entry_points'.", label))
-        if fn.get("auth") not in {"required", "none"}:
-            findings.append(
-                _finding("B0", "ERROR", f"{label} 'auth' must be 'required' or 'none', got {fn.get('auth')!r}.", label)
-            )
+        # `entry_points`/`auth` are an api-trigger-only contract (see
+        # m2s-architect.md: "entry_points 仅 api 类型需要...sqs/eventbridge 消费者
+        # 没有 entry_points"). Requiring them unconditionally false-positives on
+        # every non-api lambda_functions entry -- never caught by the todo
+        # benchmark because it has zero sqs/eventbridge functions.
+        if fn.get("trigger_type") == "api":
+            if not fn.get("entry_points"):
+                findings.append(
+                    _finding("B0", "ERROR", f"{label} missing non-empty 'entry_points' (required for trigger_type='api').", label)
+                )
+            if fn.get("auth") not in {"required", "none"}:
+                findings.append(
+                    _finding(
+                        "B0", "ERROR",
+                        f"{label} 'auth' must be 'required' or 'none' for trigger_type='api', got {fn.get('auth')!r}.",
+                        label,
+                    )
+                )
         if not fn.get("runtime"):
             findings.append(_finding("B0", "ERROR", f"{label} missing 'runtime'.", label))
 

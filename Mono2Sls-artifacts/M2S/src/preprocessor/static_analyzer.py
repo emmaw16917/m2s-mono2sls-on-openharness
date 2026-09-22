@@ -1044,6 +1044,70 @@ def build_entry_point_call_map(
     return result
 
 
+# Matches `const cartRoutes = require('./routes/cart')` (only relative specs --
+# a bare package name like `express` is never a local router file).
+_REQUIRE_ASSIGN_RE = re.compile(
+    r"(?:const|let|var)\s+([A-Za-z0-9_$]+)\s*=\s*require\(\s*['\"](\.[^'\"]+)['\"]\s*\)"
+)
+# Matches `app.use('/api/cart', authMiddleware, cartRoutes)` -- prefix is
+# group(1), everything after it up to the closing paren is group(2) (may be
+# several comma-separated middleware args before the final router identifier).
+_APP_USE_RE = re.compile(r"\b(?:app|router)\.use\(\s*['\"]([^'\"]+)['\"]\s*,\s*([^)]+)\)")
+
+
+def _resolve_js_require_path(requiring_file: Path, monolith_root: Path, require_spec: str) -> Optional[Path]:
+    """Resolve a relative require() spec like './routes/orders' to an on-disk
+    file, trying the common Node resolution suffixes/index files."""
+    base = (requiring_file.parent / require_spec).resolve()
+    candidates = [base] + [base.with_suffix(ext) for ext in (".js", ".ts", ".jsx", ".tsx")] + [
+        base / "index.js", base / "index.ts"
+    ]
+    for cand in candidates:
+        if cand.is_file():
+            return cand
+    return None
+
+
+def _resolve_js_mount_prefixes(
+    monolith_root: Path, app_name: Optional[str], source_cache: List[Tuple[Path, str, str]]
+) -> Dict[str, str]:
+    """Find Express `app.use('/prefix', ...middleware, routerVar)` mounts and
+    resolve `routerVar` back to the router file it was `require()`-d from.
+
+    Route paths are extracted per-file, in isolation (see
+    `analyze_js_like_file`), with no idea they're mounted under a prefix
+    elsewhere. Without this resolution, two different domain routers that
+    both define e.g. `router.get('/', ...)` produce identical `GET /` entry
+    points -- indistinguishable to gates.py's B0 coverage check, which then
+    flags them as a duplicate claim / an uncovered analyzed endpoint. The
+    Python analyzer already does the equivalent for Flask Blueprint
+    `url_prefix`; this is the same fix for Express.
+    """
+    prefixes: Dict[str, str] = {}
+    for file_path, ext, source in source_cache:
+        if ext not in {".js", ".ts", ".jsx", ".tsx"}:
+            continue
+        local_requires = {m.group(1): m.group(2) for m in _REQUIRE_ASSIGN_RE.finditer(source)}
+        if not local_requires:
+            continue
+        for m in _APP_USE_RE.finditer(source):
+            prefix, args_str = m.group(1), m.group(2)
+            router_var = args_str.split(",")[-1].strip()
+            if not re.match(r"^[A-Za-z0-9_$]+$", router_var):
+                continue  # last arg is an inline function/expression, not a plain require()'d router
+            require_spec = local_requires.get(router_var)
+            if not require_spec:
+                continue
+            resolved = _resolve_js_require_path(file_path, monolith_root, require_spec)
+            if resolved is None:
+                continue
+            rel_path = str(resolved.relative_to(monolith_root).as_posix())
+            if app_name:
+                rel_path = f"{app_name}/{rel_path}"
+            prefixes[rel_path] = prefix
+    return prefixes
+
+
 def run_static_analysis(monolith_root: Path) -> Dict[str, Any]:
     project_structure = build_project_structure(monolith_root)
 
@@ -1093,6 +1157,22 @@ def run_static_analysis(monolith_root: Path) -> Dict[str, Any]:
                     source_cache.append((file_path, ext, f.read()))
             except Exception:
                 pass
+
+    # ---- Pass 1.5: resolve Express app.use() mount prefixes and correct
+    # entry_points extracted in isolation from their router file (see
+    # _resolve_js_mount_prefixes docstring for why this exists).
+    mount_prefixes = _resolve_js_mount_prefixes(monolith_root, app_name, source_cache)
+    if mount_prefixes:
+        for ep in entry_points:
+            prefix = mount_prefixes.get(ep.get("file"))
+            if not prefix:
+                continue
+            raw_path = ep.get("path", "")
+            full_path = (
+                prefix.rstrip("/") + "/" + raw_path.lstrip("/") if raw_path not in ("", "/") else (prefix or "/")
+            )
+            ep["path"] = full_path
+            ep["handler_function"] = f"{ep.get('method', '')}_{full_path.replace('/', '_').replace(':', '_')}"
 
     # ---- Pass 2: cross-file call graph extraction ----
     all_call_edges: List[Dict[str, Any]] = []
