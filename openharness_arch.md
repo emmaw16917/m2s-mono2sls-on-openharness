@@ -50,7 +50,11 @@ flowchart TD
 | `swarm/` | 子 Agent、后台任务、subprocess/in-process 后端 |
 | `channels/` | 外部聊天平台消息适配和消息总线 |
 | `sandbox/` | Docker 等隔离运行环境 |
-| `autopilot/`、`tasks/` | 自动化任务、后台任务和任务生命周期 |
+| `autopilot/`、`tasks/` | 仓库自动化流水线（intake / 打分 / 执行 / 验证 / PR）、后台任务和任务生命周期，详见第 10 节 |
+| `auth/` | 各 Provider 的登录、Token 刷新和凭据存储 |
+| `bridge/` | `ChannelBridge` 等跨进程/跨渠道消息桥接实现 |
+| `personalization/` | `ohmo` 的用户偏好、画像和个性化设置 |
+| `state/` | 运行时和会话级共享状态存取 |
 
 `pyproject.toml` 中定义了三个主要命令入口：
 
@@ -337,7 +341,7 @@ QueryEngine
 - `.gnupg`
 - `.docker/config.json`
 - `.kube/config`
-- OpenHarness 自身凭据文件
+- OpenHarness 自身凭据文件，具体为 `.openharness/credentials.json` 和 `.openharness/copilot_auth.json`
 
 这一点很重要：即使用户配置了自动模式，敏感凭据路径仍然有额外保护。
 
@@ -789,6 +793,8 @@ OpenHarness 提供 Git worktree 基础设施（`WorktreeManager`、`worktree_pat
 
 但当前普通 `AgentTool` 调用不会自动为每个子 Agent 创建 worktree，也没有把 Agent Definition 中的 `isolation: worktree` 自动转换为 worktree 创建流程。因此要实现修改隔离，需要由上层 orchestrator、Autopilot 或显式 worktree 流程分配独立工作目录。
 
+需要指出的是，`isolation` 字段（取值为 `worktree` 或 `remote`，定义在 `coordinator/agent_definitions.py` 的 `ISOLATION_MODES` 中，`plugins/loader.py` 也会解析同名 frontmatter 字段）目前只是被解析出来存进 `AgentDefinition`，`tools/agent_tool.py` 全文没有任何地方读取或消费这个字段。也就是说，即使某个 Agent Definition 声明了 `isolation: worktree`，`AgentTool` 调用它时也不会自动创建 worktree ——这个字段当前是"已解析但未被使用"的死配置。全仓库唯一真正调用 `WorktreeManager.create_worktree()` 的地方是 `autopilot/service.py`（见第 10 节），不在通用 Agent 调度路径上。
+
 推荐的调试分工是：
 
 ```text
@@ -842,7 +848,62 @@ ohmo
 
 ---
 
-## 10. 外部聊天渠道架构
+## 10. Autopilot：仓库自动化流水线
+
+Autopilot 位于 autopilot/service.py 和 autopilot/types.py，是构建在通用 Agent Runtime 之上的一个独立应用层，定位是"项目级、无人值守的自动开发流水线"，与 `ohmo`（个人助理产品）是并列关系，但服务目标不同：`ohmo` 面向对话式个人助理，Autopilot 面向"自动发现任务 → 自动修复/实现 → 自动验证 → 自动开 PR/合并"的仓库自维护场景。
+
+### 10.1 任务来源与打分
+
+Autopilot 把不同来源的工作项统一收进一个队列（`RepoTaskCard`），来源包括：
+
+```text
+ohmo_request        # ohmo 个人助理主动提出的需求
+manual_idea         # 人工录入的想法
+github_issue
+github_pr
+claude_code_candidate
+```
+
+每个来源有基础分（`_SOURCE_BASE_SCORES`），再叠加 bug/紧急关键词加权（`_BUG_HINTS`、`_URGENT_HINTS`）得到最终排队优先级；`_DEFAULT_AUTOPILOT_POLICY` 中的 `intake` 配置控制去重策略（`dedupe_strategy: source_ref_then_fingerprint`）和单次可见候选数上限。
+
+### 10.2 任务状态机
+
+`RepoTaskStatus` 定义了任务的完整生命周期：
+
+```text
+queued → accepted → preparing → running → verifying
+    → pr_open → waiting_ci → repairing → completed → merged
+（或在任意阶段进入 failed / rejected / superseded）
+```
+
+`decision.default_human_gate` 默认为 `True`，即接受任务前默认需要人工确认；`decision.prefer_small_safe_steps` 倾向于把任务拆成更小、更安全的步骤。
+
+### 10.3 执行阶段的 worktree 隔离
+
+`execution.use_worktree` 默认为 `True`：进入 `preparing`/`running` 阶段时，Autopilot 会调用 `WorktreeManager.create_worktree()`（swarm/worktree.py）为该任务在 `base_branch`（默认 `main`）上创建一个独立的 git worktree，任务的执行 cwd 指向这个 worktree，而不是主仓库目录。
+
+这正是全仓库中唯一真正把 `isolation`/worktree 机制落地为自动创建行为的地方——如第 8.2 节所述，普通 `agent()` 子 Agent 调用并不会自动获得独立 worktree，只有 Autopilot 的任务执行才会。
+
+任务结束（完成、合并、失败或被取代）后，worktree 会通过 `git worktree remove --force` 清理。
+
+### 10.4 验证与 PR/CI 流程
+
+任务执行后进入 `verifying` 阶段，运行一组验证命令，结果记录为 `RepoVerificationStep`（`command`、`returncode`、`status: success|failed|skipped|error`、`stdout`、`stderr`）。验证通过后：
+
+1. 按 `github.pr_branch_prefix`（默认 `autopilot/`）创建分支并开 PR。
+2. 按 `github.ci_poll_interval_seconds` / `ci_timeout_seconds` 轮询 CI 状态（还有 `no_checks_grace_seconds`、`checks_settle_seconds` 处理"暂无 CI 检查"和"检查刚创建还未稳定"的边界情况）。
+3. 若验证或 CI 失败，进入 `repairing` 状态重试，最多 `execution.max_attempts`（默认 3）次。
+4. 达成合并条件后，按 `github.auto_merge.mode`（默认 `label_gated`，即需要特定标签才自动合并）决定是否自动合并。
+
+### 10.5 产物与可观测性
+
+每次运行会在 `<project>/.openharness/autopilot/runs/` 下落盘 run report、verification report、任务 journal（`RepoJournalEntry`：时间戳、事件类型、摘要、关联 task_id）等产物，并把当前处理的仓库上下文、注册表（`RepoAutopilotRegistry`）保存在项目级路径（`config/paths.py` 中的 `get_project_autopilot_*` 系列函数）。这部分内容也在第 14.6 节（原第 13.6 节）中提及。
+
+需要注意：`diagnose` Skill 中提到的 `manifest.json`、`execution_trace.jsonl`、`verification_report.json`、`failure_signature.json` 属于特定评估/运行产物约定，不是 Autopilot 或普通 Agent Loop 默认必然生成的文件。
+
+---
+
+## 11. 外部聊天渠道架构
 
 聊天渠道通过 channels/bus/events.py 中的消息对象解耦：
 
@@ -895,7 +956,7 @@ channels/adapter.py 中的 `ChannelBridge` 主要负责：
 
 ---
 
-## 11. UI 架构
+## 12. UI 架构
 
 前端位于 frontend/terminal。
 
@@ -941,9 +1002,9 @@ QueryEngine
 
 ---
 
-## 12. 关键数据流
+## 13. 关键数据流
 
-### 12.1 一次普通请求
+### 13.1 一次普通请求
 
 ```text
 CLI/TUI/Channel
@@ -971,7 +1032,7 @@ AssistantTurnComplete
 SessionBackend.save_snapshot()
 ```
 
-### 12.2 一次插件工具调用
+### 13.2 一次插件工具调用
 
 ```text
 plugin.json
@@ -989,7 +1050,7 @@ tool_registry.to_api_schema()
 PluginTool.execute()
 ```
 
-### 12.3 一次子 Agent 调用
+### 13.3 一次子 Agent 调用
 
 ```text
 模型调用 agent 工具
@@ -1007,7 +1068,7 @@ task_id
 task_get / task_output / task_stop
 ```
 
-### 12.4 用户要求调试代码时的典型运行
+### 13.4 用户要求调试代码时的典型运行
 
 假设用户在项目目录中输入：
 
@@ -1176,11 +1237,11 @@ sequenceDiagram
 
 ---
 
-## 13. 追踪与可观测性
+## 14. 追踪与可观测性
 
 OpenHarness 当前没有统一的 OpenTelemetry、Jaeger 或单一 `execution_trace.jsonl` 式端到端 Trace 系统，而是由多种机制共同提供可观测性。不同机制记录的粒度不同：有的实时暴露事件，有的持久化会话，有的只统计 Token 或输出诊断日志。
 
-### 13.1 实时 StreamEvent
+### 14.1 实时 StreamEvent
 
 `run_query()` 通过 `StreamEvent` 向 TUI、打印模式、JSON 输出和 Backend Host 暴露运行过程。主要事件包括：
 
@@ -1214,7 +1275,7 @@ CompactProgressEvent
 
 这意味着 OpenHarness 可以实时暴露模型文本、工具调用、工具输入和工具结果，但实时事件本身默认不等于磁盘上的完整 Trace 文件。
 
-### 13.2 Session snapshot 和 transcript
+### 14.2 Session snapshot 和 transcript
 
 默认 Session Backend 位于 `services/session_backend.py`，实际持久化由 `services/session_storage.py` 完成。会话数据通常保存在：
 
@@ -1260,15 +1321,16 @@ Session snapshot 不是 Provider 原始请求日志。它不保证保存：
 
 此外，过大的工具输出可能被裁剪、摘要化或外置为 artifact，因此 snapshot 中不一定保留原始完整输出。会话还可以导出为 `transcript.md`，用于人工阅读工具调用和工具结果。
 
-### 13.3 Token、cost 和 latency
+### 14.3 Token、cost 和 latency
 
 `engine/cost_tracker.py` 中的 `CostTracker` 会聚合每次模型调用返回的 `UsageSnapshot`。当前 `UsageSnapshot` 主要包含：
 
 ```text
 input_tokens
 output_tokens
-total_tokens
 ```
+
+`total_tokens` 不是独立存储字段，而是由 `input_tokens + output_tokens` 计算得出的只读属性（`@property`）。
 
 因此当前核心实现可以稳定统计 Token usage，但不是完整 cost/latency 系统：
 
@@ -1277,7 +1339,7 @@ total_tokens
 - 首 Token latency 不是默认字段。
 - 工具执行耗时只在部分 debug 日志中记录，没有统一 span 数据模型。
 
-### 13.4 Debug logging
+### 14.4 Debug logging
 
 CLI 支持 `--debug` / `-d` 开启 DEBUG logging。工具执行路径会记录类似信息：
 
@@ -1299,7 +1361,7 @@ executed tool in X.XXs err=... output_len=...
 
 默认日志主要面向 stderr 和运行诊断，并不是自动生成的结构化 JSON Trace。完整工具输出、Hook payload 和模型原始请求也不会因为打开 `--debug` 就自动完整落盘。
 
-### 13.5 Hook、权限和上下文压缩的可观测性
+### 14.5 Hook、权限和上下文压缩的可观测性
 
 Hook 的 payload 和返回值主要在 `HookExecutor` 内部流转。Hook 事件包括：
 
@@ -1317,7 +1379,7 @@ subagent_stop
 
 权限决策可以通过运行时事件和 debug 日志观察，但也不是独立的 Trace span。上下文压缩则有 `CompactProgressEvent`，并在 `tool_metadata` 中保留部分 compact checkpoint 和状态信息。
 
-### 13.6 子 Agent 和 Autopilot 记录
+### 14.6 子 Agent 和 Autopilot 记录
 
 子 Agent 由 `BackgroundTaskManager` 管理，任务目录通常位于：
 
@@ -1342,7 +1404,7 @@ Autopilot 还有项目级运行目录：
 
 其中可以保存 run report、verification report、任务 journal、attempt 信息和 active repo context。`diagnose` Skill 中提到的 `manifest.json`、`execution_trace.jsonl`、`verification_report.json` 和 `failure_signature.json` 不应理解为普通 Agent Loop 默认都会生成的文件；它们属于特定评估或运行产物约定。
 
-### 13.7 追踪能力总结
+### 14.7 追踪能力总结
 
 | 内容 | 当前主要来源 | 默认状态 |
 |---|---|---|
@@ -1366,13 +1428,13 @@ Autopilot 还有项目级运行目录：
 
 ---
 
-## 14. 架构优点
+## 15. 架构优点
 
-### 14.1 核心循环与入口解耦
+### 15.1 核心循环与入口解耦
 
 TUI、打印模式、后台 worker、ohmo 都使用同一个 `QueryEngine`，避免多套行为逐渐分叉。
 
-### 14.2 扩展边界清晰
+### 15.2 扩展边界清晰
 
 新增能力可以选择合适的扩展点：
 
@@ -1384,7 +1446,7 @@ TUI、打印模式、后台 worker、ohmo 都使用同一个 `QueryEngine`，避
 - 增加聊天平台：Channel Adapter
 - 增加 Agent 类型：Agent Definition
 
-### 14.3 事件模型适合流式 Agent
+### 15.3 事件模型适合流式 Agent
 
 使用 `StreamEvent` 表达：
 
@@ -1398,11 +1460,11 @@ TUI、打印模式、后台 worker、ohmo 都使用同一个 `QueryEngine`，避
 
 UI、ChannelBridge、打印模式都可以消费同一类事件。
 
-### 14.4 安全机制集中化
+### 15.4 安全机制集中化
 
 权限检查、敏感路径保护、Hook 和 sandbox 都处于统一运行时中，避免各个入口自行实现安全逻辑。
 
-### 14.5 适合长期会话
+### 15.5 适合长期会话
 
 项目不仅保存消息，还维护：
 
@@ -1418,9 +1480,9 @@ UI、ChannelBridge、打印模式都可以消费同一类事件。
 
 ---
 
-## 15. 可能的架构风险
+## 16. 可能的架构风险
 
-### 15.1 `RuntimeBundle` 责任较重
+### 16.1 `RuntimeBundle` 责任较重
 
 `RuntimeBundle` 同时持有：
 
@@ -1448,7 +1510,7 @@ MemoryFactory
 
 但目前项目规模下，集中组装仍然是合理的。
 
-### 15.2 `tool_metadata` 承担了过多跨模块状态
+### 16.2 `tool_metadata` 承担了过多跨模块状态
 
 `QueryEngine` 中的 `tool_metadata` 同时保存：
 
@@ -1470,7 +1532,7 @@ IntegrationContext
 MemoryContext
 ```
 
-### 15.3 外部渠道需要关注并发会话模型
+### 16.3 外部渠道需要关注并发会话模型
 
 `ChannelBridge` 本身消费消息并调用一个 `QueryEngine`。如果多个外部消息共享同一个 Engine，需要确保：
 
@@ -1481,7 +1543,7 @@ MemoryContext
 
 源码已经提供 session key 逻辑，但实际 gateway 如何按 session key 创建和复用 Engine，是外部渠道稳定性的关键。
 
-### 15.4 插件是高信任扩展
+### 16.4 插件是高信任扩展
 
 插件可以加载 Python 工具、Hook 和 MCP 配置，因此插件目录基本等同于可执行扩展。
 
@@ -1492,7 +1554,7 @@ MemoryContext
 - 插件能否访问凭据。
 - 插件 Hook 是否可以改变权限行为。
 
-### 15.5 Python 后端和 React 前端之间存在协议维护成本
+### 16.5 Python 后端和 React 前端之间存在协议维护成本
 
 React/Ink TUI 带来更好的交互能力，但同时增加了：
 
@@ -1506,7 +1568,7 @@ React/Ink TUI 带来更好的交互能力，但同时增加了：
 
 ---
 
-## 16. 总结
+## 17. 总结
 
 OpenHarness 的架构可以概括为：
 
@@ -1522,5 +1584,6 @@ OpenHarness 的架构可以概括为：
 6. plugins/loader.py：定义插件扩展机制。
 7. channels/adapter.py：把外部消息接入统一 Agent。
 8. ohmo/runtime.py：展示如何基于核心 Runtime 构建产品级 Agent。
+9. autopilot/service.py：展示如何基于核心 Runtime 构建无人值守的仓库自动化流水线（含独立的 worktree 隔离机制）。
 
 从工程角度看，它不是“把 LLM 接到几个工具上”的脚本，而是已经形成了一个相对完整的 Agent 操作系统雏形：模型是可替换的，工具是可注册的，记忆是可持久化的，权限和 Hooks 是独立的，交互入口也是可组合的。

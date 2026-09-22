@@ -24,12 +24,12 @@ try:
         "https://ws-zpqs2kv79br02kev.us-east-1.maas.aliyuncs.com/compatible-mode/v1/chat/completions",
         headers=headers,
         json=data,
-        timeout=10
+        timeout=90
     )
     print(f"✅ 状态码: {response.status_code}")
     print(f"📄 响应内容:\n{response.text}")
 except requests.exceptions.Timeout:
-    print("❌ 错误: 请求超时（10秒内未收到响应）")
+    print("❌ 错误: 请求超时（90秒内未收到响应）")
 except requests.exceptions.ConnectionError:
     print("❌ 错误: 无法连接到服务器（网络问题）")
 except Exception as e:
