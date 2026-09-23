@@ -299,6 +299,49 @@ delete 本身的顺序开销。把 3 个 delete 合并成 1 个 `BatchWriteComma
 （`BatchWriteItem` 只支持 `PutRequest`/`DeleteRequest`）——这个实例正确的优化是"循环改
 `Promise.all` 并行"，不是"改批量 API"。已经在 §4 补了一条分诊规则。
 
+### sam CLI + Docker 阶段实测（2026-09-23，bookstore 基准，Windows + Docker Desktop + WSL2）
+
+环境本身跑通了：`sam build --use-container` 对 12 个函数全部构建成功；WSL2 装好、Docker
+Desktop 引擎起来之后 `docker ps` 正常。但**实际测量结果是一个重要的负面结论，直接影响这一
+整层测量方案的可用性**：
+
+**核心负面发现——这套本地测量法在这台 Windows 机器上精度不够，测不出批量 API 这类细粒度优化
+的效果**：用 `sam local start-lambda --warm-containers LAZY`（默认参数下 SAM CLI **每次调用
+都起新容器**，冷热看起来一样，这本身是个之前不知道的坑，必须显式加 `--warm-containers` 才能
+观察到真实冷热差异）连续调用 3 个内部复杂度差异很大的函数：
+
+| 函数 | 内部 SDK 调用模式 | cold（首次） | warm（后续 3 次均值） |
+|---|---|---|---|
+| `orders-create` | 5 次调用（Put+3×并行Delete+SendMessage） | 37,588ms | ~4,796ms |
+| `bestsellers-update-consumer` | 3 次顺序 `UpdateCommand` | 24,331ms | ~4,801ms |
+| `books-list` | 1 次 `QueryCommand` | 22,722ms | ~4,795ms |
+
+冷热差异是真实存在的（前提是显式传 `--warm-containers`），但**三个函数的 warm 数字几乎完全
+相同**（4795~4801ms），跟它们内部 SDK 调用次数/模式的巨大差异（1 次 vs 3 次顺序 vs 5 次）
+完全不成比例——说明这条链路（`boto3`/HTTP → `start-lambda` 自带的 Flask 开发服务器 →
+`docker exec` 进容器）本身的固定开销在 ~4.8 秒量级，把我们真正关心的、只有几十毫秒量级的
+批量 API 优化效果**完全淹没了**。**结论：这套 sam+Docker 本地测量法目前只能用来做"端到端能
+不能跑通"的功能性验证，测不出细粒度代码优化（批量 API、`Promise.all` 并行）的性能差异**——
+v2 如果要继续投入这条路线，要么找到消除固定开销的办法（比如绕过 `start-lambda` 的 Flask 层，
+直接用更底层的 Lambda RIE 协议），要么承认这一层测不出这类优化、只把它当功能验收用，性能判断
+仍然依赖代码阶段的本地代理指标（§3 步骤 2）。
+
+**另外三个环境坑，记录以便 v2 复用这条路线时少踩一次：**
+
+1. **`sam local start-api` 对已登录端点不是"跳过校验"，是直接 502 崩溃**：`sam local` 完全
+   不模拟 Cognito Authorizer，走真实 HTTP 请求时 `event.requestContext.authorizer.claims`
+   根本不存在（不是"存在但未验证"），任何读 `.claims.sub` 的 handler 会直接抛未捕获异常，
+   API Gateway 模拟层按 Lambda 报错的标准行为返回 502。比设计文档 §5 原来写的"不模拟 Cognito
+   Authorizer，E2E Latency 数字不含真实 JWT 校验耗时"这条失真点更严重——根本无法测，不是
+   "测出来的数字不准"。
+2. **LocalStack `latest` 镜像现在需要付费账号才能启动**（`License activation failed`），改用
+   `localstack/localstack:3.8`（确认免授权的免费社区版）才跑通，`latest` 标签不能再假设是
+   免费可用的。
+3. **`sam local` 对 `!Sub ${Environment}-bookstore-books` 这类需要参数插值的资源引用，解析
+   出来的环境变量值是原始 CloudFormation 逻辑 ID（如 `OrdersTable`），不是真正算出来的物理
+   名（`dev-bookstore-orders`）**——在 LocalStack 里建表要按逻辑 ID 命名，不能按模板里
+   `TableName` 属性算出来的名字命名，否则会得到 `ResourceNotFoundException`。
+
 ---
 
 ## 6. `m2s-migrate` 编排 skill 需要同步更新的地方
