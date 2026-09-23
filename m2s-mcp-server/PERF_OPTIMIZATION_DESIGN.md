@@ -139,6 +139,11 @@ S4  validator（不变职责，位置后移到 perf 之后）→ gate(final)（�
 3. SQS 事件源默认加 `BatchSize` / `MaximumBatchingWindowInSeconds` 的参考值（当前
    `m2s-sam-kb` 里 SQS 消费者只给了 `VisibilityTimeout`，没有这两个吞吐相关参数）。
 
+**以上三条截至 2026-09-23 都没有真实 A/B 测试数据支撑**（没有在 bookstore 上部署对比过不同
+`MemorySize`/`Architectures`/SQS 参数的版本），纯粹依据 AWS 官方通用最佳实践/公开基准——
+跟 §5"真实 AWS 部署实测"里批量 API、REST→HTTP API 那两条有真实数据不是一个级别，见 §7 末尾
+的详细说明。默认值先按官方基准给，但不要在文档或报告里把这三条描述成"已验证"。
+
 ---
 
 ## 3. 新增 m2s-perf-optimizer agent
@@ -429,3 +434,25 @@ CloudWatch 账单延迟也来不及反映）**：按 AWS 公开定价折算，**
   建议改成合并脚本用代码自动生成，而不是让某个 domain agent 猜全局函数列表。
 - 架构决策前移：`analyze_project` 静态分析新增性能相关量化信号（循环内 DB 调用计数等），
   供 S1 architect 判定 `perf_hint` 时有数据支撑而不是纯启发式猜测。
+- **REST API → HTTP API**：2026-09-23 真实 AWS 部署实测（§5"真实 AWS 部署实测"）显示 E2E
+  Latency 里 850~1050ms 是 API Gateway + Cognito Authorizer + 网络往返，Lambda 自己只占
+  几毫秒到几十毫秒；HTTP API 定价也只有 REST API 的约 1/3.5。v1 因为 Cognito Authorizer
+  语法改动、改动面大排除了这条，但现在有真实数据支撑，是 v2 里收益可能最大的一项，应该优先
+  评估。
+- **Provisioned Concurrency（按 `perf_hint: hot` 决定要不要配）**：真实部署测出的
+  `T_cold_start`（`Init Duration`）稳定在 300~385ms，有了这个真实数字，v2 可以算一笔账：
+  对哪些端点值得为消除冷启动付预留并发的钱，不用再凭感觉猜。
+- **X-Ray `Tracing: Active` 的开销 vs 诊断价值，需要一起权衡，不能孤立决定关不关**：现在
+  `Globals.Function.Tracing: Active` 是默认常开，从未量化过它本身对延迟的影响；但它同时是
+  唯一能把"850~1050ms 里 API Gateway 和 Cognito Authorizer 各占多少"拆开看的手段（本次
+  实测只测出了两者加起来的总数，没有再往下归因）。v2 如果要动这个开关，得先想清楚：关掉省
+  下的开销，够不够换来一直看不清 API Gateway/Cognito 各自占比的代价。
+
+**以上三条（连同 v1 里的 MemorySize 分级、`Architectures: arm64`、SQS `BatchSize` 调优）
+目前都还没有真实 A/B 测试数据支撑，跟"批量 API 分诊"（本地代理指标 + 真实 `Duration` 互相
+印证出 ~5 倍差异）和"REST→HTTP API"（真实 E2E 延迟直接测出主要开销来源）不是一个验证级别**
+——MemorySize/arm64/SQS 参数这三条纯粹是照抄 AWS 官方通用最佳实践/公开基准，从来没有在
+bookstore 上部署对比版本验证过。v2 如果要继续投入，值得用这次已经跑通、验证过完全可拆除的
+"一次性真实部署"流程（§5"真实 AWS 部署实测"），对每一条单独做真实 A/B（比如同一份代码分别
+部署 256MB/512MB/1024MB 三个变体比较 `Duration`，或者 x86_64/arm64 各部署一份比较），而不是
+继续假设官方基准直接适用于这个场景。
