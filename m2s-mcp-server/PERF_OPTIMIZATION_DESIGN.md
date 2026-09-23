@@ -201,6 +201,14 @@ S4  validator（不变职责，位置后移到 perf 之后）→ gate(final)（�
    cold start"这个判断维度）。
 3. 本地测量方法参考（§5 的内容搬进来，供 perf-optimizer 直接照着操作，不用每次自己发明
    测量脚本）。
+4. **批量 API 规则要按 DynamoDB 操作类型分诊，不能一刀切**（2026-09-23 用 bookstore 基准
+   实测发现，见 §5 末尾"两个反模式的实测差异"）：
+   - `PutItem`/`DeleteItem` 的循环 → 能力所及范围内应该改 `BatchWriteItem`。
+   - `UpdateItem`（尤其原子计数器 `ADD`）的循环 → **`BatchWriteItem` 不支持 UpdateItem
+     操作**，这种情况能做的优化是**改成 `Promise.all` 并行**，不是"批量 API"。
+   - `m2s-performance-kb` §1 写批量 API 示例时要把这条分诊规则放在最前面，不能让 code-developer
+     看到"循环 + 单条调用"就无脑套用 `BatchWriteItem`，那样对 `UpdateCommand` 循环会是错误
+     的重写建议（DynamoDB 直接拒绝这种请求）。
 
 ---
 
@@ -220,6 +228,34 @@ S4  validator（不变职责，位置后移到 perf 之后）→ gate(final)（�
 - `sam local` 不模拟 Cognito Authorizer，E2E Latency 数字不含真实 JWT 校验耗时。
 - `sam local` 的并发调度模型跟真实 Lambda 弹性扩容完全不同，throughput 只做"有没有明显并发
   bug"的回归检测用，不能当产能数字用。
+
+### 两个反模式的实测差异（2026-09-23，bookstore 基准，代码阶段代理指标）
+
+用 bookstore-oh（真实跑完 P0-S4、`gate(final)` PASS 的产物）实测批量 API 反模式的两个真实
+实例，mock 层给每次 DynamoDB/SQS 调用加固定 8ms 延迟模拟单次网络往返（明确是代理值，不是
+真实网络延迟）：
+
+| handler | exec_ms | SDK 调用次数 | 调用序列 |
+|---|---|---|---|
+| `bestsellers-update-consumer`（SQS 消费者，3 本书） | 47.68 | 3 | `UpdateCommand` ×3，**顺序 await，无并行** |
+| `orders-create`（结账，3 本书购物车） | 47.49 | 5 | `PutCommand` → 3×`DeleteCommand`（**`Promise.all` 并行**）→ `SendMessageCommand` |
+| 其它 10 个单次调用的 handler | 11~24 | 1 | 单条 `Get`/`Put`/`Query`/`Scan`/`Delete`/`Update` |
+
+**发现 1——两个反模式实例"贵法"不一样，不能用同一个预期收益去衡量：**
+`bestsellers-update-consumer` 是**完全顺序**的循环（连 `Promise.all` 都没用），耗时和调用
+次数都跟 N 线性叠加（47.68ms ≈ 3 × 单次调用耗时）——这是最干净、优化收益最大的实例，并行化
+能同时省时间和省请求数。`orders-create` 的 3 个 `DeleteCommand` **已经**用 `Promise.all`
+并行发出，47.49ms 的主要构成是"Put → 并行 Delete → SendMessage"这三个**顺序阶段**，不是
+delete 本身的顺序开销。把 3 个 delete 合并成 1 个 `BatchWriteCommand` 能把请求次数从 5 降到
+3（省成本、降低限流风险），但**墙钟耗时的改善会明显小于** `bestsellers-update-consumer` 那
+个案例。结论：perf-optimizer 判断一个循环调用值不值得优先修时，要看它是"顺序 await"还是
+"已经 `Promise.all` 并行"——前者时间+请求数双重收益，后者主要是请求数/成本收益，量化判据
+不能一概而论。
+
+**发现 2——批量 API 规则要按操作类型分诊**：`bestsellers-update-consumer` 用的是
+`UpdateCommand`（DynamoDB 原子 `ADD salesCount`），这类操作**没有 `BatchWriteItem` 等价物**
+（`BatchWriteItem` 只支持 `PutRequest`/`DeleteRequest`）——这个实例正确的优化是"循环改
+`Promise.all` 并行"，不是"改批量 API"。已经在 §4 补了一条分诊规则。
 
 ---
 
