@@ -342,6 +342,65 @@ v2 如果要继续投入这条路线，要么找到消除固定开销的办法�
    名（`dev-bookstore-orders`）**——在 LocalStack 里建表要按逻辑 ID 命名，不能按模板里
    `TableName` 属性算出来的名字命名，否则会得到 `ResourceNotFoundException`。
 
+### 真实 AWS 部署实测（2026-09-23，一次性参考基准，测完已完全拆除）
+
+按 §0"为什么用本地 Docker + sam，不接真实 AWS"里说的例外条款——一次性、人工授权、测完即拆的
+参考基准——实际部署了一次 `bookstore-oh` 到账号 `882112174488`（`sam deploy`），测完立刻
+`sam delete` + 手动删掉 `DeletionPolicy: Retain` 的 4 张 DynamoDB 表（栈删除不会带走它们），
+已核实栈、表、函数全部不存在。这份数据填补了 sam+Docker 本地测量法测不出的那个信号——真实
+Lambda 的 `REPORT` 日志行直接给 `Init Duration`/`Duration`，不需要再猜代理指标。
+
+**T_cold_start（真实 `Init Duration`）**：三个函数都在 300~385ms 这个窄区间，跟函数内部
+SDK 调用次数几乎无关（1 次 vs 3 次 vs 5 次调用差不多）——冷启动成本主要来自 Node.js 运行时
+引导 + 加载 SDK 模块本身，不是业务逻辑决定的：
+
+| 函数 | Init Duration |
+|---|---|
+| books-list（1 次调用） | 341.17ms |
+| orders-create（5 次调用） | 384.63ms |
+| bestsellers-update-consumer（3 次调用） | 309.15ms |
+
+**T_warm_execution（真实 `Duration`，热启动）——这是本地 sam+Docker 测不出来、真实 AWS 上
+一测就很清楚的信号**：
+
+| 函数 | warm Duration | 相对 books-list |
+|---|---|---|
+| books-list（1 次 `QueryCommand`） | ~8.9ms（6.92~12.78） | 1× |
+| bestsellers-update-consumer（3 次顺序 `UpdateCommand`） | ~19~36ms（干净热启动区间，另有几次 94~105ms，疑似并发扩容触发的额外冷启动） | ~2~4× |
+| orders-create（Put+3×并行Delete+SendMessage，5 次调用） | ~45.25ms（25.38~65.45） | ~5× |
+
+这组数字**验证了本地测量法完全测不出的东西**：函数内部 SDK 调用模式的真实差异（5 次 vs 1 次
+调用）在真实 AWS 上是约 5 倍的热执行耗时差异，跟 §3 步骤 2 的本地 mock 代理指标方向一致（当时
+mock 测的 47ms vs 12~24ms 也是几倍关系），说明本地代理指标这条路线本身是可信的，只是 sam+
+Docker 这一层的固定开销把信号盖住了（见上一节）。
+
+**E2E Latency（真实，走 API Gateway + 真实 Cognito JWT 校验）**：
+
+| 端点 | cold | warm（4 次均值） |
+|---|---|---|
+| `GET /api/books` | 1595ms | ~916ms（841~1064） |
+| `POST /api/orders`（结账） | 1761ms | ~903ms（843~953） |
+
+**关键发现**：热启动时 Lambda 自己只占几毫秒到几十毫秒（上表 `T_warm_execution`），但 E2E
+测出来是 ~900ms——**绝大部分时间（~850~1050ms）花在 API Gateway + Cognito Authorizer 校验
++ 这台机器到 us-east-1 的网络往返上，不是 Lambda 本身**。这给"要不要把 REST API 换成
+HTTP API"这个 v1 明确排除掉的改动（§2.3）提供了真实数据支撑——HTTP API 定价约是 REST API
+的 1/3.5（$1.00 vs $3.50 每百万请求），如果 v2 要重新评估这个改动，现在有真实基线可以对比。
+
+**Throughput（20 并发，两次独立测试，结果不稳定，如实记录两个数据点）**：第一次 13/20 成功
+（65%），延迟 975~1651ms；第二次 20/20 全部成功。没有复现出稳定的限流现象，更像是并发扩容
+瞬间的一次性抖动——**跟设计文档一直强调的"throughput 数字只做参考，不当产能数字"完全吻合**，
+这里再一次验证：这个量级下测出来的吞吐数字确实不稳定，不该被当作产能规划依据。
+
+**费用（分析估算，不是真实账单——测试量级太小，几十次调用产生的真实费用远低于 1 美分，
+CloudWatch 账单延迟也来不及反映）**：按 AWS 公开定价折算，**API Gateway REST API 的请求成本
+（$3.50/百万次）远高于 Lambda 本身**（books-list 这类轻量函数约 $0.27/百万次，orders-create
+这类稍重的约 $0.57/百万次，主要是计算时长的差异，印证了批量 API 优化除了省调用次数还能省一点
+计算时长成本，但这部分远小于 API Gateway 的固定请求成本）；DynamoDB 按需模式和 SQS 在这个量级
+下几乎可以忽略；Cognito 在 50,000 MAU 以内免费。**结论：想要明显降本，换 HTTP API 比抠 Lambda
+内部批量调用的收益大得多**——这跟上面 E2E Latency 的发现指向同一个改动，进一步佐证"HTTP API"
+是个值得 v2 认真评估的点，而不是当初判断的"改动面太大暂不做"。
+
 ---
 
 ## 6. `m2s-migrate` 编排 skill 需要同步更新的地方
