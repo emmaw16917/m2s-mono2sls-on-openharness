@@ -131,18 +131,22 @@ S4  validator（不变职责，位置后移到 perf 之后）→ gate(final)（�
 对 TIER1 参考模板（`m2s-sam-kb`）做三处默认值调整：
 
 1. `Globals.Function` 默认加 `Architectures: [arm64]`（`nodejs22.x`/`python3.12` 都原生
-   支持，同负载更快更省，加这一行代价接近零）。
+   支持，同负载更快更省，加这一行代价接近零）。**2026-09-23 已用真实 AWS A/B 测试验证**，
+   见 §5"MemorySize / Architectures 真实 A/B 实测"——arm64 warm Duration 与 Init Duration
+   都不劣于 x86_64（甚至略快），不是纯粹照抄官方基准了。
 2. `MemorySize` 从写死 `512` 改成分级建议：读 blueprint 里的 `perf_hint`，`hot` 给
-   `512-1024`，`normal`/缺省给 `128-256`（纯 CRUD 场景内存加大边际收益低）。**这条只是
-   参考建议，不是强制值**——sam-engineer 仍然可以按实际函数复杂度调整，避免变成新的死板
-   规则。
+   `512-1024`。**`normal`/缺省档已根据实测从 `128-256` 上调到 `256-512`**——128MB 实测比
+   512MB 慢约 5 倍，`128-256` 这个原建议下限太激进，见 §5 实测数据。**这条仍然只是参考
+   建议，不是强制值**——sam-engineer 仍然可以按实际函数复杂度调整，避免变成新的死板规则。
 3. SQS 事件源默认加 `BatchSize` / `MaximumBatchingWindowInSeconds` 的参考值（当前
    `m2s-sam-kb` 里 SQS 消费者只给了 `VisibilityTimeout`，没有这两个吞吐相关参数）。
+   **截至 2026-09-23 仍然没有真实测试数据**——本地测不了（`sam local` 不模拟 SQS 轮询/
+   攒批机制），真实 AWS 这次也还没排上，是唯一还没验证的一条。
 
-**以上三条截至 2026-09-23 都没有真实 A/B 测试数据支撑**（没有在 bookstore 上部署对比过不同
-`MemorySize`/`Architectures`/SQS 参数的版本），纯粹依据 AWS 官方通用最佳实践/公开基准——
-跟 §5"真实 AWS 部署实测"里批量 API、REST→HTTP API 那两条有真实数据不是一个级别，见 §7 末尾
-的详细说明。默认值先按官方基准给，但不要在文档或报告里把这三条描述成"已验证"。
+**上面第 1、2 条已经用真实 AWS 部署验证过，第 3 条（SQS 参数）还没有**——不要把三条一概
+而论。批量 API、REST→HTTP API、MemorySize、Architectures 现在都有真实数据支撑（§5），
+SQS `BatchSize`/`MaximumBatchingWindowInSeconds` 是目前唯一还停留在"照抄官方基准，没有
+自己验证过"阶段的一条，见 §7 末尾。
 
 ---
 
@@ -406,6 +410,54 @@ CloudWatch 账单延迟也来不及反映）**：按 AWS 公开定价折算，**
 内部批量调用的收益大得多**——这跟上面 E2E Latency 的发现指向同一个改动，进一步佐证"HTTP API"
 是个值得 v2 认真评估的点，而不是当初判断的"改动面太大暂不做"。
 
+### MemorySize / Architectures 真实 A/B 实测（2026-09-23，独立实验栈，测完已拆除）
+
+按用户要求"先看本地能不能测、再看本地调出的值在真实部署时有没有正向效果"做的实验。**本地这
+一步直接失败**：`sam local invoke` 在本机话了几个小时高强度测试后开始只打印 `SAM_CONTAINER_ID`
+但从不真正创建容器（`docker inspect` 查不到这个 ID），重启 Docker Desktop 也没解决；后来
+`sam build --use-container` 甚至原生 `sam build` 都在复制构建产物时报 `FileNotFoundError`。
+**排查后定位到真正原因：工作目录路径太深**（`...\claude\jobs\...\scratchpad\...`），叠加
+`node_modules` 里 `@aws-sdk/*` 包本身的深层嵌套路径，超过 Windows 260 字符 `MAX_PATH` 限制
+导致文件操作静默失败——**换到 `D:\tmp\` 这种短路径后 `sam build`（不用 `--use-container`）
+立刻成功**。这是一个比"Docker 不稳定"更精确的根因，记录下来避免以后重复排查（也回过头修正
+了 §"sam CLI + Docker 阶段实测"里"Docker 环境不稳定"的归因——部分失败可能同样是路径长度
+导致的，不完全是 Docker 本身的问题）。
+
+本地这条路线到此为止没有产出数据，**直接跳到真实 AWS**：用 bookstore-oh 真实的
+`orders-create` 源码（未做任何改动），做成 5 个只在 `MemorySize`/`Architectures` 上不同
+的独立 Lambda 函数，部署到一个专门的临时栈（`m2s-perf-ab-test`，跟 bookstore-oh 主栈完全
+分开），直接 `lambda:Invoke` 各调 4 次（1 次冷 + 3 次热），测完立刻 `sam delete`，已核实
+栈/函数/表全部不存在。
+
+**MemorySize（warm Duration，3 次热调用均值）**：
+
+| MemorySize | warm Duration 均值 | Init Duration（冷） |
+|---|---|---|
+| 128 MB | ~173.7ms（256.74 / 136.05 / 128.22） | 342.88ms |
+| 512 MB | ~35.3ms（55.42 / 25.89 / 24.57） | 326.62ms |
+| 1024 MB | ~24.3ms（30.03 / 22.49 / 20.27） | 321.33ms |
+
+**真实、清晰的信号**：128MB → 512MB 快了约 5 倍，512MB → 1024MB 再快约 31%（边际收益明显
+递减）。`Init Duration` 三档几乎不变（321~343ms）——内存大小基本不影响模块加载/运行时引导
+耗时，只影响 handler 内部代码的实际执行速度（更多内存=更多 CPU）。**这条直接推翻了 §2.3
+原来"normal/缺省档给 128-256MB"的建议**——128MB 实测明显偏慢，已经把该档下限上调到
+256-512MB（见 §2.3 更新）。
+
+**Architectures（warm Duration，同样 3 次热调用，前两次还在收敛，看最后两次更稳）**：
+
+| Architecture | warm Duration（后两次均值） | Init Duration（冷） |
+|---|---|---|
+| x86_64 | ~27.5ms（28.78 / 26.31） | 287.91ms |
+| arm64 | ~23.0ms（27.12 / 18.80） | 273.44ms |
+
+arm64 的 warm Duration 和 Init Duration 都不劣于 x86_64（甚至略快），**这次是真实 Graviton
+硬件上测的，不是本地 QEMU 模拟，数字可信**——跟 AWS 官方 Graviton 基准的方向一致，`Globals.
+Function` 默认 `Architectures: [arm64]` 这条建议现在有真实数据支撑了。
+
+**没做的部分，如实说明**：SQS `BatchSize`/`MaximumBatchingWindowInSeconds` 这次没有纳入
+真实 A/B 实验（本地完全测不了，真实 AWS 这次时间上没排上）——这是目前 MemorySize/
+Architectures/SQS 参数三条里唯一还没验证过的，留给 v2 优先补。
+
 ---
 
 ## 6. `m2s-migrate` 编排 skill 需要同步更新的地方
@@ -448,11 +500,11 @@ CloudWatch 账单延迟也来不及反映）**：按 AWS 公开定价折算，**
   实测只测出了两者加起来的总数，没有再往下归因）。v2 如果要动这个开关，得先想清楚：关掉省
   下的开销，够不够换来一直看不清 API Gateway/Cognito 各自占比的代价。
 
-**以上三条（连同 v1 里的 MemorySize 分级、`Architectures: arm64`、SQS `BatchSize` 调优）
-目前都还没有真实 A/B 测试数据支撑，跟"批量 API 分诊"（本地代理指标 + 真实 `Duration` 互相
-印证出 ~5 倍差异）和"REST→HTTP API"（真实 E2E 延迟直接测出主要开销来源）不是一个验证级别**
-——MemorySize/arm64/SQS 参数这三条纯粹是照抄 AWS 官方通用最佳实践/公开基准，从来没有在
-bookstore 上部署对比版本验证过。v2 如果要继续投入，值得用这次已经跑通、验证过完全可拆除的
-"一次性真实部署"流程（§5"真实 AWS 部署实测"），对每一条单独做真实 A/B（比如同一份代码分别
-部署 256MB/512MB/1024MB 三个变体比较 `Duration`，或者 x86_64/arm64 各部署一份比较），而不是
-继续假设官方基准直接适用于这个场景。
+**更新（2026-09-23）：MemorySize 分级和 `Architectures: arm64` 已经用真实 AWS A/B 测试
+验证过**（见 §5"MemorySize / Architectures 真实 A/B 实测"），不再是"照抄官方基准"——用的
+就是这里说的"一次性真实部署"流程，同一份 `orders-create` 代码分别部署 128/512/1024MB 和
+x86_64/arm64 变体直接对比 `Duration`/`Init Duration`。**SQS `BatchSize`/
+`MaximumBatchingWindowInSeconds` 仍然是唯一没有真实数据支撑的一条**——本地测不了（`sam
+local` 不模拟 SQS 轮询攒批），真实 AWS 这次时间上也还没排到，是 v2 里第一个该补的真实
+A/B 实验，做法可以参考同一套流程：部署几个 `BatchSize` 不同的消费者变体，往同一个队列灌
+一批消息，比较吞吐/延迟。
