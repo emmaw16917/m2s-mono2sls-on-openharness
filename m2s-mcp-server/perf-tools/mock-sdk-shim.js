@@ -69,18 +69,39 @@ function installShim({ clientPrototypes, responseTable, latencyMs = DEFAULT_MOCK
   for (const ClientClass of clientPrototypes) {
     ClientClass.prototype.send = async function (command) {
       callLog.push(command.constructor.name);
+      const interval = { start: process.hrtime.bigint(), end: null };
+      intervals.push(interval);
       await sleep(latencyMs);
+      interval.end = process.hrtime.bigint();
       return mockResponseFor(command, responseTable);
     };
   }
 }
 
 let callLog = [];
+let intervals = [];
 function resetCallLog() {
   callLog = [];
+  intervals = [];
 }
 function getCallLog() {
   return callLog.slice();
+}
+
+// Sequential round-trip depth: the longest chain of calls where each one
+// starts only after the previous one finished (i.e. the number of network
+// round trips on the critical path). Unlike wall-clock ms this does not depend
+// on timer granularity (setTimeout(8) is ~15.6ms on Windows) or machine load,
+// so it is the deterministic metric to judge batch/parallel/aggregate rewrites.
+function getCriticalPathDepth() {
+  const done = intervals.filter((i) => i.end !== null).sort((a, b) => (a.start < b.start ? -1 : 1));
+  const depth = done.map(() => 1);
+  for (let j = 0; j < done.length; j++) {
+    for (let i = 0; i < j; i++) {
+      if (done[j].start >= done[i].end && depth[i] + 1 > depth[j]) depth[j] = depth[i] + 1;
+    }
+  }
+  return depth.length ? Math.max(...depth) : 0;
 }
 
 // Example coverage table from the bookstore-oh run (2026-09-23) -- kept only
@@ -101,6 +122,7 @@ module.exports = {
   installShim,
   resetCallLog,
   getCallLog,
+  getCriticalPathDepth,
   DEFAULT_MOCK_LATENCY_MS,
   EXAMPLE_RESPONSE_TABLE_FROM_BOOKSTORE,
 };
