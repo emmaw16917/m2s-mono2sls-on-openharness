@@ -1,0 +1,15 @@
+{
+  "name": "search-books",
+  "version": "1.0.0",
+  "description": "Lambda handler for GET /api/search (Bookstore app, migrated from Express routes/search.js)",
+  "main": "handler.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.699.0",
+    "@aws-sdk/lib-dynamodb": "^3.699.0"
+  },
+  "license": "MIT",
+  "private": true
+}

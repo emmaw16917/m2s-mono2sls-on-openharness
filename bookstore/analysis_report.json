@@ -1,0 +1,631 @@
+{
+  "project_structure": "bookstore/\n├── config.js\n├── middleware\n│   └── auth.js\n├── package-lock.json\n├── package.json\n├── routes\n│   ├── auth.js\n│   ├── bestsellers.js\n│   ├── books.js\n│   ├── cart.js\n│   ├── orders.js\n│   └── search.js\n├── scripts\n│   ├── init-db.js\n│   └── test-api.sh\n├── server.js\n└── utils\n    ├── bestsellers.js\n    ├── dynamodb.js\n    ├── jwt.js\n    └── password.js",
+  "entry_points": [
+    {
+      "file": "bookstore/routes/auth.js",
+      "method": "POST",
+      "path": "/api/auth/register",
+      "handler_function": "POST__api_auth_register"
+    },
+    {
+      "file": "bookstore/routes/auth.js",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "handler_function": "POST__api_auth_login"
+    },
+    {
+      "file": "bookstore/routes/auth.js",
+      "method": "POST",
+      "path": "/api/auth/refresh",
+      "handler_function": "POST__api_auth_refresh"
+    },
+    {
+      "file": "bookstore/routes/auth.js",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "handler_function": "GET__api_auth_me"
+    },
+    {
+      "file": "bookstore/routes/bestsellers.js",
+      "method": "GET",
+      "path": "/api/bestsellers",
+      "handler_function": "GET__api_bestsellers"
+    },
+    {
+      "file": "bookstore/routes/books.js",
+      "method": "GET",
+      "path": "/api/books",
+      "handler_function": "GET__api_books"
+    },
+    {
+      "file": "bookstore/routes/books.js",
+      "method": "GET",
+      "path": "/api/books/:id",
+      "handler_function": "GET__api_books__id"
+    },
+    {
+      "file": "bookstore/routes/cart.js",
+      "method": "GET",
+      "path": "/api/cart",
+      "handler_function": "GET__api_cart"
+    },
+    {
+      "file": "bookstore/routes/cart.js",
+      "method": "GET",
+      "path": "/api/cart/:bookId",
+      "handler_function": "GET__api_cart__bookId"
+    },
+    {
+      "file": "bookstore/routes/cart.js",
+      "method": "POST",
+      "path": "/api/cart",
+      "handler_function": "POST__api_cart"
+    },
+    {
+      "file": "bookstore/routes/cart.js",
+      "method": "PUT",
+      "path": "/api/cart",
+      "handler_function": "PUT__api_cart"
+    },
+    {
+      "file": "bookstore/routes/cart.js",
+      "method": "DELETE",
+      "path": "/api/cart",
+      "handler_function": "DELETE__api_cart"
+    },
+    {
+      "file": "bookstore/routes/orders.js",
+      "method": "GET",
+      "path": "/api/orders",
+      "handler_function": "GET__api_orders"
+    },
+    {
+      "file": "bookstore/routes/orders.js",
+      "method": "POST",
+      "path": "/api/orders",
+      "handler_function": "POST__api_orders"
+    },
+    {
+      "file": "bookstore/routes/search.js",
+      "method": "GET",
+      "path": "/api/search",
+      "handler_function": "GET__api_search"
+    }
+  ],
+  "dependency_graph": {
+    "bookstore/config.js": [
+      "dotenv"
+    ],
+    "bookstore/server.js": [
+      "./config",
+      "./middleware/auth",
+      "./routes/auth",
+      "./routes/bestsellers",
+      "./routes/books",
+      "./routes/cart",
+      "./routes/orders",
+      "./routes/search",
+      "body-parser",
+      "cors",
+      "dotenv",
+      "express",
+      "path"
+    ],
+    "bookstore/middleware/auth.js": [
+      "../config",
+      "../utils/jwt"
+    ],
+    "bookstore/routes/auth.js": [
+      "../config",
+      "../middleware/auth",
+      "../utils/dynamodb",
+      "../utils/jwt",
+      "../utils/password",
+      "express",
+      "uuid"
+    ],
+    "bookstore/routes/bestsellers.js": [
+      "../config",
+      "../utils/dynamodb",
+      "express"
+    ],
+    "bookstore/routes/books.js": [
+      "../config",
+      "../middleware/auth",
+      "../utils/dynamodb",
+      "express"
+    ],
+    "bookstore/routes/cart.js": [
+      "../config",
+      "../middleware/auth",
+      "../utils/dynamodb",
+      "express",
+      "uuid"
+    ],
+    "bookstore/routes/orders.js": [
+      "../config",
+      "../middleware/auth",
+      "../utils/bestsellers",
+      "../utils/dynamodb",
+      "express",
+      "uuid"
+    ],
+    "bookstore/routes/search.js": [
+      "../config",
+      "../utils/dynamodb",
+      "express"
+    ],
+    "bookstore/scripts/init-db.js": [
+      "../config",
+      "../utils/dynamodb",
+      "aws-sdk",
+      "dotenv",
+      "fs",
+      "path"
+    ],
+    "bookstore/utils/bestsellers.js": [
+      "../config",
+      "./dynamodb"
+    ],
+    "bookstore/utils/dynamodb.js": [
+      "../config",
+      "aws-sdk"
+    ],
+    "bookstore/utils/jwt.js": [
+      "../config",
+      "jsonwebtoken"
+    ],
+    "bookstore/utils/password.js": [
+      "bcryptjs"
+    ]
+  },
+  "file_tags": {
+    "bookstore/config.js": [
+      "Auth",
+      "DynamoDB"
+    ],
+    "bookstore/server.js": [
+      "Auth"
+    ],
+    "bookstore/middleware/auth.js": [
+      "Auth"
+    ],
+    "bookstore/routes/auth.js": [
+      "Auth",
+      "DynamoDB"
+    ],
+    "bookstore/routes/bestsellers.js": [
+      "DynamoDB"
+    ],
+    "bookstore/routes/books.js": [
+      "DynamoDB"
+    ],
+    "bookstore/routes/cart.js": [
+      "DynamoDB"
+    ],
+    "bookstore/routes/orders.js": [
+      "DynamoDB"
+    ],
+    "bookstore/routes/search.js": [
+      "DynamoDB"
+    ],
+    "bookstore/scripts/init-db.js": [
+      "DynamoDB"
+    ],
+    "bookstore/utils/bestsellers.js": [
+      "DynamoDB"
+    ],
+    "bookstore/utils/dynamodb.js": [
+      "DynamoDB"
+    ],
+    "bookstore/utils/jwt.js": [
+      "Auth"
+    ]
+  },
+  "call_graph": [
+    {
+      "caller_file": "bookstore/middleware/auth.js",
+      "caller_function": "authMiddleware",
+      "caller_line": 49,
+      "callee_module": "../utils/jwt",
+      "callee_symbol": "verifyAccessToken",
+      "return_value_used": true,
+      "is_awaited": false
+    },
+    {
+      "caller_file": "bookstore/middleware/auth.js",
+      "caller_function": "optionalAuthMiddleware",
+      "caller_line": 85,
+      "callee_module": "../utils/jwt",
+      "callee_symbol": "verifyAccessToken",
+      "return_value_used": true,
+      "is_awaited": false
+    },
+    {
+      "caller_file": "bookstore/middleware/auth.js",
+      "caller_function": "authMiddleware",
+      "caller_line": 32,
+      "callee_module": "../utils/jwt",
+      "callee_symbol": "extractTokenFromHeader",
+      "return_value_used": true,
+      "is_awaited": false
+    },
+    {
+      "caller_file": "bookstore/middleware/auth.js",
+      "caller_function": "optionalAuthMiddleware",
+      "caller_line": 81,
+      "callee_module": "../utils/jwt",
+      "callee_symbol": "extractTokenFromHeader",
+      "return_value_used": true,
+      "is_awaited": false
+    },
+    {
+      "caller_file": "bookstore/routes/auth.js",
+      "caller_function": "POST__register",
+      "caller_line": 56,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.query",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/auth.js",
+      "caller_function": "POST__register",
+      "caller_line": 81,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.put",
+      "return_value_used": false,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/auth.js",
+      "caller_function": "POST__login",
+      "caller_line": 129,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.query",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/auth.js",
+      "caller_function": "POST__refresh",
+      "caller_line": 205,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.get",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/auth.js",
+      "caller_function": "GET__me",
+      "caller_line": 253,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.get",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/auth.js",
+      "caller_function": "POST__register",
+      "caller_line": 84,
+      "callee_module": "../utils/jwt",
+      "callee_symbol": "generateAccessToken",
+      "return_value_used": true,
+      "is_awaited": false
+    },
+    {
+      "caller_file": "bookstore/routes/auth.js",
+      "caller_function": "POST__login",
+      "caller_line": 149,
+      "callee_module": "../utils/jwt",
+      "callee_symbol": "generateAccessToken",
+      "return_value_used": true,
+      "is_awaited": false
+    },
+    {
+      "caller_file": "bookstore/routes/auth.js",
+      "caller_function": "POST__refresh",
+      "caller_line": 216,
+      "callee_module": "../utils/jwt",
+      "callee_symbol": "generateAccessToken",
+      "return_value_used": true,
+      "is_awaited": false
+    },
+    {
+      "caller_file": "bookstore/routes/auth.js",
+      "caller_function": "POST__register",
+      "caller_line": 85,
+      "callee_module": "../utils/jwt",
+      "callee_symbol": "generateRefreshToken",
+      "return_value_used": true,
+      "is_awaited": false
+    },
+    {
+      "caller_file": "bookstore/routes/auth.js",
+      "caller_function": "POST__login",
+      "caller_line": 153,
+      "callee_module": "../utils/jwt",
+      "callee_symbol": "generateRefreshToken",
+      "return_value_used": true,
+      "is_awaited": false
+    },
+    {
+      "caller_file": "bookstore/routes/auth.js",
+      "caller_function": "POST__refresh",
+      "caller_line": 189,
+      "callee_module": "../utils/jwt",
+      "callee_symbol": "verifyRefreshToken",
+      "return_value_used": true,
+      "is_awaited": false
+    },
+    {
+      "caller_file": "bookstore/routes/auth.js",
+      "caller_function": "POST__register",
+      "caller_line": 65,
+      "callee_module": "../utils/password",
+      "callee_symbol": "hashPassword",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/auth.js",
+      "caller_function": "POST__login",
+      "caller_line": 140,
+      "callee_module": "../utils/password",
+      "callee_symbol": "verifyPassword",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/bestsellers.js",
+      "caller_function": "GET__",
+      "caller_line": 22,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.scan",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/books.js",
+      "caller_function": "GET__",
+      "caller_line": 34,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.query",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/books.js",
+      "caller_function": "GET__",
+      "caller_line": 42,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.scan",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/books.js",
+      "caller_function": "GET___id",
+      "caller_line": 65,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.get",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/cart.js",
+      "caller_function": "GET__",
+      "caller_line": 27,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.query",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/cart.js",
+      "caller_function": "GET___bookId",
+      "caller_line": 50,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.get",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/cart.js",
+      "caller_function": "POST__",
+      "caller_line": 88,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.put",
+      "return_value_used": false,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/cart.js",
+      "caller_function": "PUT__",
+      "caller_line": 124,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.update",
+      "return_value_used": false,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/cart.js",
+      "caller_function": "DELETE__",
+      "caller_line": 155,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.delete",
+      "return_value_used": false,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/orders.js",
+      "caller_function": "GET__",
+      "caller_line": 28,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.query",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/orders.js",
+      "caller_function": "POST__",
+      "caller_line": 69,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.put",
+      "return_value_used": false,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/routes/orders.js",
+      "caller_function": "POST__",
+      "caller_line": 80,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.delete",
+      "return_value_used": true,
+      "is_awaited": false
+    },
+    {
+      "caller_file": "bookstore/routes/orders.js",
+      "caller_function": "POST__",
+      "caller_line": 87,
+      "callee_module": "../utils/bestsellers",
+      "callee_symbol": "updateBestSellers",
+      "return_value_used": false,
+      "is_awaited": false
+    },
+    {
+      "caller_file": "bookstore/routes/search.js",
+      "caller_function": "GET__",
+      "caller_line": 30,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.scan",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/scripts/init-db.js",
+      "caller_function": "createBooksTable",
+      "caller_line": 102,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "dynamodb.createTable",
+      "return_value_used": false,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/scripts/init-db.js",
+      "caller_function": "createCartTable",
+      "caller_line": 134,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "dynamodb.createTable",
+      "return_value_used": false,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/scripts/init-db.js",
+      "caller_function": "createOrdersTable",
+      "caller_line": 166,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "dynamodb.createTable",
+      "return_value_used": false,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/scripts/init-db.js",
+      "caller_function": "createUsersTable",
+      "caller_line": 212,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "dynamodb.createTable",
+      "return_value_used": false,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/scripts/init-db.js",
+      "caller_function": "createBestsellersTable",
+      "caller_line": 242,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "dynamodb.createTable",
+      "return_value_used": false,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/scripts/init-db.js",
+      "caller_function": "waitForTable",
+      "caller_line": 262,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "dynamodb.describeTable",
+      "return_value_used": true,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/scripts/init-db.js",
+      "caller_function": "initializeSampleBooks",
+      "caller_line": 288,
+      "callee_module": "../utils/dynamodb",
+      "callee_symbol": "docClient.put",
+      "return_value_used": false,
+      "is_awaited": true
+    },
+    {
+      "caller_file": "bookstore/utils/bestsellers.js",
+      "caller_function": "updateBestSeller",
+      "caller_line": 26,
+      "callee_module": "./dynamodb",
+      "callee_symbol": "docClient.update",
+      "return_value_used": false,
+      "is_awaited": true
+    }
+  ],
+  "config_info": {
+    "nodejs_dependencies": {
+      "dependencies": [
+        {
+          "name": "express",
+          "version": "^4.18.2"
+        },
+        {
+          "name": "cors",
+          "version": "^2.8.5"
+        },
+        {
+          "name": "body-parser",
+          "version": "^1.20.2"
+        },
+        {
+          "name": "aws-sdk",
+          "version": "^2.1490.0"
+        },
+        {
+          "name": "uuid",
+          "version": "^9.0.1"
+        },
+        {
+          "name": "dotenv",
+          "version": "^16.3.1"
+        },
+        {
+          "name": "jsonwebtoken",
+          "version": "^9.0.2"
+        },
+        {
+          "name": "bcryptjs",
+          "version": "^2.4.3"
+        }
+      ],
+      "devDependencies": [
+        {
+          "name": "nodemon",
+          "version": "^3.0.1"
+        }
+      ]
+    }
+  },
+  "dynamodb_info": {
+    "used": true,
+    "probable_tables": [],
+    "schema_files": [
+      "bookstore/scripts/init-db.js",
+      "bookstore/utils/dynamodb.js",
+      "bookstore/config.js"
+    ]
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "name": "todo-create-item",
+  "version": "1.0.0",
+  "description": "Lambda handler for POST /item (Todo app, migrated from Express routes/todo.js)",
+  "main": "handler.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.699.0",
+    "@aws-sdk/lib-dynamodb": "^3.699.0",
+    "uuid": "^9.0.1"
+  },
+  "license": "MIT",
+  "private": true
+}

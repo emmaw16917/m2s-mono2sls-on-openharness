@@ -1,0 +1,15 @@
+{
+  "name": "todo-list-items",
+  "version": "1.0.0",
+  "description": "Lambda handler for GET /item (Todo app, migrated from Express routes/todo.js)",
+  "main": "handler.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.699.0",
+    "@aws-sdk/lib-dynamodb": "^3.699.0"
+  },
+  "license": "MIT",
+  "private": true
+}

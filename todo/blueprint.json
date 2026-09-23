@@ -1,0 +1,245 @@
+{
+  "metadata": {
+    "application_name": "Todo",
+    "architecture_pattern": "Basic Serverless Architecture",
+    "has_authentication": true,
+    "has_database": true,
+    "has_file_storage": false,
+    "has_async_flows": false,
+    "notes": "Node.js/Express todo monolith migrated to API Gateway + Lambda + DynamoDB + Cognito. 6 business endpoints (GET /item, GET /item/{id}, POST /item, PUT /item/{id}, POST /item/{id}/done, DELETE /item/{id}) each get their own Lambda; all 6 sat behind router.use(authenticateToken) and read req.user.username, so all are auth=required and the identity now comes from event.requestContext.authorizer.claims. POST /register and POST /login are dropped in favour of Cognito. No cross-Lambda call edges exist in call_graph/entry_point_dependencies (every callee is the DynamoDB DocumentClient in config/db.js or JWT helpers in utils/jwt.js), so there are no SQS queues, no EventBridge rules and no synchronous Lambda-to-Lambda invokes. No file handling code exists (no FileUpload/FileStorage tags), so no S3. Blueprint paths follow the analyzer's paths without the Express mount prefix: in the monolith routes/auth.js was mounted at /auth and routes/todo.js at /api, on API Gateway these become /register, /login (dropped) and /item, /item/{id}, /item/{id}/done."
+  },
+  "dynamodb_tables": [
+    {
+      "logical_name": "TodoItems",
+      "purpose": "Store per-user todo items (one row per item, all of a user's items share the partition so GET /item uses a Query on the partition key)",
+      "partition_key": {
+        "name": "cognito-username",
+        "type": "S"
+      },
+      "sort_key": {
+        "name": "id",
+        "type": "S"
+      },
+      "gsi": [],
+      "attribute_definitions": [
+        {
+          "name": "cognito-username",
+          "type": "S"
+        },
+        {
+          "name": "id",
+          "type": "S"
+        }
+      ],
+      "billing_mode": "PAY_PER_REQUEST",
+      "non_key_attributes": [
+        "item (S)",
+        "completed (Bool)",
+        "creation_date (S, ISO-8601)",
+        "lastupdate_date (S, ISO-8601)"
+      ],
+      "source_schema_file": "todo/scripts/init-db.js (createTodoTable)"
+    }
+  ],
+  "s3_buckets": [],
+  "sqs_queues": [],
+  "eventbridge_rules": [],
+  "lambda_invoke_permissions": [],
+  "cognito": {
+    "enabled": true,
+    "user_pool_attributes": [
+      "username",
+      "email"
+    ],
+    "password_policy": {
+      "min_length": 6,
+      "require_numbers": false,
+      "require_uppercase": false,
+      "require_lowercase": true,
+      "require_symbols": false
+    },
+    "mfa": "disabled",
+    "notes": "Monolith only enforced password.length >= 6 (todo/routes/auth.js POST /register), so the pool policy mirrors that rather than inventing stricter rules. 'username' becomes the Cognito sign-in alias (the todo table's partition key is literally named 'cognito-username'), 'email' maps to the standard email attribute and was optional in the monolith so it stays optional/verified=false. No Cognito trigger Lambdas (no post_confirmation, no pre_sign-up) are created - the monolith had no side effects on registration beyond writing the credentials row."
+  },
+  "api_gateway": {
+    "type": "REST",
+    "cors": {
+      "allow_origins": [
+        "*"
+      ],
+      "allow_methods": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS"
+      ],
+      "allow_headers": [
+        "Content-Type",
+        "Authorization"
+      ]
+    },
+    "authorizer": "Cognito",
+    "authorizer_type": "COGNITO_USER_POOLS",
+    "user_pool_arn": "${UserPool.Arn}",
+    "token_validation": "Automatic at API Gateway layer",
+    "identity_source": "Authorization header (Bearer token)",
+    "notes": "Single REST API replacing Express. Every /item* method uses the Cognito User Pool authorizer (the monolith applied authenticateToken at router level via router.use(), i.e. to all six todo endpoints), so Lambdas contain zero auth code and read the verified identity from event.requestContext.authorizer.claims. OPTIONS methods exist only for CORS preflight and need no authorizer/Lambda."
+  },
+  "lambda_functions": [
+    {
+      "name": "todo-list-items",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "index.handler",
+      "auth": "required",
+      "source_files": [
+        "todo/routes/todo.js",
+        "todo/config/db.js"
+      ],
+      "entry_points": [
+        "GET /item"
+      ],
+      "environment_variables": {
+        "TODO_TABLE": "${TodoItemsTable}"
+      }
+    },
+    {
+      "name": "todo-get-item",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "index.handler",
+      "auth": "required",
+      "source_files": [
+        "todo/routes/todo.js",
+        "todo/config/db.js"
+      ],
+      "entry_points": [
+        "GET /item/{id}"
+      ],
+      "environment_variables": {
+        "TODO_TABLE": "${TodoItemsTable}"
+      }
+    },
+    {
+      "name": "todo-create-item",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "index.handler",
+      "auth": "required",
+      "source_files": [
+        "todo/routes/todo.js",
+        "todo/config/db.js"
+      ],
+      "entry_points": [
+        "POST /item"
+      ],
+      "environment_variables": {
+        "TODO_TABLE": "${TodoItemsTable}"
+      }
+    },
+    {
+      "name": "todo-update-item",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "index.handler",
+      "auth": "required",
+      "source_files": [
+        "todo/routes/todo.js",
+        "todo/config/db.js"
+      ],
+      "entry_points": [
+        "PUT /item/{id}"
+      ],
+      "environment_variables": {
+        "TODO_TABLE": "${TodoItemsTable}"
+      }
+    },
+    {
+      "name": "todo-complete-item",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "index.handler",
+      "auth": "required",
+      "source_files": [
+        "todo/routes/todo.js",
+        "todo/config/db.js"
+      ],
+      "entry_points": [
+        "POST /item/{id}/done"
+      ],
+      "environment_variables": {
+        "TODO_TABLE": "${TodoItemsTable}"
+      }
+    },
+    {
+      "name": "todo-delete-item",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "index.handler",
+      "auth": "required",
+      "source_files": [
+        "todo/routes/todo.js",
+        "todo/config/db.js"
+      ],
+      "entry_points": [
+        "DELETE /item/{id}"
+      ],
+      "environment_variables": {
+        "TODO_TABLE": "${TodoItemsTable}"
+      }
+    }
+  ],
+  "dropped_functions": [
+    {
+      "item": "POST /register",
+      "type": "endpoint",
+      "reason": "Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly (SignUp). The handler only validated username/password, hashed the password with bcrypt and wrote a credentials row plus a JWT."
+    },
+    {
+      "item": "POST /login",
+      "type": "endpoint",
+      "reason": "Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly (InitiateAuth/AUTH_USER). The handler only looked up the credentials row, bcrypt-compared the password and returned a JWT."
+    },
+    {
+      "item": "GET /",
+      "type": "endpoint",
+      "reason": "Express liveness banner in todo/server.js returning a hard-coded version/timestamp string; no business logic and not an analyzed entry point. API Gateway/Lambda platform health reporting replaces it, so no Lambda is invented for it."
+    },
+    {
+      "item": "authenticateToken (todo/middleware/auth.js)",
+      "type": "code",
+      "reason": "Replaced by API Gateway Cognito Authorizer. It parsed the Bearer header, verified the JWT and set req.user.username; that identity now arrives pre-validated as event.requestContext.authorizer.claims, so no auth code remains in Lambda."
+    },
+    {
+      "item": "verifyToken (todo/utils/jwt.js)",
+      "type": "code",
+      "reason": "Replaced by API Gateway Cognito Authorizer JWT verification against the User Pool JWKS."
+    },
+    {
+      "item": "generateToken (todo/utils/jwt.js)",
+      "type": "code",
+      "reason": "Replaced by Cognito-issued ID/Access tokens; the custom HS256 JWT and its JWT_SECRET env var are removed entirely."
+    },
+    {
+      "item": "todo/scripts/init-db.js",
+      "type": "script",
+      "reason": "Table creation handled by SAM CloudFormation (createTodoTable/createUserTable/tableExists/waitForTable are replaced by AWS::DynamoDB::Table resources with PAY_PER_REQUEST billing)."
+    },
+    {
+      "item": "Users table (todo-monolith-users, PK username S)",
+      "type": "table",
+      "reason": "Credential-only table (username, bcrypt password hash, email, createdAt) fully replaced by the Cognito User Pool - no business profile fields to preserve, so no UserProfiles table is created and no password/token data is migrated to DynamoDB."
+    },
+    {
+      "item": "todo/server.js",
+      "type": "script",
+      "reason": "Express bootstrap replaced by API Gateway + Lambda: app.listen/PORT, express.json + urlencoded body parsing (API Gateway parses the body), the cors package (API Gateway CORS config), the request-logging middleware (CloudWatch Logs) and the 404/500 error handlers (API Gateway + Lambda error responses)."
+    },
+    {
+      "item": "todo/routes/auth.js",
+      "type": "code",
+      "reason": "Whole Express router dropped because both of its endpoints (/register, /login) are replaced by Cognito; its only imports of shared code were config/db.js (Users table) and utils/jwt.js."
+    }
+  ]
+}

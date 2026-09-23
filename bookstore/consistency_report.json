@@ -1,0 +1,93 @@
+{
+  "status": "PASS",
+  "total_checks": 12,
+  "findings": [
+    {
+      "check_id": "C1",
+      "severity": "INFO",
+      "description": "Function/route coverage cross-checked both directions: blueprint declares 12 lambda_functions (11 api + 1 sqs) and 11 unique entry_points; template declares exactly 12 AWS::Serverless::Function resources with 11 Api events + 1 SQS event. Set comparison of (method, path) pairs shows 0 missing, 0 extra, 0 duplicate routes (/api/books, /api/books/{id}, /api/search, /api/cart GET+POST+PUT+DELETE, /api/cart/{bookId}, /api/orders GET+POST, /api/bestsellers). Every blueprint handler directory exists under output/lambdas/bookstore/ and every CodeUri resolves to an existing directory, so the 1:1 mapping holds.",
+      "affected_resource": "all 12 Function resources",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C2",
+      "severity": "INFO",
+      "description": "Runtime consistency verified: Globals.Function.Runtime=nodejs22.x plus an explicit nodejs22.x on all 12 functions, matching blueprint metadata.runtime and every lambda_functions[].runtime. No python/mixed runtime leaked into the template; package.json engines require node >=22.",
+      "affected_resource": "Globals.Function + 12 Function resources",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C3",
+      "severity": "INFO",
+      "description": "Handler strings verified against the on-disk code rather than the blueprint placeholder: all 12 functions declare Handler: handler.lambda_handler, and each output/lambdas/bookstore/<name>/handler.js exists and exports both 'handler' (async function handler(event, context)) and the 'exports.lambda_handler = exports.handler' alias, so the declared export resolves at cold start.",
+      "affected_resource": "12 handlers under output/lambdas/bookstore/",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C4",
+      "severity": "INFO",
+      "description": "Suspects reviewed, not a defect. The only used_but_not_declared key is AWS_REGION in all 12 handlers: it is injected automatically by the Lambda runtime and is a reserved variable name (re-declaring it in Environment.Variables triggers cfn-lint E3663), so process.env.AWS_REGION resolves without a template entry -- deliberately omitted from Globals by S3c. declared_but_unused is empty for every function; per-function table/queue vars (BOOKS_TABLE, CART_TABLE, ORDERS_TABLE, BESTSELLERS_TABLE, BESTSELLER_QUEUE_URL) exactly match the process.env reads in each handler, and Globals ENVIRONMENT/LOG_LEVEL are legitimate infrastructure parameters driven by the Environment!Ref, so they were kept. Nothing is genuinely missing.",
+      "affected_resource": "Globals.Environment.Variables + 12 Function Environment blocks",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C5",
+      "severity": "INFO",
+      "description": "Suspects were empty only because the extractor is boto3-only, so the Node.js SDK surface was judged by reading all 12 handlers. Every require() maps to a declared policy: DynamoDBDocumentClient + Get/Scan/QueryCommand -> DynamoDBReadPolicy on the matching table (BooksListFunction's Query on category-index is covered because the SAM template also grants table/<name>/index/*); Put/Update/DeleteCommand -> DynamoDBCrudPolicy (CartAddItem, CartUpdateItem, CartRemoveItem, OrdersCreate on Orders+Cart, BestsellersUpdateConsumer); @aws-sdk/client-sqs SendMessageCommand in orders-create -> SQSSendMessagePolicy on !GetAtt BestsellerUpdateQueue.QueueName; the SQS consumer -> SQSPollerPolicy (ReceiveMessage/DeleteMessage/ChangeMessageVisibility) + DynamoDBCrudPolicy for the ADD update. Least privilege also holds: read-only handlers carry no write policy, and no handler touches S3, Lambda-invoke or EventBridge, consistent with empty s3_buckets/lambda_invoke_permissions/eventbridge_rules.",
+      "affected_resource": "Policies of all 12 Function resources",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C6",
+      "severity": "INFO",
+      "description": "Shared-layer suspects are self-consistent: functions_referencing_shared_layer=[] and shared_layer_dir_exists=false, confirmed against the template (no Layers: property and no AWS::Serverless::LayerVersion resource) and the tree (no output/layers/ directory; each handler requires only runtime/locally-declared @aws-sdk packages). Nothing is imported-but-undeclared, and nothing is declared-but-unused.",
+      "affected_resource": "output/lambdas/ layout vs template Layers properties",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C7",
+      "severity": "INFO",
+      "description": "C7/C7b merged: all 12 CodeUri values are relative to the template location (output/), end with '/' and point at real directories containing handler.js. Every !Ref target used by the functions and the API (BooksTable, CartTable, OrdersTable, BestsellersTable, BestsellerUpdateQueue, CognitoUserPool, BookstoreApi) and every !GetAtt attribute (CognitoUserPool.Arn, BestsellerUpdateQueue.Arn/.QueueName, BestsellerUpdateQueueDLQ.Arn) resolves to a declared resource; no orphan or dangling reference.",
+      "affected_resource": "CodeUri properties + resource cross-references",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C8",
+      "severity": "INFO",
+      "description": "Async producer wiring verified against the blueprint publishes_to (the only async surface; lambda_invoke_permissions and eventbridge_rules are empty, so no EventBridge/Invoke chain is expected): OrdersCreateFunction carries BESTSELLER_QUEUE_URL: !Ref BestsellerUpdateQueue plus SQSSendMessagePolicy, and orders-create/handler.js awaits SendMessageCommand against that URL, replacing the monolith's un-awaited updateBestSellers() fire-and-forget. Queue target matches the sqs_queues logical name BestsellerUpdateQueue exactly.",
+      "affected_resource": "OrdersCreateFunction -> BestsellerUpdateQueue",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C9",
+      "severity": "INFO",
+      "description": "Async consumer wiring verified: bestsellers-update-consumer has trigger_type=sqs / sqs_source=BestsellerUpdateQueue and the template gives it an SQS event on !GetAtt BestsellerUpdateQueue.Arn with BatchSize 10. Queue-side settings reproduce the blueprint numbers -- VisibilityTimeout 60 (>= the 30s Globals timeout, so an in-flight batch is never redelivered mid-run), maxReceiveCount 3 and a real dead-letter target BestsellerUpdateQueueDLQ -- and the consumer holds SQSPollerPolicy so the event-source mapping can acknowledge messages. No orphan queue and no consumer without a source.",
+      "affected_resource": "BestsellersUpdateConsumerFunction + BestsellerUpdateQueue/DLQ",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C10",
+      "severity": "INFO",
+      "description": "Dependency manifests checked: all 12 package.json files parse as valid JSON, declare non-empty dependencies and none carries a stray requirements.txt (the project is Node-only). No empty-dependency manifest that would break the SAM build/copied CodeUri.",
+      "affected_resource": "output/lambdas/bookstore/*/package.json (12 files)",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C11",
+      "severity": "INFO",
+      "description": "Module system checked for the nodejs22.x runtime: no handler.js uses ESM syntax (import ... from / export const / export default / export function) and no package.json declares \"type\": \"module\"; all 12 use CommonJS require/exports, which is what makes the Lambda layer and built-in @aws-sdk resolution work.",
+      "affected_resource": "output/lambdas/bookstore/**/handler.js + package.json",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C12",
+      "severity": "INFO",
+      "description": "Third-party require coverage checked per handler against its own package.json (no shared layer in scope): crypto is a Node builtin, and @aws-sdk/client-dynamodb, @aws-sdk/lib-dynamodb (all 12) and @aws-sdk/client-sqs (orders-create) are declared. No bare require('aws-sdk') v2 anywhere, so no cold-start MODULE_NOT_FOUND and no v2/v3 mismatch on nodejs22.x.",
+      "affected_resource": "output/lambdas/bookstore/orders-create/handler.js and 11 sibling handlers",
+      "action_taken": "NO_ACTION_NEEDED"
+    }
+  ],
+  "fixes_applied": 0,
+  "sam_validation": "PASS",
+  "summary": "Ran all 12 consistency checks over blueprint.json, the 620-line template.yaml and the 12 Node.js handlers: template is fully consistent with the blueprint (12 functions, 11/11 routes matched 1:1, handler strings resolve on disk, CodeUris exist, Cognito DefaultAuthorizer covers every API event with zero NONE overrides, SQS producer/consumer wiring plus DLQ correct), and the C4/C5/C6 suspects were all dismissed by inspection -- AWS_REGION is runtime-injected (declaring it is a cfn-lint E3663 error), the boto3-only extractor missed Node policies that are in fact all present (DynamoDBRead/Crud, SQSSendMessage, SQSPoller), and no shared layer is referenced or needed. Zero mechanical failures, zero fixes applied, and validate_sam returned ok:true with no errors or warnings; nothing remains unresolved."
+}

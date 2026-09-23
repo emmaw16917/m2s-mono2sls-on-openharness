@@ -1,0 +1,298 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Todo application migrated from a Node/Express monolith to a Basic Serverless
+  Architecture: API Gateway (REST) + Lambda (nodejs22.x) + DynamoDB + Cognito.
+  Shared infrastructure is declared here; the Lambda functions and their API
+  events are appended in the functions section.
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Timeout: 30
+    MemorySize: 512
+    Tracing: Active
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        LOG_LEVEL: INFO
+
+Resources:
+  # ----- API Gateway (REST) -----
+  # All six /item* endpoints are authenticated (blueprint auth="required"),
+  # so they inherit DefaultAuthorizer automatically -- function events in the
+  # functions section must NOT repeat an Auth block, and no endpoint needs
+  # Auth: { Authorizer: NONE } because blueprint has no auth="none" endpoint.
+  TodoApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      TracingEnabled: true
+      Cors:
+        AllowOrigin: "'*'"
+        AllowHeaders: "'Content-Type,Authorization'"
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt UserPool.Arn
+      AccessLogSetting:
+        DestinationArn: !GetAtt ApiLogGroup.Arn
+        Format: '$context.requestId $context.error.message'
+
+  ApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/apigateway/${TodoApi}
+      RetentionInDays: 30
+
+  # ----- Cognito (replaces monolith POST /register and POST /login) -----
+  # 'username' is the sign-in alias (the table partition key is literally
+  # 'cognito-username'); 'email' is a standard attribute, optional and
+  # unverified in the monolith, so it needs no Schema entry and no
+  # AutoVerifiedAttributes entry. Password policy mirrors the monolith's only
+  # check (password.length >= 6) plus the lowercase requirement Cognito needs.
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserPoolName: !Sub ${Environment}-todo-users
+      UsernameAttributes:
+        - username
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 6
+          RequireUppercase: false
+          RequireLowercase: true
+          RequireNumbers: false
+          RequireSymbols: false
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      ClientName: !Sub ${Environment}-todo-client
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  # ----- DynamoDB -----
+  # Logical id matches blueprint dynamodb_tables[0].logical_name = TodoItems.
+  # The blueprint environment-variable placeholder "${TodoItemsTable}" resolves
+  # to this resource, i.e. function env vars use: TODO_TABLE: !Ref TodoItems
+  # (and DynamoDBCrudPolicy: TableName: !Ref TodoItems).
+  # Only the two key attributes are declared; item / completed / creation_date /
+  # lastupdate_date are non-key and must not appear in AttributeDefinitions.
+  TodoItems:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub ${Environment}-todo-items
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: cognito-username
+          AttributeType: S
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: cognito-username
+          KeyType: HASH
+        - AttributeName: id
+          KeyType: RANGE
+      SSESpecification:
+        SSEEnabled: true
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ----- Not provisioned (per blueprint) -----
+  # s3_buckets=[] (has_file_storage=false), sqs_queues=[] and
+  # eventbridge_rules=[] (has_async_flows=false), lambda_invoke_permissions=[]
+  # -> no bucket, queue, DLQ, dead-letter or EventBridge resources are created.
+
+# --- SHARED_RESOURCES_METADATA ---
+# has_authentication: true
+# has_database: true
+# has_async_flows: false
+# runtime: nodejs22.x
+# cognito_user_pool_logical_name: UserPool
+# cognito_user_pool_client_logical_name: UserPoolClient
+# api_gateway_logical_name: TodoApi
+# dynamodb_table_logical_names: TodoItems
+# sqs_queue_logical_names: NONE
+# eventbridge_rule_names: NONE
+# --- END METADATA ---
+
+  # ----- Domain: todo -----
+  # Handler is stated explicitly per function (on-disk module is handler.js with
+  # exports.handler / exports.lambda_handler); the Globals default index.handler
+  # would point at a file that does not exist.
+  TodoListItemsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/todo/todo-list-items/
+      Handler: handler.handler
+      Description: "Lists the signed-in user's todo items (Query on the cognito-username partition)."
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Events:
+        ListItems:
+          Type: Api
+          Properties:
+            Path: /item
+            Method: GET
+            RestApiId: !Ref TodoApi
+
+  TodoGetItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/todo/todo-get-item/
+      Handler: handler.handler
+      Description: "Returns a single todo item owned by the signed-in user."
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Events:
+        GetItem:
+          Type: Api
+          Properties:
+            Path: /item/{id}
+            Method: GET
+            RestApiId: !Ref TodoApi
+
+  TodoCreateItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/todo/todo-create-item/
+      Handler: handler.handler
+      Description: "Creates a todo item for the signed-in user."
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Events:
+        CreateItem:
+          Type: Api
+          Properties:
+            Path: /item
+            Method: POST
+            RestApiId: !Ref TodoApi
+
+  TodoUpdateItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/todo/todo-update-item/
+      Handler: handler.handler
+      Description: "Updates the text of an existing todo item owned by the signed-in user."
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Events:
+        UpdateItem:
+          Type: Api
+          Properties:
+            Path: /item/{id}
+            Method: PUT
+            RestApiId: !Ref TodoApi
+
+  TodoCompleteItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/todo/todo-complete-item/
+      Handler: handler.handler
+      Description: "Toggles the completed flag of an existing todo item."
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Events:
+        CompleteItem:
+          Type: Api
+          Properties:
+            Path: /item/{id}/done
+            Method: POST
+            RestApiId: !Ref TodoApi
+
+  TodoDeleteItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/todo/todo-delete-item/
+      Handler: handler.handler
+      Description: "Deletes a todo item owned by the signed-in user."
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Events:
+        DeleteItem:
+          Type: Api
+          Properties:
+            Path: /item/{id}
+            Method: DELETE
+            RestApiId: !Ref TodoApi
+
+# --- FUNCTIONS_METADATA ---
+# total_functions: 6
+# logical_names: TodoListItemsFunction,TodoGetItemFunction,TodoCreateItemFunction,TodoUpdateItemFunction,TodoCompleteItemFunction,TodoDeleteItemFunction
+# runtime: nodejs22.x
+# handler_pattern: handler.handler
+# code_uri_root: lambdas/todo/
+# environment_keys_per_function: TODO_TABLE
+# iam_policy_templates: DynamoDBCrudPolicy
+# api_events: "GET /item, GET /item/{id}, POST /item, PUT /item/{id}, POST /item/{id}/done, DELETE /item/{id}"
+# per_event_auth_overrides: not_required (all 6 endpoints are auth=required and inherit DefaultAuthorizer CognitoAuthorizer)
+# async_event_sources: NONE (blueprint has_async_flows=false, sqs_queues=[], eventbridge_rules=[])
+# --- END METADATA ---
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway endpoint URL
+    Value: !Sub "https://${TodoApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub ${AWS::StackName}-ApiUrl
+
+  TableName:
+    Description: DynamoDB table name
+    Value: !Ref TodoItems
+    Export:
+      Name: !Sub ${AWS::StackName}-TableName
+
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolId
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID (public client, no secret)
+    Value: !Ref UserPoolClient
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolClientId

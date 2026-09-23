@@ -1,0 +1,620 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  Bookstore serverless application migrated from a Node.js/Express monolith to an
+  event-driven serverless architecture: API Gateway (REST) + Lambda (nodejs22.x)
+  + DynamoDB + Cognito User Pool + SQS. This section declares the shared
+  infrastructure only (DynamoDB tables, the bestseller SQS queue with its DLQ,
+  the Cognito User Pool and its app client). The Lambda functions, their API/SQS
+  events and the template Outputs are declared in the functions section below.
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Timeout: 30
+    MemorySize: 512
+    Tracing: Active
+    # NOTE: no Handler here on purpose -- every function declares its real
+    # handler module/export in the functions section, because the on-disk file
+    # names differ per function directory.
+    Environment:
+      Variables:
+        # AWS_REGION intentionally omitted: it is a Lambda-reserved variable
+        # name (cfn-lint E3663) that the runtime injects by itself, which is
+        # what process.env.AWS_REGION in the handlers reads.
+        ENVIRONMENT: !Ref Environment
+        LOG_LEVEL: INFO
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+Resources:
+  # ----- DynamoDB (blueprint dynamodb_tables: Books / Cart / Orders / Bestsellers) -----
+  # Logical IDs are chosen so the blueprint env-var placeholders resolve directly:
+  #   BOOKS_TABLE: !Ref BooksTable, CART_TABLE: !Ref CartTable,
+  #   ORDERS_TABLE: !Ref OrdersTable, BESTSELLERS_TABLE: !Ref BestsellersTable.
+  # Only key attributes appear in AttributeDefinitions (non-key item attributes
+  # such as title/price/salesCount must NOT be declared).
+
+  # Source table Bookstore-Books. Partition key id (e.g. 'book-001'); the
+  # category-index GSI (HASH-only on category) backs GET /api/books?category=X
+  # and GET /api/search.
+  BooksTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub ${Environment}-bookstore-books
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: category
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      GlobalSecondaryIndexes:
+        - IndexName: category-index
+          KeySchema:
+            - AttributeName: category
+              KeyType: HASH
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Source table Bookstore-Cart. Partition key renamed from 'customerId' to
+  # 'userId' (the Cognito Sub); sort key bookId keeps one row per user+book so
+  # GET /api/cart is a single Query.
+  CartTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub ${Environment}-bookstore-cart
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: bookId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: bookId
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Source table Bookstore-Orders. Partition key 'userId' = Cognito Sub, sort key
+  # orderId = generated UUID; items keep orderDate and the books array.
+  OrdersTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub ${Environment}-bookstore-orders
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: orderId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: orderId
+          KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Source table Bookstore-Bestsellers. One row per bookId holding the atomic
+  # 'salesCount' number that the SQS consumer increments with DynamoDB ADD.
+  BestsellersTable:
+    Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      TableName: !Sub ${Environment}-bookstore-bestsellers
+      AttributeDefinitions:
+        - AttributeName: bookId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: bookId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # ----- SQS (blueprint sqs_queues: BestsellerUpdateQueue, dlq=true) -----
+  # The monolith's POST /api/orders fired updateBestSellers() without awaiting
+  # it (fire-and-forget), which becomes: orders-create sends the payload here
+  # (BESTSELLER_QUEUE_URL: !Ref BestsellerUpdateQueue) and the
+  # bestsellers-update-consumer Lambda polls the queue. A failed counter update
+  # is retried up to 3 times and then lands in the DLQ instead of being lost.
+  # VisibilityTimeout 60 >= the consumer's 30s function timeout.
+  BestsellerUpdateQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-bestseller-update'
+      VisibilityTimeout: 60
+      RedrivePolicy:
+        deadLetterTargetArn: !GetAtt BestsellerUpdateQueueDLQ.Arn
+        maxReceiveCount: 3
+
+  BestsellerUpdateQueueDLQ:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-bestseller-update-dlq'
+
+  # ----- Cognito (replaces the monolith's JWT + bcryptjs auth) -----
+  # The four /api/auth/* endpoints and the Bookstore-Users table are dropped:
+  # signUp / signIn / token refresh happen client-side through the Amplify
+  # Cognito SDK, and API Gateway validates the access token via this User Pool
+  # (authorizer UserPoolArn: !GetAtt CognitoUserPool.Arn). Lambdas only read
+  # event.requestContext.authorizer.claims.sub.
+  # email is used as the sign-in alias, so it needs no Schema entry; 'name' is a
+  # standard attribute and likewise needs no Schema entry. No trigger Lambdas
+  # exist in the blueprint, so LambdaConfig is intentionally absent.
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      UserPoolName: !Sub ${Environment}-bookstore-users
+      UsernameAttributes:
+        - email
+      AutoVerifiedAttributes:
+        - email
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          TemporaryPasswordValidityDays: 7
+
+  # Public (no-secret) client so the browser SDK can drive auth flows.
+  # No OAuth / Hosted-UI settings: those require a UserPoolDomain, which this
+  # template does not provision.
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref CognitoUserPool
+      ClientName: !Sub ${Environment}-bookstore-client
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+
+  # ----- Not provisioned (per blueprint) -----
+  # s3_buckets=[] (has_file_storage=false) -> no bucket resources.
+  # eventbridge_rules=[] -> no EventBridge rules and no Lambda invoke permissions.
+  # api_gateway is declared together with the function API events in the
+  # functions section; the Outputs section closes the template.
+
+# --- SHARED_RESOURCES_METADATA ---
+# has_authentication: true
+# has_database: true
+# has_async_flows: true
+# runtime: nodejs22.x
+# cognito_user_pool_logical_name: CognitoUserPool
+# cognito_user_pool_client_logical_name: CognitoUserPoolClient
+# dynamodb_table_logical_names: BooksTable,CartTable,OrdersTable,BestsellersTable
+# sqs_queue_logical_names: BestsellerUpdateQueue,BestsellerUpdateQueueDLQ
+# eventbridge_rule_names: NONE
+# --- END METADATA ---
+
+  # ----- REST API (declared here because its shape is driven by the function
+  # events below; part1 deliberately left it to this section) -----
+  # blueprint api_gateway: type=REST, authorizer=Cognito (COGNITO_USER_POOLS),
+  # user_pool_arn=${CognitoUserPool.Arn}, cors allow_origins=["*"] and
+  # allow_methods=[GET,POST,PUT,DELETE,OPTIONS].
+  # DefaultAuthorizer makes every route below authenticated, which reproduces
+  # the monolith's app.use('<path>', authMiddleware, router) behaviour -- all 11
+  # API functions are auth="required" in the blueprint, so no event needs an
+  # 'Auth: Authorizer: NONE' override (and none may have one).
+  # No AccessLogSetting / TracingEnabled: the first needs an AWS::Logs::LogGroup
+  # that blueprint does not provision and part1 does not declare.
+  BookstoreApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Cors:
+        AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt CognitoUserPool.Arn
+
+  # ============================================================
+  # Lambda functions -- blueprint lambda_functions (12 total)
+  # ============================================================
+  # Every CodeUri/Handler pair below was read off the disk layout produced in
+  # S2, not off the blueprint placeholder: each function lives in its own
+  # directory output/lambdas/bookstore/<blueprint name>/ and each handler.js
+  # declares both "exports.handler = async function handler(event, context)"
+  # and the alias "exports.lambda_handler = exports.handler", so the
+  # blueprint-declared handler string "handler.lambda_handler" resolves.
+  # CodeUri is relative to this template's location (output/) and ends with
+  # "/". Runtime/Timeout/MemorySize/Tracing plus ENVIRONMENT and LOG_LEVEL come
+  # from Globals.Function in part1, so only the genuinely per-function table /
+  # queue variables are declared below.
+  # The blueprint's per-function "AWS_REGION": "\${AWS::Region}" entry is
+  # intentionally NOT repeated here: AWS_REGION is a Lambda-reserved variable
+  # name (cfn-lint E3663) that the runtime injects by itself, which is what
+  # process.env.AWS_REGION in the handlers reads. Re-declaring it in the
+  # template is both a lint error and a no-op.
+
+  # ----- Domain: Books (source bookstore/routes/books.js) -----
+  BooksListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/bookstore/books-list/
+      Handler: handler.lambda_handler
+      Runtime: nodejs22.x
+      Description: "GET /api/books - catalogue listing, optional ?category= filter served by the category-index GSI"
+      Environment:
+        Variables:
+          BOOKS_TABLE: !Ref BooksTable
+      # handler.js issues ScanCommand (no category) and QueryCommand on
+      # category-index (with category) and writes nothing -> read-only policy.
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BooksTable
+      Events:
+        GetBooks:
+          Type: Api
+          Properties:
+            Path: /api/books
+            Method: GET
+            RestApiId: !Ref BookstoreApi
+
+  BooksGetByIdFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/bookstore/books-get-by-id/
+      Handler: handler.lambda_handler
+      Runtime: nodejs22.x
+      Description: "GET /api/books/{id} - single catalogue item by partition key id"
+      Environment:
+        Variables:
+          BOOKS_TABLE: !Ref BooksTable
+      # handler.js -> GetCommand only.
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BooksTable
+      Events:
+        GetBookById:
+          Type: Api
+          Properties:
+            Path: "/api/books/{id}"
+            Method: GET
+            RestApiId: !Ref BookstoreApi
+
+  # ----- Domain: Search (source bookstore/routes/search.js) -----
+  SearchBooksFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/bookstore/search-books/
+      Handler: handler.lambda_handler
+      Runtime: nodejs22.x
+      Description: "GET /api/search?q= - full-catalogue scan with in-memory name/author/category matching, OpenSearch-shaped hits"
+      Environment:
+        Variables:
+          BOOKS_TABLE: !Ref BooksTable
+      # handler.js -> ScanCommand only (filtering happens in code).
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BooksTable
+      Events:
+        SearchBooks:
+          Type: Api
+          Properties:
+            Path: /api/search
+            Method: GET
+            RestApiId: !Ref BookstoreApi
+
+  # ----- Domain: Cart (source bookstore/routes/cart.js) -----
+  CartListItemsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/bookstore/cart-list-items/
+      Handler: handler.lambda_handler
+      Runtime: nodejs22.x
+      Description: "GET /api/cart - one Query on the userId partition key of the Cart table"
+      Environment:
+        Variables:
+          CART_TABLE: !Ref CartTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CartTable
+      Events:
+        GetCart:
+          Type: Api
+          Properties:
+            Path: /api/cart
+            Method: GET
+            RestApiId: !Ref BookstoreApi
+
+  CartGetItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/bookstore/cart-get-item/
+      Handler: handler.lambda_handler
+      Runtime: nodejs22.x
+      Description: "GET /api/cart/{bookId} - single cart line for the caller"
+      Environment:
+        Variables:
+          CART_TABLE: !Ref CartTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CartTable
+      Events:
+        GetCartItem:
+          Type: Api
+          Properties:
+            Path: "/api/cart/{bookId}"
+            Method: GET
+            RestApiId: !Ref BookstoreApi
+
+  CartAddItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/bookstore/cart-add-item/
+      Handler: handler.lambda_handler
+      Runtime: nodejs22.x
+      Description: "POST /api/cart - adds a line (ADD quantity when the user already has that book)"
+      Environment:
+        Variables:
+          CART_TABLE: !Ref CartTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CartTable
+      Events:
+        PostCart:
+          Type: Api
+          Properties:
+            Path: /api/cart
+            Method: POST
+            RestApiId: !Ref BookstoreApi
+
+  CartUpdateItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/bookstore/cart-update-item/
+      Handler: handler.lambda_handler
+      Runtime: nodejs22.x
+      Description: "PUT /api/cart - overwrites the quantity of an existing cart line"
+      Environment:
+        Variables:
+          CART_TABLE: !Ref CartTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CartTable
+      Events:
+        PutCart:
+          Type: Api
+          Properties:
+            Path: /api/cart
+            Method: PUT
+            RestApiId: !Ref BookstoreApi
+
+  CartRemoveItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/bookstore/cart-remove-item/
+      Handler: handler.lambda_handler
+      Runtime: nodejs22.x
+      Description: "DELETE /api/cart - removes one cart line of the caller"
+      Environment:
+        Variables:
+          CART_TABLE: !Ref CartTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CartTable
+      Events:
+        DeleteCart:
+          Type: Api
+          Properties:
+            Path: /api/cart
+            Method: DELETE
+            RestApiId: !Ref BookstoreApi
+
+  # ----- Domain: Orders (source bookstore/routes/orders.js) -----
+  OrdersListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/bookstore/orders-list/
+      Handler: handler.lambda_handler
+      Runtime: nodejs22.x
+      Description: "GET /api/orders - order history for the caller, newest first"
+      Environment:
+        Variables:
+          ORDERS_TABLE: !Ref OrdersTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref OrdersTable
+      Events:
+        GetOrders:
+          Type: Api
+          Properties:
+            Path: /api/orders
+            Method: GET
+            RestApiId: !Ref BookstoreApi
+
+  OrdersCreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/bookstore/orders-create/
+      Handler: handler.lambda_handler
+      Runtime: nodejs22.x
+      Description: "POST /api/orders - checkout, PutItem the order, clear the checked-out cart lines, publish the bestseller counter work to SQS"
+      Environment:
+        Variables:
+          ORDERS_TABLE: !Ref OrdersTable
+          CART_TABLE: !Ref CartTable
+          BESTSELLER_QUEUE_URL: !Ref BestsellerUpdateQueue
+      # Orders write (PutItem) + cart clearing (DeleteItem per checked-out
+      # line, still inline/synchronous as in the monolith) + the awaited
+      # SendMessage that replaces the original fire-and-forget call.
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref OrdersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CartTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt BestsellerUpdateQueue.QueueName
+      Events:
+        PostOrders:
+          Type: Api
+          Properties:
+            Path: /api/orders
+            Method: POST
+            RestApiId: !Ref BookstoreApi
+
+  # ----- Domain: Bestsellers (source bookstore/routes/bestsellers.js + utils/bestsellers.js) -----
+  BestsellersListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/bookstore/bestsellers-list/
+      Handler: handler.lambda_handler
+      Runtime: nodejs22.x
+      Description: "GET /api/bestsellers - top-20 bookIds by salesCount, ranking done in code exactly as in the monolith"
+      Environment:
+        Variables:
+          BESTSELLERS_TABLE: !Ref BestsellersTable
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref BestsellersTable
+      Events:
+        GetBestsellers:
+          Type: Api
+          Properties:
+            Path: /api/bestsellers
+            Method: GET
+            RestApiId: !Ref BookstoreApi
+
+  # Async consumer -- the only non-API function. blueprint sqs_queues declares
+  # BestsellerUpdateQueue with visibility_timeout=60, max_receive_count=3 and
+  # dlq=true; all three live on the queue resource in part1, so the event
+  # source below only adds batching. 60s visibility >= this function's 30s
+  # Globals timeout, so an in-flight batch is never redelivered mid-run.
+  # BatchSize 10 is safe because the handler is batch-atomic - it processes the
+  # whole batch and then throws, which redrives the batch and lets
+  # maxReceiveCount=3 route the poison message to BestsellerUpdateQueueDLQ.
+  # No ReportBatchItemFailures / ParallelizationFactor / ReservedConcurrent-
+  # Executions: the handler returns no partial-batch payload and the blueprint
+  # declares no concurrency or throughput tuning.
+  BestsellersUpdateConsumerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/bookstore/bestsellers-update-consumer/
+      Handler: handler.lambda_handler
+      Runtime: nodejs22.x
+      Description: "SQS consumer for BestsellerUpdateQueue - one atomic ADD salesCount UpdateItem per purchased book"
+      Environment:
+        Variables:
+          BESTSELLERS_TABLE: !Ref BestsellersTable
+      Policies:
+        - SQSPollerPolicy:
+            QueueName: !GetAtt BestsellerUpdateQueue.QueueName
+        - DynamoDBCrudPolicy:
+            TableName: !Ref BestsellersTable
+      Events:
+        BestsellerUpdateMessages:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt BestsellerUpdateQueue.Arn
+            BatchSize: 10
+
+# --- FUNCTIONS_METADATA ---
+# total_functions: 12
+# logical_names: BooksListFunction,BooksGetByIdFunction,SearchBooksFunction,CartListItemsFunction,CartGetItemFunction,CartAddItemFunction,CartUpdateItemFunction,CartRemoveItemFunction,OrdersListFunction,OrdersCreateFunction,BestsellersListFunction,BestsellersUpdateConsumerFunction
+# api_gateway_logical_name: BookstoreApi
+# api_event_count: 11
+# sqs_event_count: 1
+# runtime: nodejs22.x
+# handler: handler.lambda_handler (verified on disk: every handler.js exports both "handler" and the "lambda_handler" alias)
+# code_uri_root: lambdas/bookstore/
+# authenticated_routes: 11 (all, inherited from BookstoreApi DefaultAuthorizer CognitoAuthorizer)
+# public_routes: 0
+# --- END METADATA ---
+
+Outputs:
+  # Public entry point of the migrated REST API.
+  ApiUrl:
+    Description: "API Gateway endpoint URL for the deployed stage"
+    Value: !Sub "https://${BookstoreApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}"
+    Export:
+      Name: !Sub ${AWS::StackName}-ApiUrl
+
+  # Front-end auth configuration inputs (replaces the old /api/auth/* routes).
+  UserPoolId:
+    Description: "Cognito User Pool id (Amplify Auth.userPoolId)"
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolId
+
+  UserPoolClientId:
+    Description: "Cognito User Pool client id (Amplify Auth.userPoolWebClientId)"
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub ${AWS::StackName}-UserPoolClientId
+
+  # Data layer names, exported for bootstrapping/import scripts.
+  BooksTableName:
+    Description: "Book catalogue table"
+    Value: !Ref BooksTable
+    Export:
+      Name: !Sub ${AWS::StackName}-BooksTableName
+
+  CartTableName:
+    Description: "Shopping cart table"
+    Value: !Ref CartTable
+    Export:
+      Name: !Sub ${AWS::StackName}-CartTableName
+
+  OrdersTableName:
+    Description: "Orders table"
+    Value: !Ref OrdersTable
+    Export:
+      Name: !Sub ${AWS::StackName}-OrdersTableName
+
+  BestsellersTableName:
+    Description: "Bestseller sales-counter table"
+    Value: !Ref BestsellersTable
+    Export:
+      Name: !Sub ${AWS::StackName}-BestsellersTableName
+
+  # Async plumbing: the producer needs the queue URL (BESTSELLER_QUEUE_URL) and
+  # operators need a handle on the DLQ for redrive.
+  BestsellerQueueUrl:
+    Description: "URL of the bestseller update queue consumed by BestsellersUpdateConsumerFunction"
+    Value: !Ref BestsellerUpdateQueue
+    Export:
+      Name: !Sub ${AWS::StackName}-BestsellerQueueUrl
+
+  BestsellerQueueArn:
+    Description: "ARN of the bestseller update queue"
+    Value: !GetAtt BestsellerUpdateQueue.Arn
+    Export:
+      Name: !Sub ${AWS::StackName}-BestsellerQueueArn
+
+  BestsellerDeadLetterQueueUrl:
+    Description: "URL of the DLQ for bestseller updates that failed maxReceiveCount times"
+    Value: !Ref BestsellerUpdateQueueDLQ
+    Export:
+      Name: !Sub ${AWS::StackName}-BestsellerDLQUrl

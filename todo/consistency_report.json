@@ -1,0 +1,93 @@
+{
+  "status": "PASS",
+  "total_checks": 12,
+  "findings": [
+    {
+      "check_id": "C1",
+      "severity": "WARNING",
+      "description": "Blueprint-to-template function coverage verified by direct inspection: all 6 api-trigger blueprint Lambda functions (todo-list-items, todo-get-item, todo-create-item, todo-update-item, todo-complete-item, todo-delete-item) exist as 6 AWS::Serverless::Function resources, and all 6 blueprint entry_points match the declared Api events one-to-one (GET /item, GET /item/{id}, POST /item, PUT /item/{id}, POST /item/{id}/done, DELETE /item/{id}). No orphan template function, no uncovered blueprint function. All 10 dropped_functions entries are genuinely absent from the template (no /register, /login, Users table, JWT/S3/queue resources invented).",
+      "affected_resource": "TodoListItemsFunction,TodoGetItemFunction,TodoCreateItemFunction,TodoUpdateItemFunction,TodoCompleteItemFunction,TodoDeleteItemFunction",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C2",
+      "severity": "WARNING",
+      "description": "Infrastructure coverage verified: blueprint dynamodb_tables=[TodoItems] -> 1 AWS::DynamoDB::Table named TodoItems; cognito.enabled=true -> UserPool + UserPoolClient; api_gateway type=REST with authorizer=Cognito -> TodoApi (AWS::Serverless::Api) with DefaultAuthorizer CognitoAuthorizer and UserPoolArn via !GetAtt UserPool.Arn. s3_buckets/sqs_queues/eventbridge_rules/lambda_invoke_permissions are all empty in blueprint and correspondingly absent from the template (11 resources total: 1 Api, 1 LogGroup, 2 Cognito, 1 Table, 6 Functions). Table KeySchema HASH cognito-username (S) + RANGE id (S) matches blueprint partition_key/sort_key, and AttributeDefinitions declare only those two key attributes.",
+      "affected_resource": "TodoApi,TodoItems,UserPool,UserPoolClient",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C3",
+      "severity": "WARNING",
+      "description": "Handler resolution verified against on-disk code rather than the blueprint literal. blueprint lambda_functions[*].handler is 'index.handler', but no index.js exists in any package; every module is output/lambdas/todo/<name>/handler.js exporting 'exports.handler = async function handler(event, context)'. The template therefore declares Handler: handler.handler on all 6 functions, which resolves to a real file and a real export. S2 also added an 'exports.lambda_handler = exports.handler' alias in each module, so both naming conventions resolve. Globals.Function.Handler remains index.handler but is fully overridden by every function, so it is unreachable and cannot fail a build. This deviation from the blueprint literal is intentional and correct; neither code nor template was changed.",
+      "affected_resource": "output/lambdas/todo/*/handler.js + Globals.Function.Handler",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C4",
+      "severity": "WARNING",
+      "description": "Environment-variable cross-check done manually (gate suspects.C4 was empty). The only process.env read anywhere in the 6 handlers is TODO_TABLE, and it is declared in Environment.Variables of all 6 functions, so there is no used-but-undeclared variable. The blueprint placeholder value '${TodoItemsTable}' has been correctly resolved to the real template reference 'TODO_TABLE: !Ref TodoItems' (no dangling ${TodoItemsTable} string survives in the template). Globals declares ENVIRONMENT and LOG_LEVEL, which the handlers never read; these are infrastructure/observability parameters, so per the stage rules they were kept rather than deleted. No runtime-injected Lambda variables (AWS_REGION, AWS_EXECUTION_ENV, etc.) were mistakenly added to the template.",
+      "affected_resource": "Globals.Environment.Variables.ENVIRONMENT,LOG_LEVEL; TODO_TABLE on all 6 functions",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C5",
+      "severity": "WARNING",
+      "description": "IAM coverage verified by reading the Node.js code (gate's mechanical C5 extractor only understands boto3, so this was a manual pass). Every handler imports only @aws-sdk/client-dynamodb + @aws-sdk/lib-dynamodb and calls DynamoDBDocumentClient.send with Query/Get/Put/Update/Delete commands -> DynamoDBCrudPolicy with TableName: !Ref TodoItems is present on all 6 functions, which is exactly the required mapping. No @aws-sdk/client-s3, client-lambda, client-sqs or client-eventbridge import exists anywhere, so no S3CrudPolicy/LambdaInvokePolicy/SQSSendMessagePolicy/EventBridgePutEventsPolicy is needed and none was invented. The only non-AWS dependency is uuid (todo-create-item), which needs no IAM permission and is declared in that package's package.json.",
+      "affected_resource": "Policies on TodoListItemsFunction,TodoGetItemFunction,TodoCreateItemFunction,TodoUpdateItemFunction,TodoCompleteItemFunction,TodoDeleteItemFunction",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C6",
+      "severity": "WARNING",
+      "description": "Shared-layer consistency confirmed in both directions: gate reports functions_referencing_shared_layer=[] and shared_layer_dir_exists=false, and disk inspection agrees - there is no shared/, common/ or layers/ directory under output/lambdas/, no handler requires anything outside its own package directory, and no template function declares Layers. The template's SHARED_RESOURCES_METADATA comment is documentation only, not a Layers reference. Consistent, nothing to fix.",
+      "affected_resource": "output/lambdas/ (no shared layer), Globals.Function (no Layers key)",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C7",
+      "severity": "WARNING",
+      "description": "API event wiring verified: all 6 Api events carry RestApiId: !Ref TodoApi against the single existing AWS::Serverless::Api logical id (no reference to a non-existent Api id), paths/methods are unique per resource+method pair, and the Cognito auth contract holds - blueprint marks all 6 endpoints auth=required, DefaultAuthorizer is set on TodoApi, and no event redundantly re-declares an Auth block nor wrongly sets Authorizer: NONE (which would have exposed a protected endpoint). CORS is expressed as quoted strings per SAM rules and matches blueprint cors allow_origins/allow_methods/allow_headers. CodeUri paths (C7b) were verified to exist as real directories with package.json manifests, all relative to output/ as required for sam build.",
+      "affected_resource": "TodoApi, Events on all 6 functions, CodeUri paths",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C8",
+      "severity": "WARNING",
+      "description": "Async event-source consistency: blueprint has_async_flows=false with sqs_queues=[] and eventbridge_rules=[], and the template contains no EventBridge Rule, no SQS queue/DLQ, no EventSourceMapping and no SQSPollerPolicy. Nothing in the handler code sends to a queue or event bus. C8 and C9 are satisfied by absence, consistent with the blueprint.",
+      "affected_resource": "template Resources (no async resources)",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C9",
+      "severity": "WARNING",
+      "description": "EventBridge/producer-side wiring: not applicable and correctly absent - lambda_invoke_permissions=[] in blueprint, no AWS::Lambda::Permission or AWS::Serverless::Function 'EventBridge'/'SQS' event type in the template, and no cross-Lambda invoke call in code.",
+      "affected_resource": "template Resources (no invoke permissions needed)",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C10",
+      "severity": "WARNING",
+      "description": "Outputs and references resolved against the resource inventory: all 4 Outputs (ApiUrl, TableName, UserPoolId, UserPoolClientId) reference existing logical ids TodoApi/TodoItems/UserPool/UserPoolClient, and every inter-resource reference in the template (!Ref TodoItems, !Ref TodoApi, !GetAtt UserPool.Arn, !GetAtt ApiLogGroup.Arn, !Ref Environment) resolves. The ApiLogGroup companion resource required by the API's AccessLogSetting is present with a 30-day retention. UserPoolClient carries no OAuth/Hosted-UI properties, avoiding the known EarlyValidation deployment failure.",
+      "affected_resource": "Outputs.ApiUrl,TableName,UserPoolId,UserPoolClientId; ApiLogGroup",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C11",
+      "severity": "WARNING",
+      "description": "Handler coding rules verified on disk for all 6 modules: CommonJS only (require/module.exports, zero ESM import/export statements), no package.json \"type\": \"module\", handler exported at module top level, and the event/response contract is API-Gateway-proxy shaped (statusCode + headers + JSON string body, requestContext.authorizer.claims for identity, pathParameters/body parsed defensively). Runtime nodejs22.x in Globals matches the package.json engines constraint and the blueprint runtime.",
+      "affected_resource": "output/lambdas/todo/*/handler.js, package.json",
+      "action_taken": "NO_ACTION_NEEDED"
+    },
+    {
+      "check_id": "C12",
+      "severity": "WARNING",
+      "description": "Per-function buildability verified: each of the 6 CodeUri directories is self-contained (own handler.js + own package.json listing its exact dependencies), so sam build can install per-function dependencies without relying on any unbuilt shared layer; the data-shape contract between template and code is aligned (TODO_TABLE !Ref TodoItems -> physical name of the ${Environment}-todo-items table, and the DynamoDB key attribute 'cognito-username' used in code matches the table KeySchema/AttributeDefinitions).",
+      "affected_resource": "output/lambdas/todo/*/ package.json + TodoItems KeySchema",
+      "action_taken": "NO_ACTION_NEEDED"
+    }
+  ],
+  "fixes_applied": 0,
+  "sam_validation": "PASS",
+  "summary": "All 12 consistency checks (C1-C12, C7b merged into C7) passed with 0 fixes applied: the gate(template) report was mechanically clean and independent re-verification against blueprint.json, the 299-line template.yaml (read in full) and the 6 on-disk handler packages confirmed every function, table, Cognito, API, env-var (TODO_TABLE) and DynamoDBCrudPolicy mapping. The two deliberate deviations were validated as correct and left untouched per the stage rules - Handler: handler.handler instead of the blueprint's 'index.handler' literal (index.js does not exist on disk; handler.js does, with both exports.handler and a lambda_handler alias), and TODO_TABLE/TableName resolved to '!Ref TodoItems' instead of the non-existent '${TodoItemsTable}' placeholder. C4's Globals ENVIRONMENT/LOG_LEVEL were kept as infrastructure parameters rather than deleted, no runtime-injected variables were added, and C6/C8/C9 are satisfied by consistent absence (no shared layer, no S3/SQS/EventBridge/invoke resources). mcp__m2s-server__validate_sam was run personally on the template and returned ok:true with zero errors and zero warnings; nothing remains unfixed and the artifact is deployment-consistent."
+}

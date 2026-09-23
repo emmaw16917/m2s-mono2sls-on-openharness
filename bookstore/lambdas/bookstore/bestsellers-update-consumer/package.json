@@ -1,0 +1,15 @@
+{
+  "name": "bestsellers-update-consumer",
+  "version": "1.0.0",
+  "description": "SQS consumer for BestsellerUpdateQueue (Bookstore app, migrated from Express utils/bestsellers.js); atomically ADDs salesCount",
+  "main": "handler.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.699.0",
+    "@aws-sdk/lib-dynamodb": "^3.699.0"
+  },
+  "license": "MIT",
+  "private": true
+}

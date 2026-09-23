@@ -1,0 +1,411 @@
+{
+  "metadata": {
+    "application_name": "Bookstore",
+    "architecture_pattern": "Event-Driven Serverless Architecture",
+    "has_authentication": true,
+    "has_database": true,
+    "has_file_storage": false,
+    "has_async_flows": true,
+    "notes": "Node.js/Express Bookstore API (aws-sdk v2, JWT+bcrypt auth). Every remaining HTTP endpoint becomes exactly one API Lambda; all of them are mounted behind authMiddleware in server.js, so every API Lambda is auth=required and receives the caller identity from event.requestContext.authorizer.claims.sub (zero auth code inside the handler). The four /api/auth/* endpoints, the JWT/password helpers and the auth middleware are dropped in favour of Cognito User Pool + API Gateway Cognito Authorizer; the Bookstore-Users table (email/password-hash/name only, no business profile data) is dropped entirely rather than migrated. DynamoDB user foreign keys move from the app-generated uuid 'customerId' to the string Cognito Sub, stored in the renamed partition key 'userId'. Books/Cart/Orders/Bestsellers tables keep their original key structure and the category-index GSI. Single async flow discovered via call_graph: POST /api/orders fires updateBestSellers() without awaiting and without using its return value (pure fire-and-forget counter side effect, one consumer) -> SQS BestsellerUpdateQueue with a dedicated consumer Lambda; the cart-clearing writes inside the same checkout stay inline and synchronous to preserve the original ordering/consistency. No synchronous Lambda-to-Lambda invoke anywhere, no S3/file storage in the monolith, so s3_buckets and lambda_invoke_permissions stay empty."
+  },
+  "dynamodb_tables": [
+    {
+      "logical_name": "Books",
+      "purpose": "Book catalogue (source table Bookstore-Books). Partition key id = book id such as 'book-001'; category-index GSI backs GET /api/books?category=X.",
+      "partition_key": {
+        "name": "id",
+        "type": "S"
+      },
+      "gsi": [
+        {
+          "index_name": "category-index",
+          "partition_key": {
+            "name": "category",
+            "type": "S"
+          }
+        }
+      ]
+    },
+    {
+      "logical_name": "Cart",
+      "purpose": "Shopping-cart line items (source table Bookstore-Cart). Partition key renamed from 'customerId' to 'userId' = Cognito Sub (UUID string); sort key bookId keeps one row per user+book so GET /api/cart is a single Query.",
+      "partition_key": {
+        "name": "userId",
+        "type": "S"
+      },
+      "sort_key": {
+        "name": "bookId",
+        "type": "S"
+      },
+      "gsi": []
+    },
+    {
+      "logical_name": "Orders",
+      "purpose": "Checkout order records (source table Bookstore-Orders). Partition key renamed from 'customerId' to 'userId' = Cognito Sub (UUID string); sort key orderId = generated UUID. Item keeps orderDate (epoch millis) and the books array [{bookId, price, quantity}].",
+      "partition_key": {
+        "name": "userId",
+        "type": "S"
+      },
+      "sort_key": {
+        "name": "orderId",
+        "type": "S"
+      },
+      "gsi": []
+    },
+    {
+      "logical_name": "Bestsellers",
+      "purpose": "Bestseller ranking (source table Bookstore-Bestsellers). One row per bookId holding an atomic 'salesCount' number incremented with DynamoDB ADD by the SQS consumer after checkout.",
+      "partition_key": {
+        "name": "bookId",
+        "type": "S"
+      },
+      "gsi": []
+    }
+  ],
+  "s3_buckets": [],
+  "sqs_queues": [
+    {
+      "logical_name": "BestsellerUpdateQueue",
+      "purpose": "Fire-and-forget bestseller sales-counter updates after checkout. Producer: orders-create API Lambda (must await SendMessage). Consumer: bestsellers-update-consumer Lambda, which runs the monolith's updateBestSellers/updateBestSeller atomic ADD logic against the Bestsellers table. DLQ + maxReceiveCount 3 so a failed counter update is never silently lost.",
+      "dlq": true,
+      "visibility_timeout": 60,
+      "max_receive_count": 3
+    }
+  ],
+  "eventbridge_rules": [],
+  "lambda_invoke_permissions": [],
+  "cognito": {
+    "enabled": true,
+    "user_pool_attributes": [
+      "email",
+      "name"
+    ],
+    "password_policy": {
+      "min_length": 8,
+      "require_lowercase": true,
+      "require_uppercase": true,
+      "require_numbers": true,
+      "require_symbols": false,
+      "temporary_password_validity_days": 7
+    },
+    "notes": "Replaces the monolith's JWT access/refresh tokens and bcryptjs password hashing. Registration, login, token refresh and 'who am I' are performed by the client through the AWS Amplify / Cognito SDK; API Gateway validates the access JWT and hands the verified Cognito Sub to the Lambda. No Cognito trigger Lambdas (no post_confirmation, no pre_signup) are created."
+  },
+  "api_gateway": {
+    "type": "REST",
+    "cors": {
+      "allow_origins": [
+        "*"
+      ],
+      "allow_methods": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS"
+      ]
+    },
+    "authorizer": "Cognito",
+    "authorizer_type": "COGNITO_USER_POOLS",
+    "user_pool_arn": "${CognitoUserPool.Arn}",
+    "token_validation": "Automatic at API Gateway layer",
+    "identity_source": "Authorization header (Bearer token)",
+    "notes": "One route per (method, path), paths and methods preserved verbatim from the Express mount points (/api/books, /api/cart, /api/orders, /api/bestsellers, /api/search). Every route except the dropped /api/auth/* ones carries the Cognito authorizer, reproducing server.js's app.use('<path>', authMiddleware, router) behaviour; the handler reads event.requestContext.authorizer.claims.sub instead of req.customerId."
+  },
+  "lambda_functions": [
+    {
+      "name": "books-list",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "handler.lambda_handler",
+      "auth": "required",
+      "source_files": [
+        "bookstore/routes/books.js",
+        "bookstore/utils/dynamodb.js",
+        "bookstore/config.js"
+      ],
+      "entry_points": [
+        "GET /api/books"
+      ],
+      "environment_variables": {
+        "BOOKS_TABLE": "${BooksTable}",
+        "AWS_REGION": "${AWS::Region}"
+      }
+    },
+    {
+      "name": "books-get-by-id",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "handler.lambda_handler",
+      "auth": "required",
+      "source_files": [
+        "bookstore/routes/books.js",
+        "bookstore/utils/dynamodb.js",
+        "bookstore/config.js"
+      ],
+      "entry_points": [
+        "GET /api/books/{id}"
+      ],
+      "environment_variables": {
+        "BOOKS_TABLE": "${BooksTable}",
+        "AWS_REGION": "${AWS::Region}"
+      }
+    },
+    {
+      "name": "cart-list-items",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "handler.lambda_handler",
+      "auth": "required",
+      "source_files": [
+        "bookstore/routes/cart.js",
+        "bookstore/utils/dynamodb.js",
+        "bookstore/config.js"
+      ],
+      "entry_points": [
+        "GET /api/cart"
+      ],
+      "environment_variables": {
+        "CART_TABLE": "${CartTable}",
+        "AWS_REGION": "${AWS::Region}"
+      }
+    },
+    {
+      "name": "cart-get-item",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "handler.lambda_handler",
+      "auth": "required",
+      "source_files": [
+        "bookstore/routes/cart.js",
+        "bookstore/utils/dynamodb.js",
+        "bookstore/config.js"
+      ],
+      "entry_points": [
+        "GET /api/cart/{bookId}"
+      ],
+      "environment_variables": {
+        "CART_TABLE": "${CartTable}",
+        "AWS_REGION": "${AWS::Region}"
+      }
+    },
+    {
+      "name": "cart-add-item",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "handler.lambda_handler",
+      "auth": "required",
+      "source_files": [
+        "bookstore/routes/cart.js",
+        "bookstore/utils/dynamodb.js",
+        "bookstore/config.js"
+      ],
+      "entry_points": [
+        "POST /api/cart"
+      ],
+      "environment_variables": {
+        "CART_TABLE": "${CartTable}",
+        "AWS_REGION": "${AWS::Region}"
+      }
+    },
+    {
+      "name": "cart-update-item",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "handler.lambda_handler",
+      "auth": "required",
+      "source_files": [
+        "bookstore/routes/cart.js",
+        "bookstore/utils/dynamodb.js",
+        "bookstore/config.js"
+      ],
+      "entry_points": [
+        "PUT /api/cart"
+      ],
+      "environment_variables": {
+        "CART_TABLE": "${CartTable}",
+        "AWS_REGION": "${AWS::Region}"
+      }
+    },
+    {
+      "name": "cart-remove-item",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "handler.lambda_handler",
+      "auth": "required",
+      "source_files": [
+        "bookstore/routes/cart.js",
+        "bookstore/utils/dynamodb.js",
+        "bookstore/config.js"
+      ],
+      "entry_points": [
+        "DELETE /api/cart"
+      ],
+      "environment_variables": {
+        "CART_TABLE": "${CartTable}",
+        "AWS_REGION": "${AWS::Region}"
+      }
+    },
+    {
+      "name": "orders-list",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "handler.lambda_handler",
+      "auth": "required",
+      "source_files": [
+        "bookstore/routes/orders.js",
+        "bookstore/utils/dynamodb.js",
+        "bookstore/config.js"
+      ],
+      "entry_points": [
+        "GET /api/orders"
+      ],
+      "environment_variables": {
+        "ORDERS_TABLE": "${OrdersTable}",
+        "AWS_REGION": "${AWS::Region}"
+      }
+    },
+    {
+      "name": "orders-create",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "handler.lambda_handler",
+      "auth": "required",
+      "source_files": [
+        "bookstore/routes/orders.js",
+        "bookstore/utils/dynamodb.js",
+        "bookstore/config.js"
+      ],
+      "entry_points": [
+        "POST /api/orders"
+      ],
+      "publishes_to": [
+        {
+          "type": "sqs",
+          "target": "BestsellerUpdateQueue"
+        }
+      ],
+      "environment_variables": {
+        "ORDERS_TABLE": "${OrdersTable}",
+        "CART_TABLE": "${CartTable}",
+        "BESTSELLER_QUEUE_URL": "${BestsellerUpdateQueue}",
+        "AWS_REGION": "${AWS::Region}"
+      }
+    },
+    {
+      "name": "bestsellers-list",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "handler.lambda_handler",
+      "auth": "required",
+      "source_files": [
+        "bookstore/routes/bestsellers.js",
+        "bookstore/utils/dynamodb.js",
+        "bookstore/config.js"
+      ],
+      "entry_points": [
+        "GET /api/bestsellers"
+      ],
+      "environment_variables": {
+        "BESTSELLERS_TABLE": "${BestsellersTable}",
+        "AWS_REGION": "${AWS::Region}"
+      }
+    },
+    {
+      "name": "search-books",
+      "trigger_type": "api",
+      "runtime": "nodejs22.x",
+      "handler": "handler.lambda_handler",
+      "auth": "required",
+      "source_files": [
+        "bookstore/routes/search.js",
+        "bookstore/utils/dynamodb.js",
+        "bookstore/config.js"
+      ],
+      "entry_points": [
+        "GET /api/search"
+      ],
+      "environment_variables": {
+        "BOOKS_TABLE": "${BooksTable}",
+        "AWS_REGION": "${AWS::Region}"
+      }
+    },
+    {
+      "name": "bestsellers-update-consumer",
+      "trigger_type": "sqs",
+      "runtime": "nodejs22.x",
+      "handler": "handler.lambda_handler",
+      "sqs_source": "BestsellerUpdateQueue",
+      "source_files": [
+        "bookstore/utils/bestsellers.js",
+        "bookstore/utils/dynamodb.js",
+        "bookstore/config.js"
+      ],
+      "environment_variables": {
+        "BESTSELLERS_TABLE": "${BestsellersTable}",
+        "AWS_REGION": "${AWS::Region}"
+      }
+    }
+  ],
+  "dropped_functions": [
+    {
+      "item": "POST /api/auth/register",
+      "type": "endpoint",
+      "reason": "Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly (signUp). Email-format and password-strength checks plus the duplicate-email check are enforced by the User Pool itself."
+    },
+    {
+      "item": "POST /api/auth/login",
+      "type": "endpoint",
+      "reason": "Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly (signIn); Cognito issues the ID/access tokens instead of the app's jsonwebtoken access+refresh pair."
+    },
+    {
+      "item": "POST /api/auth/refresh",
+      "type": "endpoint",
+      "reason": "Replaced by Cognito - token refresh handled by the Cognito SDK with the refresh token from the user pool; no application endpoint and no Users-table lookup required."
+    },
+    {
+      "item": "GET /api/auth/me",
+      "type": "endpoint",
+      "reason": "Replaced by Cognito - the client reads email/name straight from the Cognito ID token / getUser attributes, so the Users-table lookup Lambda disappears."
+    },
+    {
+      "item": "bookstore/middleware/auth.js :: authMiddleware",
+      "type": "code",
+      "reason": "Replaced by API Gateway Cognito Authorizer. Token extraction, verification and req.customerId injection are done at the gateway; the handler reads event.requestContext.authorizer.claims.sub instead. The AUTH_DEV_MODE x-customer-id bypass is intentionally not carried over."
+    },
+    {
+      "item": "bookstore/middleware/auth.js :: optionalAuthMiddleware",
+      "type": "code",
+      "reason": "Replaced by API Gateway Cognito Authorizer (route-level auth is mandatory for every kept endpoint, so an optional-auth variant is not needed)."
+    },
+    {
+      "item": "bookstore/utils/jwt.js (generateAccessToken / generateRefreshToken / verifyAccessToken / verifyRefreshToken / extractTokenFromHeader)",
+      "type": "code",
+      "reason": "Replaced by Cognito: AWS issues and validates the JWTs, so the HS256 signing helpers and the JWT_SECRET / JWT_REFRESH_SECRET environment variables are removed."
+    },
+    {
+      "item": "bookstore/utils/password.js (hashPassword / verifyPassword via bcryptjs)",
+      "type": "code",
+      "reason": "Replaced by Cognito User Pool password storage; the monolith never exposes password profiles, so no credential data is migrated to DynamoDB."
+    },
+    {
+      "item": "Bookstore-Users table",
+      "type": "table",
+      "reason": "User authentication moved to Cognito. The row held only credentials plus standard attributes (userId, email, password hash, name, createdAt, updatedAt) with no business profile data, so it is deleted rather than split into a UserProfiles table; email/name become Cognito User Pool attributes."
+    },
+    {
+      "item": "bookstore/scripts/init-db.js (createBooksTable / createCartTable / createOrdersTable / createUsersTable / createBestsellersTable / waitForTable / initializeSampleBooks)",
+      "type": "script",
+      "reason": "Table creation handled by SAM CloudFormation; schemas were extracted from this script into dynamodb_tables and no runtime Lambda is created for it."
+    },
+    {
+      "item": "bookstore/server.js (Express bootstrap, app.use route mounting, body-parser, cors package, central error handler)",
+      "type": "script",
+      "reason": "Replaced by API Gateway routing to per-endpoint Lambdas; JSON body parsing, CORS preflight and error shaping are gateway/SAM concerns (see api_gateway.cors)."
+    },
+    {
+      "item": "bookstore/config.js dotenv block (JWT secrets, AUTH_DEV_MODE, AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY static credentials)",
+      "type": "code",
+      "reason": "Replaced by SAM environment variables (table names, queue URL) plus Lambda IAM execution-role credentials; JWT secrets and the dev-mode auth bypass no longer exist."
+    }
+  ]
+}

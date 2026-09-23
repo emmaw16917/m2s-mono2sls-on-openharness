@@ -1,0 +1,16 @@
+{
+  "name": "orders-create",
+  "version": "1.0.0",
+  "description": "Lambda handler for POST /api/orders (Bookstore checkout, migrated from Express routes/orders.js); publishes bestseller updates to SQS",
+  "main": "handler.js",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.699.0",
+    "@aws-sdk/client-sqs": "^3.699.0",
+    "@aws-sdk/lib-dynamodb": "^3.699.0"
+  },
+  "license": "MIT",
+  "private": true
+}
