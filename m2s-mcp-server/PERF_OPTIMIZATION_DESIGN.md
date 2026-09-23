@@ -46,9 +46,23 @@ validator）只验证正确性/一致性（blueprint B0、code C1/C10、template
 
 **环境依赖（v1 需要新装的东西，落地前先确认）：**
 
-- `sam` CLI，装进 `mono2sls` conda env（参考 memory 里记录的 `cfn-lint` PATH 坑：装完要确认
-  该 env 的 `Scripts/` 目录在 PATH 上）。
-- Docker Desktop（`sam local invoke` / `sam local start-api` 都需要）。
+- `sam` CLI：`mono2sls`、`mono2esls` 两个 conda env 都已经装好（2026-09-23 确认，版本
+  1.160.1）。
+- Docker Desktop（`sam local invoke` / `sam local start-api` 都需要）——**2026-09-23 状态：
+  已安装但引擎未就绪，需要人工完成下面这几步**，本节记录下来防止环境半途丢失：
+  1. **装 WSL2**（需要管理员权限，Claude 自动化session做不了）：以管理员身份打开
+     PowerShell 或 CMD，运行 `wsl --install`，然后**重启这台机器**（WSL2 安装几乎总是要求
+     重启才能生效）。
+  2. 重启后确认 WSL2 真的装好了：任意终端运行 `wsl --status`，不再提示"未安装任何
+     Linux 发行版"就算通过。
+  3. **启动 Docker Desktop**：开始菜单搜 "Docker Desktop" 打开（或运行
+     `"C:\Program Files\Docker\Docker\Docker Desktop.exe"`），首次启动会弹登录/注册页——
+     可以登录 Docker 账号，也可以点"跳过登录"直接用，不影响后续 `sam local` 使用。
+  4. 验证引擎真的起来了：`"C:\Program Files\Docker\Docker\resources\bin\docker.exe" ps`
+     不再报 "backend is not running" / 连不上 `docker_engine` pipe，而是返回一个空的
+     容器列表表头，就说明成功了。
+  5. 弄完这几步跟 Claude 说一声，继续做 sam CLI + Docker 阶段的代理指标测量
+     （`sam build` → `sam local invoke` 冷/热差值 → `sam local start-api`）。
 - 可选但建议：LocalStack（单个 Docker 容器统一模拟 DynamoDB / SQS / EventBridge / S3，给
   E2E Latency 测量提供真实下游，避免手写 mock 层）。
 - 轻量压测工具：Node 生态用 `autocannon`（`npx autocannon` 免安装）。
