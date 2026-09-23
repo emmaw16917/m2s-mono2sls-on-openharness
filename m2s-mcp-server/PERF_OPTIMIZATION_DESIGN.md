@@ -145,20 +145,41 @@ S4  validator（不变职责，位置后移到 perf 之后）→ gate(final)（�
    代理指标，逐函数记录），作为每个函数各自的基准值。后续每一轮改动都对着**这个函数自己的
    baseline** 算 delta，不跟上一轮比、也不跟外部绝对阈值比——这样中途改坏了要撤销时，有一个
    稳定的参照系。
-1. **代码阶段代理指标测量**（不需要 sam，跑得快，先做）：对每个 handler，跑一次
+1. **扫描代码库、确定 mock 覆盖范围（不能假设 mock 层现成可用）**：mock 调用计时依赖一个
+   拦截 SDK `.send()` 的 mock 层，但这个 mock 层**不是写死能通用的**——不同单体迁移出来的
+   代码用到的 AWS 服务、DynamoDB 操作类型、handler 校验所需的 event 字段都不一样（
+   2026-09-23 用 bookstore 实测时踩过：一个 handler 因为 mock event 少给了一个校验必需字段，
+   提前 400 短路，测出的"耗时"是假的，根本没碰到真实 DB 调用）。所以每次跑之前，perf-optimizer
+   必须先做这一步，不能直接复用上一次的 mock 层：
+   - `grep -rho "new [A-Za-z]*Command(" output/lambdas/` 找出这次代码库实际用到的全部
+     Command 类型，逐一确认 mock 层的覆盖表里都有；缺哪个补哪个（mock 层对未覆盖类型要
+     **直接抛错**，不能静默返回空对象——见下面"mock 层本身要设计成什么样"）。
+   - 逐个 `require()` 扫一遍 `output/lambdas/` 用到的 `@aws-sdk/client-*` 包，确认对应的
+     Client（`S3Client`/`EventBridgeClient`/`LambdaClient` 等）都被 mock 层打了补丁，不是
+     只有 DynamoDB/SQS。
+   - 对每个 handler，读一遍它自己对 `event.pathParameters`/`event.body`/
+     `event.queryStringParameters` 等字段的校验逻辑（`grep "event\."` 定位），构造能让它
+     真正走到 DB 调用那条路径的 mock event，不能全体 handler 共用同一份"塞满常见字段"的
+     通用 event——通用 event 能跑通大部分 handler，但校验规则更严格的那一小撮会被提前拦截，
+     产生"看起来很快但其实没测到真实逻辑"的假数字。
+   - 校验手段：如果一个 handler 返回了非 2xx 状态码、或者 `sdk_call_count == 0`，判定这次
+     测量不可信，修 mock event 或覆盖表后重测，不能把"提前失败"误当成"这个 handler 很快"
+     写进 `perf_report.json`。
+2. **代码阶段代理指标测量**（不需要 sam，跑得快）：对每个 handler，跑一次
    `require()`/`import` 计时（module-level init 代理指标）+ 一次 mock 调用计时（handler
-   执行耗时代理指标）。发现循环里单条 DB 调用模式，直接改成批量 API。
-2. **sam CLI 阶段测量**（需要 sam + Docker，跑得慢，放后面）：`sam build` → `sam local
+   执行耗时代理指标，用上一步确认覆盖完整的 mock 层）。发现循环里单条 DB 调用模式，参照
+   §4 第 4 条的操作类型分诊规则决定改批量 API 还是改 `Promise.all`。
+3. **sam CLI 阶段测量**（需要 sam + Docker，跑得慢，放后面）：`sam build` → `sam local
    invoke`（冷）+ `sam local start-lambda` 连续两次 invoke（热）算 `T_cold_start` 代理值
    → `sam local start-api` 测 E2E Latency 代理值（如果 LocalStack 可用就配上真实下游）→
    可选轻量压测拿 throughput 弱信号。
-3. **要不要保留一个改动的判据**：**这个改动直接相关的指标必须变好（或至少不变差），其它所有
+4. **要不要保留一个改动的判据**：**这个改动直接相关的指标必须变好（或至少不变差），其它所有
    已测量的指标（这个函数自己的其它指标、以及其它函数的指标）不能因为这次改动而变差**——是
    "局部改善 + 全局不劣化"，不是要求"全局也一起变好"（不合理，一个函数的批量 API 改写没理由
    顺带改善另一个不相关函数的 cold start）。判断改善/劣化时要留一个噪声容忍带（建议
    ±10%~15%，具体数值以后按实测方差调整），落在这个带内算"没有显著差异"，不触发撤销也不算
    改善——本地 Docker 测量本身有波动，拿绝对数字较真会让 agent 在噪声里空转。
-4. **批量改 vs 逐处改的粒度**：跨不同函数/不同文件的改动可以在同一轮里一起做、一起测——彼此
+5. **批量改 vs 逐处改的粒度**：跨不同函数/不同文件的改动可以在同一轮里一起做、一起测——彼此
    没有因果关系，测完后每个函数各自对着自己的 baseline 独立判断要不要保留，不需要为了隔离
    变量把 N 个函数拆成 N 轮 sam CLI 测量（那一层很贵）。**但同一个函数内部如果要做多处改动
    （比如既改批量 API 又调 `MemorySize`），必须拆开顺序做**：改一处 → 代码阶段测一次 → 定
@@ -167,7 +188,7 @@ S4  validator（不变职责，位置后移到 perf 之后）→ gate(final)（�
    逐处测，而是把代码阶段已经筛选确认过的改动 + 这一轮要动的 `MemorySize` 等配置改动打包成
    一批，跑**一次** sam CLI 测量做整体确认——如果这次测量发现某个函数出乎意料变差了，只撤销
    那个函数这一轮加的改动，其它函数保留，不整批推倒重来。
-5. **"一次尝试"的定义**：一轮 = 代码阶段的逐处筛选（便宜，轮内可以多次迭代）+ 一次 sam CLI
+6. **"一次尝试"的定义**：一轮 = 代码阶段的逐处筛选（便宜，轮内可以多次迭代）+ 一次 sam CLI
    阶段的整体确认测量（贵，一轮只跑一次）。最多 3 轮（沿用既有自查循环上限约定）。3 轮后仍
    不理想：不阻塞流水线，如实在报告里写清楚"已尝试的改动 + 最后一轮测量数值 + 还剩什么没
    改"，输出 `STAGE_BLOCKED`（这里的 `STAGE_BLOCKED` 语义跟别的阶段不同——不代表流水线要
@@ -209,6 +230,13 @@ S4  validator（不变职责，位置后移到 perf 之后）→ gate(final)（�
    - `m2s-performance-kb` §1 写批量 API 示例时要把这条分诊规则放在最前面，不能让 code-developer
      看到"循环 + 单条调用"就无脑套用 `BatchWriteItem`，那样对 `UpdateCommand` 循环会是错误
      的重写建议（DynamoDB 直接拒绝这种请求）。
+5. **mock SDK 拦截骨架（配合 §3 步骤 1 使用，不是写死的成品脚本）**：给 perf-optimizer
+   提供一份**通用拦截骨架**（在 `DynamoDBDocumentClient.prototype.send`/
+   `SQSClient.prototype.send` 等原型上打补丁、按 `command.constructor.name` 分发、每次调用
+   加一个固定延迟模拟单次网络往返），但 Command 覆盖表、需要打补丁的 Client 种类、每个
+   handler 的 mock event 内容都留空/留最小示例，要求 perf-optimizer 每次运行按 §3 步骤 1
+   扫描出来的结果自己补全，不能假设这份骨架已经覆盖当前代码库。骨架对未覆盖的 Command 类型
+   要直接抛错，不能静默返回空对象掩盖覆盖不全的问题。
 
 ---
 
