@@ -31,16 +31,24 @@ it" reference this file summarizes.
 
 ## Prerequisites
 
-1. **Two conda environments** (or equivalent venvs — the split exists because of an MCP
-   library version conflict noted below, not because it's architecturally required):
-   - One running the MCP server: needs Python with `mcp` **1.x** (not 2.x — FastMCP's
-     `Tool.inputSchema` attribute was renamed in 2.x), plus `cfn-lint`, `pyyaml`,
-     `aws-sam-cli`, `boto3`.
-   - One running OpenHarness itself (`oh`): install from
-     [`HKUDS/OpenHarness`](https://github.com/HKUDS/OpenHarness) per its own
-     instructions. Its `mcp` dependency must also be pinned to **1.x** for the same
-     reason — check `pip show mcp` in this env if `mcp__m2s-server__*` tools silently
-     don't show up (no visible error, just zero tools registered).
+1. **One conda environment (or venv)** running both OpenHarness (`oh`) and the MCP
+   server — a single env works fine as long as `mcp` is a **1.x** release (not 2.x:
+   FastMCP's `Tool.inputSchema` attribute was renamed to `input_schema` in 2.x, so
+   `mcp==2.x` makes every MCP connection silently fail — zero tools registered, no
+   visible error. `pip show mcp` and check if this ever regresses). Install:
+   - [`HKUDS/OpenHarness`](https://github.com/HKUDS/OpenHarness) per its own
+     instructions (gives you `oh`).
+   - `pip install aws-sam-cli cfn-lint boto3 pyyaml` (server-side tooling — `gates.py`,
+     `wrap_m2s.py`'s `validate_sam`/`analyze_project`). `_find_cfn_lint()` in
+     `wrap_m2s.py` locates `cfn-lint` next to whichever Python interpreter is running
+     the MCP server (falls back through PATH → next to `sys.executable` → its
+     `Scripts/` dir), so this works with no extra PATH configuration regardless of
+     which single env you use.
+
+   (Earlier versions of this project used two separate envs because one of them had
+   only OpenHarness's own dependencies installed, not because of an actual conflict —
+   confirmed by running `server.py`, `validate_sam`, and `analyze_project` all
+   successfully under one env with the packages above.)
 2. **Node.js 22.x** (the generated Lambda handlers target `nodejs22.x`) and
    **Python 3.12** if a monolith generates Python handlers.
 3. **On Windows with a non-UTF-8 console codepage (e.g. GBK/Chinese locale)**: apply
@@ -56,14 +64,15 @@ it" reference this file summarizes.
 ## Wiring up the MCP server
 
 In your OpenHarness settings (`~/.openharness/settings.json` by default), add (adjust
-paths to wherever you cloned this repo, and to your MCP-server conda env's `python.exe`):
+paths to wherever you cloned this repo, and to your conda env's `python.exe` — the same
+env you installed OpenHarness into, per "Prerequisites" above):
 
 ```json
 {
   "mcp_servers": {
     "m2s-server": {
       "type": "stdio",
-      "command": "<path-to-mcp-server-env>/python.exe",
+      "command": "<path-to-your-env>/python.exe",
       "args": ["<REPO_ROOT>/m2s-mcp-server/server.py"],
       "env": { "M2S_WORKSPACE": "runs/<app>-oh", "PYTHONUTF8": "1" },
       "cwd": "<REPO_ROOT>/Mono2Sls-artifacts/M2S"
@@ -80,12 +89,12 @@ paths to wherever you cloned this repo, and to your MCP-server conda env's `pyth
   "hooks": {
     "pre_tool_use": [{
       "type": "command",
-      "command": "<path-to-mcp-server-env>/python.exe <REPO_ROOT>/m2s-mcp-server/hook_guard_mcp_auth.py",
+      "command": "<path-to-your-env>/python.exe <REPO_ROOT>/m2s-mcp-server/hook_guard_mcp_auth.py",
       "matcher": "mcp_auth", "block_on_failure": true, "timeout_seconds": 10
     }],
     "subagent_stop": [{
       "type": "command",
-      "command": "<path-to-mcp-server-env>/python.exe <REPO_ROOT>/m2s-mcp-server/hook_audit_subagent_stop.py",
+      "command": "<path-to-your-env>/python.exe <REPO_ROOT>/m2s-mcp-server/hook_audit_subagent_stop.py",
       "block_on_failure": false, "timeout_seconds": 10
     }]
   }

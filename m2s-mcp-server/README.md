@@ -1,7 +1,6 @@
 # m2s-mcp-server
 
-Runbook for the Mono2Sls → OpenHarness migration pipeline (implements the plan at
-`C:\Users\36029\.claude\plans\golden-discovering-sloth.md`). This directory holds the
+Runbook for the Mono2Sls → OpenHarness migration pipeline. This directory holds the
 deterministic MCP tools that back the migration; the orchestration skill and the four
 migration agents live outside this directory (see "Where things live" below) because
 OpenHarness only discovers them at fixed paths.
@@ -25,21 +24,36 @@ pipeline produces:
 
 ## Prerequisites
 
-- conda env `mono2sls` (M2S's own env): has FastMCP (`mcp` 1.28.1) and `cfn-lint.exe`
-  next to `python.exe`. Runs `server.py`, `gates.py`, `m2s_merge.py`, `wrap_m2s.py`.
-- conda env `mono2esls` (OpenHarness's own env): runs `oh`. Must have `mcp` pinned to a
-  **1.x** release (see "Known environment gotchas" below) — this is unrelated to this
-  project's own code but will silently break every MCP tool if violated.
+**One conda env is enough** — it needs to run both `oh` (OpenHarness) and
+`server.py`/`gates.py`/`m2s_merge.py`/`wrap_m2s.py` (this MCP server). Requirements on
+that one env:
+
+- `mcp` pinned to a **1.x** release (see "Known environment gotchas" below) — this is
+  unrelated to this project's own code but will silently break every MCP tool if
+  violated, whichever side of the client/server split it happens on.
+- `aws-sam-cli`, `cfn-lint`, `boto3`, `pyyaml` installed (`pip install` is enough —
+  `wrap_m2s.py`'s `_find_cfn_lint()` locates `cfn-lint` next to whichever interpreter
+  is running the server, no PATH setup needed).
+
+(This repo used to split these across two envs — `mono2sls` for the MCP server side,
+`mono2esls` for OpenHarness — because the second one started out with only
+OpenHarness's own dependencies installed, not because of a real conflict. Verified by
+actually running `server.py` + `validate_sam` + `analyze_project` successfully under
+one env with the packages above.)
+
 - `~/.openharness/settings.json` already has `mcp_servers.m2s-server`,
   `permission.allowed_tools` (the four `mcp__m2s-server__*` tools), and two hooks
-  wired up (see "Where things live"). If you're setting this up fresh on another
-  machine, see "Fresh-machine setup" below.
+  wired up (see "Where things live" below, and the repo root `README.md`'s "Wiring up
+  the MCP server" for the exact JSON).
 
 ## Running the pipeline
 
+See the repo root `README.md`'s "Running the pipeline" for the actual invocation (it
+takes a monolith path + workspace path, so it isn't specific to any one app or
+machine). The short version, from your env:
+
 ```powershell
-# from D:\Emma\MyLab\Mono2SLs
-& "C:\Users\36029\miniconda3\envs\mono2esls\Scripts\oh.exe" -p "/m2s-migrate 严格按 SKILL.md 里的阶段拓扑执行，从 P0 开始，不要跳过任何一步的 gate 检查。全程不要调用 mcp_auth。你自己的进程必须保持存活直到整条流水线结束（成功、失败或达到重试上限）才能退出——不要在 spawn 子 Agent 后过早结束会话，必须持续轮询直到子 Agent 状态变成 completed 或 failed，只有 task_get 明确返回 failed 才算失败，不要凭经过时间猜测子 Agent 卡住了，也不要主动停止仍在运行的子 Agent 或改写它的 system prompt。如果 gate(final) 不是 PASS，最终回复必须明确说迁移未完成，不要说成功。" --output-format text --max-turns 200
+& "<path-to-your-env>\Scripts\oh.exe" -p "/m2s-migrate 严格按 SKILL.md 里的阶段拓扑执行，从 P0 开始，不要跳过任何一步的 gate 检查。全程不要调用 mcp_auth。你自己的进程必须保持存活直到整条流水线结束（成功、失败或达到重试上限）才能退出——不要在 spawn 子 Agent 后过早结束会话，必须持续轮询直到子 Agent 状态变成 completed 或 failed，只有 task_get 明确返回 failed 才算失败，不要凭经过时间猜测子 Agent 卡住了，也不要主动停止仍在运行的子 Agent 或改写它的 system prompt。如果 gate(final) 不是 PASS，最终回复必须明确说迁移未完成，不要说成功。" --output-format text --max-turns 200
 ```
 
 Why the prompt is this long: the orchestration skill's own text (`m2s-migrate/SKILL.md`)
@@ -56,7 +70,7 @@ partway through a long run).
 run (see "Resuming from a specific stage" below):
 
 ```bash
-rm -rf "D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\M2S\runs"
+rm -rf "<REPO_ROOT>\Mono2Sls-artifacts\M2S\runs\<app>-oh"
 ```
 
 A full clean run takes on the order of tens of minutes (four sequential agent spawns,
@@ -71,10 +85,13 @@ during P3 that it can (and once did, before a fix) claim success when `gate(fina
 had actually failed. Check the real artifacts:
 
 ```bash
-# from m2s-mcp-server/, in the mono2sls env
-conda run -n mono2sls python -c "import gates,json; print(json.dumps(gates.run_gate('final', r'D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\M2S\runs\todo-oh'), indent=2))"
-cat "D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\M2S\runs\todo-oh\output\consistency_report.json"
+# from m2s-mcp-server/, in your env
+python -c "import gates,json; print(json.dumps(gates.run_gate('final', r'<REPO_ROOT>\Mono2Sls-artifacts\M2S\runs\<app>-oh'), indent=2))"
+cat "<REPO_ROOT>\Mono2Sls-artifacts\M2S\runs\<app>-oh\output\consistency_report.json"
 ```
+
+(if using `conda run -n <env> python -c "..."` instead of an activated shell, see the
+multi-line-script gotcha in "Known environment gotchas" below.)
 
 Both should say `"status": "PASS"` with empty `mechanical_failures`/`findings`. If they
 disagree with what the orchestrator said in chat, the gate result is the one to
@@ -97,7 +114,7 @@ one directory:
 | MCP tools, gates, merge logic | `m2s-mcp-server/` (this dir) | Ordinary Python package, run as a stdio MCP server |
 | Orchestration + knowledge skills | `Mono2Sls\.openharness\skills\{m2s-migrate,m2s-*-kb}\SKILL.md` | Project-level skill discovery walks up from cwd to git root looking for `.openharness/skills/` |
 | Four agent definitions | `~/.openharness/agents/*.md` (user-level, fixed path) | OpenHarness only loads agent `.md` files from this one path — no project-level equivalent exists. **Mirrored into `m2s-mcp-server/agents/`** as the version-controlled source of truth; the two copies must currently be kept in sync by hand (see CHANGELOG's "已知缺口" section — a sync script is a good P5 candidate) |
-| MCP server registration, tool permissions, hooks | `~/.openharness/settings.json` (user-level, not in this repo — contains a live API key) | User-level settings; back up before editing (`settings.json.bak-pre-m2s` sits next to it from the original P0 edit) |
+| MCP server registration, tool permissions, hooks | `~/.openharness/settings.json` (user-level, not in this repo — will contain your live API key/credentials) | User-level settings; **back up before editing** (it's easy to lose existing config while hand-editing JSON) |
 
 If you sync a changed agent `.md` from `~/.openharness/agents/` back into
 `m2s-mcp-server/agents/` (or vice versa), diff them first — don't assume they're still
@@ -141,13 +158,12 @@ Both wired into `~/.openharness/settings.json` under `hooks`:
 These aren't bugs in this project's code, but they will silently break it if
 regressed:
 
-- **`mcp` package version in `mono2esls`**: must be a **1.x** release. OpenHarness's
-  own `src/openharness/mcp/client.py` reads the pre-2.0 `Tool.inputSchema` attribute
-  (renamed to `input_schema` in `mcp` 2.x), so `mcp==2.x` in the OpenHarness env makes
-  every MCP connection silently fail (`state=failed`, zero tools registered, no
-  visible error to the model). If `mcp__m2s-server__*` tools stop showing up, check
-  `pip show mcp` in `mono2esls` first. `mono2sls` is unaffected by this (server and
-  client speak the same 1.x dialect there).
+- **`mcp` package version, in whichever env runs `oh`**: must be a **1.x** release.
+  OpenHarness's own `src/openharness/mcp/client.py` reads the pre-2.0
+  `Tool.inputSchema` attribute (renamed to `input_schema` in `mcp` 2.x), so `mcp==2.x`
+  makes every MCP connection silently fail (`state=failed`, zero tools registered, no
+  visible error to the model). If `mcp__m2s-server__*` tools stop showing up, `pip show
+  mcp` first.
 - **A spawned subagent dies when its parent `oh` process exits.** If you tell the
   orchestrator to "spawn and don't wait," the child gets torn down mid-work as soon as
   the parent's runtime shuts down — there is no independent detached-process survival.
