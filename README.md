@@ -42,11 +42,13 @@ reference this file summarizes.
      the MCP server (falls back through PATH → next to `sys.executable` → its
      `Scripts/` dir), so this works with no extra PATH configuration regardless of
      which single env you use.
+   - `pip install pytest` (optional, only needed to run `m2s-mcp-server/tests/`).
 
    (Earlier versions of this project used two separate envs because one of them had
    only OpenHarness's own dependencies installed, not because of an actual conflict —
-   confirmed by running `server.py`, `validate_sam`, and `analyze_project` all
-   successfully under one env with the packages above.)
+   confirmed by running `server.py`, `validate_sam`, `analyze_project`, and the full
+   74-test `pytest` suite all successfully under one env with the packages above,
+   from a fresh clone of this exact repo.)
 2. **Node.js 22.x** (the generated Lambda handlers target `nodejs22.x`) and
    **Python 3.12** if a monolith generates Python handlers.
 3. **On Windows with a non-UTF-8 console codepage (e.g. GBK/Chinese locale)**: apply
@@ -58,6 +60,15 @@ reference this file summarizes.
    (the `agent` spawn tool has no way to pass env vars to the child) — you need the
    actual code patch. See the patch file's comment for how it was diagnosed and
    verified (a byte-level round-trip test, not just inspection).
+
+**Sanity-check your setup** before wiring up OpenHarness — this alone catches most
+"did I install the right packages" problems in seconds, no MCP/OpenHarness config
+needed yet:
+
+```bash
+cd m2s-mcp-server
+python -m pytest tests/ -v   # should be 74 passed
+```
 
 ## Wiring up the MCP server
 
