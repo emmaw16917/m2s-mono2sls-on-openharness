@@ -1,70 +1,147 @@
-# M2S baseline-generated serverless samples (no performance optimizations)
+# M2S: Mono2Sls monolith → serverless migration, on OpenHarness
 
-This repo collects the serverless code that the **OpenHarness version of the Mono2Sls
-migration pipeline** (`m2s-migrate`, in the main `Mono2SLs` project) generates from
-monolith benchmark apps — **before any of the performance-optimization work** described
-in `m2s-mcp-server/PERF_OPTIMIZATION_DESIGN.md` has been applied to the pipeline itself.
-It's the "current baseline" to diff against official/reference serverless
-implementations, to find optimization opportunities beyond what we've already found by
-testing the pipeline's output directly.
+This repo has two things:
 
-Each app's monolith source (in `mono_benchmark/<app>/` in the main project) was
-originally reverse-engineered from a real, official AWS serverless reference
-architecture — so for each app here, there should be a real official serverless
-implementation to compare against.
+1. **The pipeline itself** (`m2s-mcp-server/`, `.openharness/skills/`,
+   `Mono2Sls-artifacts/`) — clone this, install the prerequisites below, and you can
+   run the same migration pipeline against any of the monolith apps under
+   `Mono2Sls-artifacts/mono_benchmark/` (`todo`, `bookstore`, `coffee`, `ecommerce`,
+   `shopping-cart`, `airline-booking`).
+2. **Already-generated baseline output** under `samples/` — see `samples/README.md`.
+   These are "no performance optimizations applied yet" samples used to compare
+   against the official/reference serverless implementations each monolith was
+   originally reverse-engineered from.
 
-## What's in each app folder
+If you're here to generate a new app's sample (e.g. `coffee`), you want section
+**"Running the pipeline"** below, then **"Contributing a new sample back"** at the end.
 
-- `lambdas/<domain>/<name>/` — the generated Lambda handlers (`handler.js`/`handler.py`
-  + `package.json`/`requirements.txt`), exactly as the pipeline wrote them.
-- `template.yaml` — the generated AWS SAM template (API Gateway, Lambda, DynamoDB,
-  Cognito, SQS, IAM).
-- `blueprint.json` — the architecture design the `m2s-architect` stage produced from
-  the monolith (which endpoints became which Lambda, DynamoDB schema, sync/async
-  wiring, dropped auth endpoints, etc.) — explains *why* the code looks the way it
-  does, not just what it looks like.
-- `analysis_report.json` — the static-analysis facts extracted from the monolith that
-  the architect worked from (entry points, call graph, DynamoDB usage, file tags).
-- `consistency_report.json` — the pipeline's own final validation report. Both apps
-  here passed (`status: PASS`) — the code is internally consistent (correct
-  CodeUri/Handler wiring, IAM permissions, etc.), not just "generated", but **it has
-  not been deployed or performance-tested as part of this repo** (that was done
-  separately, once, on real AWS, and is written up in `PERF_OPTIMIZATION_DESIGN.md`,
-  not included here).
-- `audit.log` (where present) — a spawn/completion audit trail for the pipeline's
-  sub-agents, for provenance.
+## What the pipeline does
 
-## Apps included so far
+Migrates a monolith app (Express/Flask, under `Mono2Sls-artifacts/mono_benchmark/`) to
+an AWS SAM serverless design — API Gateway, Lambda, DynamoDB, Cognito, SQS as needed —
+entirely offline (no AWS credentials or deployment required to generate and validate
+the code). It's orchestrated as an OpenHarness skill (`m2s-migrate`) that spawns four
+sub-agents (architect → code-developer → sam-engineer → validator) and self-checks at
+every stage against a deterministic MCP tool server (`m2s-mcp-server/`).
 
-| App | Status |
-|---|---|
-| `todo` | generated, `gate(final)` PASS |
-| `bookstore` | generated, `gate(final)` PASS |
+For the full "why does it work this way" story (six real LLM failure modes hit and
+fixed during development, design rationale for every gate check), read
+`m2s-mcp-server/CHANGELOG.md`. `m2s-mcp-server/README.md` is the detailed "how do I run
+it" reference this file summarizes.
 
-## Adding more apps (e.g. coffee, ecommerce, shopping-cart, airline-booking)
+## Prerequisites
 
-These come from `Mono2SLs/Mono2Sls-artifacts/mono_benchmark/<app>/` in the main
-project. To generate a new app's baseline sample with the same pipeline:
+1. **Two conda environments** (or equivalent venvs — the split exists because of an MCP
+   library version conflict noted below, not because it's architecturally required):
+   - One running the MCP server: needs Python with `mcp` **1.x** (not 2.x — FastMCP's
+     `Tool.inputSchema` attribute was renamed in 2.x), plus `cfn-lint`, `pyyaml`,
+     `aws-sam-cli`, `boto3`.
+   - One running OpenHarness itself (`oh`): install from
+     [`HKUDS/OpenHarness`](https://github.com/HKUDS/OpenHarness) per its own
+     instructions. Its `mcp` dependency must also be pinned to **1.x** for the same
+     reason — check `pip show mcp` in this env if `mcp__m2s-server__*` tools silently
+     don't show up (no visible error, just zero tools registered).
+2. **Node.js 22.x** (the generated Lambda handlers target `nodejs22.x`) and
+   **Python 3.12** if a monolith generates Python handlers.
+3. **On Windows with a non-UTF-8 console codepage (e.g. GBK/Chinese locale)**: apply
+   `known-issues/openharness-gbk-stdin-fix.patch` to your OpenHarness checkout first.
+   Without it, a spawned sub-agent whose prompt (or whose tool output) contains any
+   non-ASCII text gets **silently corrupted, not just crashed** — `sys.stdin.readline()`
+   in `run_task_worker` decodes the parent's UTF-8 bytes using the OS codepage instead.
+   `PYTHONUTF8=1`/`PYTHONIOENCODING=utf-8` on the parent process does **not** fix this
+   (the `agent` spawn tool has no way to pass env vars to the child) — you need the
+   actual code patch. See the patch file's comment for how it was diagnosed and
+   verified (a byte-level round-trip test, not just inspection).
 
-1. In the `Mono2SLs` project, invoke the `m2s-migrate` skill (or ask an OpenHarness
-   session to follow its protocol) against `mono_benchmark/<app>` with a fresh
-   workspace, e.g. `Mono2Sls-artifacts/M2S/runs/<app>-oh`. Let it run through S1-S4
-   (architect → code-developer → sam-engineer → validator) to a `gate(final)` PASS —
-   don't stop early at S1/S2 like some earlier partial runs did.
-2. Copy `output/lambdas/`, `output/template.yaml`, `output/consistency_report.json`,
-   `storage/blueprint.json`, `storage/analysis_report.json` (and `audit.log` if
-   present) into a new `<app>/` folder here, following the same layout as `todo/` and
-   `bookstore/`.
-3. Don't include `.aws-sam/` (regenerable build artifacts) or
-   `template.part1.yaml`/`template.part2.yaml` (intermediate merge inputs —
-   `template.yaml` is the merged final product).
-4. Open a PR (or however this repo's owner wants contributions) with a short note of
-   which app and whether `gate(final)` actually passed — if it didn't, say so plainly
-   rather than including a broken/partial run.
+## Wiring up the MCP server
 
-## What this repo is *not*
+In your OpenHarness settings (`~/.openharness/settings.json` by default), add (adjust
+paths to wherever you cloned this repo, and to your MCP-server conda env's `python.exe`):
 
-It's not the pipeline itself (that's in the main `Mono2SLs` project — you need that to
-generate a new app's sample), and it's not a deployable application on its own (no
-`sam build`/`sam deploy` has been run against what's checked in here). It exists purely
-as comparison material for the performance-optimization design work.
+```json
+{
+  "mcp_servers": {
+    "m2s-server": {
+      "type": "stdio",
+      "command": "<path-to-mcp-server-env>/python.exe",
+      "args": ["<REPO_ROOT>/m2s-mcp-server/server.py"],
+      "env": { "M2S_WORKSPACE": "runs/<app>-oh", "PYTHONUTF8": "1" },
+      "cwd": "<REPO_ROOT>/Mono2Sls-artifacts/M2S"
+    }
+  },
+  "permission": {
+    "allowed_tools": [
+      "mcp__m2s-server__analyze_project",
+      "mcp__m2s-server__validate_sam",
+      "mcp__m2s-server__run_gate",
+      "mcp__m2s-server__merge_blueprint_key"
+    ]
+  },
+  "hooks": {
+    "pre_tool_use": [{
+      "type": "command",
+      "command": "<path-to-mcp-server-env>/python.exe <REPO_ROOT>/m2s-mcp-server/hook_guard_mcp_auth.py",
+      "matcher": "mcp_auth", "block_on_failure": true, "timeout_seconds": 10
+    }],
+    "subagent_stop": [{
+      "type": "command",
+      "command": "<path-to-mcp-server-env>/python.exe <REPO_ROOT>/m2s-mcp-server/hook_audit_subagent_stop.py",
+      "block_on_failure": false, "timeout_seconds": 10
+    }]
+  }
+}
+```
+
+`M2S_WORKSPACE` picks which app you're migrating this session — change it (and restart
+the OpenHarness session so the MCP server picks up the new env var) per app. Workspace
+output lands at `<REPO_ROOT>/Mono2Sls-artifacts/M2S/runs/<app>-oh/`.
+
+**Agent definitions**: OpenHarness only loads agent `.md` files from
+`~/.openharness/agents/` (a fixed user-level path, no project-level equivalent) — copy
+the four files from `m2s-mcp-server/agents/` there.
+
+**Skills**: `.openharness/skills/` in this repo is discovered automatically as long as
+you run OpenHarness with this repo (or a directory under it) as `cwd` — no separate
+wiring needed.
+
+## Running the pipeline
+
+From this repo's root:
+
+```powershell
+& "<path-to-openharness-env>\oh.exe" -p "Follow the orchestration protocol in .openharness/skills/m2s-migrate, but use these constants instead of the todo example in SKILL.md section 0:
+MONOLITH = <REPO_ROOT>\Mono2Sls-artifacts\mono_benchmark\<app>
+WS = <REPO_ROOT>\Mono2Sls-artifacts\M2S\runs\<app>-oh
+Run it through all of P0-S4 to gate(final). Use plain ASCII-only text in every spawn prompt. If your own top-level model call fails with a connection error, retry 2-3 times before giving up." --output-format text --max-turns 200
+```
+
+Set `PYTHONUTF8=1` / `PYTHONIOENCODING=utf-8` in the shell environment before invoking
+`oh` (belt-and-suspenders alongside the GBK patch above).
+
+**Don't trust the model's own final summary.** Verify independently:
+
+```bash
+ls Mono2Sls-artifacts/M2S/runs/<app>-oh/output/consistency_report.json  # should exist
+python -c "import json; print(json.load(open('Mono2Sls-artifacts/M2S/runs/<app>-oh/output/consistency_report.json'))['status'])"  # should print PASS
+```
+
+A `gate(final)` PASS + a real `consistency_report.json` with `status: PASS` is the only
+thing that counts as "migration succeeded" — one session in this project's own history
+produced a fully fabricated success report (invented task IDs, a stack trace citing a
+file that didn't exist) with none of the underlying work actually done. Always check
+the file, not the chat output.
+
+## Contributing a new sample back
+
+Once you have a real `gate(final)` PASS for a new app:
+
+1. Copy `Mono2Sls-artifacts/M2S/runs/<app>-oh/output/{lambdas,template.yaml,consistency_report.json}`
+   and `Mono2Sls-artifacts/M2S/runs/<app>-oh/storage/{blueprint.json,analysis_report.json}`
+   (and `audit.log` if present) into a new `samples/<app>/` folder here, matching the
+   layout of `samples/todo/` and `samples/bookstore/`.
+2. Don't include `.aws-sam/` (regenerable) or `template.part1.yaml`/`template.part2.yaml`
+   (intermediate merge inputs — `template.yaml` is the merged final product).
+3. Open a PR with a short note of which app and confirmation that `gate(final)` actually
+   passed (paste the real `consistency_report.json` status, not a chat summary).
+
+See `samples/README.md` for the full per-app file listing and what each artifact means.

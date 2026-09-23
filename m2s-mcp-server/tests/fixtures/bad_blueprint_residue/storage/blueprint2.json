@@ -1,0 +1,5 @@
+{
+  "lambda_functions": [
+    {"name": "todo-list-items", "trigger_type": "api", "runtime": "nodejs22.x", "handler": "handler.lambda_handler", "auth": "required", "source_files": ["todo/routes/todo.js"], "entry_points": ["GET /item"], "environment_variables": {}}
+  ]
+}

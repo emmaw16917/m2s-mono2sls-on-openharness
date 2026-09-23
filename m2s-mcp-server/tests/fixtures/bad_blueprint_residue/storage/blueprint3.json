@@ -1,0 +1,6 @@
+{
+  "dynamodb_tables": [
+    {"logical_name": "TodoItems", "purpose": "residue fixture", "partition_key": {"name": "userId", "type": "S"}, "sort_key": {"name": "id", "type": "S"}, "gsi": []}
+  ],
+  "dropped_functions": []
+}
