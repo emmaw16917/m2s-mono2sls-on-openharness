@@ -2,8 +2,7 @@
 
 这两个文件是 2026-09-23 测 `bookstore-oh` 本地代码阶段代理指标（`require()` 耗时、mock 调用
 执行耗时）时写的，从临时 scratch 目录搬进仓库保存，避免机器重启丢失。**不是 perf-optimizer
-的正式实现**，只是一份验证过可行的参考脚本——设计细节见
-`../PERF_OPTIMIZATION_DESIGN.md` §3 步骤 1、§4 第 5 条。
+的正式实现**，只是一份验证过可行的参考脚本。
 
 ## 文件
 
@@ -19,7 +18,8 @@
   node run_one.js <handlerFile> <api|sqs>
   ```
   内部设了 bookstore 用到的全部环境变量、构造了 API Gateway / SQS 两种事件形状；换代码库要
-  按 §3 步骤 1 重新构造 per-handler 的 mock event。
+  重新构造 per-handler 的 mock event（不能全体 handler 共用一份通用 event，见上面
+  `cart-add-item` 那条踩过的坑）。
 
 ## 如何复现（bookstore-oh 这次的测法）
 
@@ -27,6 +27,3 @@
    （版本对齐 `output/lambdas/*/package.json` 里声明的版本）。
 2. 把 `output/lambdas/<domain>/<name>/handler.js` 复制进同一目录（改个不冲突的文件名）。
 3. `node run_one.js <复制后的文件名> api`（或 `sqs`，取决于 `trigger_type`）。
-
-2026-09-23 bookstore-oh 12 个 handler 的实测结果记在 `../PERF_OPTIMIZATION_DESIGN.md` §5
-"两个反模式的实测差异"里，不在这里重复。

@@ -11,7 +11,7 @@ process.env.ORDERS_TABLE = 't';
 const { installShim, resetCallLog, getCallLog, EXAMPLE_RESPONSE_TABLE_FROM_BOOKSTORE } = require('./mock-sdk-shim.js');
 // This run is re-measuring the SAME bookstore-oh codebase the example table
 // was scanned from, so reusing it is valid here -- a different codebase must
-// re-scan per PERF_OPTIMIZATION_DESIGN.md §3 step 1, not copy this table.
+// re-scan its own codebase's Command usage, not copy this table.
 const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
 const { SQSClient } = require('@aws-sdk/client-sqs');
 installShim({

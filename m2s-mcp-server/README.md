@@ -5,11 +5,6 @@ deterministic MCP tools that back the migration; the orchestration skill and the
 migration agents live outside this directory (see "Where things live" below) because
 OpenHarness only discovers them at fixed paths.
 
-For a detailed, chronological account of what was built, what broke, and why —
-including six distinct LLM failure modes hit and fixed during development — read
-`CHANGELOG.md`. This README is the "how do I run it / where is everything" reference;
-the CHANGELOG is the "why does it work this way" reference.
-
 ## What this does
 
 Migrates the `todo` monolith under `Mono2Sls-artifacts/mono_benchmark/todo` to an AWS

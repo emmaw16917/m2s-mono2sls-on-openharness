@@ -24,10 +24,8 @@ the code). It's orchestrated as an OpenHarness skill (`m2s-migrate`) that spawns
 sub-agents (architect → code-developer → sam-engineer → validator) and self-checks at
 every stage against a deterministic MCP tool server (`m2s-mcp-server/`).
 
-For the full "why does it work this way" story (six real LLM failure modes hit and
-fixed during development, design rationale for every gate check), read
-`m2s-mcp-server/CHANGELOG.md`. `m2s-mcp-server/README.md` is the detailed "how do I run
-it" reference this file summarizes.
+`m2s-mcp-server/README.md` is the detailed "how do I run it / where is everything"
+reference this file summarizes.
 
 ## Prerequisites
 

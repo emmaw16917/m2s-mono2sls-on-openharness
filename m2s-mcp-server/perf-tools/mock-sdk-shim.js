@@ -6,8 +6,7 @@
 // mock response, which Client prototypes get patched, what event shape each
 // handler needs to pass its own validation) is NOT reusable -- it depends on
 // what a given monolith's generated code actually uses, and must be scanned
-// and supplied fresh for every run. See PERF_OPTIMIZATION_DESIGN.md §3 step 1
-// and §4 item 5.
+// and supplied fresh for every run.
 //
 // Usage per run:
 //   1. grep -rho "new [A-Za-z]*Command(" output/lambdas/ to find every

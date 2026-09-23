@@ -2,11 +2,10 @@
 
 This folder collects the serverless code that the pipeline in this repo's root
 (`m2s-mcp-server/` + `.openharness/skills/m2s-migrate/`) generates from the monolith
-benchmark apps under `../Mono2Sls-artifacts/mono_benchmark/` — **before any of the
-performance-optimization work** described in `../m2s-mcp-server/PERF_OPTIMIZATION_DESIGN.md`
-has been applied to the pipeline itself. It's the "current baseline" to diff against
-official/reference serverless implementations, to find optimization opportunities
-beyond what we've already found by testing the pipeline's output directly.
+benchmark apps under `../Mono2Sls-artifacts/mono_benchmark/` — **before any
+performance-optimization work has been applied to the pipeline itself**. It's the
+"current baseline" to diff against official/reference serverless implementations, to
+find optimization opportunities.
 
 See the repo root `README.md` for how to run the pipeline yourself and generate a new
 app's sample.
@@ -31,9 +30,7 @@ implementation to compare against.
 - `consistency_report.json` — the pipeline's own final validation report. Both apps
   here passed (`status: PASS`) — the code is internally consistent (correct
   CodeUri/Handler wiring, IAM permissions, etc.), not just "generated", but **it has
-  not been deployed or performance-tested as part of this repo** (that was done
-  separately, once, on real AWS, and is written up in `PERF_OPTIMIZATION_DESIGN.md`,
-  not included here).
+  not been deployed or performance-tested as part of this repo**.
 - `audit.log` (where present) — a spawn/completion audit trail for the pipeline's
   sub-agents, for provenance.
 
