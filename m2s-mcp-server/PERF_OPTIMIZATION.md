@@ -28,8 +28,12 @@
    等网络的部分看 SDK 调用次数 + 顺序往返深度（`mock-sdk-shim.js` 的 `getCriticalPathDepth()`），
    CPU 部分看 HTTP 层 mock 下的热执行中位数（`warm_cpu.js`，重复测量波动 ≤±7%）。本次发现
    Windows 上 `setTimeout(8)` 实际要 ~14.5–15.6ms，mock 墙钟被时钟粒度量化了。
-7. **sam+Docker 并不是"测不出细粒度指标"，是之前的测法不对**（实验 6）。之前量的是客户端墙钟
-   （`localhost` 解析在这台机器上就固定多 ~3.7s）。绕开 `sam local invoke`，直接用 Lambda 运行时镜像
+7. **sam+Docker 并不是"测不出细粒度指标"，之前的 L2 数据是环境问题造成的无效数据**（实验 6）。根因：
+   PowerShell 配置文件设置了 `HTTP_PROXY`/`HTTPS_PROXY`（本地代理 127.0.0.1:21081），但没有设置
+   `NO_PROXY`。sam 用 Python `requests` 访问 `http://localhost:<端口>` 调用容器，请求被转给了代理，代理
+   约 3.7s 后返回 502/空响应。所以 `sam local invoke` 什么都不打印；`start-lambda` 的"热调用约 4.8s、
+   三个函数完全相同"测到的是**失败的请求**；`start-api` 的 502 也是这个原因。设置
+   `NO_PROXY=localhost,127.0.0.1,::1`（或加 `--container-host 127.0.0.1`）之后，sam 全部恢复正常。测量时直接用 Lambda 运行时镜像
    （自带 RIE）跑 `sam build` 产物，读容器**内部**的 `REPORT Duration` 和 rapid 的 `INIT REPORT`：
    空函数的固定开销约 1.3ms，1 次调用 vs 5 次调用的 handler 能区分开（~3.2ms vs ~4.6ms），消费者
    改写 189ms → 9.9ms，Scan 20 条 vs 2000 条 8.7ms → 19.4ms；而且是在真实 Linux + 真实 nodejs22
@@ -235,12 +239,28 @@ CPU 随条数线性增长，而且主要花在 SDK 反序列化和 DocumentClien
 
 **实验 6：sam build 产物 + Lambda 运行时容器（RIE 直连），2026-09-24**
 
-之前 L2 的负面结论（`DESIGN §5`：三个函数的热调用都约 4.8s）量的是 boto3 → `start-lambda` Flask →
-`docker exec` 这整条链路的客户端墙钟。这次重新排查：
-- `sam local invoke` 在这台机器上仍然静默失败（只打印 `SAM_CONTAINER_ID`，容器实际没有跑起来），
-  短路径下也一样，所以不完全是 `MAX_PATH` 的问题；
-- 用 `localhost` 调 RIE 时，每个请求固定多约 3.7s（Windows 先试 IPv6 再回退），换成 `127.0.0.1`
-  就没有了。之前 ~4.8s 里很可能有一大块就是这个。
+之前 L2 的负面结论（`DESIGN §5`：三个函数的热调用都约 4.8s）以及 `sam local invoke` 静默失败，**根因是
+代理配置**，不是 sam 或 Docker 本身的问题。排查过程：
+
+1. `sam local invoke --debug`：容器正常经历 create → start → attach，被调用后由 sam 正常 kill（exit 137）；
+   日志里是 `Failed to deserialize response from RIE, returning the raw response as is`，而原始响应是空的。
+2. sam 源码（`samcli/local/docker/container.py`）：调用地址是 `container_host="localhost"`，端口只绑在
+   `127.0.0.1` 上。
+3. 同一个容器上交替对照：`localhost` 是 502、3.7s，`127.0.0.1` 是 200、4ms，两者 TCP 连接耗时相同；
+   改 `Host` 头不影响结果。所以请求在到达容器之前就被别的东西接走了。
+4. 环境里有 `HTTP_PROXY=http://127.0.0.1:21081`，没有 `NO_PROXY`（来自
+   `Documents\WindowsPowerShell\Microsoft.PowerShell_profile.ps1`）。Windows 系统代理的例外列表里虽然有
+   `localhost`，但 curl/`requests` 只看环境变量。`curl --noproxy '*' http://localhost:...` 返回 200。
+5. 修复：在配置文件里加 `$env:NO_PROXY = "localhost,127.0.0.1,::1"`（已加，原文件备份为 `.bak-2026-09-24`）。
+   修复后在新开的 PowerShell 里，不加任何参数 `sam local invoke` 就能返回 200 并打印 REPORT；
+   `start-lambda` 的热调用客户端耗时约 22~47ms（之前是 4.8s）；`start-api` 从 502 变成 handler
+   自己返回的 500（本地确实不模拟 Cognito，`claims` 为 undefined，被 handler 的 try/catch 捕获）。
+
+结论：`DESIGN §5`"sam CLI + Docker 阶段实测"里的冷/热耗时表，以及"start-api 在 Cognito 路由上 502"
+这两条记录**测到的是失败的请求**，应当作废，而不只是"精度不够"。
+
+虽然 sam 已经修好，测量仍然建议用下面的 RIE 直连方式：sam 会把代码绑定挂载进容器，冷启动因此约
+1.4~2.2s，不能代表真实的初始化耗时。
 
 做法（`perf-tools/rie/`）：`sam build` 之后，直接 `docker create` 运行时镜像
 `public.ecr.aws/lambda/nodejs:22-x86_64`，把构建产物 `docker cp` 进去（绑定挂载会让初始化慢到约 1.6s），
@@ -361,7 +381,7 @@ Windows 上不成立；"本机热执行 CPU 下降 → Lambda Duration 下降"�
 |---|---|---|---|
 | L0 静态 | 调用次数、顺序深度、Scan 位置、依赖清单、配置值是否符合默认规则 | 任何毫秒数 | 确定性，无噪声；**最适合放进自动自查循环** |
 | L1 代理 | `require()` 冷加载的相对变化；调用次数 + 顺序深度（等网络部分）；HTTP 层 mock 下的热执行 CPU（含随数据量的变化） | sleep 墙钟的 ±10% 量级差异（Windows 15.6ms 时钟粒度）；Lambda 上的绝对毫秒数；RCU 费用；并发/限流 | 方向与 L3 一致（books-list vs orders-create：L1 约 2~4×，L3 约 5×，`DESIGN §5`） |
-| L2 sam+Docker（经 `sam local`） | 端到端能不能跑通（功能验收） | 细粒度差异（客户端链路开销约 4.8s，其中 `localhost` 占约 3.7s）；Cognito 路由（直接 502） | 只做功能验收 |
+| L2 sam+Docker（经 `sam local`，已设置 `NO_PROXY`） | 端到端能不能跑通（功能验收）；`start-lambda --warm-containers` 下的热调用 REPORT | 冷启动（绑定挂载会让它变慢）；Cognito（不模拟，handler 拿不到 `claims`） | 修复代理配置之前的数据全部作废 |
 | L2′ sam build + RIE 直连 | 真实 Linux 运行时里的热调用 Duration（固定开销约 1.3ms）；初始化（不限 CPU 时做相对比较）；打包效果；用 `--cpus` 发现"内存太小"的断崖 | 512 以上内存档位之间的差异；CPU 限额下的初始化；arm64（仍是 QEMU）；`Max Memory Used`（RIE 不统计） | 与 L1 方向一致，并纠正了 L1 的 esbuild 结论；运行之间波动约 ±10~15% |
 | L3 真实 AWS | 真实 Init/Duration、MemorySize/架构曲线、E2E、价格 | 自动化闭环（分钟级部署 + 需要人工授权 + 结果有调度噪声） | 权威，但每次都要人工授权、测完拆除 |
 
@@ -530,3 +550,7 @@ E1、E2 改动小、结论能直接写进默认规则；E3 决定 v2 最大的�
 6. `DESIGN §5` 里"sam CLI + Docker 这套本地测量法测不出细粒度优化"的结论，只适用于 `sam local`
    客户端墙钟这种测法。绕开 `sam local invoke`、直接读 RIE 容器内部的 REPORT 行，就能测出细粒度差异
    （本文 §3.2 实验 6）。
+7. `DESIGN §5`"sam CLI + Docker 阶段实测"整节的数据（冷 22~38s、热约 4.8s、start-api 502）是在
+   `HTTP_PROXY` 没有配 `NO_PROXY` 的环境下测的，sam 发给容器的请求被代理截走了，**测到的是失败的
+   请求**，应当作废（本文 §3.2 实验 6）。`DESIGN §5`"MemorySize / Architectures 真实 A/B 实测"开头提到
+   的本地 `sam local invoke` 失败，很可能也是同一个原因。

@@ -2,7 +2,7 @@
 # Usage: rie_measure.sh <BuildDir> <event.json> <cpus|0> [extra docker -e args...]
 # Runs the Lambda RIE image on a `sam build` artifact (code docker-cp'd into the
 # container, not bind-mounted: Windows bind mounts make module loading ~5x
-# slower), does 1 cold + 30 warm invokes over 127.0.0.1 (localhost adds ~3.7s
+# slower), does 1 cold + 30 warm invokes over 127.0.0.1 (with HTTP_PROXY set and no NO_PROXY, localhost gets routed to the proxy: 502 after ~3.7s
 # per request on this Windows box), and summarises in-container timings:
 #   init_ms  = rapid "INIT REPORT(durationMs)"  (RIE's own "Init Duration" field is a stub)
 #   warm_*   = REPORT "Duration" of invokes 2..31
