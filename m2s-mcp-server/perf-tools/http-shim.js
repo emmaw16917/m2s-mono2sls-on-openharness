@@ -6,7 +6,9 @@
 const crypto = require('crypto');
 const { Readable } = require('stream');
 const { NodeHttpHandler } = require('@smithy/node-http-handler');
-const { HttpResponse } = require('@smithy/protocol-http');
+// A plain {statusCode, headers, body} object instead of @smithy/protocol-http's
+// HttpResponse: newer SDK versions (what `sam build` installs) no longer ship
+// that package separately, and the SDK only duck-types the response anyway.
 Object.assign(process.env, { AWS_ACCESS_KEY_ID: 'AKIDMOCK', AWS_SECRET_ACCESS_KEY: 'mocksecret', AWS_REGION: 'us-east-1' });
 
 const book = (i) => ({ id: { S: 'book-' + i }, bookId: { S: 'book-' + i }, name: { S: 'Book name ' + i }, author: { S: 'Author ' + (i % 50) },
@@ -30,6 +32,6 @@ NodeHttpHandler.prototype.handle = async function (request) {
   const op = target.split('.').pop();
   calls.push(op);
   const payload = Buffer.from(JSON.stringify(body(op, request.body)));
-  return { response: new HttpResponse({ statusCode: 200, headers: { 'content-type': 'application/x-amz-json-1.0', 'content-length': String(payload.length) }, body: Readable.from([payload]) }) };
+  return { response: { statusCode: 200, headers: { 'content-type': 'application/x-amz-json-1.0', 'content-length': String(payload.length) }, body: Readable.from([payload]) } };
 };
 module.exports = { opts, reset: () => { calls = []; }, calls: () => calls.slice() };

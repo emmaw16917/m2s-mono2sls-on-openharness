@@ -1,0 +1,25 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Handler: handler.lambda_handler
+    Timeout: 30
+    MemorySize: 512
+    Environment:
+      Variables:
+        NODE_OPTIONS: --require /var/task/http-shim.js
+        SHIM_ITEMS: "20"
+        SHIM_LATENCY_MS: "0"
+        BOOKS_TABLE: t
+        CART_TABLE: t
+        ORDERS_TABLE: t
+        BESTSELLERS_TABLE: t
+        BESTSELLER_QUEUE_URL: https://sqs.us-east-1.amazonaws.com/123456789012/q
+Resources:
+  BooksGetById: {Type: AWS::Serverless::Function, Properties: {CodeUri: fn/books-get-by-id/}}
+  OrdersCreate: {Type: AWS::Serverless::Function, Properties: {CodeUri: fn/orders-create/}}
+  Consumer: {Type: AWS::Serverless::Function, Properties: {CodeUri: fn/bestsellers-update-consumer/}}
+  ConsumerAgg: {Type: AWS::Serverless::Function, Properties: {CodeUri: fn/consumer-agg/}}
+  Noop: {Type: AWS::Serverless::Function, Properties: {CodeUri: fn/noop/}}
+  BestsellersList: {Type: AWS::Serverless::Function, Properties: {CodeUri: fn/bestsellers-list/}}

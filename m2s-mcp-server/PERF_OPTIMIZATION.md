@@ -17,17 +17,23 @@
 3. **在"不部署、只有代码阶段指标"的真实流水线里，建议分成两类（§3.4 逐条分类）**：
    - **指标能验证是否正向的**：调用链改写（SQS 消费者聚合+并行、orders-create 压浅调用链）
      ——用 mock 调用日志算出的**调用次数 + 顺序往返深度**判断，确定性、无噪声（消费者 30→1、
-     orders-create 3→2/1）；打包方式（esbuild）——用 `require()` 冷加载判断（−40%，远大于噪声）；
+     orders-create 3→2/1）；
      **热执行 CPU**——用 HTTP 层 mock 让 SDK 真实跑完序列化/签名/反序列化来测（实验 5），消费者
      聚合改写 CPU −78%，全表 Scan 的 CPU 随条数线性增长（20 条 0.39ms → 5000 条 ~35ms）。
    - **只能靠经验/先验的**：MemorySize、arm64、SQS 批参数、访问日志、限流、HTTP API、缓存、
      Streams、Provisioned Concurrency——代码阶段指标对它们测不了。（上一版把"热读路径不要全表
-     Scan"也归到这类，实验 5 之后改为可测，前提是给定数据量假设。）
+     Scan"也归到这类，实验 5 之后改为可测，前提是给定数据量假设。）**esbuild 打包也降到这一类**：
+     Windows 上 `require()` −40% 的结果，在真实 Linux 运行时容器里复现不出来（实验 6）。
 4. **最大的方法论修正：热执行不再用"sleep 模拟延迟后的墙钟毫秒"判断，而是拆成两部分分别测**：
    等网络的部分看 SDK 调用次数 + 顺序往返深度（`mock-sdk-shim.js` 的 `getCriticalPathDepth()`），
    CPU 部分看 HTTP 层 mock 下的热执行中位数（`warm_cpu.js`，重复测量波动 ≤±7%）。本次发现
-   Windows 上 `setTimeout(8)` 实际要 ~14.5–15.6ms，mock 墙钟被时钟粒度量化了；再加上 sam+Docker
-   层 ~4.8s 固定开销（`DESIGN §5`），本地墙钟数字只适合当方向参考。
+   Windows 上 `setTimeout(8)` 实际要 ~14.5–15.6ms，mock 墙钟被时钟粒度量化了。
+7. **sam+Docker 并不是"测不出细粒度指标"，是之前的测法不对**（实验 6）。之前量的是客户端墙钟
+   （`localhost` 解析在这台机器上就固定多 ~3.7s）。绕开 `sam local invoke`，直接用 Lambda 运行时镜像
+   （自带 RIE）跑 `sam build` 产物，读容器**内部**的 `REPORT Duration` 和 rapid 的 `INIT REPORT`：
+   空函数的固定开销约 1.3ms，1 次调用 vs 5 次调用的 handler 能区分开（~3.2ms vs ~4.6ms），消费者
+   改写 189ms → 9.9ms，Scan 20 条 vs 2000 条 8.7ms → 19.4ms；而且是在真实 Linux + 真实 nodejs22
+   运行时上测的，还修正了一个 L1 的错误结论（esbuild）。
 5. **L3 数据的适用范围很窄，不能当普适模型用**（§4.2）：只来自 bookstore 一个应用、MemorySize/
    架构 A/B 只测了 orders-create 一个函数、每档 3~4 次调用、一个区域一天。能推广的是**方向**
    （调用深度越大 Duration 越长；128MB 明显偏慢；arm64 不劣于 x86），不是具体倍数。
@@ -115,7 +121,7 @@ SDK v3 模块化 + nodejs22；不进 VPC；DynamoDB 按需计费；没有定时 
 | # | 改进点 | 层 | 预期收益 | 证据 | 风险 | 负责阶段 |
 |---|---|---|---|---|---|---|
 | A1 | SQS 消费者：聚合 + `Promise.all` + `ReportBatchItemFailures` | 代码+模板 | 批处理时长 ↓ 一个数量级；修重复计数 | L1 实验 + L3 顺序调用实测 | 低 | S2 / S3b |
-| A4 | esbuild 打包 + minify | 模板 | Init ↓（本地 `require()` −40%） | L1 实验；L3 待测 | 低 | S3 |
+| A4 | esbuild 打包 + minify | 模板 | ~~Init ↓~~ 在真实运行时容器里未见差异 | L1 Windows −40% 被实验 6 推翻；L3 待测 | 低 | S3（降级为可选） |
 | B1 | `Architectures: arm64` | 模板 | warm/Init 略快 + 单价 −20% | **L3 A/B** | 极低 | S3 |
 | B2 | MemorySize 分级（不低于 256，热点 512~1024） | 模板 | 128→512 快 ~5×；512→1024 再快 ~31% | **L3 A/B** | 低 | S1 `perf_hint` + S3 |
 | A2 | orders-create 压浅调用链 | 代码 | 47ms → 16~31ms（代理） | L1 实验 | 中（事务/一致性取舍） | S2 |
@@ -134,7 +140,8 @@ SDK v3 模块化 + nodejs22；不进 VPC；DynamoDB 按需计费；没有定时 
 脚本已存进 `perf-tools/exp_variants.js`、`perf-tools/req_time.js`，环境在短路径
 `D:\tmp\m2s-perf-cmp`（避开 `MAX_PATH`，见 `DESIGN §5`）。每组取中位数。
 
-**实验 1：esbuild 打包对 `require()` 冷加载的影响**（每组 15 个独立 node 进程）
+**实验 1：esbuild 打包对 `require()` 冷加载的影响**（每组 15 个独立 node 进程）——**结论已被实验 6
+推翻，保留在这里作为反例**：在 Windows 上测模块加载，结果会被文件系统的差异带偏
 
 | handler | 未打包（现状 `node_modules`） | esbuild bundle + minify | 变化 |
 |---|---|---|---|
@@ -226,6 +233,58 @@ CPU 随条数线性增长，而且主要花在 SDK 反序列化和 DocumentClien
   配置推断一个规模，并在报告里写明。
 - 这个指标和调用轮数互补：轮数衡量"等网络"，CPU 衡量"算"。热执行 ≈ 两者之和，两个都要看。
 
+**实验 6：sam build 产物 + Lambda 运行时容器（RIE 直连），2026-09-24**
+
+之前 L2 的负面结论（`DESIGN §5`：三个函数的热调用都约 4.8s）量的是 boto3 → `start-lambda` Flask →
+`docker exec` 这整条链路的客户端墙钟。这次重新排查：
+- `sam local invoke` 在这台机器上仍然静默失败（只打印 `SAM_CONTAINER_ID`，容器实际没有跑起来），
+  短路径下也一样，所以不完全是 `MAX_PATH` 的问题；
+- 用 `localhost` 调 RIE 时，每个请求固定多约 3.7s（Windows 先试 IPv6 再回退），换成 `127.0.0.1`
+  就没有了。之前 ~4.8s 里很可能有一大块就是这个。
+
+做法（`perf-tools/rie/`）：`sam build` 之后，直接 `docker create` 运行时镜像
+`public.ecr.aws/lambda/nodejs:22-x86_64`，把构建产物 `docker cp` 进去（绑定挂载会让初始化慢到约 1.6s），
+用 `NODE_OPTIONS=--require` 预加载 HTTP 层 mock，调用 1 次冷 + 30 次热，读容器日志。RIE 的
+`Init Duration` 字段是占位值（0.03ms），`Max Memory Used` 只回显配置值，这两个都不能用；初始化耗时取 rapid 的
+`INIT REPORT(durationMs)`。
+
+基线与区分度（不限 CPU，3 次独立运行）：
+
+| 函数 | init_ms | 热调用 Duration 中位数 |
+|---|---|---|
+| Noop（空函数，只加载 mock） | 62 | 1.3ms（RIE 固定开销） |
+| books-get-by-id（1 次调用） | 93~108 | 3.0~3.5ms |
+| orders-create（5 次调用） | 101~115 | 4.0~5.4ms |
+
+运行之间波动约 ±10~15%，比 `warm_cpu.js`（≤±7%）大，但数量级差异看得很清楚。
+
+改写候选（CPU 限额 0.289 ≈ 512MB，每次调用模拟 5ms 延迟；Linux 里 `setTimeout` 是精确的）：
+
+| 场景 | 热调用 Duration 中位数 |
+|---|---|
+| bestsellers-update-consumer 现状（30 次顺序调用） | 188.8ms |
+| 先聚合再并行（5 次并行） | **9.9ms** |
+| bestsellers-list，Scan 返回 20 条 | 8.7ms |
+| bestsellers-list，Scan 返回 2,000 条 | 19.4ms（p90 65ms，受 CPU 限额节流影响） |
+
+用 `--cpus` 模拟 MemorySize（1769MB = 1 vCPU，orders-create，每次调用 5ms 延迟）：
+
+| 等效内存 | 热调用中位数 | 真实 A/B（`DESIGN §5`） |
+|---|---|---|
+| 128MB（0.072 CPU） | 115.9ms（p10 41 / p90 164，双峰） | ~174ms |
+| 512MB（0.289） | 21.9ms | ~35ms |
+| 1024MB（0.579） | 21.7ms | ~24ms |
+
+- 能复现"128MB 断崖式变慢"这个方向；
+- **复现不了 512→1024 的 ~31% 提升**：这台开发机单核比 Lambda 快，单次调用的 CPU 工作量在 0.289 核的
+  配额内就做完了；
+- CPU 限额下的初始化（128MB 档约 2.4~3.0s）**不代表真实情况**：真实 Lambda 的 Init 几乎不随内存变化。
+
+**esbuild 打包在真实运行时里的初始化**（orders-create，不限 CPU，5 次交替运行）：未打包 108~117ms
+（有一次异常值 182ms），esbuild bundle + minify 101~117ms，**没有可见差异**。实验 1 在 Windows 上
+测到的 `require()` −40%，主要来自 NTFS 上模块解析慢，不能代表 Lambda 的 Linux 环境。模块加载本身在
+这里只占约 45~50ms（对比空函数的 62ms）。
+
 **附带发现：mock 墙钟在 Windows 上被量化。** `setTimeout(8)` 实测 14.5ms；上面所有"单次调用"
 结果都卡在 ~15.6ms（Windows 默认时钟粒度）。`DESIGN §5` 里单调用 handler 的 11~24ms 也是这个
 原因。所以 L1 的墙钟只能用来看**倍数关系**，不能用来判断 ±10% 这种量级的差异——这直接影响
@@ -268,11 +327,11 @@ perf-optimizer 的判据设计（§4.3）。
 | A1b | 消费者先按 key 聚合再写 | **M**（方向）/ 幅度依赖假设 | 调用次数 30 → 5，热执行 CPU 2.9ms → 0.62ms（实验 5）。能确定是正向的；但**降幅取决于 mock 事件里 bookId 的重复率**（本次人为设定为 5 本热门书），真实收益大小要看真实订单分布 |
 | A1c | `ReportBatchItemFailures` | 非性能项 | 是正确性修复（避免重复 `ADD`）。L0 能检查"配没配"，mock 测不出任何性能差异 |
 | A2 | orders-create 压浅调用链 | **M**（深度/次数/CPU）+ **E**（取舍） | 深度 3 → 2/1、调用 5 → 2/1 可测，CPU 用 `warm_cpu.js` 可测（现状 ~0.81ms）；但事务写 2× WCU 的成本、下单与清购物车的一致性语义都是指标看不到的，需要 S2 按业务语义拍板 |
-| A4 | esbuild 打包 + minify | **M** | `require()` 中位数 −40%，远大于组内波动（约 ±9%）。**未验证的是幅度**：Windows 模块解析 ≠ Lambda Linux，`require()` 也不包含运行时引导 |
+| A4 | esbuild 打包 + minify | **可测，结果为无效** | Windows `require()` −40%；但在 RIE 容器（真实 Linux + nodejs22 运行时）里测 init，打包与否没有差异（实验 6）。以后打包类改动应以 RIE 的 init 为准，不看 Windows 上的 `require()` |
 | A5 | `uuid` → `crypto.randomUUID()` | **M−** | 单独测：`require('uuid')` ~10ms vs 内置 `crypto` ~3ms；但放进完整 handler（~90ms，波动约 ±8ms）里落在噪声带内。且改变了 ID 的版本（v1→v4），属于语义变化 |
 | A3 | 热读路径全表 Scan → GSI / 物化视图 / 分页 | **M**（CPU，需给定数据量）+ **E**（RCU 费用、分页往返） | `send()` 层 mock 测不出（实验 4）；HTTP 层 mock 能测出热执行 CPU 随条数线性增长（实验 5：20 条 0.39ms → 5000 条 ~35ms），改成 Query Limit 20 后回到 0.4ms。仍然测不了的是 RCU 费用和超过 1MB 时的多次分页往返；"线上有多少条"是假设 |
 | B1 | `Architectures: arm64` | **E** | 本机 x86 上跑 arm64 是 QEMU 模拟，不可信；依据是 AWS 公开基准 + bookstore 一次 A/B |
-| B2 | MemorySize 分级 | **E** | 内存大小只在真实 Lambda 上影响 CPU 配额，本地测不了；依据是 bookstore/orders-create 一次 A/B + 官方 todo 用 Power Tuning 定值 |
+| B2 | MemorySize 分级 | 下限 **M−**，其余 **E** | RIE + `--cpus` 能复现"128MB 断崖式变慢"（实验 6），可以用来查"内存给得太小"；但复现不了 512→1024 的差异，也不能拿它来定具体档位。依据仍然是 bookstore 一次 A/B + 官方 todo 用 Power Tuning 定值 |
 | B3 | SQS `MaximumBatchingWindowInSeconds` / `BatchSize` | **E**（且连 L3 都没有） | 本地不模拟 SQS 轮询攒批；也从未真实测过 |
 | B4 | API 访问日志加延迟字段 | 非性能项 | 部署后的**测量手段**，本身不改变性能 |
 | B5 | UsagePlan 限流 | 非性能项 | 保护性配置 |
@@ -284,13 +343,14 @@ perf-optimizer 的判据设计（§4.3）。
 
 **结论**：在不部署的前提下，能靠指标闭环的是三类改动——**改变调用链结构的代码改写**
 （看调用次数 + 顺序深度）、**改变热执行 CPU 的改写**（批量/聚合、减少返回条数，看 `warm_cpu.js`）
-和**改变模块加载量的打包/依赖改动**（看 `require()`）。其余所有配置类、
+，以及它们在真实运行时里的效果（RIE 容器内的 `REPORT Duration`，实验 6）。打包/依赖改动**可以测**
+（RIE 的 init），但这次测出来 esbuild 没有效果。其余所有配置类、
 架构类建议，流水线只能按规则执行并在报告里如实标注为"经验默认值，未经本次测量验证"。
 
 **还有一层没被验证的假设**：即便是 M 类，指标说的也只是"代理指标变好了"。"顺序深度下降 →
 真实 Duration 下降"这条映射只在 bookstore 上有一次方向性印证（L3：books-list 深度 1 ≈ 8.9ms，
-orders-create 深度 3 ≈ 35~45ms）；"`require()` 下降 → Init Duration 下降"则**完全没有 L3
-数据**（§6 E1）；"本机热执行 CPU 下降 → Lambda Duration 下降"方向上有 L3 间接支持（128MB 慢 5 倍
+orders-create 深度 3 ≈ 35~45ms）；"`require()` 下降 → Init Duration 下降"已经被实验 6 证明在
+Windows 上不成立；"本机热执行 CPU 下降 → Lambda Duration 下降"方向上有 L3 间接支持（128MB 慢 5 倍
 说明 CPU 占比不小），但没有直接对照。
 
 ## 4. 如何用实测数据指导优化
@@ -301,7 +361,8 @@ orders-create 深度 3 ≈ 35~45ms）；"`require()` 下降 → Init Duration �
 |---|---|---|---|
 | L0 静态 | 调用次数、顺序深度、Scan 位置、依赖清单、配置值是否符合默认规则 | 任何毫秒数 | 确定性，无噪声；**最适合放进自动自查循环** |
 | L1 代理 | `require()` 冷加载的相对变化；调用次数 + 顺序深度（等网络部分）；HTTP 层 mock 下的热执行 CPU（含随数据量的变化） | sleep 墙钟的 ±10% 量级差异（Windows 15.6ms 时钟粒度）；Lambda 上的绝对毫秒数；RCU 费用；并发/限流 | 方向与 L3 一致（books-list vs orders-create：L1 约 2~4×，L3 约 5×，`DESIGN §5`） |
-| L2 sam+Docker | 端到端能不能跑通（功能验收） | 任何细粒度性能差异（~4.8s 固定开销）；Cognito 路由（直接 502） | **负面结论**：只做功能验收 |
+| L2 sam+Docker（经 `sam local`） | 端到端能不能跑通（功能验收） | 细粒度差异（客户端链路开销约 4.8s，其中 `localhost` 占约 3.7s）；Cognito 路由（直接 502） | 只做功能验收 |
+| L2′ sam build + RIE 直连 | 真实 Linux 运行时里的热调用 Duration（固定开销约 1.3ms）；初始化（不限 CPU 时做相对比较）；打包效果；用 `--cpus` 发现"内存太小"的断崖 | 512 以上内存档位之间的差异；CPU 限额下的初始化；arm64（仍是 QEMU）；`Max Memory Used`（RIE 不统计） | 与 L1 方向一致，并纠正了 L1 的 esbuild 结论；运行之间波动约 ±10~15% |
 | L3 真实 AWS | 真实 Init/Duration、MemorySize/架构曲线、E2E、价格 | 自动化闭环（分钟级部署 + 需要人工授权 + 结果有调度噪声） | 权威，但每次都要人工授权、测完拆除 |
 
 ### 4.2 L3 数据的适用范围：只能当先验，不能当普适模型
@@ -346,8 +407,9 @@ Scan）在其它应用里有多常见"。
    的有效性校验）。深度已经实现：`mock-sdk-shim.js` 记录每次调用的 `[start, end]`，
    `getCriticalPathDepth()` 返回"后一次在前一次结束后才开始"的最长调用链长度。在实验 2/3 上
    测得 30/1/1 和 3/1/2/1，跟人工读代码的结论完全一致，且不受时钟粒度和机器负载影响。
-2. **打包改动**（esbuild、依赖删减）：判据是 L1 `require()` 中位数（≥15 次独立进程），下降超过
-   10% 才算有效——实验 1 的差距是 40%，远大于组内波动（约 ±9%）。
+2. **打包改动**（esbuild、依赖删减）：判据是 **L2′ RIE 的 init_ms**（不限 CPU，≥5 次交替运行），下降
+   超过 15% 才算有效。不要用 Windows 上的 `require()`：实验 1 测到的 −40% 在实验 6 里消失了。
+   Windows 上的 `require()` 只能当快速冒烟检查。
 3. **热执行 CPU**（批量/聚合、减少 Scan/Query 返回条数、减少编解码）：判据是 `warm_cpu.js`
    中位数（300 次热调用）下降超过 10%，且其它 handler 没有超过 10% 的回升——同一 handler 5 次独立
    运行波动 ≤±7%，这个阈值是站得住的。涉及数据量的改动，要在报告里写明用的是多少条的假设。
@@ -415,11 +477,11 @@ E2E 可能只有一两百毫秒，这时 orders-create 的 35~45ms 就占到相�
 | P0 `analyze_project` | 新增静态信号：循环内 `await` 单条 DB 调用（区分顺序 vs `Promise.all`，`DESIGN §4`）；读路径上的 `scan`；可推断的表规模（种子数据量） | A1、A3 |
 | S1 `m2s-architect.md` | `perf_hint` 之外，异步派生数据的机制选择（SQS vs Streams）写明理由；公共只读端点是否需要鉴权 | C2、C3 |
 | S2 `m2s-performance-kb` | 补 4 条规则：① SQS/Streams 消费者"先聚合再并行"+ 部分批失败上报（含重复 `ADD` 的正确性理由）；② 多步写入的调用链深度与 `TransactWriteItems` 取舍（2× WCU）；③ 读路径 Scan 必须处理 `LastEvaluatedKey` 并在报告里标注；④ 不要 warmer、不要 v2 SDK、不进 VPC（§2.3 防倒退） | A1、A2、A3 |
-| S3 `m2s-sam-kb` | Globals 加 `Architectures: [arm64]`；MemorySize 按 `perf_hint` 分级（下限 256）；函数加 esbuild `Metadata`（见下）；SQS 事件加 `FunctionResponseTypes: [ReportBatchItemFailures]`（`MaximumBatchingWindowInSeconds` 先给参考值，标注未验证）；API 加带延迟字段的 `AccessLogSetting` | A4、B1~B4 |
+| S3 `m2s-sam-kb` | Globals 加 `Architectures: [arm64]`；MemorySize 按 `perf_hint` 分级（下限 256）；~~函数加 esbuild `Metadata`~~（实验 6 未见收益，暂不作为默认）；SQS 事件加 `FunctionResponseTypes: [ReportBatchItemFailures]`（`MaximumBatchingWindowInSeconds` 先给参考值，标注未验证）；API 加带延迟字段的 `AccessLogSetting` | A4、B1~B4 |
 | S3p perf-optimizer（`DESIGN §3`） | 判据改为 §4.3 的确定性指标；输出区分"已自动修复"和 `advisories` | 全部 |
 | `gate(perf)`（advisory） | 可以做成纯 L0 检查：arm64、MemorySize ≥256、SQS 消费者有 `ReportBatchItemFailures`、读路径 Scan 有分页、无循环内顺序 `await` 单条调用 | A1、A3、B1~B3 |
 
-esbuild 的 SAM 写法（每个函数一段，`sam build` 时需要本机有 esbuild）：
+（暂不采用，除非 E1 在真实 Lambda 上测出收益）esbuild 的 SAM 写法（每个函数一段，`sam build` 时需要本机有 esbuild）：
 
 ```yaml
     Metadata:
@@ -442,7 +504,7 @@ esbuild 的 SAM 写法（每个函数一段，`sam build` 时需要本机有 esb
 | # | 实验 | 变体 | 回答的问题 |
 |---|---|---|---|
 | E0 | 普适性（不需要部署） | 对 `mono_benchmark/` 里的 airline-booking / coffee / ecommerce / shopping-cart 跑流水线，产物上做 L0 扫描 + L1 深度/`require()` 测量 | bookstore 上发现的反模式在其它应用里有多常见；M 类判据在其它代码库上是否同样稳定 |
-| E1 | 打包方式 | orders-create：未打包 / esbuild minify / esbuild + `@aws-sdk` 标记 external（用运行时自带 SDK） | 实验 1 的 −40% 在真实 Init Duration 上剩多少；三种打包哪个最快 |
+| E1 | 打包方式 | orders-create：未打包 / esbuild minify / esbuild + `@aws-sdk` 标记 external（用运行时自带 SDK） | 实验 6 显示本地 Linux 运行时里没有差异；E1 只需要确认真实 Lambda 上也一样（真实环境下代码从 S3 下载，包的体积可能还有影响），优先级下调 |
 | E2 | SQS 消费者 | 现状 vs 聚合+并行；`BatchSize` 1/10 × `MaximumBatchingWindowInSeconds` 0/5 | A1 的真实收益；补上 `DESIGN §7` 唯一没验证的 SQS 参数 |
 | E3 | E2E 分解 + API 类型 | REST vs HTTP API，都开延迟访问日志，客户端在同区域 | ~900ms 的真实构成；HTTP API 的延迟收益是否存在 |
 | E4 | 畅销榜读 | 灌 1 万条数据后：Scan+排序 vs 稀疏 GSI Query vs 物化视图 GetItem | 实验 4 的解析估算（~250× RRU）是否成立 |
@@ -465,3 +527,6 @@ E1、E2 改动小、结论能直接写进默认规则；E3 决定 v2 最大的�
    影响的数字，应降级为"待验证"（本文 §4.4）。
 5. `DESIGN §2.3` 把 MemorySize/arm64 描述为"已用真实 AWS 验证"——准确说法是"在 bookstore 的一个
    函数上有一次方向一致的实测"，不代表对其它应用有同样幅度的收益（本文 §4.2）。
+6. `DESIGN §5` 里"sam CLI + Docker 这套本地测量法测不出细粒度优化"的结论，只适用于 `sam local`
+   客户端墙钟这种测法。绕开 `sam local invoke`、直接读 RIE 容器内部的 REPORT 行，就能测出细粒度差异
+   （本文 §3.2 实验 6）。

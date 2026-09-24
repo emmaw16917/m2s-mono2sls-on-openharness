@@ -1,0 +1,1 @@
+{"pathParameters":{"id":"book-1","bookId":"book-1"},"queryStringParameters":{"q":"book"},"body":"{\"books\":[{\"bookId\":\"book-1\",\"price\":9.99,\"quantity\":1},{\"bookId\":\"book-2\",\"price\":9.99,\"quantity\":1},{\"bookId\":\"book-3\",\"price\":9.99,\"quantity\":1}]}","requestContext":{"authorizer":{"claims":{"sub":"u1"}}}}
