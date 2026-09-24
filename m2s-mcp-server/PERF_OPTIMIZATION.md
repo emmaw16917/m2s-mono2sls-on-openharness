@@ -305,6 +305,53 @@ CPU 随条数线性增长，而且主要花在 SDK 反序列化和 DocumentClien
 测到的 `require()` −40%，主要来自 NTFS 上模块解析慢，不能代表 Lambda 的 Linux 环境。模块加载本身在
 这里只占约 45~50ms（对比空函数的 62ms）。
 
+**实验 7：bookstore-oh 全部 12 个函数的 L2′ 基线（2026-09-24，替代 `DESIGN §5` 作废的 sam+Docker 数据）**
+
+用 bookstore-oh 真实的 `template.yaml`（放在短路径 `D:	mp\m2s-bs` 下）执行 `sam build`，12 个函数全部构建成功，
+然后用 `perf-tools/rie/rie_measure.sh` 逐个测量。脚本、事件和原始结果都在 `perf-tools/rie/bookstore/`。
+
+**第一步：有效性校验**（`VALIDATE=1`，每个函数调用一次）。13 个测试项（books-list 带 category 和不带
+category 各算一项）全部返回 200；消费者返回 `{success:30, failed:0}`；每个函数的 SDK 调用次数都和静态分析一致
+（orders-create 5 次、消费者 30 次、其余 1 次）。一份带齐所有字段的 API 事件就能满足全部 11 个 API
+handler 的校验。
+
+**第二步：正式测量**。两种配置各重复 3 次，每次 1 次冷调用 + 30 次热调用，下表取 3 次运行的中位数：
+
+| 函数 | SDK 调用 / 顺序深度 | init_ms（A，3 次） | 热调用中位数 A（不限 CPU、无延迟） | 热调用中位数 B（0.289 CPU + 5ms/调用） |
+|---|---|---|---|---|
+| BooksList（category → Query） | 1 / 1 | 141（119~154） | 5.6ms（5.7 / 3.9 / 5.6） | 10.4ms（7.4 / 10.5 / 10.4） |
+| BooksList（无 category → Scan） | 1 / 1 | 158（131~158） | 4.5ms | 9.9ms |
+| BooksGetById | 1 / 1 | 130（125~175） | 4.8ms | 10.2ms |
+| SearchBooks | 1 / 1 | 159（130~168） | 5.2ms | 7.6ms（7.5 / 7.6 / 10.7） |
+| CartListItems | 1 / 1 | 192（164~199） | 5.1ms | 10.5ms |
+| CartGetItem | 1 / 1 | 139（86~200） | 4.4ms（4.8 / 1.8 / 4.4） | 10.3ms |
+| CartAddItem | 1 / 1 | 157（82~161） | 4.4ms | 7.6ms |
+| CartUpdateItem | 1 / 1 | 143（97~159） | 5.0ms | 10.3ms |
+| CartRemoveItem | 1 / 1 | 145（132~160） | 4.8ms | 9.9ms |
+| OrdersList | 1 / 1 | 180（87~182） | 5.3ms | 10.6ms |
+| BestsellersList | 1 / 1 | 143（88~195） | 5.0ms | 10.6ms |
+| **OrdersCreate** | 5 / 3 | 147（146~174） | 7.0ms（3.3 / 7.0 / 8.3） | **24.4ms（22.9 / 24.4 / 24.5）** |
+| **BestsellersUpdateConsumer**（10 条消息 × 3 本） | 30 / 30 | 166（94~167） | 25.3ms（25.3 / 27.5 / 13.8） | **177ms（172 / 204 / 177）** |
+
+（Scan/Query 都返回 20 条。）
+
+结论：
+
+1. **配置 B 按顺序深度把函数分得非常清楚**：深度 1 的 11 项都在 7.3~10.8ms，深度 3 的 orders-create 在
+   23~25ms，深度 30 的消费者在 172~204ms，三组之间没有重叠。这正是调用链改写（A1、A2）需要的判据。
+2. **深度相同的函数之间，差异全部落在噪声里**。深度 1 的函数在配置 B 下呈双峰分布（约 7.4ms 或约
+   10.4ms，同一个函数不同轮次会落在不同的峰上），很可能是 CPU 配额的调度周期造成的；配置 A 偶尔会出现
+   约 2ms 的低值轮次。所以这一层的分辨率大约是 ±3ms：能发现调用深度的变化，分辨不了 1ms 以下的 CPU 差异。
+   1ms 以下的 CPU 差异要用 `warm_cpu.js`（≤±7%）。
+3. **初始化耗时在 82~200ms 之间波动，12 个函数之间看不出差别**。它们加载的都是同一套 DynamoDB SDK，
+   orders-create 多加载了一个 SQS 客户端，也看不出影响。所以单次的 init 数字不能用来比较函数之间的差异；
+   比较打包方式这类改动时，要像实验 6 那样交替运行 ≥5 次再看。
+4. **和真实 AWS 对照**（`DESIGN §5`，同样是 512MB）：books-list 真实约 8.9ms，配置 B 约 10.4ms；orders-create
+   真实 35~45ms，配置 B 约 24ms。数量级和相对顺序一致，但配置 B 的 5ms/调用低估了真实的每次往返时间，
+   调用越多低估得越多。所以这里的毫秒数只用于**同一配置下的前后对比**，不能当成线上的预测值。
+5. **作为回归基线**：以后 perf-optimizer 改完代码，用同一个脚本、同样的配置重跑，结果和这张表比较。
+   深度变化看配置 B 是否跨组；CPU 变化看 `warm_cpu.js`；打包变化看交替运行的 init。
+
 **附带发现：mock 墙钟在 Windows 上被量化。** `setTimeout(8)` 实测 14.5ms；上面所有"单次调用"
 结果都卡在 ~15.6ms（Windows 默认时钟粒度）。`DESIGN §5` 里单调用 handler 的 11~24ms 也是这个
 原因。所以 L1 的墙钟只能用来看**倍数关系**，不能用来判断 ±10% 这种量级的差异——这直接影响
@@ -382,7 +429,7 @@ Windows 上不成立；"本机热执行 CPU 下降 → Lambda Duration 下降"�
 | L0 静态 | 调用次数、顺序深度、Scan 位置、依赖清单、配置值是否符合默认规则 | 任何毫秒数 | 确定性，无噪声；**最适合放进自动自查循环** |
 | L1 代理 | `require()` 冷加载的相对变化；调用次数 + 顺序深度（等网络部分）；HTTP 层 mock 下的热执行 CPU（含随数据量的变化） | sleep 墙钟的 ±10% 量级差异（Windows 15.6ms 时钟粒度）；Lambda 上的绝对毫秒数；RCU 费用；并发/限流 | 方向与 L3 一致（books-list vs orders-create：L1 约 2~4×，L3 约 5×，`DESIGN §5`） |
 | L2 sam+Docker（经 `sam local`，已设置 `NO_PROXY`） | 端到端能不能跑通（功能验收）；`start-lambda --warm-containers` 下的热调用 REPORT | 冷启动（绑定挂载会让它变慢）；Cognito（不模拟，handler 拿不到 `claims`） | 修复代理配置之前的数据全部作废 |
-| L2′ sam build + RIE 直连 | 真实 Linux 运行时里的热调用 Duration（固定开销约 1.3ms）；初始化（不限 CPU 时做相对比较）；打包效果；用 `--cpus` 发现"内存太小"的断崖 | 512 以上内存档位之间的差异；CPU 限额下的初始化；arm64（仍是 QEMU）；`Max Memory Used`（RIE 不统计） | 与 L1 方向一致，并纠正了 L1 的 esbuild 结论；运行之间波动约 ±10~15% |
+| L2′ sam build + RIE 直连 | 真实 Linux 运行时里的热调用 Duration（固定开销约 1.3ms）；初始化（不限 CPU 时做相对比较）；打包效果；用 `--cpus` 发现"内存太小"的断崖 | 512 以上内存档位之间的差异；CPU 限额下的初始化；arm64（仍是 QEMU）；`Max Memory Used`（RIE 不统计） | 与 L1 方向一致，并纠正了 L1 的 esbuild 结论；全应用基线见实验 7：能按顺序深度把函数分组，组内差异是噪声（约 ±3ms）；单次 init 在 82~200ms 之间波动 |
 | L3 真实 AWS | 真实 Init/Duration、MemorySize/架构曲线、E2E、价格 | 自动化闭环（分钟级部署 + 需要人工授权 + 结果有调度噪声） | 权威，但每次都要人工授权、测完拆除 |
 
 ### 4.2 L3 数据的适用范围：只能当先验，不能当普适模型
@@ -552,5 +599,5 @@ E1、E2 改动小、结论能直接写进默认规则；E3 决定 v2 最大的�
    （本文 §3.2 实验 6）。
 7. `DESIGN §5`"sam CLI + Docker 阶段实测"整节的数据（冷 22~38s、热约 4.8s、start-api 502）是在
    `HTTP_PROXY` 没有配 `NO_PROXY` 的环境下测的，sam 发给容器的请求被代理截走了，**测到的是失败的
-   请求**，应当作废（本文 §3.2 实验 6）。`DESIGN §5`"MemorySize / Architectures 真实 A/B 实测"开头提到
+   请求**，应当作废（本文 §3.2 实验 6）。替代数据是实验 7 的全应用 L2′ 基线。`DESIGN §5`"MemorySize / Architectures 真实 A/B 实测"开头提到
    的本地 `sam local invoke` 失败，很可能也是同一个原因。

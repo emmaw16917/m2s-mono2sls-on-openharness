@@ -314,6 +314,10 @@ delete 本身的顺序开销。把 3 个 delete 合并成 1 个 `BatchWriteComma
 
 ### sam CLI + Docker 阶段实测（2026-09-23，bookstore 基准，Windows + Docker Desktop + WSL2）
 
+> **⚠ 2026-09-24 更正：本节的测量数据作废。** 测量时环境里设置了 `HTTP_PROXY` 却没有 `NO_PROXY`，sam 发往
+> `localhost` 的调用请求被本地代理截走了，下面的冷/热耗时和 start-api 的 502 测到的都是**失败的请求**，
+> 不是函数的执行时间。根因排查和有效的替代数据见 `PERF_OPTIMIZATION.md` §3.2 实验 6、实验 7。
+
 环境本身跑通了：`sam build --use-container` 对 12 个函数全部构建成功；WSL2 装好、Docker
 Desktop 引擎起来之后 `docker ps` 正常。但**实际测量结果是一个重要的负面结论，直接影响这一
 整层测量方案的可用性**：
