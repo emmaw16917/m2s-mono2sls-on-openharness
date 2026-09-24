@@ -1,290 +1,346 @@
-# M2S 性能优化设计方案（v1）
+# M2S 性能优化设计方案（v2：优化线）
 
-> 状态：设计稿，未实现。本文档记录 v1 的落地范围和 v2 的路标，供后续实现时对照。
+> 状态：设计稿，未实现。2026-09-24 在原文件上重写。
 >
-> **续篇**：`PERF_OPTIMIZATION.md`（2026-09-24 重写版）把 m2s 产物与 AWS 官方参考实现逐项对照，
-> 定义了测量层级（L0/L1/L2/L2′/L3），给出改进清单、证据等级和判据，并列出本文需要修正的地方
-> （作废数据见该文 §1.3，逐条修正见该文 §9）。
+> v1 设计稿（2026-09-23）里有不少内容已被实验推翻（见 §0.1）。v1 全文保留在 git 历史里（`869c4bd` 及之前），其中的**实测记录**原样移到了本文附录 A。
+>
+> 配套文档：
+> - `PIPELINE_REDESIGN.md`：流水线按三条线（实现、验证、优化）重构，本文只写其中的**优化线**；
+> - `PERF_OPTIMIZATION.md`：对照官方参考实现，以及支撑本设计的实验数据（测量层级的定义见其 §1）。
 
 ## 0. 背景与范围
 
-现状：`m2s-migrate` 流水线（P0 → S1 architect → S2 code-developer → S3a/b/c sam-engineer → S4
-validator）只验证正确性/一致性（blueprint B0、code C1/C10、template C1-C12），完全没有性能维度。
-`gates.py` 的全部 check 都是结构一致性检查，`m2s-sam-kb` 里 `MemorySize: 512` 写死无分级，
-没有 `Architectures` 字段。整套流水线目前也刻意不做真实 AWS 部署（`m2s-migrate` §6）。
+### 0.1 v1 设计稿里被推翻或修改的内容
 
-**v1 目标（本次要落地的范围）：**
+| v1 的内容 | 现在的结论 | 依据 |
+|---|---|---|
+| perf-optimizer 放在 S3c 之后、validator 之前 | 改为 v0 验收通过**之后**的 S5 | `PIPELINE_REDESIGN.md` §1 |
+| 本地测量用 sam CLI + Docker（`sam local`） | 改用 L2′（`sam build` 后直接在 Lambda 运行时容器里读 `REPORT`）。v1 的 sam+Docker 数据是在代理配置错误的环境下测的，已作废 | `PERF_OPTIMIZATION.md` 实验 6、7，§1.3 |
+| 判据是"墙钟指标变好 + 其他指标在 ±10~15% 噪声带内" | 改为：代理指标只用来定位和排序，最终判决看 RIE 的热调用 Duration + init + 成本（§3） | 同上 §1.2 |
+| `Architectures: arm64` 作为默认值；MemorySize 按 `perf_hint` 分档 | v1 保持原始实现：x86_64、512MB，去掉 `perf_hint`（§5） | L3 数据只来自一个函数（`PERF_OPTIMIZATION.md` §6.1） |
+| 性能知识同时注入三个上游 agent | 先只注入 perf-optimizer 跑出基线，再用消融实验逐条决定哪些规则前移到上游（§8） | — |
+| perf-optimizer 自己改、自己测 | 改动由 perf-optimizer 做，**判定**由验证线的工具做（§6、§9） | — |
+| 批量 API 改写是主要手段 | v1 只允许语义保持的改动；`BatchWriteItem` 合并和跨消息聚合都不允许（§6） | — |
+| `ReportBatchItemFailures` 算作性能改进 | 改为上游的正确性规则（消费者保证重投幂等） | `PIPELINE_REDESIGN.md` §2.4 |
+| 不做真实 AWS 部署 | **不变**。流水线内不部署；真实 AWS（L3）只用于流水线之外的人工校准实验 | — |
 
-1. 新增一个独立的性能优化 agent：`m2s-perf-optimizer`，用**实测**（而不是纯静态规则）驱动
-   自查循环，测量方法基于本地 Docker + `sam local`（不接真实 AWS，理由见下文"为什么不用真实
-   AWS"）。
-2. 现有三个 agent（architect / code-developer / sam-engineer）注入性能相关的"预防性"知识和
-   默认值，减少 perf-optimizer 事后要修的量，但**不改变它们现有自查循环的判定范围**（S1 仍只
-   认 blueprint B0、S2 仍只认 code C1/C10、S3c 仍只认 template C1-C12 + `validate_sam`）——
-   性能不是这几个阶段自查循环的新增判定项，只是它们生成时参考的知识多了一部分。
-3. 沿用现有"文件系统是唯一真相 + 主 Agent 轮询做汇合点 + agent 自己迭代到收敛"的协作模式，
-   不发明新协议。
+### 0.2 v1 的目标
 
-**v1 明确不做（留给 v2，见 §7）：**
-
-- 不做按 domain 并行 fan-out。S2 / S3b / perf-optimizer 内部仍是单个 agent 串行处理全部函数。
-- 不做真实 AWS 部署 / 真实压测，继续遵守 `m2s-migrate` §6"不做任何 AWS 部署"的既定边界。
-- 不做架构决策前移（把性能信号塞进 `analyze_project` 静态分析）——v1 先用最小改动验证"实测
-  闭环"这条路子本身跑不跑得通，再决定要不要往架构决策层继续投入。
-- 不做 API Gateway REST → HTTP API 切换、不做 Provisioned Concurrency——涉及 Cognito
-  Authorizer 语法改动和额外费用决策，改动面/风险都超出 v1 范围。
-
-**为什么用本地 Docker + sam，不接真实 AWS：**
-
-- perf-optimizer 的自查循环需要"测一次、改一次、再测一次"，最多 3 次，要求单次迭代足够快、
-  足够便宜。真实 AWS 每次迭代要走 CloudFormation 创建/更新（分钟级）+ 真实 invoke 计费，
-  跟"闭环"这个设计初衷矛盾。
-- 这台机器目前没有 AWS 凭证；即使以后有，让一个自动重试循环无人值守地持有真实云部署权限，
-  风险量级跟"只碰本地 Docker 容器"完全不同，不该塞进自动自查循环。
-- 真实数字噪声大（调度到哪台硬件、AWS 控制面负载、网络抖动都不受代码控制），不利于"改前 vs
-  改后"这种闭环真正需要的相对比较；本地 Docker 虽然绝对值不代表生产环境，但同机同条件下的
-  相对差异是干净可比的。
-- 场景目标是"生成**能直接部署**的高效代码"，交付物是代码+模板本身。真正的部署和生产验收
-  天然是产物交付之后、由使用这份代码的人自己做的事，不该被生成流水线自己吞下来——这也是
-  `m2s-migrate` §6 既有边界的自然延伸，不是新约束。
-
-**环境依赖（v1 需要新装的东西，落地前先确认）：**
-
-- `sam` CLI：`mono2sls`、`mono2esls` 两个 conda env 都已经装好（2026-09-23 确认，版本
-  1.160.1）。
-- Docker Desktop（`sam local invoke` / `sam local start-api` 都需要）——**2026-09-23 状态：
-  已安装但引擎未就绪，需要人工完成下面这几步**，本节记录下来防止环境半途丢失：
-  1. **装 WSL2**（需要管理员权限，Claude 自动化session做不了）：以管理员身份打开
-     PowerShell 或 CMD，运行 `wsl --install`，然后**重启这台机器**（WSL2 安装几乎总是要求
-     重启才能生效）。
-  2. 重启后确认 WSL2 真的装好了：任意终端运行 `wsl --status`，不再提示"未安装任何
-     Linux 发行版"就算通过。
-  3. **启动 Docker Desktop**：开始菜单搜 "Docker Desktop" 打开（或运行
-     `"C:\Program Files\Docker\Docker\Docker Desktop.exe"`），首次启动会弹登录/注册页——
-     可以登录 Docker 账号，也可以点"跳过登录"直接用，不影响后续 `sam local` 使用。
-  4. 验证引擎真的起来了：`"C:\Program Files\Docker\Docker\resources\bin\docker.exe" ps`
-     不再报 "backend is not running" / 连不上 `docker_engine` pipe，而是返回一个空的
-     容器列表表头，就说明成功了。
-  5. 弄完这几步跟 Claude 说一声，继续做 sam CLI + Docker 阶段的代理指标测量
-     （`sam build` → `sam local invoke` 冷/热差值 → `sam local start-api`）。
-- 可选但建议：LocalStack（单个 Docker 容器统一模拟 DynamoDB / SQS / EventBridge / S3，给
-  E2E Latency 测量提供真实下游，避免手写 mock 层）。
-- 轻量压测工具：Node 生态用 `autocannon`（`npx autocannon` 免安装）。
+对已经验收通过的 v0，只做**语义保持**的性能改动。每个改动都必须通过实测判决才会保留；证据不足的退回，或者交给人决定。不追求改动的数量。
 
 ---
 
-## 1. 总体拓扑（v1）
+## 1. 在流水线里的位置
 
-在既有 S3c 和 S4 之间插入一个新阶段 `S3p`（perf；字母沿用既有 S3a/S3b/S3c 命名习惯，表示
-"S3 之后、S4 之前"，不打乱已有的 `stage_reports/S4.json`、`gate(final)` 这些既定文件契约）：
+S5 在 v0 验收通过之后运行（见 `PIPELINE_REDESIGN.md` §1）：
 
 ```
-P0（analyze_project）
-  ↓
-S1  architect               → gate(blueprint)            [不变：自查只认 B0]
-  ↓
-S2  code-developer           → gate(code)                  [不变：自查只认 C1/C10]
-  ↓
-S3  sam-engineer(a/b/c)      → gate(template)+validate_sam [不变：自查只认 C1-C12]
-  ↓
-S3p perf-optimizer（新）      → gate(perf)（新，advisory，不阻断验收）
-  ↓
-S4  validator（不变职责，位置后移到 perf 之后）→ gate(final)（不变：仍只代表正确性验收，不含性能）
-  ↓
-验收
+阶段 4 验收通过 → git tag v0 → S5 perf-optimizer → 阶段 6 最终检验（gate(final) + 全量回归）
 ```
 
-**为什么 perf-optimizer 放在 S3c 之后、S4 之前，而不是 S4 之后：** perf-optimizer 会实际
-修改代码和模板（批量 API 改写、`MemorySize`/`Architectures` 调整），这些修改带有引入新错误
-的风险（哪怕很小）。让 S4（正确性权威裁决）在它之后跑，才能保证 `gate(final)` 检验的是**真正
-要交付的最终态**，而不是"perf 优化之前看起来正确、优化之后没人再验过"的半成品。
-
-**为什么 `gate(perf)` 不影响 `gate(final)` 的 PASS/FAIL：** 吞吐这类指标本地测出来的可信度
-有限（是"回归检测信号"而非"产能数字"），做成 blocking gate 会让流水线因为一个本不该被当真
-数字的指标卡死。`gate(perf)` 的作用是让 perf-optimizer 自己判断"要不要继续迭代"，结果作为
-**独立报告**（`output/perf_report.json`）附加在最终交付物里，不参与验收判定。
+- S5 报 `STAGE_BLOCKED` **不会**让流水线失败。它只表示"性能优化没有收敛"，交付的仍是最后一个通过验证的版本。
+- 所有被保留的改动都在 v0 的基础上逐个提交到 git。回滚就是撤销对应的提交。
 
 ---
 
-## 2. 现有三个 agent 的改动点
+## 2. 可用的测量手段
 
-### 2.1 m2s-architect（S1）
+测量层级的定义和各层的噪声水平，统一以 `PERF_OPTIMIZATION.md` §1 为准，这里只列 S5 会用到的部分：
 
-新增一个**可选**字段（加在 `lambda_functions[]` 条目内部，不新增顶层 key，不破坏
-`merge_blueprint_key` 现有的 10-key 白名单约束）：
+| 指标 | 工具 | 在判决中的作用 |
+|---|---|---|
+| SDK 调用次数、顺序深度 | `run_proxy_metrics` | 代理指标：定位问题、给改动排序；决定一个改动是否属于权衡型（§3.2） |
+| 热执行 CPU（`warm_cpu.js`） | `run_proxy_metrics` | 同上 |
+| 容量单位估算 | `run_proxy_metrics`（由 `http-shim.js` 根据请求和响应内容估算） | 成本维度的输入（§4） |
+| RIE 热调用 Duration | `run_rie_verdict` | **延迟维度的最终判决** |
+| RIE init | `run_rie_verdict` | **冷启动维度的最终判决** |
+| 回归测试、故障差分、覆盖率 | `run_validate`、`run_equivalence`、`run_coverage` | 一票否决（§3.1） |
+| RSS | `run_validate` | 内存护栏，一票否决 |
+
+---
+
+## 3. 判决规则
+
+### 3.1 一票否决
+
+以下任何一项不通过，改动直接回滚：
+
+1. **有效性校验**：事件确实走到了预期的代码路径（结果符合预期、SDK 调用次数和预期一致）。
+2. **正确性 gate**：`gate(final)`。
+3. **验证线阶段 B**：回归测试全部符合预期；故障差分满足 H1 的 (a)(b) 两条（§6.1）；改动碰到的代码行被测试覆盖到。没覆盖到的，先请验证线补事件；补完还是覆盖不到，就回滚。
+4. **RSS 内存护栏**：实际内存占用接近配置的 MemorySize 时，判定为有风险。
+
+### 3.2 性能判决流程
+
+代理指标（调用次数、顺序深度、`warm_cpu.js`、RIE init 的单次数值）**只用来定位和排序**，不能单独决定一个改动的去留。最终判决看总体效果。
+
+```
+第 1 步：先用 10ms 模拟延迟筛一遍（改动前后交替运行）
+  ├─ 没有任何代理指标变差，且 RIE 结果"明显变好" → 视为绝对型改动，进入第 3 步
+  ├─ 有任何一个代理指标变差（调用次数、顺序深度、warm_cpu） → 视为权衡型，进入第 2 步
+  └─ RIE 结果变差 → 进入第 2 步，确认是不是延迟参数造成的
+
+第 2 步：多值测量，模拟延迟取 0 / 5 / 15ms
+  ├─ 在任何一个值下都不变差，且至少一个值下变好 → 延迟维度判为"改善"
+  ├─ 结论随延迟参数反转 → 标注"依赖真实往返时间"，作为权衡型交给人
+  └─ 其他情况 → 延迟维度判为"变差"或"无显著差异"
+
+第 3 步：三个维度综合判决（热调用 Duration、init、成本）
+  ├─ 三个维度都不变差，且至少一个明显变好 → 保留
+  ├─ 有的变好、有的变差 → 权衡型：回滚，写进"待人工决策"（§3.4）
+  ├─ RIE 结果"无显著差异"，但代理指标显示改善，且 RIE 没有变差 → 保留
+  └─ 其他情况（没有一个维度明显变好） → 撤回
+```
+
+备选方案：只用一个固定的模拟延迟值做判决，跳过第 2 步。
+
+### 3.3 "明显变好"和"无显著差异"的定义
+
+- **明显变好或明显变差**：超出该层的噪声，即改动前后**交替运行**，两组结果的范围**不重叠**。
+- **无显著差异**：两组结果的范围有重叠。
+- **交替运行的次数**：
+  - 热调用 Duration 每轮 30 次调用，至少 3 轮；
+  - init 至少交替 5 次。单次运行的 init 波动很大（82~200ms），所以不能只看中位数，要求两组范围不重叠。
+
+### 3.4 权衡型改动的处理
+
+权衡型改动**不放进交付物**（回滚），但要写进 `perf_report.json` 的 `pending_human` 一节，内容包括：
+- 各维度的测量数据；
+- 结论随延迟参数反转的情况；
+- 可以直接套用的补丁（`git diff`）。
+
+### 3.5 没有 Docker 时
+
+改用代理指标做判决：顺序深度和 `warm_cpu.js` 代替热调用 Duration；成本照常计算。报告标注"**低置信度**"。init 维度判不了，所以打包和依赖类的改动（包括 R3）**跳过**。
+
+---
+
+## 4. 成本口径
+
+单次调用成本（单价做成配置参数，不写死在规则里）：
+
+```
+成本 ≈ Σ DynamoDB 容量单位 × 单价 + SQS 请求数 × 单价
+     + 计费时长（RIE 热调用 Duration）× 配置内存（GB）× GB-秒单价 + Lambda 每次调用费
+```
+
+- **容量单位**：由 `http-shim.js` 根据请求和响应的内容估算，**不按调用次数算**。写入按条目大小每 1KB 向上取整，事务写乘 2；读取按每 4KB 计。
+  Scan 的读取量取决于我们假设的数据量（`SHIM_ITEMS` × 条目大小），这个假设要写进报告。
+- **配置内存**：v1 固定为 512MB（§5），所以计算费用只随 Duration 变化。
+- 延迟维度和成本维度都用到了 Duration，这不算重复计算，因为判决不给维度加权，只看每个维度的方向。
+
+---
+
+## 5. v1 的默认配置
+
+| 配置 | v1 的取值 | 说明 |
+|---|---|---|
+| MemorySize | **512MB**（原始实现） | 不进入测量循环。只做下限检查：用 `--cpus` 按 512 ÷ 1769 限制 CPU，确认不会出现类似 128MB 那样的断崖（热调用出现双峰、p90 是中位数的数倍） |
+| Architectures | **x86_64**（原始实现，不写这个字段） | 本机测不了 arm64（只能 QEMU 模拟），唯一的依据是 bookstore 一个函数的一次 A/B |
+| `perf_hint` | **去掉** | MemorySize 不分档之后就没有用处了 |
+| Tracing | `Active`（原样） | 开销从来没测过 |
+| RIE 的 CPU 配额 | 各函数的 MemorySize ÷ 1769 | v1 统一是 0.289 |
+
+---
+
+## 6. v1 允许的改动范围
+
+### 6.1 等价判据（H1）
+
+改动前后，以下两条都要满足：
+
+- **(a) 实际执行的操作集合相同**：不能多执行，也不能少执行；
+- **(b) 对外可见的失败结果相同**：返回值、抛出的错误、会被重投的消息范围都要一致。
+
+判定方式是验证线阶段 B 的**故障注入差分**（对照 v0），不由改动者自己声明。
+
+### 6.2 允许和不允许
+
+| 改动 | v1 是否允许 | 条件或原因 |
+|---|---|---|
+| 函数内把独立的调用改成并行 | ✅ | 必须用 `allSettled` 或等价写法，失败粒度保持在单条（单条消息）级别，并满足 H1 |
+| 去掉不必要的编解码或重复计算 | ✅ | 返回值完全一致 |
+| 依赖精简 | ✅ | 构建通过、验证通过 |
+| 原代码遇到失败就停止 → 改成并行 | ❌ | 执行的操作集合会变 |
+| 跨消息按 key 聚合写入 | ❌ | 失败粒度会变粗；等上游保证幂等之后再考虑 |
+| 把多次 Put/Delete 合并成 `BatchWriteItem` | ❌（v1 删掉） | 要处理 `UnprocessedItems`，还要逐条报告失败，复杂度超过收益 |
+| 把 `UpdateItem` 合并成批量写 | ❌ | DynamoDB 不支持 |
+| 事务化（`TransactWriteItems`） | ❌ → advisory | 改变原子性语义，写入容量消耗翻倍 |
+| 数据模型改动（GSI、物化视图） | ❌ → advisory | architect 级别的改动 |
+| 异步机制改动（SQS 换 Streams） | ❌ → advisory | architect 级别的改动 |
+| 配置类改动（MemorySize、架构、SQS 参数） | ❌ | v1 保持原样（§5） |
+
+不允许的改动如果被诊断出来，写进 `perf_report.json` 的 `advisories`，附上诊断数据。它们不参与判决。
+
+---
+
+## 7. 改动的组织方式
+
+- **W1（采用）**：
+  - 不同函数、不同文件的改动，可以在同一轮里一起做、一起测。RIE 按函数单独起容器，不同函数的测量互不干扰，各自判决、各自回滚。
+  - **同一个函数内的多处改动，拆开顺序做**：改一处 → 判决 → 保留或回滚 → 再改下一处。这样台账才能按规则分别计数，也能避免"一个指标变好，掩盖了另一处变差"。
+  - **共享模块或 layer 的改动**当作一个整体改动，所有引用它的函数都要过判决。
+  - 顺序做的改动，测到的是"**在已保留的改动基础上**"的效果。每个改动都要记录它是在哪些已保留改动的基础上判决的（`based_on`）。
+- **W3（备选，觉得太耗时时启用）**：同一个函数内的多处改动先合在一起测。总体判决通过，就用代理指标分别估计各自的贡献；总体不通过，再拆开逐个排查。代价是台账的计数变成近似值。
+
+---
+
+## 8. 候选改动的来源：规则库 + 数据驱动分析
+
+### 8.1 两个来源，同一套判据
+
+- **规则库**：按规则扫描代码，产出候选改动。
+- **数据驱动分析**：perf-optimizer 先测基线，找出热点（顺序深度最大、CPU 最高、成本随数据量增长的函数），然后读代码提出假设。
+- 两个来源的候选改动**都必须通过 §3 的判决**才会保留。
+
+### 8.2 v1 规则库（在 E0 之前，只放"因为结构本身就成立"的规则）
+
+| 规则 | 识别条件 | 改写方式 | 判决依据 |
+|---|---|---|---|
+| **R1** | 循环里对互相独立的操作顺序 `await`，并且原代码对每条都 try/catch、失败后继续 | 改用 `allSettled` 并行，最后汇总结果 | 顺序深度 + RIE |
+| **R2** | 同一个请求体被重复解析 | 只解析一次 | `warm_cpu.js` + RIE |
+| **R3** | `package.json` 里声明了、但代码没有引用的依赖 | 删掉这个依赖 | RIE init。预计会测出"无效"：没被 `require()` 的依赖运行时根本不会加载，只影响部署包大小。可以用它检验台账机制本身能否正确记录"无效" |
+
+### 8.3 规则台账
+
+- **位置**：`m2s-mcp-server/perf-rules/ledger.json`，放在仓库里，跨应用积累。
+- **按应用、按规则分别记录**：命中数（匹配到的代码位置数）、保留数、无显著差异数、权衡型数。
+- **数据驱动分析发现的新模式**：经实测判为有效的，记进台账作为**候选规则**。升级为正式规则需要人工审核，不会自动进入规则库。
+
+---
+
+## 9. perf-optimizer 的定义框架
+
+v1 由 perf-optimizer **自己改代码**。"验"和"判"调用验证线的 MCP 工具完成，不由它自己声明。
+
+### 9.1 输入
+
+- 工作区（git tag `v0`）；
+- 验证线的测试资产：`verification/` 目录，以及从中选定的一组**性能基准事件**（正常路径的事件，带数据量假设，改动前后都用这一组）；
+- `storage/analysis_report.json`、`storage/blueprint.json`；
+- 规则库（§8.2）、台账（只读，用来参考历史结果）；
+- 环境信息：有没有 Docker、单价配置。
+
+### 9.2 工作流程
+
+1. **测基线**：对所有函数跑 `run_proxy_metrics`；对性能基准事件跑一次 `run_rie_verdict` 的基线测量。
+2. **生成候选改动**：用规则库扫描，加上数据驱动分析，每个候选都写成一份**修改请求**（§9.4）。按 §6 分类：允许的进入候选列表，不允许的写进 advisories。
+3. **排序**：按代理指标的改善幅度排序，例如顺序深度的下降量。
+4. **逐轮执行**（按 §7 组织）：修改代码 → `gate(final)` → 验证线阶段 B → §3 的判决 →
+   - 保留：`git commit`，写清是哪份修改请求、判决证据是什么；
+   - 权衡型：回滚，写进 `pending_human`，附上补丁；
+   - 其他：回滚。
+5. **收尾**：对全部函数跑一次全量回归，更新台账，写报告。
+
+### 9.3 输出
+
+`output/perf_report.json`：
 
 ```json
-{"name": "...", "perf_hint": "hot" | "normal", "...": "..."}
+{
+  "confidence": "normal | low",
+  "environment": {"docker": true, "latency_ms": [10], "prices": {"...": "..."}, "data_volume_assumptions": {"...": "..."}},
+  "baseline": {"<function>": {"calls": 0, "depth": 0, "warm_cpu_ms": 0, "rie_warm_ms": 0, "init_ms": 0, "cost_usd": 0}},
+  "changes": [
+    {"id": "C1", "request": "<修改请求 id>", "source": "rule:R1 | analysis", "functions": ["..."],
+     "based_on": ["<之前已保留的改动 id>"],
+     "verdict": "kept | reverted | pending_human | kept_inconclusive",
+     "evidence": {"proxies": {}, "rie": {"10ms": {}, "0ms": {}, "5ms": {}, "15ms": {}}, "init": {}, "cost": {}, "equivalence": {}, "regression": {}, "coverage_of_changed_lines": {}},
+     "commit": "<sha>"}
+  ],
+  "pending_human": [{"change": "C2", "reason": "...", "patch": "<git diff>"}],
+  "advisories": [{"diagnosis": "...", "why_not_v1": "...", "evidence": {}}],
+  "uncovered_paths": ["..."]
+}
 ```
 
-判定规则（写进 `m2s-architect.md`，作为一条轻量启发式，不是强制）：出现在高频交互路径的端点
-（列表查询、下单、登录后首屏数据这类）标 `"hot"`，其余标 `"normal"` 或干脆不写（缺省当
-`"normal"`）。这个字段目前只做一件事——给 S3 sam-engineer 决定 `MemorySize` 分级提供参考
-信号，**不新增 S1 的自查循环判定项**：B0 检查不需要管这个字段填没填、填得准不准。
+另外输出 `storage/stage_reports/S5.json`，格式和其他阶段的工作报告一样。
 
-### 2.2 m2s-code-developer（S2）
+### 9.4 修改请求的格式（v1 自己执行，v2 用来派发）
 
-不改变 `gate(code)` 自查循环的判定范围（继续只认 C1/C10），只改变**参考知识**：在"硬性工具
-说明"里追加一条，写完代码后除了现有的 `m2s-lambda-coding-kb` / `m2s-async-patterns-kb`，
-再 `skill(name="m2s-performance-kb")`（新增，见 §4）读一遍做自我对照，重点是"原单体里循环
-调用单条 DB 操作的模式，要改写成批量 API"——这条在现有 KB 第 6 节完全没提，是当前最容易被
-忽视的一处。这是"写的时候就写得更好"，不是新增校验步骤。
+```json
+{
+  "id": "REQ-1",
+  "source": "rule:R1 | analysis",
+  "target": {"file": "...", "function": "...", "lines": [0, 0]},
+  "diagnosis": {"metric": "depth", "value": 30, "evidence": "..."},
+  "proposal": "...",
+  "expected": {"depth": "30→1", "calls": "=", "warm_cpu": "≈"},
+  "constraints": ["H1a", "H1b", "failure-granularity: per-message"],
+  "semantic_class": "v1-allowed | semantic",
+  "owner_v2": "code-developer | sam-engineer | architect"
+}
+```
 
-### 2.3 m2s-sam-engineer（S3）
+v1 里，perf-optimizer 生成请求后自己执行（`semantic_class` 必须是 `v1-allowed`）。到 v2 放开语义改动时，同一份请求可以由主 Agent 派发给 `owner_v2` 指定的 agent，由它带着自己的知识库和 gate 去修改。
 
-对 TIER1 参考模板（`m2s-sam-kb`）做三处默认值调整：
+### 9.5 禁止事项
 
-1. `Globals.Function` 默认加 `Architectures: [arm64]`（`nodejs22.x`/`python3.12` 都原生
-   支持，同负载更快更省，加这一行代价接近零）。**2026-09-23 已用真实 AWS A/B 测试验证**，
-   见 §5"MemorySize / Architectures 真实 A/B 实测"——arm64 warm Duration 与 Init Duration
-   都不劣于 x86_64（甚至略快），不是纯粹照抄官方基准了。
-2. `MemorySize` 从写死 `512` 改成分级建议：读 blueprint 里的 `perf_hint`，`hot` 给
-   `512-1024`。**`normal`/缺省档已根据实测从 `128-256` 上调到 `256-512`**——128MB 实测比
-   512MB 慢约 5 倍，`128-256` 这个原建议下限太激进，见 §5 实测数据。**这条仍然只是参考
-   建议，不是强制值**——sam-engineer 仍然可以按实际函数复杂度调整，避免变成新的死板规则。
-3. SQS 事件源默认加 `BatchSize` / `MaximumBatchingWindowInSeconds` 的参考值（当前
-   `m2s-sam-kb` 里 SQS 消费者只给了 `VisibilityTimeout`，没有这两个吞吐相关参数）。
-   **截至 2026-09-23 仍然没有真实测试数据**——本地测不了（`sam local` 不模拟 SQS 轮询/
-   攒批机制），真实 AWS 这次也还没排上，是唯一还没验证的一条。
-
-**上面第 1、2 条已经用真实 AWS 部署验证过，第 3 条（SQS 参数）还没有**——不要把三条一概
-而论。批量 API、REST→HTTP API、MemorySize、Architectures 现在都有真实数据支撑（§5），
-SQS `BatchSize`/`MaximumBatchingWindowInSeconds` 是目前唯一还停留在"照抄官方基准，没有
-自己验证过"阶段的一条，见 §7 末尾。
+- 不改 `output/lambdas/` 的目录结构，不改 `Handler`、`CodeUri`、事件定义这类影响正确性的字段；
+- 不做 §6.2 里不允许的改动；
+- 不修改验证线的测试资产，需要补事件时请验证线来补；
+- 不做真实 AWS 部署；
+- 报告里只写直接测得的量（例如"顺序深度 30→1、调用次数不变、热调用 Duration 从深度 30 组落到深度 1 组"），**不写"预计线上提升 X ms / X%"**。
 
 ---
 
-## 3. 新增 m2s-perf-optimizer agent
+## 10. prompt 注入策略与消融实验
 
-按现有四个 agent `.md`（`m2s-architect.md` / `m2s-code-developer.md` / `m2s-sam-engineer.md`
-/ `m2s-validator.md`）的固定结构给完整定义框架，落地时对应新文件
-`m2s-mcp-server/agents/m2s-perf-optimizer.md`。
+### 10.1 注入策略（4C）
 
-**输入契约：**
+- **v1 先按 4A 执行**：性能规则**只注入 perf-optimizer**，上游三个 agent 只做忠实翻译，外加 §2.4 的上游正确性规则（见 `PIPELINE_REDESIGN.md` §2.4）。这样得到基线。
+- 之后用消融实验，逐条决定哪些规则前移到上游。只有"安全规则"才能前移，即不改变语义、结构上必然更好的规则。会改变语义的优化，永远只由 perf-optimizer 诊断后提出。
 
-- `<WS>/storage/blueprint.json`
-- `<WS>/output/lambdas/`（S2 产出，已过 `gate(code)`）
-- `<WS>/output/template.yaml`（S3c 产出，已过 `gate(template)` + `validate_sam`）
+### 10.2 消融实验
 
-**工作流程**（这是它跟其它 agent 最大的不同——不是"写代码/写模板"，是"测量 → 改 → 再测量"）：
-
-0. **建立 baseline**：在做任何改动之前，先对 S2/S3c 产出的原始代码跑一遍完整测量（代码阶段
-   代理指标，逐函数记录），作为每个函数各自的基准值。后续每一轮改动都对着**这个函数自己的
-   baseline** 算 delta，不跟上一轮比、也不跟外部绝对阈值比——这样中途改坏了要撤销时，有一个
-   稳定的参照系。
-1. **扫描代码库、确定 mock 覆盖范围（不能假设 mock 层现成可用）**：mock 调用计时依赖一个
-   拦截 SDK `.send()` 的 mock 层，但这个 mock 层**不是写死能通用的**——不同单体迁移出来的
-   代码用到的 AWS 服务、DynamoDB 操作类型、handler 校验所需的 event 字段都不一样（
-   2026-09-23 用 bookstore 实测时踩过：一个 handler 因为 mock event 少给了一个校验必需字段，
-   提前 400 短路，测出的"耗时"是假的，根本没碰到真实 DB 调用）。所以每次跑之前，perf-optimizer
-   必须先做这一步，不能直接复用上一次的 mock 层：
-   - `grep -rho "new [A-Za-z]*Command(" output/lambdas/` 找出这次代码库实际用到的全部
-     Command 类型，逐一确认 mock 层的覆盖表里都有；缺哪个补哪个（mock 层对未覆盖类型要
-     **直接抛错**，不能静默返回空对象——见下面"mock 层本身要设计成什么样"）。
-   - 逐个 `require()` 扫一遍 `output/lambdas/` 用到的 `@aws-sdk/client-*` 包，确认对应的
-     Client（`S3Client`/`EventBridgeClient`/`LambdaClient` 等）都被 mock 层打了补丁，不是
-     只有 DynamoDB/SQS。
-   - 对每个 handler，读一遍它自己对 `event.pathParameters`/`event.body`/
-     `event.queryStringParameters` 等字段的校验逻辑（`grep "event\."` 定位），构造能让它
-     真正走到 DB 调用那条路径的 mock event，不能全体 handler 共用同一份"塞满常见字段"的
-     通用 event——通用 event 能跑通大部分 handler，但校验规则更严格的那一小撮会被提前拦截，
-     产生"看起来很快但其实没测到真实逻辑"的假数字。
-   - 校验手段：如果一个 handler 返回了非 2xx 状态码、或者 `sdk_call_count == 0`，判定这次
-     测量不可信，修 mock event 或覆盖表后重测，不能把"提前失败"误当成"这个 handler 很快"
-     写进 `perf_report.json`。
-2. **代码阶段代理指标测量**（不需要 sam，跑得快）：对每个 handler，跑一次
-   `require()`/`import` 计时（module-level init 代理指标）+ 一次 mock 调用计时（handler
-   执行耗时代理指标，用上一步确认覆盖完整的 mock 层）。发现循环里单条 DB 调用模式，参照
-   §4 第 4 条的操作类型分诊规则决定改批量 API 还是改 `Promise.all`。
-3. **sam CLI 阶段测量**（需要 sam + Docker，跑得慢，放后面）：`sam build` → `sam local
-   invoke`（冷）+ `sam local start-lambda` 连续两次 invoke（热）算 `T_cold_start` 代理值
-   → `sam local start-api` 测 E2E Latency 代理值（如果 LocalStack 可用就配上真实下游）→
-   可选轻量压测拿 throughput 弱信号。
-4. **要不要保留一个改动的判据**：**这个改动直接相关的指标必须变好（或至少不变差），其它所有
-   已测量的指标（这个函数自己的其它指标、以及其它函数的指标）不能因为这次改动而变差**——是
-   "局部改善 + 全局不劣化"，不是要求"全局也一起变好"（不合理，一个函数的批量 API 改写没理由
-   顺带改善另一个不相关函数的 cold start）。判断改善/劣化时要留一个噪声容忍带（建议
-   ±10%~15%，具体数值以后按实测方差调整），落在这个带内算"没有显著差异"，不触发撤销也不算
-   改善——本地 Docker 测量本身有波动，拿绝对数字较真会让 agent 在噪声里空转。
-5. **批量改 vs 逐处改的粒度**：跨不同函数/不同文件的改动可以在同一轮里一起做、一起测——彼此
-   没有因果关系，测完后每个函数各自对着自己的 baseline 独立判断要不要保留，不需要为了隔离
-   变量把 N 个函数拆成 N 轮 sam CLI 测量（那一层很贵）。**但同一个函数内部如果要做多处改动
-   （比如既改批量 API 又调 `MemorySize`），必须拆开顺序做**：改一处 → 代码阶段测一次 → 定
-   下来 → 再改下一处，否则测出结果后分不清是哪个改动起的作用。落到两层测量成本上：代码阶段
-   （便宜）可以对每个函数做"改一处→测→留好的/撤坏的"这种逐处筛选；sam CLI 阶段（贵）不再
-   逐处测，而是把代码阶段已经筛选确认过的改动 + 这一轮要动的 `MemorySize` 等配置改动打包成
-   一批，跑**一次** sam CLI 测量做整体确认——如果这次测量发现某个函数出乎意料变差了，只撤销
-   那个函数这一轮加的改动，其它函数保留，不整批推倒重来。
-6. **"一次尝试"的定义**：一轮 = 代码阶段的逐处筛选（便宜，轮内可以多次迭代）+ 一次 sam CLI
-   阶段的整体确认测量（贵，一轮只跑一次）。最多 3 轮（沿用既有自查循环上限约定）。3 轮后仍
-   不理想：不阻塞流水线，如实在报告里写清楚"已尝试的改动 + 最后一轮测量数值 + 还剩什么没
-   改"，输出 `STAGE_BLOCKED`（这里的 `STAGE_BLOCKED` 语义跟别的阶段不同——不代表流水线要
-   停，只代表"性能这块没收敛"，`gate(final)` 不受影响，主 Agent 直接放行进入 S4）。
-
-**输出契约：**
-
-- `<WS>/output/perf_report.json`：每个函数的测量数值（本地代理指标 + sam CLI 指标，标清楚
-  哪些是真实数字哪些是本地代理值/失真说明）、做过的改动、改动前后对比。
-- `<WS>/storage/stage_reports/S3p.json`：跟其它阶段一样的工作报告格式。
-
-**禁止事项**（照抄既有模式，加性能特有的几条）：
-
-- 不改 `output/lambdas/` 目录结构、Handler/CodeUri 这些正确性相关字段——只改函数体内部
-  逻辑和 `MemorySize`/`Architectures` 这类纯性能配置，不触碰 S4 要验的那些一致性锚点。
-- 不做真实 AWS 部署、不使用真实 AWS 凭证。
-- Architecture 相关的计时结论不采信——arm64 在本机 x86 上是 QEMU 模拟，只用官方公开基准
-  做默认值依据，不拿本地测的 arm64 数字改决策。
-- throughput 数字不写成"结论性"表述（不要出现"吞吐提升 30%"这类），只能写成"本地并发测试
-  未发现明显退化 / 发现 XX 处并发安全问题"。
+- **目的**：判断一条规则前移到上游之后，是否让产物更好。
+- **比较的指标**：产物的基线指标（调用次数、顺序深度、CPU、RIE）、`gate(final)` 的通过率（确认没有损害正确性）、perf-optimizer 最后还剩多少问题要修。
+- **正确性规则不参与消融**，在所有对照组里都保持开启。
+- **控制成本**（T1 + T2 + T3）：
+  - T1：先在 bookstore 上验证方法可行；
+  - T2：只对在 E0 里有命中的规则做多应用消融；
+  - T3：每种配置先重复 2 次，看 LLM 输出的波动有多大，再决定重复几次。
 
 ---
 
-## 4. 新增 m2s-performance-kb skill（大纲）
+## 11. 实验计划
 
-给 code-developer 和 perf-optimizer 共用：
-
-1. 批量 API 模式（DynamoDB `BatchGetItem`/`BatchWriteItem`/`TransactWriteItems`，对照"循环
-   里的单条 get_item/put_item"识别）。
-2. 依赖精简清单（跟现有 `m2s-lambda-coding-kb` 第 11 节呼应，但聚焦在"这个包会不会显著拖慢
-   cold start"这个判断维度）。
-3. 本地测量方法参考（§5 的内容搬进来，供 perf-optimizer 直接照着操作，不用每次自己发明
-   测量脚本）。
-4. **批量 API 规则要按 DynamoDB 操作类型分诊，不能一刀切**（2026-09-23 用 bookstore 基准
-   实测发现，见 §5 末尾"两个反模式的实测差异"）：
-   - `PutItem`/`DeleteItem` 的循环 → 能力所及范围内应该改 `BatchWriteItem`。
-   - `UpdateItem`（尤其原子计数器 `ADD`）的循环 → **`BatchWriteItem` 不支持 UpdateItem
-     操作**，这种情况能做的优化是**改成 `Promise.all` 并行**，不是"批量 API"。
-   - `m2s-performance-kb` §1 写批量 API 示例时要把这条分诊规则放在最前面，不能让 code-developer
-     看到"循环 + 单条调用"就无脑套用 `BatchWriteItem`，那样对 `UpdateCommand` 循环会是错误
-     的重写建议（DynamoDB 直接拒绝这种请求）。
-5. **mock SDK 拦截骨架（配合 §3 步骤 1 使用，不是写死的成品脚本）**：给 perf-optimizer
-   提供一份**通用拦截骨架**（在 `DynamoDBDocumentClient.prototype.send`/
-   `SQSClient.prototype.send` 等原型上打补丁、按 `command.constructor.name` 分发、每次调用
-   加一个固定延迟模拟单次网络往返），但 Command 覆盖表、需要打补丁的 Client 种类、每个
-   handler 的 mock event 内容都留空/留最小示例，要求 perf-optimizer 每次运行按 §3 步骤 1
-   扫描出来的结果自己补全，不能假设这份骨架已经覆盖当前代码库。骨架对未覆盖的 Command 类型
-   要直接抛错，不能静默返回空对象掩盖覆盖不全的问题。
-
----
-
-## 5. 测量方法
-
-| 指标 | 测法 | 谁测 | 何时能测 |
+| 实验 | 需要部署？ | 内容 | 时机 |
 |---|---|---|---|
-| 代码级 init 耗时（cold start 代理） | `require()`/`import` 计时 | perf-optimizer | S2 完成即可，不需要 sam |
-| handler 执行耗时（E2E Latency 代理） | mock 调用计时 | perf-optimizer | S2 完成即可，不需要 sam |
-| T_cold_start | `sam local invoke`(冷) − `sam local start-lambda` 连续两次(热) 的差值 | perf-optimizer | 需要 S3c 产出完整 `template.yaml` |
-| E2E Latency（本地模拟栈） | `sam local start-api` + 可选 LocalStack | perf-optimizer | 需要完整 `template.yaml` |
-| Throughput（弱信号） | `sam local start-api` + `autocannon` | perf-optimizer | 需要完整 `template.yaml`，结果仅供参考 |
+| bookstore demo | 否 | `PIPELINE_REDESIGN.md` §5 的步骤 0–2：规格信息 → 验证线阶段 A → S5（R1 那一处得出判决） | 最先做 |
+| E0 | 否 | 在 `mono_benchmark/` 里另外 4 个应用上跑流水线，统计规则命中情况，测各应用的基线 | demo 之后 |
+| 消融实验 | 否 | §10.2 | E0 之后 |
+| E2 | 是（人工授权，测完拆除） | SQS 消费者改写的真实收益；`BatchSize` / `MaximumBatchingWindowInSeconds` | 视需要 |
+| E3 | 是 | 分解 E2E 延迟；REST 和 HTTP API 对比（客户端放在同一区域） | 视需要 |
+| E4 | 是 | 畅销榜读取：Scan、GSI、物化视图的真实成本 | 视需要 |
+| E1 | 是 | 打包方式在真实 Lambda 上的效果 | 优先级最低 |
 
-失真点（写进报告模板，每次都要带上，不能省略）：
+L3 真实 A/B 的操作流程见 `PERF_OPTIMIZATION.md` §6.2。
 
-- arm64 本地测试受 QEMU 模拟影响不可信，只做官方基准背书的默认值，不拿本地数字改决策。
-- `sam local` 不模拟 Cognito Authorizer，E2E Latency 数字不含真实 JWT 校验耗时。
-- `sam local` 的并发调度模型跟真实 Lambda 弹性扩容完全不同，throughput 只做"有没有明显并发
-  bug"的回归检测用，不能当产能数字用。
+---
 
-### 两个反模式的实测差异（2026-09-23，bookstore 基准，代码阶段代理指标）
+## 12. v2 路标
+
+- 放开语义改动：修改请求派发给负责的 agent；触及语义的改动标记"需重跑完整验收"，交付前重跑验证线阶段 A；
+- 和单体做差分测试（本地运行单体 + 本地 DynamoDB）：判断故障行为是否符合单体；
+- MemorySize、Architectures 的档位选择：只能靠 L3 的 Power Tuning；
+- REST API → HTTP API：等 E3 分解出 E2E 延迟的构成后再评估；
+- Provisioned Concurrency、缓存：需要真实流量的数据；
+- 按 domain 并行展开（v1 设计稿 §7 已讨论过这个拓扑，仍然有效）。
+
+---
+
+## 附录 A：v1 设计稿的实测记录（原 §5，原样保留）
+
+> 以下内容原样保留自 v1 设计稿 §5 的四个实测小节，小节标题不变，方便 `PERF_OPTIMIZATION.md` 引用。文中提到的"§3 步骤 2""§4 第 4 条""§2.3"等都指 **v1 设计稿**的章节（见 git `869c4bd`）。
+>
+> **这些数据是否有效，以 `PERF_OPTIMIZATION.md` §1.3 为准**：
+> - "sam CLI + Docker 阶段实测"整节**作废**：测量时请求被代理截走了，测到的是失败的请求；
+> - "两个反模式的实测差异"里的毫秒数，被 Windows 的时钟粒度量化了，只能看倍数关系；
+> - "真实 AWS 部署实测"里的 E2E 数字是没有分解过的合计值；
+> - 两次真实 AWS 实测都只来自 bookstore，只能看方向。
+
+### A.1 两个反模式的实测差异（2026-09-23，bookstore 基准，代码阶段代理指标）
 
 用 bookstore-oh（真实跑完 P0-S4、`gate(final)` PASS 的产物）实测批量 API 反模式的两个真实
 实例，mock 层给每次 DynamoDB/SQS 调用加固定 8ms 延迟模拟单次网络往返（明确是代理值，不是
@@ -312,7 +368,7 @@ delete 本身的顺序开销。把 3 个 delete 合并成 1 个 `BatchWriteComma
 （`BatchWriteItem` 只支持 `PutRequest`/`DeleteRequest`）——这个实例正确的优化是"循环改
 `Promise.all` 并行"，不是"改批量 API"。已经在 §4 补了一条分诊规则。
 
-### sam CLI + Docker 阶段实测（2026-09-23，bookstore 基准，Windows + Docker Desktop + WSL2）
+### A.2 sam CLI + Docker 阶段实测（2026-09-23，bookstore 基准，Windows + Docker Desktop + WSL2）
 
 > **⚠ 2026-09-24 更正：本节的测量数据作废。** 测量时环境里设置了 `HTTP_PROXY` 却没有 `NO_PROXY`，sam 发往
 > `localhost` 的调用请求被本地代理截走了，下面的冷/热耗时和 start-api 的 502 测到的都是**失败的请求**，
@@ -359,7 +415,7 @@ v2 如果要继续投入这条路线，要么找到消除固定开销的办法�
    名（`dev-bookstore-orders`）**——在 LocalStack 里建表要按逻辑 ID 命名，不能按模板里
    `TableName` 属性算出来的名字命名，否则会得到 `ResourceNotFoundException`。
 
-### 真实 AWS 部署实测（2026-09-23，一次性参考基准，测完已完全拆除）
+### A.3 真实 AWS 部署实测（2026-09-23，一次性参考基准，测完已完全拆除）
 
 按 §0"为什么用本地 Docker + sam，不接真实 AWS"里说的例外条款——一次性、人工授权、测完即拆的
 参考基准——实际部署了一次 `bookstore-oh` 到账号 `882112174488`（`sam deploy`），测完立刻
@@ -418,7 +474,7 @@ CloudWatch 账单延迟也来不及反映）**：按 AWS 公开定价折算，**
 内部批量调用的收益大得多**——这跟上面 E2E Latency 的发现指向同一个改动，进一步佐证"HTTP API"
 是个值得 v2 认真评估的点，而不是当初判断的"改动面太大暂不做"。
 
-### MemorySize / Architectures 真实 A/B 实测（2026-09-23，独立实验栈，测完已拆除）
+### A.4 MemorySize / Architectures 真实 A/B 实测（2026-09-23，独立实验栈，测完已拆除）
 
 按用户要求"先看本地能不能测、再看本地调出的值在真实部署时有没有正向效果"做的实验。**本地这
 一步直接失败**：`sam local invoke` 在本机话了几个小时高强度测试后开始只打印 `SAM_CONTAINER_ID`
@@ -468,51 +524,3 @@ Architectures/SQS 参数三条里唯一还没验证过的，留给 v2 优先补�
 
 ---
 
-## 6. `m2s-migrate` 编排 skill 需要同步更新的地方
-
-- §1 阶段拓扑图：插入 `S3p`。
-- §5 文件契约表：加 `output/perf_report.json`、`storage/stage_reports/S3p.json`。
-- §2 spawn prompt 模板要素：新增一条——spawn `m2s-perf-optimizer` 时要在 prompt 里确认
-  `sam`/Docker 是否可用，不可用则明确告诉它跳过 sam CLI 阶段测量，只做代码阶段代理指标
-  （保证流水线在环境不全时也能优雅降级，不是硬性失败）。
-- §3 分层裁决规则：`S3p` 的 `STAGE_BLOCKED` 不触发主 Agent 回炉重 spawn（性能没收敛不算
-  "这个阶段失败"），只需要主 Agent 如实记录进最终报告，直接放行进入 S4。
-
----
-
-## 7. v2 路标（本次不做，留记录）
-
-- S2 / S3b / perf-optimizer 的函数级测量与修正部分按 domain 并行 fan-out；S3a（共享资源）/
-  S3c（合并+校验）/ perf-optimizer 的全局决策与实测收尾部分保持全局单例——这是已经讨论定型
-  的拓扑，理由：
-  - S3a/S3c 的产物（API Gateway、Cognito、DynamoDB 表等共享资源，以及跨 domain 的一致性
-    校验）天生是全局单例，按 domain 拆会导致资源重复声明/冲突。
-  - perf-optimizer 的 `sam build`/`sam local invoke` 依赖已经合并完整的 `template.yaml`，
-    某个 domain 分支手头只有自己那部分函数时根本跑不了，必须等全部 domain 完成后才能进行。
-- 共享层（`output/layers/shared/`）并发写冲突规避：先串行生成共享层，再并行 fan-out domain。
-- `m2s_merge.py` 扩展成支持 N 个 domain 分片合并（现在是二元 part1+part2），`Outputs:` 段
-  建议改成合并脚本用代码自动生成，而不是让某个 domain agent 猜全局函数列表。
-- 架构决策前移：`analyze_project` 静态分析新增性能相关量化信号（循环内 DB 调用计数等），
-  供 S1 architect 判定 `perf_hint` 时有数据支撑而不是纯启发式猜测。
-- **REST API → HTTP API**：2026-09-23 真实 AWS 部署实测（§5"真实 AWS 部署实测"）显示 E2E
-  Latency 里 850~1050ms 是 API Gateway + Cognito Authorizer + 网络往返，Lambda 自己只占
-  几毫秒到几十毫秒；HTTP API 定价也只有 REST API 的约 1/3.5。v1 因为 Cognito Authorizer
-  语法改动、改动面大排除了这条，但现在有真实数据支撑，是 v2 里收益可能最大的一项，应该优先
-  评估。
-- **Provisioned Concurrency（按 `perf_hint: hot` 决定要不要配）**：真实部署测出的
-  `T_cold_start`（`Init Duration`）稳定在 300~385ms，有了这个真实数字，v2 可以算一笔账：
-  对哪些端点值得为消除冷启动付预留并发的钱，不用再凭感觉猜。
-- **X-Ray `Tracing: Active` 的开销 vs 诊断价值，需要一起权衡，不能孤立决定关不关**：现在
-  `Globals.Function.Tracing: Active` 是默认常开，从未量化过它本身对延迟的影响；但它同时是
-  唯一能把"850~1050ms 里 API Gateway 和 Cognito Authorizer 各占多少"拆开看的手段（本次
-  实测只测出了两者加起来的总数，没有再往下归因）。v2 如果要动这个开关，得先想清楚：关掉省
-  下的开销，够不够换来一直看不清 API Gateway/Cognito 各自占比的代价。
-
-**更新（2026-09-23）：MemorySize 分级和 `Architectures: arm64` 已经用真实 AWS A/B 测试
-验证过**（见 §5"MemorySize / Architectures 真实 A/B 实测"），不再是"照抄官方基准"——用的
-就是这里说的"一次性真实部署"流程，同一份 `orders-create` 代码分别部署 128/512/1024MB 和
-x86_64/arm64 变体直接对比 `Duration`/`Init Duration`。**SQS `BatchSize`/
-`MaximumBatchingWindowInSeconds` 仍然是唯一没有真实数据支撑的一条**——本地测不了（`sam
-local` 不模拟 SQS 轮询攒批），真实 AWS 这次时间上也还没排到，是 v2 里第一个该补的真实
-A/B 实验，做法可以参考同一套流程：部署几个 `BatchSize` 不同的消费者变体，往同一个队列灌
-一批消息，比较吞吐/延迟。

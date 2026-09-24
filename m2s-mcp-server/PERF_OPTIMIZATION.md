@@ -9,8 +9,9 @@
 >
 > 上一版的逐步推导过程保留在 git 历史里（`f7cb51b` 及之前）。
 >
-> 本文是 `PERF_OPTIMIZATION_DESIGN.md`（下称 `DESIGN`，v1 设计稿）的续篇。引用 `DESIGN §5` 时一律写到
-> **小节名**，因为 §5 下面几个小节的数据来源和有效性不同。
+> 本文是 `PERF_OPTIMIZATION_DESIGN.md`（下称 `DESIGN`）的续篇。`DESIGN` 已于 2026-09-24 在原文件上重写为 v2：
+> - v1 的实测记录原样保留在 `DESIGN` 附录 A.1–A.4，本文按小节引用；
+> - `DESIGN v1 §x` 指 v1 设计稿的章节，见 git `869c4bd`。
 
 ## 0. 结论摘要
 
@@ -66,12 +67,12 @@
 
 | # | 数据 | 问题 | 处理 |
 |---|---|---|---|
-| 1 | `DESIGN §5`"sam CLI + Docker 阶段实测"整节：冷 22~38s、热约 4.8s、三个函数完全相同、start-api 返回 502 | 测量时环境里设了 `HTTP_PROXY`、没设 `NO_PROXY`，sam 发往 `localhost` 的调用请求被本地代理截走，约 3.7s 后返回 502/空响应。**测到的是失败的请求，函数根本没执行**（排查见实验 6） | **作废**。替代数据是实验 7。代理已修复（PowerShell 配置文件里加了 `NO_PROXY`） |
+| 1 | `DESIGN 附录 A.2`"sam CLI + Docker 阶段实测"整节：冷 22~38s、热约 4.8s、三个函数完全相同、start-api 返回 502 | 测量时环境里设了 `HTTP_PROXY`、没设 `NO_PROXY`，sam 发往 `localhost` 的调用请求被本地代理截走，约 3.7s 后返回 502/空响应。**测到的是失败的请求，函数根本没执行**（排查见实验 6） | **作废**。替代数据是实验 7。代理已修复（PowerShell 配置文件里加了 `NO_PROXY`） |
 | 2 | 实验 1：Windows 上 esbuild 打包让 `require()` 快 40% | 在 L2′ 真实 Linux 运行时里测 init，打包与否没有差异（实验 6），这 40% 来自 NTFS 上模块解析慢 | **结论推翻**。L1a 不再用来判断打包效果 |
-| 3 | `DESIGN §5`"两个反模式的实测差异"：单调用 handler 11~24ms | 这是 L1b sleep mock 的墙钟，被 Windows 15.6ms 时钟粒度量化了（**和第 1 条无关**，那是另一个小节） | 倍数关系可用（顺序 30 次 vs 1 次），±10% 量级的差异不可用 |
-| 4 | `DESIGN §5`"真实 AWS 部署实测"：E2E ~900ms 被归因为"API Gateway + Cognito + 网络" | 客户端在测试者本机、网络偏慢，这个数字只是**未分解的合计值** | 归因降级为"待验证"；由它推出的"Lambda 内部优化对用户延迟不重要""HTTP API 是 v2 最大收益"两条结论**撤回** |
-| 5 | `DESIGN §2.3` 说 MemorySize/arm64"已用真实 AWS 验证" | 实际只是 bookstore 一个函数的一次实测 | 改为"方向一致的一次观测"（§6.1） |
-| 6 | `DESIGN §5`"MemorySize / Architectures 真实 A/B 实测"开头：本地 `sam local invoke` 失败，归因于 `MAX_PATH` | 很可能也是第 1 条的代理问题；在短路径下同样失败，加了 `NO_PROXY` 之后就正常了 | `MAX_PATH` 作为 `sam build` 失败的原因仍然成立；`invoke` 失败改归因于代理 |
+| 3 | `DESIGN 附录 A.1`"两个反模式的实测差异"：单调用 handler 11~24ms | 这是 L1b sleep mock 的墙钟，被 Windows 15.6ms 时钟粒度量化了（**和第 1 条无关**，那是另一个小节） | 倍数关系可用（顺序 30 次 vs 1 次），±10% 量级的差异不可用 |
+| 4 | `DESIGN 附录 A.3`"真实 AWS 部署实测"：E2E ~900ms 被归因为"API Gateway + Cognito + 网络" | 客户端在测试者本机、网络偏慢，这个数字只是**未分解的合计值** | 归因降级为"待验证"；由它推出的"Lambda 内部优化对用户延迟不重要""HTTP API 是 v2 最大收益"两条结论**撤回** |
+| 5 | `DESIGN v1 §2.3` 说 MemorySize/arm64"已用真实 AWS 验证" | 实际只是 bookstore 一个函数的一次实测 | 改为"方向一致的一次观测"（§6.1） |
+| 6 | `DESIGN 附录 A.4`"MemorySize / Architectures 真实 A/B 实测"开头：本地 `sam local invoke` 失败，归因于 `MAX_PATH` | 很可能也是第 1 条的代理问题；在短路径下同样失败，加了 `NO_PROXY` 之后就正常了 | `MAX_PATH` 作为 `sam build` 失败的原因仍然成立；`invoke` 失败改归因于代理 |
 
 ---
 
@@ -149,7 +150,7 @@ VPC、有常驻费用，对这个量级的应用不一定划算。
 | 全部 `Promise.all` | 30 | 1 | 15.7ms |
 | 先按 `bookId` 聚合数量，再 `Promise.all` | **5** | 1 | 15.5ms |
 
-`UpdateItem` 没有批量 API（`DESIGN §4`），所以正确的改写是"聚合 + 并行"，不是 `BatchWriteItem`。聚合后调用
+`UpdateItem` 没有批量 API（`DESIGN v1 §4`），所以正确的改写是"聚合 + 并行"，不是 `BatchWriteItem`。聚合后调用
 次数降多少，取决于 mock 事件里的 bookId 重复率。这个重复率是人为设定的。
 
 ### 实验 3（L1b）：orders-create 调用链（3 本书的购物车）
@@ -227,7 +228,7 @@ CPU 随条数线性增长，主要花在 SDK 反序列化和 DocumentClient 解�
 | bestsellers-list，20 条 | 8.7ms |
 | bestsellers-list，2,000 条 | 19.4ms |
 
-用 `--cpus` 模拟 MemorySize（orders-create，5ms/调用），和真实 A/B（`DESIGN §5`"MemorySize / Architectures
+用 `--cpus` 模拟 MemorySize（orders-create，5ms/调用），和真实 A/B（`DESIGN 附录 A.4`"MemorySize / Architectures
 真实 A/B 实测"）对照：
 
 | 等效内存 | 容器内热调用中位数 | 真实 A/B |
@@ -341,7 +342,7 @@ CPU 随条数线性增长，主要花在 SDK 反序列化和 DocumentClient 解�
 | arm64、MemorySize 档位、SQS 参数、HTTP API | 不测 | 按默认规则执行，报告注明"经验默认值" | L0/L1/L2′ 都测不了 |
 | L0 命中但无法自动修的问题（热路径 Scan 需要改数据模型、要换异步机制） | 不改 | 写进 `perf_report.json` 的 `advisories`，附假设条数下的 L1c 数据，交给 S1/人工 | — |
 
-每次测量前都要先做**有效性校验**（`DESIGN §3` 步骤 1）：返回 2xx，并且 SDK 调用次数 >0、和静态分析一致。
+每次测量前都要先做**有效性校验**（`DESIGN v1 §3` 步骤 1）：返回 2xx，并且 SDK 调用次数 >0、和静态分析一致。
 L1b 用 `getCallLog()`，L2′ 用 `VALIDATE=1`。
 
 报告里只写直接测得的量（例如"顺序深度 30→1、调用次数 30→5、CPU −78%（假设同批 5 本书重复）"），**不写
@@ -353,7 +354,7 @@ L1b 用 `getCallLog()`，L2′ 用 `VALIDATE=1`。
 
 ### 6.1 原始观测（仅 bookstore；不作为模型参数）
 
-L3 一共两次（`DESIGN §5`"真实 AWS 部署实测""MemorySize / Architectures 真实 A/B 实测"），都是一个账号、
+L3 一共两次（`DESIGN 附录 A.3`"真实 AWS 部署实测"、`DESIGN 附录 A.4`"MemorySize / Architectures 真实 A/B 实测"），都是一个账号、
 us-east-1、同一天，都已拆除。
 
 | 观测 | 取值 | 范围限制 |
@@ -399,11 +400,11 @@ L3 的作用是：
 
 | 阶段 / 文件 | 改动 | 对应 |
 |---|---|---|
-| P0 `analyze_project` | 新增静态信号：循环内的 `await` 单条 DB 调用（区分顺序和 `Promise.all`，`DESIGN §4`）；读路径上的 `scan`；从种子数据推断的表规模 | A1、A3 |
+| P0 `analyze_project` | 新增静态信号：循环内的 `await` 单条 DB 调用（区分顺序和 `Promise.all`，`DESIGN v1 §4`）；读路径上的 `scan`；从种子数据推断的表规模 | A1、A3 |
 | S1 `m2s-architect.md` | 异步派生数据的机制选择（SQS vs Streams）写明理由；公共只读端点是否需要鉴权 | C2、C3 |
 | S2 `m2s-performance-kb` | ① 消费者"先聚合再并行"，**必须同时**做部分批失败上报（正确性配套，避免重复 `ADD`）；② 多步写入的调用链深度与 `TransactWriteItems` 的取舍（2× WCU、顺序保证）；③ 读路径的 Scan 必须处理 `LastEvaluatedKey`，并在报告里标注"随数据量增长"；④ 防倒退：不要 warmer、不要 v2 SDK、不进 VPC | A1、A2、A3、§2.3 |
 | S3 `m2s-sam-kb` | Globals 加 `Architectures: [arm64]`；MemorySize 按 `perf_hint` 分级、下限 256；SQS 事件加 `FunctionResponseTypes: [ReportBatchItemFailures]`；`BatchSize`/`MaximumBatchingWindowInSeconds` 先给参考值并标注未验证；API 加带延迟字段的 `AccessLogSetting`。**不加** esbuild `Metadata`（A4 已测无效） | A1c、B1~B4 |
-| S3p perf-optimizer（`DESIGN §3`） | 判据按 §5；Docker 可用时加 L2′ 测量，不可用时只用 L0/L1；输出区分"已自动修复"和 `advisories` | 全部 |
+| S3p perf-optimizer（`DESIGN v1 §3`） | 判据按 §5；Docker 可用时加 L2′ 测量，不可用时只用 L0/L1；输出区分"已自动修复"和 `advisories` | 全部 |
 | `gate(perf)`（advisory） | 纯 L0 检查：arm64、MemorySize ≥256、SQS 消费者配了 `ReportBatchItemFailures`、读路径 Scan 有分页、没有循环内顺序 `await` 单条调用 | A1、A3、B1、B2a |
 
 ---
@@ -424,13 +425,15 @@ E0 不需要 AWS，应该最先做：它决定本文结论是"bookstore 的特�
 
 ## 9. 对 `PERF_OPTIMIZATION_DESIGN.md` 的修正
 
-1. `DESIGN §5`"sam CLI + Docker 阶段实测"：整节数据作废（§1.3 第 1 条），该节开头已加了警告。
-2. `DESIGN §5`"两个反模式的实测差异"：单调用 handler 的 11~24ms 被 Windows 时钟粒度量化，只能看倍数（§1.3 第 3 条）。
-3. `DESIGN §5`"真实 AWS 部署实测"：E2E 归因降级为"未分解、待验证"（§1.3 第 4 条，§6.3）。
-4. `DESIGN §7`："HTTP API 是 v2 收益可能最大的一项"撤回，改为"价格收益确定，延迟收益待 E3"。
-5. `DESIGN §2.3`：MemorySize/arm64 从"已用真实 AWS 验证"改为"bookstore 一个函数上方向一致的一次观测"（§6.1）。
-6. `DESIGN §3` 步骤 3（sam CLI 阶段测量）：改为 L2′ 的做法（§1.1）；步骤 4 的 ±10~15% 噪声带判据，改为 §5 的表。
-7. `DESIGN §5`"MemorySize / Architectures 真实 A/B 实测"开头：本地 `sam local invoke` 失败，改归因于代理问题（§1.3 第 6 条）。
+> 以下修正已在 `DESIGN` v2（2026-09-24）中落实：v2 正文按修正后的结论重写，v1 的实测记录移到附录 A，附录开头标注了各小节数据的有效性。
+
+1. `DESIGN 附录 A.2`"sam CLI + Docker 阶段实测"：整节数据作废（§1.3 第 1 条），该节开头已加了警告。
+2. `DESIGN 附录 A.1`"两个反模式的实测差异"：单调用 handler 的 11~24ms 被 Windows 时钟粒度量化，只能看倍数（§1.3 第 3 条）。
+3. `DESIGN 附录 A.3`"真实 AWS 部署实测"：E2E 归因降级为"未分解、待验证"（§1.3 第 4 条，§6.3）。
+4. `DESIGN v1 §7`："HTTP API 是 v2 收益可能最大的一项"撤回，改为"价格收益确定，延迟收益待 E3"。
+5. `DESIGN v1 §2.3`：MemorySize/arm64 从"已用真实 AWS 验证"改为"bookstore 一个函数上方向一致的一次观测"（§6.1）。
+6. `DESIGN v1 §3` 步骤 3（sam CLI 阶段测量）：改为 L2′ 的做法（§1.1）；步骤 4 的 ±10~15% 噪声带判据，改为 §5 的表。
+7. `DESIGN 附录 A.4`"MemorySize / Architectures 真实 A/B 实测"开头：本地 `sam local invoke` 失败，改归因于代理问题（§1.3 第 6 条）。
 
 ---
 
