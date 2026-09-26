@@ -797,5 +797,16 @@ def test_run_gate_final_passes_with_report(tmp_path):
     assert result["status"] == "PASS"
 
 
+@pytest.mark.parametrize("status", ["IN_PROGRESS", "FAIL"])
+def test_run_gate_final_rejects_unfinished_or_failed_report(tmp_path, status):
+    """Real incident (bookstore-v1): S4 wrote a provisional report with status
+    IN_PROGRESS and gate(final) still returned PASS."""
+    _write_good_workspace(tmp_path)
+    (tmp_path / "output" / "consistency_report.json").write_text(json.dumps({"status": status}), encoding="utf-8")
+    result = gates.run_gate("final", str(tmp_path))
+    assert result["status"] == "FAIL"
+    assert any(f["check_id"] == "REPORT" and status in f["description"] for f in result["mechanical_failures"])
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))

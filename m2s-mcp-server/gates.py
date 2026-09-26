@@ -997,15 +997,18 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c12(ws, template)
             )
         report_path = ws / "output" / "consistency_report.json"
-        report_ok = False
+        report = None
         if report_path.exists():
             try:
                 report = json.loads(report_path.read_text(encoding="utf-8"))
-                report_ok = isinstance(report, dict) and "status" in report
             except json.JSONDecodeError:
-                report_ok = False
-        if not report_ok:
+                report = None
+        if not isinstance(report, dict) or "status" not in report:
             checks.append(_finding("REPORT", "ERROR", "output/consistency_report.json missing or unreadable.", str(report_path)))
+        elif report["status"] != "PASS":
+            # Agents may write a provisional report first ("IN_PROGRESS");
+            # only a finished, passing report counts.
+            checks.append(_finding("REPORT", "ERROR", f"output/consistency_report.json status is {report['status']!r}, not 'PASS'.", str(report_path)))
         severe = any(f["severity"] == "ERROR" for f in checks)
 
     else:
