@@ -912,7 +912,11 @@ def extract_dynamodb_info(monolith_root: Path, file_tags: Dict[str, List[str]]) 
 
     # Extract probable table names from env-var defaults and hard-coded strings.
     for rel_file_path in db_files:
-        file_path = monolith_root / rel_file_path
+        # file_tags keys carry the app_name prefix ("bookstore/config.js"),
+        # which is monolith_root's own name -- resolve against its parent.
+        # Resolving against monolith_root itself silently skipped every file,
+        # leaving probable_tables empty for every app.
+        file_path = monolith_root.parent / rel_file_path
         if not file_path.exists():
             continue
 
@@ -1162,6 +1166,12 @@ def run_static_analysis(monolith_root: Path) -> Dict[str, Any]:
     # entry_points extracted in isolation from their router file (see
     # _resolve_js_mount_prefixes docstring for why this exists).
     mount_prefixes = _resolve_js_mount_prefixes(monolith_root, app_name, source_cache)
+    # (file, pre-prefix handler name) -> prefixed handler name. The symbol
+    # table (and so the call graph's caller_function) still uses the
+    # pre-prefix name, e.g. "POST__"; without this mapping
+    # build_entry_point_call_map never matches a prefixed entry point and
+    # entry_point_dependencies comes out empty for every mounted router.
+    renamed_handlers: Dict[Tuple[str, str], str] = {}
     if mount_prefixes:
         for ep in entry_points:
             prefix = mount_prefixes.get(ep.get("file"))
@@ -1172,7 +1182,9 @@ def run_static_analysis(monolith_root: Path) -> Dict[str, Any]:
                 prefix.rstrip("/") + "/" + raw_path.lstrip("/") if raw_path not in ("", "/") else (prefix or "/")
             )
             ep["path"] = full_path
-            ep["handler_function"] = f"{ep.get('method', '')}_{full_path.replace('/', '_').replace(':', '_')}"
+            new_name = f"{ep.get('method', '')}_{full_path.replace('/', '_').replace(':', '_')}"
+            renamed_handlers[(ep.get("file"), ep.get("handler_function"))] = new_name
+            ep["handler_function"] = new_name
 
     # ---- Pass 2: cross-file call graph extraction ----
     all_call_edges: List[Dict[str, Any]] = []
@@ -1197,6 +1209,11 @@ def run_static_analysis(monolith_root: Path) -> Dict[str, Any]:
                 monolith_root, file_path, source, file_syms, app_name
             )
         all_call_edges.extend(edges)
+
+    for edge in all_call_edges:
+        renamed = renamed_handlers.get((edge["caller_file"], edge["caller_function"]))
+        if renamed:
+            edge["caller_function"] = renamed
 
     # ---- Aggregate: per-entry-point dependency map ----
     entry_point_deps = build_entry_point_call_map(entry_points, all_call_edges)
