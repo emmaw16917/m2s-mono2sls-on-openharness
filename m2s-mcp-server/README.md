@@ -107,7 +107,9 @@ identical.
 
 | Tool | What it does |
 |---|---|
-| `analyze_project(monolith_root?)` | Runs M2S's static analyzer, writes `storage/analysis_report.json` + `storage/symbol_table.json` |
+| `analyze_project(monolith_root?)` | Runs M2S's static analyzer plus `spec_extract.py` (per-endpoint `handler_location`/`auth`/`request`/`responses`/`data_access`, `dynamodb_info.table_schemas`, every item with a `source` citation), writes `storage/analysis_report.json` + `storage/symbol_table.json` |
+| `annotate_entry_point(method, path, field, value_json)` | How `m2s-spec-annotator` (S0) writes: replaces one spec field of one endpoint after schema + provenance checks; rejects the whole call on any bad citation (`provenance.py`) |
+| `check_provenance()` | S0 gate: every `{file, line, symbol}` citation must exist and the symbol must appear within 2 lines; every endpoint must have request, responses (incl. a success one), auth and at least one business rule |
 | `merge_blueprint_key(key, value_json)` | Merges one top-level key into `storage/blueprint.json` (arrays concatenate, everything else overwrites); rejects any key not in the 10-key blueprint schema; re-validates JSON after every write. This is how `m2s-architect` builds the blueprint — one field at a time, not as one giant document (see CHANGELOG for why that distinction mattered) |
 | `validate_sam(template_path)` | Runs `cfn-lint` against a SAM template |
 | `run_gate(phase)` | Runs the deterministic consistency checks for `blueprint` / `code` / `template` / `final` (see `gates.py`) |

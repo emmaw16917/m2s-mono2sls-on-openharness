@@ -73,8 +73,16 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | `entry_points[].responses` | 成功和失败时的状态码、响应体结构 | 脚本提取 + LLM 补全 |
 | `entry_points[].business_rules` | 从 handler 的条件分支里提炼出的业务规则 | LLM 标注 |
 | `dynamodb_info.probable_tables` | 表名和键结构（例如从 `init-db.js` 提取） | 脚本提取 |
+| `entry_points[].handler_location` | handler 在源码里的起止行（步骤 0 实现时补充，供标注员和出处检查定位） | 脚本提取 |
+| `entry_points[].data_access` | DynamoDB 操作：操作名、表、索引、是否在循环里、经过的调用链（步骤 0 实现时补充：§3.2 要求测试用例写"预期的 SDK 调用序列"，没有这个字段，测试设计在只看规格时无从得知） | 脚本提取 |
+| `dynamodb_info.table_schemas` | 每张表的分区键、排序键、GSI（`probable_tables` 只放表名，保持原格式不变） | 脚本提取 |
 
-- **出处要求**：LLM 标注的每一条都必须写上出处（文件和行号）。无法确定的项标为 `unknown`，不许猜测。
+- **出处要求**：**每一条**（脚本提取的也一样）都写上出处 `source: [{file, line, symbol}]`，并标 `origin: script|llm`。无法确定的项标为 `unknown`，不许猜测。
+- **实现**（步骤 0）：脚本在 `m2s-mcp-server/spec_extract.py`（`analyze_project` 调用），出处检查和标注写入在 `provenance.py`。
+  脚本只识别 Express（JS/TS）；Python 端点的规格字段全部留给标注员。
+- **标注员怎么写入**（K5）：新增 MCP 工具 `annotate_entry_point(method, path, field, value_json)`，一次替换一个端点的一个字段。
+  写入前先校验结构、再对这次的值跑出处检查，不通过就整次拒绝并说明是哪条出处的问题。标为 `origin: "script"` 的项必须和已有脚本项完全一致，
+  防止标注员把自己的判断标成脚本产出。沿用 `merge_blueprint_key` 的经验：不让 agent 一次重写一个大 JSON。
 - **gate**（都由脚本执行）：
   - 报告是否完整（必填字段、出处格式）；
   - **出处的机械检查**：spec-annotator 标注的每个"文件:行号"都必须真实存在，而且那一行（或它附近几行）确实包含它引用的变量名或字段名。
@@ -226,6 +234,7 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | `run_equivalence` | 在同一组故障场景下，对照基准版本（默认 `v0`）做差分，输出 H1 (a)(b) 的判定 | 同上 |
 | `run_proxy_metrics` | 调用次数、顺序深度、`warm_cpu.js`、容量单位估算 | 仅需本机 Node |
 | `check_provenance` | 规格标注的出处机械检查（2.1） | 无 |
+| `annotate_entry_point` | spec-annotator 逐端点、逐字段写入规格标注，写入前校验结构和出处（2.1，K5） | 无 |
 | `run_rie_verdict` | 按 `PERF_OPTIMIZATION_DESIGN.md` §3 的规则，对改动前后做交替测量并给出判决 | Docker（RIE），没有本机降级 |
 
 所有工具共同的要求：
@@ -293,3 +302,5 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | K2 | v1 通过调整顺序实现隔离：测试设计排在实现开始之前；以后改 OpenHarness，让 agent 级别的权限生效，再恢复并行 | §1、§3.1 |
 | K3 | 没有 Docker 时，语义检查改在本机 Node 里跑；"有 Docker 也在本机跑语义检查"作为以后的提速选项，启用前先做对照实验 | §3.5 |
 | K4 | 验证线自己修改测试资产，每次运行阶段 A 最多 2 轮，不占用实现线的回炉次数 | §4.1 |
+| K5 | 标注员通过新增的 MCP 工具 `annotate_entry_point` 逐端点写入，写入时就做结构和出处检查 | §2.1、§4.3 |
+| K6 | 步骤 0 只把 S0 接入 m2s-migrate 的 P0 之后；architect 引用规格字段的改动（§2.2）留到后续步骤 | §5 |

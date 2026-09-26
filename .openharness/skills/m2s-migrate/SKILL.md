@@ -16,6 +16,8 @@ argument-hint: "[可选：从某个阶段重跑，例如 'from S2']"
 
 ## §0 常量（每次 spawn 前先在心里/prompt 里替换成绝对路径，不要用相对路径）
 
+下面是 todo 基准的**默认值**。如果启动你的 prompt 里给了 `MONOLITH`/`WS`（例如跑 bookstore），**一律以 prompt 为准**，包括 P0 调 `analyze_project(monolith_root=...)` 时传的路径——调用前核对一遍你传的是不是 prompt 里的那个 MONOLITH。（真实出过错：prompt 指定 bookstore，P0 却传了这里的 todo 默认值。）
+
 ```
 MONOLITH = D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\mono_benchmark\todo
 WS       = D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\M2S\runs\todo-oh
@@ -29,11 +31,14 @@ mcp__m2s-server__analyze_project
 mcp__m2s-server__validate_sam
 mcp__m2s-server__run_gate
 mcp__m2s-server__merge_blueprint_key
+mcp__m2s-server__annotate_entry_point   （只给 S0 用）
+mcp__m2s-server__check_provenance
 ```
 
 Agent 名精确契约（`subagent_type` 必须逐字符匹配，拼错不会报错，只会得到一个没有专属 system prompt 的通用 Agent）：
 
 ```
+m2s-spec-annotator
 m2s-architect
 m2s-code-developer
 m2s-sam-engineer   （复用同一个定义 spawn 三次：STAGE_ID = S3a / S3b / S3c）
@@ -47,8 +52,10 @@ m2s-validator
 ```
 P0（你自己做，不 spawn）
     mcp__m2s-server__analyze_project(monolith_root=MONOLITH)
-    产出 WS/storage/analysis_report.json + WS/storage/symbol_table.json
+    产出 WS/storage/analysis_report.json（含脚本提取的规格字段）+ WS/storage/symbol_table.json
         ↓
+S0  spawn m2s-spec-annotator（补全每个端点的请求/响应/业务规则，每条注明出处）
+        ↓ 你自己亲自 check_provenance（出处机械检查 + 完整性）
 S1  spawn m2s-architect
         ↓ gate(blueprint)
 S2  spawn m2s-code-developer
@@ -60,7 +67,7 @@ S4  spawn m2s-validator
     验收
 ```
 
-P0 是你唯一自己直接调用 MCP 工具的地方；S1-S4 全部通过 `agent` 工具委派。
+P0 和 S0 之后的 `check_provenance` 是你自己直接调用 MCP 工具的地方（外加各阶段的 gate 复核）；S0-S4 的实际工作全部通过 `agent` 工具委派。
 
 ## §2 spawn prompt 模板要素
 
@@ -80,7 +87,7 @@ S1/S2/S3c 现在自己负责"跑 gate → 不过就自己改 → 最多 3 次"�
 
 你收到某阶段的 `STAGE_COMPLETE`/`STAGE_BLOCKED` 之后，按下面这套简化流程处理：
 
-1. **先做独立复核**：不管子 Agent 报的是 `STAGE_COMPLETE` 还是别的，你自己跑一次对应的 `mcp__m2s-server__run_gate(phase=...)`（S1→blueprint，S2→code，S3c 之后→template）。**这一步不能省**——子 Agent 自己说"过了"不代表真过了，`run_gate` 才是权威。
+1. **先做独立复核**：不管子 Agent 报的是 `STAGE_COMPLETE` 还是别的，你自己跑一次对应的检查：S0→`mcp__m2s-server__check_provenance()`，S1→`run_gate(phase="blueprint")`，S2→`run_gate(phase="code")`，S3c 之后→`run_gate(phase="template")`。**这一步不能省**——子 Agent 自己说"过了"不代表真过了，`run_gate` 才是权威。
 2. **复核通过** → 直接进入下一阶段，不用做任何回炉判断。
 3. **复核没过，分两种情况**：
    - 子 Agent 报的是 `STAGE_BLOCKED` 且在报告里**明确指出**"这不是我这阶段的问题，是上游 XX 阶段的问题"（比如 S3c 自查后发现 C3/C10/C11/C12 报错是 handler 代码本身写错了，不是模板路径问题）→ 相信这个判断，回炉到它指出的那个更早的阶段，重新走一遍（该阶段会再自己走一次完整的 3 次自查循环）。
@@ -112,6 +119,8 @@ Spawn 之间保持 15 秒冷却，不要连续 spawn。
 ```
 storage/analysis_report.json          P0 产出（你自己调 MCP 工具写的）
 storage/symbol_table.json             P0 产出
+storage/analysis_report.json 的规格字段  S0 补全（只能经 annotate_entry_point 写，每条带 source 出处）
+storage/stage_reports/S0.json         S0 工作报告
 storage/blueprint.json                S1 产出（architect 用 mcp__m2s-server__merge_blueprint_key 逐字段写，不再需要分节文件+主 Agent 合并这一步）
 storage/stage_reports/S1.json         S1 工作报告
 output/lambdas/<domain>/<name>/...    S2 产出（handler.js|py + package.json|requirements.txt）

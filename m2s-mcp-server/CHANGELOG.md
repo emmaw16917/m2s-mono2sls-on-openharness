@@ -285,3 +285,49 @@ run7 证明：网络稳定时，这套流水线可以在一个会话里从 P0 �
 2. **S4 把 12 条"已核对无问题"的 finding 全标成 `WARNING`。** `m2s-validator.md` 增加 `severity` 定义：`INFO` = 核对过没问题，`WARNING` = 有问题但不致部署失败，`ERROR` = 会致部署失败；`status` 只在存在 `UNABLE_TO_FIX` 的 `ERROR` 时为 `FAIL`。
 
 **未验证的部分：** 第 1 点的 gate 有测试和真实数据验证；但两处 prompt 改动（S3a 不写 Globals Handler、S4 按新定义标 severity）是否真的改变了模型行为，需要重新跑全链才能确认，目前没有跑。已同步到 `~/.openharness/agents/`。
+
+## 流水线重构步骤 0：规格信息（2026-09-26）
+
+对应 `PIPELINE_REDESIGN.md` §2.1 / §5 步骤 0。
+
+### 产出
+
+- **`spec_extract.py`**（`analyze_project` 在 M2S 静态分析之后调用）：给每个 Express 端点加上 `handler_location`、`auth`、`request`、`responses`、`data_access`、`business_rules`（空，留给标注员）、`spec_status`；给 `dynamodb_info` 加 `table_schemas`（从建表脚本的 `createTable` 参数解析分区键/排序键/GSI）；顶层加 `spec_meta`（`schema_version`、`monolith_root`）。**每一项都带 `source: [{file, line, symbol}]` 和 `origin: script|llm`**。它是模式匹配，不是 JS 解析器：认不出的一律标 `unknown`。Python 端点不做提取（`spec_status.script = "unsupported"`），全部留给标注员。
+- **`provenance.py`** + 两个新 MCP 工具：
+  - `check_provenance()`：S0 的 gate。每条出处的文件必须在单体目录内、行号在范围内、`symbol` 在上下 2 行内逐字出现；各字段结构正确；每个端点都有 request、responses（至少一个成功响应）、auth、handler_location 和至少一条业务规则。
+  - `annotate_entry_point(method, path, field, value_json)`：标注员的唯一写入方式（K5）。一次替换一个端点的一个字段，写入前校验结构和出处，任何一条不过就整次拒绝并指明是哪条；标为 `origin: "script"` 的项必须和已有脚本项逐字相同。
+- **`agents/m2s-spec-annotator.md`**（已同步到 `~/.openharness/agents/`）：S0 阶段，核对脚本项、补 `unknown`、给每个响应补 `when`、写业务规则；自查循环最多 3 次；工作报告 `stage_reports/S0.json`。
+- **`m2s-migrate/SKILL.md`**：P0 之后加 S0（spawn 标注员 → 主 Agent 亲自 `check_provenance` 复核）。architect 的提示词**没有改**（K6，留到后续步骤）。
+- `~/.openharness/settings.json`：`allowed_tools` 加两个新工具；`M2S_WORKSPACE` 改为 `runs/bookstore-v1`。改前备份为 `settings.json.bak-pre-spec-annotator`。
+- `tests/test_spec.py`：11 个用例，跑在真实的 bookstore 单体上。
+
+### 顺带修掉的两个 P0 老 bug（`M2S/src/preprocessor/static_analyzer.py`）
+
+1. **`dynamodb_info.probable_tables` 对所有应用都是空的。** `file_tags` 的键带应用名前缀（`bookstore/config.js`），却拿它去拼 `monolith_root / 键`，路径不存在就被静默跳过。改为相对 `monolith_root.parent` 解析。修后 bookstore 5 张表、todo 2 张、coffee 6 张都能提取到（`runs/bookstore-oh`、`runs/todo-oh` 的旧报告里都是 `[]`）。
+2. **Express 应用的 `entry_point_dependencies` 永远是空的。** 挂载前缀修正（Pass 1.5）把端点的 `handler_function` 改成了带前缀的名字（`POST__api_orders`），但调用图里的 `caller_function` 还是符号表里不带前缀的名字（`POST__`），聚合时一个也对不上。architect 判断同步/异步（例如 `POST /orders` → `updateBestSellers`）依赖的正是这个字段。bookstore 从 0 变为 15/15（todo 的路由没有挂载前缀，修前修后都是 8/8）。
+
+### bookstore 上的运行（工作区 `runs/bookstore-v1`）
+
+- **脚本部分**：15 个端点全部提取到（0 个 unsupported），158 条出处全部通过检查，23 个 `unknown`。5 张表的键结构和 2 个 GSI 都解析到。
+- **run1**（P0 + S0，一个 `oh -p` 会话）：
+  - P0 第一次调 `analyze_project` 传的是 **todo** 路径：orchestrator 用了 SKILL.md §0 里写死的 todo 默认值，没有用 prompt 指定的 bookstore，事后还自述成"参数被忽略"（session 记录里的实际参数就是 todo）。它自己发现后改传 bookstore 重跑，没有造成后果。已在 SKILL.md §0 写明"prompt 给的 MONOLITH/WS 优先"。
+  - S0 标注到 12/15 时，子 Agent（`API error: Request timed out`）和 orchestrator（`Network error: Connection error`）先后因外部网络错误退出。已写入的 12 个端点（465 条出处）检查全部通过。
+- **run2**（续跑，只跑 S0，明确禁止重跑 `analyze_project`，否则会覆盖已写的标注）：补完剩下 3 个端点，子 Agent 自查 1 次通过。
+  - 过程中 `annotate_entry_point` 当场拒绝过 2 次：1 次是 JSON 结构写错，1 次是 `init-db.js` 行号引用偏了。两次都按报错改正后重试成功，写入时就拦住错误的设计生效了。
+  - orchestrator 在 spawn prompt 里额外要求子 Agent 先写一份 `status: in_progress` 的临时 `S0.json`，这超出了 agent 定义，但无害。
+- **独立复核**（`provenance.check_provenance`，不采信 agent 自述）：**PASS**。589 条出处全部通过，0 errors，0 incomplete，93 条业务规则（authorization 18、data_scope 17、error_handling 17、validation 15、computation 10、side_effect 10、other 6），16 个 `unknown`。74 个响应项全部被标注员改成了 `origin: llm`，因为每个响应都要补 `when`。
+- 剩下的 `unknown` 都有说明，没有猜：
+  - 受保护端点的 `Authorization` 头是否必填，取决于运行时的 `AUTH_DEV_MODE`；
+  - 若干只做了 falsy 检查就原样入库的字段，类型没有代码证据。
+
+### 需要如实注明的地方
+
+- **出处检查只能证明"引用的那一行确实存在，并且提到了这个符号"，证明不了规则本身写得对。** 抽查了 `POST /api/orders`、`GET /api/search`、`POST /api/auth/register` 的规则，没有发现错误。
+  标注员还写出了几条脚本不可能得到、对测试设计很有价值的规则，例如：
+  - 下单"PutItem 成功后删除购物车失败 → 返回 500，但订单已经落库，重试会生成重复订单"；
+  - `?q=` 重复传参会触发 TypeError，返回 500；
+  - Scan 不处理 `LastEvaluatedKey`，数据超过 1MB 时结果被静默截断。
+  
+  其余规则没有逐条人工核对。
+- 标注慢：run1 大约每个端点 4 分钟。
+- architect 还没有改成引用这些字段（K6）。所以在后续步骤接上之前，这些规格只对验证线的测试设计有用。

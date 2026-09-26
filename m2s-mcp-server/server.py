@@ -6,6 +6,8 @@ Registered in OpenHarness as `m2s-server`, so tool names resolve to:
     mcp__m2s-server__validate_sam
     mcp__m2s-server__run_gate
     mcp__m2s-server__merge_blueprint_key
+    mcp__m2s-server__annotate_entry_point
+    mcp__m2s-server__check_provenance
 
 Workspace resolution: all relative paths are resolved against $M2S_WORKSPACE
 (default: ./runs/todo-oh relative to this file's parent dir) so tool output
@@ -22,6 +24,7 @@ from mcp.server.fastmcp import FastMCP
 
 import wrap_m2s
 import m2s_merge
+import provenance
 
 # Only import gates lazily / guard for P0: gates.py is a P1 deliverable.
 try:
@@ -112,6 +115,51 @@ def merge_blueprint_key(key: str, value_json: str, mode: str = "append") -> str:
     except ValueError as exc:
         return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
     return json.dumps({"ok": True, **result}, ensure_ascii=False)
+
+
+@mcp.tool()
+def annotate_entry_point(method: str, path: str, field: str, value_json: str) -> str:
+    """Replace one spec field of one endpoint in storage/analysis_report.json.
+
+    This is how m2s-spec-annotator writes its annotations: one (endpoint,
+    field) at a time. The value is schema-checked and every `source`
+    ({file, line, symbol}) in it is provenance-checked before anything is
+    written; on any error nothing is written and the errors say exactly
+    which item and citation failed.
+
+    Args:
+        method: HTTP method of the entry point, e.g. "POST".
+        path: the entry point's path exactly as in analysis_report.json,
+            e.g. "/api/orders" or "/api/books/:id".
+        field: one of handler_location, auth, request, responses,
+            data_access, business_rules.
+        value_json: the FULL new value for that field (not a diff). Keep
+            script items you agree with unchanged (origin "script");
+            anything you add or modify must have origin "llm".
+
+    Returns: JSON string {ok, errors} on rejection, or {ok, entry_point,
+        field, annotated_fields, unknown_items}.
+    """
+    try:
+        result = provenance.annotate_entry_point(str(_workspace()), method, path, field, value_json)
+    except provenance.SpecError as exc:
+        return json.dumps({"ok": False, "errors": [str(exc)]}, ensure_ascii=False)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def check_provenance() -> str:
+    """Stage-1 gate for the spec fields in storage/analysis_report.json.
+
+    Checks that every cited source line exists and mentions its symbol
+    (within 2 lines), that every spec field matches its schema, and that
+    every endpoint is complete (request, responses incl. a success
+    response, auth, handler_location, at least one business rule).
+
+    Returns: JSON string {status: PASS|FAIL, errors, incomplete,
+        checked_sources, unknown_items, endpoints}.
+    """
+    return json.dumps(provenance.check_provenance(str(_workspace())), ensure_ascii=False)
 
 
 @mcp.tool()
