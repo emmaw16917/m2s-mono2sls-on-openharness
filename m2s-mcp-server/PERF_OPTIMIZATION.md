@@ -49,7 +49,7 @@
 | **L1b `send()` 层 mock** | `perf-tools/mock-sdk-shim.js` | 调用次数、顺序深度（`getCriticalPathDepth()`，确定性） | 毫秒数（sleep 被 Windows 时钟粒度量化）；SDK 自身的 CPU 开销（被跳过） | 是 |
 | **L1c HTTP 层 mock** | `perf-tools/http-shim.js` + `warm_cpu.js` | 热执行的 **CPU 部分**：SDK 序列化、签名、反序列化真实执行；能看出随 Scan 条数增长的成本 | Lambda 上的绝对值（本机 CPU 比 Lambda 按内存分到的快） | 是 |
 | **L2 `sam local`** | `sam local invoke/start-lambda/start-api` | 端到端能否跑通（功能验收） | 冷启动（sam 会把代码绑定挂载进容器，冷启动被拖到 1.4~2.2s）；Cognito（不模拟，handler 拿不到 `claims`） | 是（需要 Docker，并且要配好 `NO_PROXY`，见 §1.3） |
-| **L2′ RIE 直连** | `sam build` 后直接用 Lambda 运行时镜像起容器，`docker cp` 产物进去，读容器内的 `REPORT Duration` 和 rapid 的 `INIT REPORT`（`perf-tools/rie/`） | 真实 Linux + nodejs22 运行时里的热调用 Duration（按顺序深度分组）；init 的相对比较（不限 CPU、交替多次）；用 `--cpus` 发现"内存太小"的断崖 | 同一深度组内的细小差异；512MB 以上各档之间的差异；CPU 限额下的 init；arm64（本机只能 QEMU 模拟）；`Max Memory Used`（RIE 不统计） | 是（需要 Docker） |
+| **L2′ RIE 直连** | `sam build` 后直接用 Lambda 运行时镜像起容器，`docker cp` 产物进去，读容器内的 `REPORT Duration` 和 rapid 的 `INIT REPORT`（`perf-tools/rie/`） | 真实 Linux + nodejs22 运行时里的热调用 Duration（按顺序深度分组）；init 的相对比较（不限 CPU、交替多次）；用 `--cpus` 发现"内存太小"的断崖 | 同一深度组内的细小差异；512MB 以上各档之间的差异；CPU 限额下的 init；arm64（本机只能 QEMU 模拟）；`Max Memory Used`（RIE 不统计）；下游延迟是模拟的，每次调用固定延迟，局限见 `PERF_OPTIMIZATION_DESIGN.md` §2.1 | 是（需要 Docker） |
 | **L3 真实 AWS** | 一次性部署 / A/B 临时栈，读 CloudWatch `REPORT` | 真实的 Init/Duration、内存曲线、架构、价格 | 自动化闭环（分钟级部署、需要人工授权、要拆除） | **否** |
 
 ### 1.2 各层的噪声和分辨率（§5 的阈值都以此为依据）
