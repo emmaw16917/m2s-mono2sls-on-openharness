@@ -1,0 +1,4 @@
+{"id":"books-get-by-id-anon","function":"books-get-by-id","kind":"error","title":"no token -> 401",
+ "spec_refs":["GET /api/books/:id#auth"],
+ "request":{"method":"GET","path":"/api/books/book-001","identity":null},
+ "expect":{"status":401,"sdk_calls":{"total":0}}}

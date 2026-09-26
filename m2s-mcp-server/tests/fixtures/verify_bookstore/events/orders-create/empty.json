@@ -1,0 +1,4 @@
+{"id":"orders-create-empty","function":"orders-create","kind":"error","title":"empty books -> 400",
+ "spec_refs":["POST /api/orders#responses[0]"],
+ "request":{"method":"POST","path":"/api/orders","identity":{"sub":"u1"},"body":{"books":[]}},
+ "expect":{"status":400,"body":{"equals":{"error":"Missing or invalid books array"}},"sdk_calls":{"total":0}}}

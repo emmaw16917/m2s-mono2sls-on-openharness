@@ -142,6 +142,10 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 - **输入**：只有 `blueprint.json` 和 `analysis_report.json`，不看实现代码。
 - **产出**：`verification/test_plan.json`，也就是黑盒测试计划。它按规格出题：逐个端点列出正常路径、异常和边界用例，每个用例都写明**预期结果**（状态码、关键字段、预期的 SDK 调用序列），并注明对应的规格出处。
 - **兼任 architect 的交叉检查**：写不出预期结果的，说明规格不自洽，或者漏了端点。把问题写进报告，退回 architect。
+  - **不分 blocking 和 non_blocking，一律退回 architect 裁定**（K9）。
+  - 裁定写进 `blueprint.json` 的 `metadata.spec_resolutions`，按 issue id 一一对应。V1 回炉后按裁定补用例，用例的出处写 `blueprint:metadata.spec_resolutions[SI-x]`。
+  - "S1 → V1"的往返最多 2 轮。之后还没解决的 non_blocking 问题写进报告交给人；还有 blocking 问题就停止流水线。
+  - 主 Agent 自己不裁定规格问题。
 
 **测试实现**（第 1 次派发内完成，或者在第 2 次派发开始时完成）：
 - 测试事件：`verification/events/<function>/<case>.json`，每个事件都附带预期结果；
@@ -183,6 +187,8 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 3. **判断不了的，标为"未定"，交给人**，不去猜应该退回哪个阶段。
 
 退回的对象：测量工具或事件的问题，由验证线自己修；代码问题退回 code-developer；模板问题退回 sam-engineer；规格问题退回 architect。
+
+退回时，只传用**规格语言**写的缺陷描述：函数、`spec_refs`、按规格应该怎样（`expected_per_spec`）、实际怎样（`observed`）。**不传用例、fixture、断言和 `verification/` 下的路径**（K10）。
 
 ### 3.5 没有 Docker 时
 
@@ -246,6 +252,23 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 
 现有的实验脚本（`perf-tools/`）是这些工具的原型。
 
+**步骤 1 的实现（`verify.py` + `verify-tools/`）**：
+
+- **做了哪些工具**：`run_validate`、`run_coverage`、`run_equivalence`（`record` 记录基准，`diff` 做 H1 差分）。
+  `run_proxy_metrics` 和 `run_rie_verdict` 属于优化线，留到步骤 2。
+- **数据夹具是状态型的（K7）**：
+  - 用例写"各表里预置哪些条目"，断言响应、执行后的表状态、SDK 调用集合和发出的消息；
+  - DynamoDB 由 dynalite（纯 Node 实现）模拟；
+  - 函数里的 SDK 通过 `AWS_ENDPOINT_URL_DYNAMODB` / `_SQS` 指向一个本机代理。代理负责三件事：记录每次调用；按用例配置注入故障（`throttle`/`error`/`validation`/`conditional`/`network`）；转发给 dynalite，SQS 的 `SendMessage` 则由代理自己应答并记录。
+  - 故障注入和调用记录都在代理里，所以函数容器里**不需要**预加载 shim（只有收集覆盖率时预加载一个定时 `v8.takeCoverage()` 的小脚本）。
+- **用例按规格写，不按实现写**：
+  - HTTP 请求由工具转换成 API Gateway 事件：按模板匹配路径参数；路由配置了 Cognito authorizer 时，匿名请求直接返回网关的 401；已登录用户带上 claims。
+  - 表名和队列名用 blueprint 的 `logical_name`，由工具映射到模板里的资源。
+  - `sdk_calls` 可以只写表、不写操作名，因为 V1 写用例时不知道实现会选 GetItem 还是 Query。
+- **执行**：有 Docker 用 RIE 容器（代码 `docker cp` 进去），没有就在本机 Node 里跑（§3.5）；两种方式都基于 `sam build` 的产物。
+  在 bookstore-oh 上，两种方式的判定结果和覆盖率数字完全一致，这是 K3 那个对照实验的第一个数据点，样本很小。
+- **编排（K8）**：V1/V2 现在就插进了 m2s-migrate，v0 由主 Agent 在工作区里打 git tag。原 validator 的位置等其余拓扑调整，仍然留到步骤 3。
+
 ---
 
 ## 5. 推进计划
@@ -304,3 +327,7 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | K4 | 验证线自己修改测试资产，每次运行阶段 A 最多 2 轮，不占用实现线的回炉次数 | §4.1 |
 | K5 | 标注员通过新增的 MCP 工具 `annotate_entry_point` 逐端点写入，写入时就做结构和出处检查 | §2.1、§4.3 |
 | K6 | 步骤 0 只把 S0 接入 m2s-migrate 的 P0 之后；architect 引用规格字段的改动（§2.2）留到后续步骤 | §5 |
+| K7 | 测试数据用状态型夹具：dynalite 模拟 DynamoDB，外面加一层记录调用、注入故障的代理；RIE 和本机 Node 两种执行方式共用 | §4.3 |
+| K9 | V1 提的 spec_issues 不分 blocking 和 non_blocking，一律退回 architect，裁定写进 `metadata.spec_resolutions`；主 Agent 不自己裁定 | §3.2 |
+| K10 | 主 Agent 给实现线（S1–S4）的 prompt 里禁止写任何测试相关的内容；V2 失败回炉时，只转发用规格语言写的缺陷描述 | §3.4 |
+| K8 | 步骤 1 就把 V1（S1 之后、S2 之前）和 V2（S4 之后）插进 m2s-migrate，并由主 Agent 打 v0 tag；其余拓扑调整留到步骤 3 | §1、§5 |

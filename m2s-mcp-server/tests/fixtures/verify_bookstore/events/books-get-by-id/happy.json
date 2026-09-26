@@ -1,0 +1,5 @@
+{"id":"books-get-by-id-happy","function":"books-get-by-id","kind":"happy","title":"existing book is returned",
+ "spec_refs":["GET /api/books/:id#responses[0]"],
+ "request":{"method":"GET","path":"/api/books/book-001","identity":{"sub":"u1"}},
+ "fixtures":{"Books":[{"id":"book-001","name":"Clean Code","author":"Robert C. Martin","category":"programming","price":89}]},
+ "expect":{"status":200,"body":{"subset":{"id":"book-001","name":"Clean Code"}},"sdk_calls":{"includes":[{"op":"GetItem","table":"Books","count":1}],"total":1}}}

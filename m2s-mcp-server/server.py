@@ -8,6 +8,9 @@ Registered in OpenHarness as `m2s-server`, so tool names resolve to:
     mcp__m2s-server__merge_blueprint_key
     mcp__m2s-server__annotate_entry_point
     mcp__m2s-server__check_provenance
+    mcp__m2s-server__run_validate
+    mcp__m2s-server__run_coverage
+    mcp__m2s-server__run_equivalence
 
 Workspace resolution: all relative paths are resolved against $M2S_WORKSPACE
 (default: ./runs/todo-oh relative to this file's parent dir) so tool output
@@ -25,6 +28,7 @@ from mcp.server.fastmcp import FastMCP
 import wrap_m2s
 import m2s_merge
 import provenance
+import verify
 
 # Only import gates lazily / guard for P0: gates.py is a P1 deliverable.
 try:
@@ -160,6 +164,73 @@ def check_provenance() -> str:
         checked_sources, unknown_items, endpoints}.
     """
     return json.dumps(provenance.check_provenance(str(_workspace())), ensure_ascii=False)
+
+
+def _verify_call(fn, *args, **kwargs) -> str:
+    try:
+        return json.dumps(fn(str(_workspace()), *args, **kwargs), ensure_ascii=False)
+    except verify.VerifyError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
+def run_validate(functions: list[str] | None = None, cases: list[str] | None = None,
+                 dry_run: bool = False, mode: str = "auto") -> str:
+    """Run the verification test cases (verification/events/<function>/*.json)
+    and judge each one against its expectations.
+
+    Args:
+        functions: only run cases of these blueprint function names.
+        cases: only run these case ids.
+        dry_run: only check the test assets (format, names, spec_refs,
+            fault scenarios) against the blueprint -- no execution, no
+            template needed. This is what V1 uses before any code exists.
+        mode: "auto" (RIE containers if Docker is available, else local
+            Node), "rie" or "local".
+
+    A full run (no functions/cases filter, not dry_run) also writes
+    verification/verdict_A.json, the stage-A verdict. The first run does a
+    `sam build` (minutes); later runs reuse it until output/ changes.
+
+    Returns: JSON string {status: PASS|FAIL, total, passed, failed,
+        failures: [{id, mismatches, triage_hint, logs_tail, sdk_calls}],
+        mode, disclaimer} or {status, dry_run, schema_errors, ...}.
+    """
+    return _verify_call(verify.run_validate, functions, cases, dry_run, mode)
+
+
+@mcp.tool()
+def run_coverage(functions: list[str] | None = None, mode: str = "auto") -> str:
+    """Run the test cases with V8 coverage and report branch/statement
+    coverage per function. Every uncovered branch and statement (file, line,
+    code) is written to verification/coverage/<function>.json -- use it to
+    add white-box cases.
+
+    Returns: JSON string {mode, functions: {name: {statements_pct,
+        branches_pct, functions_pct, files, uncovered_count}}}.
+    """
+    return _verify_call(verify.run_coverage, functions, mode)
+
+
+@mcp.tool()
+def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str] | None = None,
+                    runtime: str = "auto") -> str:
+    """Fault-injection runs (verification/faults/*.json).
+
+    Args:
+        mode: "record" stores every scenario's observations (SDK call
+            multiset, return value / thrown error / batchItemFailures,
+            messages, table state) as verification/fault_baseline_<label>.json.
+            "diff" reruns them and compares with that file: H1 (a) same
+            calls, (b) same externally visible outcome.
+        label: baseline label, "v0" by default.
+        functions: only scenarios of these functions.
+        runtime: "auto", "rie" or "local".
+
+    Returns: JSON string {status: RECORDED|EQUIVALENT|DIFFERENT|..., runs,
+        differences, infra_errors}.
+    """
+    return _verify_call(verify.run_equivalence, mode, label, functions, runtime)
 
 
 @mcp.tool()

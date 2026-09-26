@@ -78,6 +78,23 @@ model: inherit
 - `<WS>/storage/analysis_report.json`
 - `<WS>/storage/symbol_table.json`
 - 回炉场景：spawn prompt 里会附带上一次的工作报告 + gate 报告全文，先读懂上次具体哪里错了，针对性修正。
+- 规格问题回炉：spawn prompt 里会附带验证线提出的 `spec_issues`（每条有 `id`，例如 `SI-3`）。处理方法见下一节。
+
+## 回炉：裁定验证线提出的 spec_issues
+
+验证线在只看规格出题时，发现有些行为规格没说清，写不出预期（例如"SendMessage 失败时接口返回什么"）。这些问题**必须由你裁定**，别的 agent 不会替你决定。
+
+1. 先读 `storage/blueprint.json` 现有的内容，确认你是在修改已有设计，而不是从头重做。
+2. 对每一条 issue 做出**具体、可以判定**的裁定。例如"SendMessage 单独 try/catch，失败只记日志，仍返回 200 `{message, orderId}`"；**不要写"由实现自行决定"**。
+   - 如果裁定是"保持单体行为"，要写明单体的具体行为是什么，引用 `analysis_report.json` 里的出处；
+   - 如果需要改动设计（例如函数的 `notes`、表结构），就用 `merge_blueprint_key(mode="replace")` 改对应的字段。
+3. 把全部裁定写进 `metadata.spec_resolutions`：先读出当前完整的 `metadata` 对象，加上或更新这个列表，再用 `merge_blueprint_key(key="metadata", mode="replace")` 整个写回去。每条的格式：
+   ```json
+   {"issue_id": "SI-3", "decision": "具体裁定", "applies_to": ["orders-create"], "rationale": "理由，引用规格出处"}
+   ```
+   - 每一条 issue 都要有对应的一条，`issue_id` 和验证线给的一致；
+   - 以前回炉写过的裁定要保留，不要删。
+4. 照常跑 `run_gate(phase="blueprint")` 自查，再写工作报告，在 `issues` 里逐条列出你的裁定。
 
 ## 输出契约：逐字段调用 merge_blueprint_key 构建 blueprint.json
 

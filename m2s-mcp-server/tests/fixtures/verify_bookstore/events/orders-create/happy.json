@@ -1,0 +1,7 @@
+{"id":"orders-create-happy","function":"orders-create","kind":"happy","title":"checkout 2 books",
+ "spec_refs":["POST /api/orders#business_rules[3]"],
+ "request":{"method":"POST","path":"/api/orders","identity":{"sub":"u1"},"body":{"books":[{"bookId":"b1","price":10,"quantity":2},{"bookId":"b2","price":5,"quantity":1}]}},
+ "fixtures":{"Cart":[{"userId":"u1","bookId":"b1","quantity":2,"price":10},{"userId":"u1","bookId":"b2","quantity":1,"price":5},{"userId":"u1","bookId":"b3","quantity":1,"price":7}]},
+ "expect":{"status":200,"body":{"subset":{"message":"Order created successfully"},"types":{"orderId":"string"}},
+   "tables_after":{"Orders":{"count":1,"contains":[{"userId":"u1"}]},"Cart":{"count":1,"contains":[{"bookId":"b3"}]}},
+   "messages":{"BestsellerUpdateQueue":{"count":1,"contains":[{"books":[{"bookId":"b1","quantity":2},{"bookId":"b2","quantity":1}]}]}}}}

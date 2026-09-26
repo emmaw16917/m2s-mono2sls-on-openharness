@@ -4,3 +4,6 @@ __pycache__/
 # M2S MCP server runtime workspace (regenerable pipeline output, not source)
 m2s-mcp-server/runs/
 Mono2Sls-artifacts/M2S/runs/
+
+# verify-tools npm dependencies (installed by `npm install` in that dir)
+m2s-mcp-server/verify-tools/node_modules/

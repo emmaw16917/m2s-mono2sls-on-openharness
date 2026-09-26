@@ -331,3 +331,101 @@ run7 证明：网络稳定时，这套流水线可以在一个会话里从 P0 �
   其余规则没有逐条人工核对。
 - 标注慢：run1 大约每个端点 4 分钟。
 - architect 还没有改成引用这些字段（K6）。所以在后续步骤接上之前，这些规格只对验证线的测试设计有用。
+
+## 流水线重构步骤 1：验证线（2026-09-26）
+
+对应 `PIPELINE_REDESIGN.md` §3、§4.3、§5 步骤 1。OpenHarness 的模型同时从 `qwen3.8-flash` 换成了 `qwen3.8-max`，`timeout` 从 30s 调到 120s（max 连一次最简单的调用都要约 11s）。改前备份为 `settings.json.bak-pre-qwen-max`。
+
+### 产出
+
+- **`verify.py` + `verify-tools/`**：三个 MCP 工具 `run_validate` / `run_coverage` / `run_equivalence`（K7：状态型夹具）。
+  - 执行引擎 `verify-tools/controller.js`：
+    - 启动 dynalite；
+    - 在前面加一层代理：记录每次 SDK 调用、按用例注入故障（`throttle`/`error`/`validation`/`conditional`/`network`）、转发 DynamoDB 请求、自己应答 SQS 请求；
+    - 函数在 RIE 容器（代码 `docker cp` 进去）或本机 Node 里运行；
+    - 需要覆盖率时，用 V8 收集、c8 转换。
+  - Python 侧：
+    - 基于 `sam build` 产物执行（顺带做一次打包检查）；
+    - 把规格层面的用例转换成 Lambda 事件，并模拟 API Gateway：路径参数、Cognito authorizer 对匿名请求直接返回 401、claims；
+    - 把 blueprint 里的表名、队列名映射到模板资源；
+    - 判定预期，失败时做机械初筛（`triage_hint`）；
+    - H1 差分之前，先把 UUID、时间戳这类不确定值归一化。
+- **`agents/m2s-verifier.md`**：同一个定义派发两次。
+  - V1：只看规格，写测试计划、用例和故障场景；兼任 architect 的交叉检查。
+  - V2：执行，失败分诊，白盒补测，记录故障行为基准。
+- **`m2s-migrate/SKILL.md`**（K8）：
+  - V1 插在 S1 之后、S2 之前，V2 插在 S4 之后；
+  - 写明验证线的回炉规则（按 routing 退回，每个阶段最多 2 次；判断不了的交给人）；
+  - 验收改为三条（`gate(final)`、consistency、`verdict_A.json`），通过后在 WS 的独立 git 仓库里打 `v0` tag。
+- `tests/test_verify.py`：7 个单元测试，外加 1 个需手动开启的集成测试（`M2S_VERIFY_INTEGRATION=1`：真实的 sam build + dynalite + 本机 Node）。
+
+### 先在 bookstore-oh 上试工具（测试用的工作区，6 个手写用例 + 3 个故障场景）
+
+- RIE 和本机 Node 两种执行方式的判定结果**完全一致**，覆盖率数字也一致。这是 K3 对照实验的第一个数据点，样本很小。
+- 负对照：
+  - 把 `orders-create` 的 `SendMessage` 去掉之后，`run_equivalence(diff)` 报出了 H1 (a)(b) 两条差异，`run_validate` 也判为失败（"expected 1 message, got 0"）；
+  - 把改动撤回之后，diff 结果是 `EQUIVALENT`。
+
+### bookstore-v1 全链结果（从 S1 开始；P0/S0 用步骤 0 的产物）
+
+- **S1–S4**：每一步的 gate 都是第 1 次就通过；`gate(final)` PASS，consistency PASS。
+- **V1**：
+  - 84 个用例（happy 22 / error 30 / boundary 32），覆盖全部 12 个函数；41 个故障场景；`dry_run` 第 1 次就通过。
+  - 另外提了 9 条 non_blocking 的 `spec_issues`，都是真实存在的规格缺口。例如 blueprint 要求 SendMessage 必须 await，但没有规定 SendMessage 失败时该返回什么；重复的 `?q=` 在 API Gateway 下已经不可能再触发 500。
+- **V2**：
+  - 首轮 83/84。唯一的失败被正确分诊为 `event` 类：用例对 `{total, hits}` 这种对象响应用了只对顶层数组生效的 `contains`。
+  - V2 自己修了 1 轮，修法没有放宽断言：逐条目的精确断言挪到了 3 个"只命中 1 本书"的用例里，用 `equals` 断言。
+  - 按覆盖率补了 12 个白盒用例，最终 **96/96**。
+- **覆盖率**：语句 86.5%–100%，分支 44%–96%；v1 只报告，不设门槛。
+- **故障行为基准**：41 个场景 / 65 次观测 / 0 infra 错误。
+- **v0**：WS 独立仓库里的 commit `955d8a2`，tag `v0`。
+- **独立复核**（不采信 agent 自述）：
+  - 我自己跑 `run_validate()`，结果 PASS 96/96（RIE）；
+  - S4 之后 `output/` 下没有任何文件被修改过；
+  - 上层仓库的 HEAD 和 tag 都没有变化。
+
+### 过程中发现并修掉的问题
+
+1. **`sam build` 在 MCP 服务器里卡死**：
+   - 现象：卡住的 `python sam.EXE build` 只占 9.6MB，停在解释器启动阶段；它的祖父进程是 `server.py`。
+   - 原因：和 `validate_sam` 当年遇到的 cfn-lint 问题一样，子进程继承了 MCP 的 stdio stdin。我手动测试时没有经过 MCP 服务器，所以没复现。
+   - 修法：`verify.py` 里所有子进程都统一走 `_run()`，设置 `stdin=DEVNULL`。修完后用真实的 MCP stdio 客户端跑了一次（新的构建目录）：40s，6/6 通过。
+   - 当时正在跑的 V2 用的是已经加载进内存的旧代码，所以我停掉了那次运行，从 V2 续跑。S1–S4 的产物都在。
+2. **`gate(final)` 会放过 `IN_PROGRESS` / `FAIL` 的 consistency_report**：原来只检查有没有 `status` 这个键。现在要求 `status == "PASS"`，并加了回归测试。
+   - 为什么现在才暴露：各 agent 开始先写一份临时报告（`in_progress`），这个习惯来自 OpenHarness memory 里 orchestrator 自己存的一条笔记。
+3. **SKILL.md §6 的 `git init # 已经是仓库就跳过`**：WS 在上层仓库里面，`git rev-parse` 会回答"是仓库"，接下来的 add/commit/tag 就会打到上层仓库（上层本来就有另一个 `v0` tag）。
+   - 这次 orchestrator 直接执行了 `git init`，没有出事。
+   - 已改为只看 `WS/.git` 目录是否存在。
+
+### 需要如实注明的地方
+
+- V1 的 9 条 spec_issues 都是 non_blocking，SKILL.md 没有规定这种情况怎么处理。orchestrator 自己决定把其中 3 条按"保持单体语义"的解读直接写进了 S2 的 prompt，**没有退回 architect**。
+  这是验证线的信息流到了实现线。内容只是规格澄清，不涉及用例，但不符合"出题和答题分开"的要求，需要在规则里补上。
+- 用例的断言语言还有缺口：`contains` 只能用在顶层数组上，没法对 `hits` 这类嵌套数组做"与顺序无关的包含"判断。这次 V2 绕过去了，以后应该补一个带路径的写法。
+- V1 写的故障场景里，有一个 `kind: error` + `nth: 2` 的场景被 SDK 的重试吸收了，没有达到场景描述里的"500"意图（V2 发现后记录了下来）。
+  可重试的故障（`error`/`throttle`/`network`）只命中一次，效果就是"重试后成功"。agent 定义里写了哪些故障会重试，但 V1 仍然用错了。
+
+### 补充规则：规格问题的裁定权，以及实现线 prompt 的隔离（2026-09-26，K9/K10）
+
+起因：bookstore-v1 这次运行里，V1 提的 9 条 spec_issues 都是 non_blocking，规则里没有规定这种情况怎么处理。主 Agent 于是自己裁定了其中 3 条：
+- 500 响应体的形状；
+- SendMessage 失败时照样返回 200；
+- SQS 消费者吞掉失败。
+
+它把裁定直接写进了 S2 的 prompt，同时还写了"V1 已按严格保留单体行为写预期，'改进'会被判为 code 类失败"。结果有三个问题：
+- 这些决定没有落进 blueprint；
+- 对应的三处行为没有被测试覆盖；
+- 实现线被告知了题目是怎么出的。
+
+新规则：
+- **K9**：V1 的 spec_issues 不分 severity，一律退回 architect 裁定。
+  - 裁定写进 `metadata.spec_resolutions`，格式是 `{issue_id, decision, applies_to, rationale}`；
+  - V1 回炉后按裁定补用例，`run_validate` 会检查 `blueprint:metadata.spec_resolutions[SI-x]` 这种出处确实存在；
+  - "S1 → V1"往返最多 2 轮。
+- **K10**：主 Agent 给 S1–S4 的 prompt 里禁止写测试相关的内容，包括用例、预期、`verification/` 路径、验证线的情况，以及它自己对规格的裁定。
+  - V2 判定失败回炉时，只转发 routing 里用规格语言写的 `function`/`spec_refs`/`expected_per_spec`/`observed`；
+  - `evidence_cases` 只给主 Agent 和人看。
+
+改动的文件：`agents/m2s-verifier.md`（issue 带 id/status、V1 回炉流程、routing 格式）、`agents/m2s-architect.md`（新增"裁定 spec_issues"一节）、`m2s-migrate/SKILL.md` §2/§3、`verify.py`（检查 spec_resolutions 类出处）、`tests/test_verify.py`。
+
+**bookstore-v1 的 v0 是在旧规则下产生的**：那 3 处行为是主 Agent 裁定的，没有测试覆盖；其余 6 条 issue 从来没有人裁定过。要让 v0 符合新规则，需要从 S1 回炉开始重跑。

@@ -1,0 +1,2 @@
+{"id":"orders-delete-throttle-once","description":"first Cart delete throttled once (SDK retries)","function":"orders-create","cases":["orders-create-happy"],
+ "rules":[{"match":{"op":"DeleteItem","table":"Cart"},"nth":1,"kind":"throttle"}]}
