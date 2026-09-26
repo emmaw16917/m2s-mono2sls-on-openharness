@@ -530,6 +530,37 @@ def sam_build(ws: Path) -> Path:
     return build_dir
 
 
+def _git(ws: Path, *args: str) -> str:
+    p = _run(["git", "-C", str(ws), *args], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if p.returncode != 0:
+        raise VerifyError(f"git {' '.join(args)} failed: {p.stderr.strip()}")
+    return p.stdout.strip()
+
+
+def has_own_repo(ws: Path) -> bool:
+    return (ws / ".git").is_dir()
+
+
+def export_ref(ws: Path, ref: str) -> Path:
+    """Materialize <ref>:output of the workspace repo into
+    TMP_ROOT/<ws>/versions/<sha>/output and return that root."""
+    import tarfile
+    if not has_own_repo(ws):
+        raise VerifyError(f"{ws} has no .git of its own; the v0 snapshot (SKILL.md §6) must exist first")
+    sha = _git(ws, "rev-parse", "--short=12", ref)
+    root = TMP_ROOT / re.sub(r"[^A-Za-z0-9_-]", "_", ws.name) / "versions" / sha
+    if not (root / "output" / "template.yaml").exists():
+        root.mkdir(parents=True, exist_ok=True)
+        tar = root / "src.tar"
+        p = _run(["git", "-C", str(ws), "archive", "--format=tar", "-o", str(tar), ref, "output"], capture_output=True, text=True)
+        if p.returncode != 0:
+            raise VerifyError(f"git archive {ref} failed: {p.stderr}")
+        with tarfile.open(tar) as t:
+            t.extractall(root)
+        tar.unlink()
+    return root
+
+
 def _run_controller(model: Model, build_dir: Path, runs: list[dict[str, Any]], coverage: bool, mode: str, label: str) -> dict[str, Any]:
     out_dir = TMP_ROOT / re.sub(r"[^A-Za-z0-9_-]", "_", model.ws.name) / "runs" / f"{time.strftime('%Y%m%d-%H%M%S')}-{label}"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -553,7 +584,8 @@ def _run_controller(model: Model, build_dir: Path, runs: list[dict[str, Any]], c
     return raw
 
 
-def _prepare_runs(model: Model, cases: list[dict[str, Any]], faults_for: dict[str, list[dict]] | None = None) -> list[dict[str, Any]]:
+def _prepare_runs(model: Model, cases: list[dict[str, Any]], faults_for: dict[str, list[dict]] | None = None,
+                  pinned: dict[str, list[dict]] | None = None) -> list[dict[str, Any]]:
     runs = []
     for c in cases:
         event, gw = build_event(model, c)
@@ -567,7 +599,10 @@ def _prepare_runs(model: Model, cases: list[dict[str, Any]], faults_for: dict[st
             for cid in scen["cases"]:
                 base = dict(by_id[cid])
                 base["run_key"] = f"{scen_id}::{cid}"
-                base["faults"] = [_resolve_rule(model, r) for r in scen["rules"]]
+                if pinned is not None:
+                    base["faults"] = pinned.get(base["run_key"], [])
+                else:
+                    base["faults"] = [_resolve_rule(model, r) for r in scen["rules"]]
                 runs.append(base)
     return runs
 
@@ -585,6 +620,7 @@ def _resolve_rule(model: Model, rule: dict[str, Any]) -> dict[str, Any]:
 # Judging
 # ---------------------------------------------------------------------------
 
+IDEMPOTENT_OPS = {"GetItem", "BatchGetItem", "Query", "Scan", "PutItem", "DeleteItem"}
 _UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
 
 
@@ -759,15 +795,36 @@ def normalize(v: Any, now_ms: float | None = None) -> Any:
 
 
 def _observation(raw: dict[str, Any]) -> dict[str, Any]:
-    """What H1 compares: (a) the multiset of calls, (b) the externally visible outcome."""
-    calls = sorted((json.dumps(normalize({k: c.get(k) for k in ("op", "table", "queue", "index", "key", "item", "update", "values", "fault")}), sort_keys=True)
-                    for c in raw.get("calls") or []))
+    """What H1 compares: (a) the multiset of calls that took effect -- faulted
+    attempts and calls the backend rejected changed nothing, so retries do
+    not count twice; (b) the externally visible outcome."""
+    effective = [c for c in raw.get("calls") or [] if not c.get("fault") and not c.get("backend_error")]
+    encoded = [(c.get("op"), json.dumps(normalize({k: c.get(k) for k in ("op", "table", "queue", "index", "key", "item", "update", "values")}), sort_keys=True))
+               for c in effective]
+    # "操作集合": repeating an idempotent operation (a read, the same Put,
+    # a Delete) changes nothing, so those compare as a set; UpdateItem (ADD),
+    # messages and multi-item writes keep every occurrence.
+    idem = sorted({e for op, e in encoded if op in IDEMPOTENT_OPS})
+    other = sorted(e for op, e in encoded if op not in IDEMPOTENT_OPS)
+    calls = sorted(idem + other)
     result = raw.get("result")
     outcome = {"error": (raw.get("error") or {}).get("type"), "result": normalize(result),
                "messages": sorted(json.dumps(normalize(m), sort_keys=True) for m in raw.get("messages") or []),
                "tables_after": {t: sorted((normalize(i) for i in items), key=lambda x: json.dumps(x, sort_keys=True))
                                 for t, items in sorted((raw.get("tables_after") or {}).items())}}
-    return {"calls": [json.loads(c) for c in calls], "outcome": outcome}
+    return {"calls": [json.loads(c) for c in calls], "outcome": outcome,
+            "attempts": len(raw.get("calls") or []), "calls_after_return": sum(1 for c in raw.get("calls") or [] if c.get("after_return")),
+            "faults_applied": _pins(raw)}
+
+
+def _pins(raw: dict[str, Any]) -> list[dict[str, Any]]:
+    """The faults a run actually applied, as rules pinned to the concrete
+    operation (op, table, identity, n-th attempt on it) instead of "the n-th
+    matching call" -- so the same operations fail in a version whose call
+    order differs."""
+    return [{"match": {"op": c["op"], "table": c.get("table") or c.get("queue"), "identity": c.get("identity", "")},
+             "nth": c.get("occurrence", 1), "kind": c["fault"]}
+            for c in raw.get("calls") or [] if c.get("fault")]
 
 
 # ---------------------------------------------------------------------------
@@ -839,7 +896,58 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
     return summary
 
 
-def run_coverage(workspace: str, functions: list[str] | None = None, mode: str = "auto") -> dict[str, Any]:
+def _changed_lines(ws: Path, ref: str) -> dict[str, dict[str, set[int]]]:
+    """{function: {path-inside-function-dir: {new line numbers}}} for every
+    line under output/lambdas that differs from <ref> (added or modified;
+    untracked files count as fully changed)."""
+    def git(*args: str) -> str:
+        p = _run(["git", "-C", str(ws), *args], capture_output=True, text=True, encoding="utf-8", errors="replace")
+        if p.returncode != 0:
+            raise VerifyError(f"git {' '.join(args)} failed: {p.stderr.strip()}")
+        return p.stdout
+    out: dict[str, dict[str, set[int]]] = {}
+
+    def add(path: str, lines: set[int]) -> None:
+        parts = path.split("/")
+        if len(parts) < 5 or parts[:2] != ["output", "lambdas"]:
+            return
+        out.setdefault(parts[3], {}).setdefault("/".join(parts[4:]), set()).update(lines)
+
+    cur = None
+    for line in git("diff", "-U0", ref, "--", "output/lambdas").splitlines():
+        if line.startswith("+++ "):
+            cur = line[6:] if line.startswith("+++ b/") else None
+        elif line.startswith("@@") and cur:
+            m = re.match(r"@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@", line)
+            if m:
+                start, n = int(m.group(1)), int(m.group(2) or 1)
+                add(cur, set(range(start, start + n)))
+    for path in git("ls-files", "--others", "--exclude-standard", "--", "output/lambdas").splitlines():
+        n = len((ws / path).read_text(encoding="utf-8", errors="ignore").splitlines())
+        add(path, set(range(1, n + 1)))
+    return out
+
+
+def _changed_coverage(final_json: Path, logical: str, changed: dict[str, set[int]]) -> dict[str, Any]:
+    data = _read_json(final_json)
+    covered, uncovered = [], []
+    for fpath, fc in data.items():
+        rel = fpath.replace("\\", "/").split(f"/{logical}/", 1)[-1]
+        lines = changed.get(rel)
+        if not lines:
+            continue
+        src = Path(fpath).read_text(encoding="utf-8", errors="ignore").splitlines() if Path(fpath).exists() else []
+        for ln in sorted(lines):
+            hits = [fc["s"][sid] for sid, loc in fc["statementMap"].items() if loc["start"]["line"] <= ln <= loc["end"]["line"]]
+            if not hits:
+                continue  # not executable (comment, brace, blank)
+            (covered if any(h > 0 for h in hits) else uncovered).append(
+                {"file": rel, "line": ln, "code": src[ln - 1].strip()[:160] if 0 < ln <= len(src) else ""})
+    return {"changed_executable_lines": len(covered) + len(uncovered), "covered": len(covered), "uncovered": uncovered}
+
+
+def run_coverage(workspace: str, functions: list[str] | None = None, mode: str = "auto",
+                 changed_since: str | None = None) -> dict[str, Any]:
     ws = Path(workspace)
     model = Model(ws)
     selected = _select(load_cases(ws), functions, None)
@@ -859,10 +967,25 @@ def run_coverage(workspace: str, functions: list[str] | None = None, mode: str =
             continue
         per_fn[name] = _summarize_coverage(Path(cov["report_dir"]) / "coverage-final.json", Path(model.functions[name]["logical"]))
         (out / f"{name}.json").write_text(json.dumps(per_fn[name], indent=2, ensure_ascii=False), encoding="utf-8")
+    changed_report = None
+    if changed_since:
+        changed = _changed_lines(ws, changed_since)
+        changed_report = {}
+        for name, files in changed.items():
+            cov = (raw["functions"].get(name) or {}).get("coverage") or {}
+            if name not in model.functions:
+                continue
+            if not cov.get("report_dir"):
+                changed_report[name] = {"error": "function was not run (no test cases selected for it)"}
+                continue
+            changed_report[name] = _changed_coverage(Path(cov["report_dir"]) / "coverage-final.json", model.functions[name]["logical"], files)
     summary = {"mode": mode, "functions": {n: {k: v for k, v in s.items() if k != "uncovered"} | {"uncovered_count": len(s.get("uncovered", []))}
                                            for n, s in per_fn.items()},
                "details": "verification/coverage/<function>.json lists every uncovered branch/statement with its line",
                "disclaimer": LOCAL_DISCLAIMER if mode == "local" else ""}
+    if changed_report is not None:
+        summary["changed_lines"] = {"since": changed_since, "functions": changed_report,
+                                    "all_covered": all(not r.get("uncovered") and not r.get("error") for r in changed_report.values())}
     (out / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
     return summary
 
@@ -904,12 +1027,19 @@ def _summarize_coverage(final_json: Path, logical: Path) -> dict[str, Any]:
 
 
 def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", functions: list[str] | None = None,
-                    runtime: str = "auto") -> dict[str, Any]:
-    """record: run every fault scenario and store the observations as
-    verification/fault_baseline_<label>.json. diff: run them again and compare
-    with that baseline -- H1 (a) same multiset of SDK calls, (b) same
-    externally visible outcome (return value / thrown error /
-    batchItemFailures / messages / table state)."""
+                    runtime: str = "auto", baseline_ref: str | None = "v0") -> dict[str, Any]:
+    """record: run every fault scenario on the working tree and store the
+    observations as verification/fault_baseline_<label>.json.
+
+    diff: H1 check of the working tree against baseline_ref (a git ref of the
+    workspace repo, default v0). The baseline version is rebuilt and run
+    first; the faults it actually applied are then pinned to the same
+    concrete operations in the working-tree run, so a change of call order
+    (e.g. parallelization) does not move a fault onto a different item.
+    H1 (a): same multiset of calls that took effect; (b): same externally
+    visible outcome (return value / thrown error / batchItemFailures /
+    messages / table state). Without a workspace repo it falls back to the
+    stored baseline file and the original n-th-call rules."""
     if mode not in ("record", "diff"):
         raise VerifyError("mode must be 'record' or 'diff'")
     ws = Path(workspace)
@@ -923,16 +1053,20 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
     if errs:
         return {"status": "FAIL", "schema_errors": errs}
     scen = {f["id"]: f for f in faults}
-    needed = [by_id[cid] for f in faults for cid in f["cases"]]
+    needed = list({cid: by_id[cid] for f in faults for cid in f["cases"]}.values())
     runtime = _mode(runtime)
-    build_dir = sam_build(ws)
-    # The unfaulted run of each case is part of the baseline too.
-    raw = _run_controller(model, build_dir, _prepare_runs(model, list({c["id"]: c for c in needed}.values()), scen), coverage=False, mode=runtime, label=f"equiv-{mode}")
-    extra = _run_controller(model, build_dir, _prepare_runs(model, list({c["id"]: c for c in needed}.values())), coverage=False, mode=runtime, label=f"equiv-{mode}-nofault")
-    obs = {r["run_key"]: _observation(r) for r in raw["cases"] + extra["cases"]}
-    infra = {r["run_key"]: r["infra_error"] for r in raw["cases"] + extra["cases"] if r.get("infra_error")}
+
+    def run_version(m: Model, root: Path, pinned: dict | None, tag: str) -> tuple[dict, dict]:
+        build = sam_build(root)
+        raw = _run_controller(m, build, _prepare_runs(m, needed, scen, pinned), coverage=False, mode=runtime, label=f"equiv-{tag}")
+        extra = _run_controller(m, build, _prepare_runs(m, needed), coverage=False, mode=runtime, label=f"equiv-{tag}-nofault")
+        rs = raw["cases"] + extra["cases"]
+        return {r["run_key"]: r for r in rs}, {r["run_key"]: r["infra_error"] for r in rs if r.get("infra_error")}
+
     path = _vdir(ws) / f"fault_baseline_{label}.json"
     if mode == "record":
+        raws, infra = run_version(model, ws, None, "record")
+        obs = {k: _observation(r) for k, r in raws.items()}
         doc = {"label": label, "runtime": runtime, "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
                "scenarios": {k: {"description": v.get("description", ""), "function": v["function"], "cases": v["cases"], "rules": v["rules"]} for k, v in scen.items()},
                "observations": obs, "infra_errors": infra,
@@ -940,19 +1074,46 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
         path.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
         return {"status": "RECORDED" if not infra else "RECORDED_WITH_INFRA_ERRORS", "runtime": runtime, "path": str(path.relative_to(ws)),
                 "runs": len(obs), "infra_errors": infra, "disclaimer": LOCAL_DISCLAIMER if runtime == "local" else ""}
-    if not path.exists():
-        raise VerifyError(f"{path} not found -- record the baseline first (mode='record')")
-    base = _read_json(path)["observations"]
+
+    if baseline_ref and has_own_repo(ws):
+        base_root = export_ref(ws, baseline_ref)
+        base_model = Model(base_root)
+        base_raws, base_infra = run_version(base_model, base_root, None, "base")
+        base = {k: _observation(r) for k, r in base_raws.items()}
+        pinned = {k: v["faults_applied"] for k, v in base.items()}
+        # Stability check: the baseline run again with the same pinned faults;
+        # runs whose two baseline observations differ are measurement noise,
+        # not evidence against the change.
+        again_raws, again_infra = run_version(base_model, base_root, pinned, "base2")
+        again = {k: _observation(r) for k, r in again_raws.items()}
+        unstable = sorted(k for k in base if k in again and (base[k]["calls"] != again[k]["calls"] or base[k]["outcome"] != again[k]["outcome"]))
+        base_infra = {**base_infra, **{f"rerun:{k}": v for k, v in again_infra.items()}}
+        now_raws, infra = run_version(model, ws, pinned, "cand")
+        baseline_desc = f"{baseline_ref} ({_git(ws, 'rev-parse', '--short', baseline_ref)}), re-run now; its faults pinned to the same operations in the working tree"
+        infra = {**{f"baseline:{k}": v for k, v in base_infra.items()}, **infra}
+    else:
+        unstable = []
+        if not path.exists():
+            raise VerifyError(f"{path} not found and no workspace repo to rebuild {baseline_ref} from")
+        base = _read_json(path)["observations"]
+        now_raws, infra = run_version(model, ws, None, "cand")
+        baseline_desc = f"{path.relative_to(ws)} (stored; n-th-call fault rules, order-sensitive)"
+    obs = {k: _observation(r) for k, r in now_raws.items()}
     diffs = []
     for key, now in obs.items():
         before = base.get(key)
+        if key in unstable:
+            continue
         if before is None:
             diffs.append({"run": key, "h1": "n/a", "detail": "not in baseline (new scenario or case)"})
             continue
         if now["calls"] != before["calls"]:
-            diffs.append({"run": key, "h1": "a", "detail": "different SDK call multiset", "baseline": before["calls"], "now": now["calls"]})
+            diffs.append({"run": key, "h1": "a", "detail": "different multiset of calls that took effect", "baseline": before["calls"], "now": now["calls"]})
         if now["outcome"] != before["outcome"]:
             diffs.append({"run": key, "h1": "b", "detail": "different externally visible outcome", "baseline": before["outcome"], "now": now["outcome"]})
     h1 = [d for d in diffs if d["h1"] in ("a", "b")]
     return {"status": "EQUIVALENT" if not h1 and not infra else "DIFFERENT" if h1 else "INFRA_ERROR", "runtime": runtime,
-            "baseline": str(path.relative_to(ws)), "runs": len(obs), "differences": diffs, "infra_errors": infra}
+            "baseline": baseline_desc, "runs": len(obs), "differences": diffs, "infra_errors": infra,
+            "unstable_in_baseline": unstable,
+            "note": ("runs listed in unstable_in_baseline gave different results in two runs of the baseline itself; "
+                     "they are excluded from the verdict, so the change is NOT verified on them") if unstable else ""}

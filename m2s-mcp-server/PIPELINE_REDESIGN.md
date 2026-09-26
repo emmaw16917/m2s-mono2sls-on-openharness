@@ -242,6 +242,7 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | `check_provenance` | 规格标注的出处机械检查（2.1） | 无 |
 | `annotate_entry_point` | spec-annotator 逐端点、逐字段写入规格标注，写入前校验结构和出处（2.1，K5） | 无 |
 | `run_rie_verdict` | 按 `PERF_OPTIMIZATION_DESIGN.md` §3 的规则，对改动前后做交替测量并给出判决 | Docker（RIE），没有本机降级 |
+| `update_ledger` | 根据 `output/perf_report.json` 机械地更新 `perf-rules/ledger.json`（步骤 2 新增） | 无 |
 
 所有工具共同的要求：
 - 环境变量从 `template.yaml` 读取每个函数的 `Environment`，**不写死**；
@@ -330,4 +331,6 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | K7 | 测试数据用状态型夹具：dynalite 模拟 DynamoDB，外面加一层记录调用、注入故障的代理；RIE 和本机 Node 两种执行方式共用 | §4.3 |
 | K9 | V1 提的 spec_issues 不分 blocking 和 non_blocking，一律退回 architect，裁定写进 `metadata.spec_resolutions`；主 Agent 不自己裁定 | §3.2 |
 | K10 | 主 Agent 给实现线（S1–S4）的 prompt 里禁止写任何测试相关的内容；V2 失败回炉时，只转发用规格语言写的缺陷描述 | §3.4 |
+| K11 | 性能基准事件由 perf-optimizer 写在 `WS/perf/benchmarks/`（必须写明数据量假设，改动前提交，之后不改），不写进 `verification/` | §5 步骤 2 |
+| K12 | 步骤 2 就把 S5（perf-optimizer）和阶段 6（最终检验）接进 m2s-migrate | §1、§5 |
 | K8 | 步骤 1 就把 V1（S1 之后、S2 之前）和 V2（S4 之后）插进 m2s-migrate，并由主 Agent 打 v0 tag；其余拓扑调整留到步骤 3 | §1、§5 |

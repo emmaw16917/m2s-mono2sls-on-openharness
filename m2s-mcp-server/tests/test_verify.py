@@ -200,6 +200,19 @@ def test_observation_normalizes_nondeterminism():
     assert verify._observation(raw) == o
 
 
+def test_observation_effective_calls():
+    """H1 (a): faulted attempts don't count; repeated idempotent operations
+    collapse (a retried Delete), repeated non-idempotent ones don't (ADD)."""
+    d = {"op": "DeleteItem", "table": "T", "key": {"id": "a"}}
+    u = {"op": "UpdateItem", "table": "T", "key": {"id": "a"}, "update": "ADD n :q", "values": {":q": 1}}
+    once = verify._observation({"calls": [d, u]})
+    retried = verify._observation({"calls": [dict(d, fault="network", identity="x", occurrence=1), d, d, u]})
+    assert once["calls"] == retried["calls"]
+    assert retried["faults_applied"] == [{"match": {"op": "DeleteItem", "table": "T", "identity": "x"}, "nth": 1, "kind": "network"}]
+    double_add = verify._observation({"calls": [d, u, u]})
+    assert double_add["calls"] != once["calls"]
+
+
 @pytest.mark.skipif(os.environ.get("M2S_VERIFY_INTEGRATION") != "1", reason="set M2S_VERIFY_INTEGRATION=1 (needs sam, npm, runs/bookstore-oh)")
 def test_integration_bookstore_local(tmp_path):
     src = REPO / "Mono2Sls-artifacts" / "M2S" / "runs" / "bookstore-oh"

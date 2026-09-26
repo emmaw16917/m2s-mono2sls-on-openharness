@@ -11,6 +11,9 @@ Registered in OpenHarness as `m2s-server`, so tool names resolve to:
     mcp__m2s-server__run_validate
     mcp__m2s-server__run_coverage
     mcp__m2s-server__run_equivalence
+    mcp__m2s-server__run_proxy_metrics
+    mcp__m2s-server__run_rie_verdict
+    mcp__m2s-server__update_ledger
 
 Workspace resolution: all relative paths are resolved against $M2S_WORKSPACE
 (default: ./runs/todo-oh relative to this file's parent dir) so tool output
@@ -29,6 +32,7 @@ import wrap_m2s
 import m2s_merge
 import provenance
 import verify
+import perf
 
 # Only import gates lazily / guard for P0: gates.py is a P1 deliverable.
 try:
@@ -200,16 +204,24 @@ def run_validate(functions: list[str] | None = None, cases: list[str] | None = N
 
 
 @mcp.tool()
-def run_coverage(functions: list[str] | None = None, mode: str = "auto") -> str:
+def run_coverage(functions: list[str] | None = None, mode: str = "auto", changed_since: str | None = None) -> str:
     """Run the test cases with V8 coverage and report branch/statement
     coverage per function. Every uncovered branch and statement (file, line,
     code) is written to verification/coverage/<function>.json -- use it to
     add white-box cases.
 
+    Args:
+        functions: only these blueprint function names.
+        mode: "auto", "rie" or "local".
+        changed_since: a git ref of the workspace repo (e.g. "HEAD"); also
+            report whether every executable line changed since that ref was
+            executed by at least one test (changed_lines.all_covered).
+
     Returns: JSON string {mode, functions: {name: {statements_pct,
-        branches_pct, functions_pct, files, uncovered_count}}}.
+        branches_pct, functions_pct, files, uncovered_count}},
+        changed_lines?}.
     """
-    return _verify_call(verify.run_coverage, functions, mode)
+    return _verify_call(verify.run_coverage, functions, mode, changed_since)
 
 
 @mcp.tool()
@@ -231,6 +243,64 @@ def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str
         differences, infra_errors}.
     """
     return _verify_call(verify.run_equivalence, mode, label, functions, runtime)
+
+
+@mcp.tool()
+def run_proxy_metrics(functions: list[str] | None = None, benchmarks: list[str] | None = None, ref: str | None = None) -> str:
+    """Proxy metrics for the performance benchmarks (perf/benchmarks/<function>/*.json):
+    SDK call count, sequential depth (at a fixed 10ms per call), warm CPU
+    (wall time at zero latency, median of 300 in local Node), estimated
+    DynamoDB request units / SQS requests and cost. Proxies only locate and
+    rank problems; they never decide a verdict on their own.
+
+    Args:
+        functions / benchmarks: filters.
+        ref: measure this git ref of the workspace repo instead of the
+            working tree (e.g. "v0").
+
+    Returns: JSON string {status, version, benchmarks: {id: {...}}}.
+    """
+    try:
+        return json.dumps(perf.run_proxy_metrics(str(_workspace()), functions, benchmarks, ref), ensure_ascii=False)
+    except verify.VerifyError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
+def run_rie_verdict(benchmark: str, baseline: str = "HEAD", latencies: list[int] | None = None) -> str:
+    """Judge the working tree against <baseline> (a git ref, default HEAD =
+    v0 plus the changes kept so far) on one benchmark, following
+    PERF_OPTIMIZATION_DESIGN.md §3: validity check, proxies for both
+    versions, alternating RIE measurements (5 rounds of 1 cold + 30 warm
+    invocations, CPU capped at MemorySize/1769) at 10ms simulated latency,
+    and at 0/5/15ms too when a proxy or the 10ms run gets worse; then the
+    latency / init / cost dimensions ("clearly" = ranges do not overlap)
+    and the RSS guard give the verdict: kept | kept_inconclusive |
+    pending_human | revert. Takes several minutes. Run the veto checks
+    (gate(final), run_validate, run_equivalence diff, run_coverage
+    changed_since) first -- this tool does not.
+
+    Returns: JSON string {status, verdict, reason, dimensions, proxies, rie,
+        init_ms, cost_usd_per_invocation, rss_guard, saved_to}.
+    """
+    try:
+        return json.dumps(perf.run_rie_verdict(str(_workspace()), benchmark, baseline, latencies), ensure_ascii=False)
+    except verify.VerifyError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
+def update_ledger() -> str:
+    """Fold output/perf_report.json (its rule_scan and changes) into the
+    cross-application rule ledger m2s-mcp-server/perf-rules/ledger.json.
+    Re-running for the same workspace replaces its earlier entry.
+
+    Returns: JSON string {status, app, rules, candidates, ledger}.
+    """
+    try:
+        return json.dumps(perf.update_ledger(str(_workspace())), ensure_ascii=False)
+    except verify.VerifyError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
 
 
 @mcp.tool()

@@ -61,18 +61,43 @@ function faultResponse(kind, service) {
   return (service === 'sqs' ? sqs : ddb)[kind];
 }
 
+// A call's identity: which item / message it is about, independent of call
+// order -- the table key (from Key, or the key attributes of Item) or the
+// queue + message body, with UUIDs blanked. Used to pin a fault to the same
+// operation in two versions whose call order differs (run_equivalence diff).
+const TABLE_KEYS = Object.fromEntries((job.tables || []).map((t) => [t.name, t.create.KeySchema.map((k) => k.AttributeName)]));
+const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi;
+function stable(v) {
+  if (Array.isArray(v)) return '[' + v.map(stable).join(',') + ']';
+  if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map((k) => JSON.stringify(k) + ':' + stable(v[k])).join(',') + '}';
+  return JSON.stringify(v);
+}
+function identityOf(call) {
+  let id = null;
+  if (call.key) id = call.key;
+  else if (call.item && TABLE_KEYS[call.table]) id = Object.fromEntries(TABLE_KEYS[call.table].map((k) => [k, call.item[k]]));
+  else if (call.queue) id = { queue: call.queue, body: call.body };
+  else if (call.key_condition) id = { key_condition: call.key_condition, values: call.values, index: call.index };
+  return id === null ? '' : stable(id).replace(UUID_RE, '<uuid>');
+}
+
 function matchFault(call) {
   if (!ctx) return null;
+  let kind = null;
   for (const r of ctx.rules) {
     const m = r.rule.match || {};
     if (m.op && m.op !== call.op) continue;
     if (m.table && m.table !== call.table && m.table !== call.queue) continue;
+    if (m.identity !== undefined && m.identity !== call.identity) continue;
+    // Every matching rule counts every matching call, even when an earlier
+    // rule already fired -- otherwise later rules' "n-th call" counters fall
+    // behind (a pinned rule for the 2nd attempt would never fire).
     r.seen += 1;
     const nth = r.rule.nth === undefined ? 'all' : r.rule.nth;
     const hit = nth === 'all' || (Array.isArray(nth) ? nth.includes(r.seen) : nth === r.seen);
-    if (hit) return r.rule.kind;
+    if (hit && !kind) kind = r.rule.kind;
   }
-  return null;
+  return kind;
 }
 
 function summarize(op, req) {
@@ -89,6 +114,7 @@ function summarize(op, req) {
   if (req.RequestItems) s.request_items = Object.fromEntries(Object.entries(req.RequestItems).map(([t, v]) => [t, Array.isArray(v) ? v.length : (v.Keys || []).length]));
   if (req.TransactItems) s.transact_items = req.TransactItems.length;
   if (req.QueueUrl) s.queue = req.QueueUrl.split('/').pop();
+  if (op === 'SendMessage') s.body = req.MessageBody;
   return s;
 }
 
@@ -123,6 +149,19 @@ async function startBackends() {
       let body = {};
       try { body = raw.length ? JSON.parse(raw.toString('utf8')) : {}; } catch (e) { /* non-JSON protocol */ }
       const call = { op: op || '(unknown)', service, ...summarize(op, body) };
+      call.identity = identityOf(call);
+      if (ctx) {
+        ctx.inflight += 1;
+        ctx.last = Date.now();
+        if (ctx.returned) call.after_return = true;
+        const c0 = ctx;
+        res.on('close', () => { c0.inflight -= 1; c0.last = Date.now(); });
+      }
+      if (ctx) {
+        const k = call.op + '|' + (call.table || call.queue || '') + '|' + call.identity;
+        ctx.seen[k] = (ctx.seen[k] || 0) + 1;
+        call.occurrence = ctx.seen[k];
+      }
       if (service === 'unknown') {
         call.error = 'unsupported protocol ' + (req.headers['content-type'] || '');
         ctx && ctx.calls.push(call);
@@ -375,13 +414,24 @@ async function convertCoverage(fn, covDir, reportDir) {
       const rec = { id: c.id, function: fn.name, run_key: c.run_key };
       try {
         await resetTables(be, c.fixtures);
-        ctx = { calls: [], messages: [], rules: (c.faults || []).map((rule) => ({ rule, seen: 0 })) };
+        ctx = { calls: [], messages: [], seen: {}, inflight: 0, last: Date.now(), returned: false,
+                rules: (c.faults || []).map((rule) => ({ rule, seen: 0 })) };
         if (c.gateway_response) {
           rec.gateway = true;
           rec.result = c.gateway_response;
         } else {
           const out = await inv.invoke(c.event);
           Object.assign(rec, out);
+          // Work the handler abandoned (e.g. retries of a sibling request
+          // after Promise.all rejected) keeps hitting the backend after it
+          // returns. Keep the fault rules active and wait until it is quiet,
+          // so both versions of a comparison account for it the same way.
+          ctx.returned = true;
+          const t0 = Date.now();
+          const busy = ctx.inflight > 0 || (c.faults || []).length > 0;
+          const quiet = busy ? 1000 : 150;
+          while (Date.now() - t0 < 10000 && (ctx.inflight > 0 || Date.now() - ctx.last < quiet)) await sleep(50);
+          rec.settle_ms = Date.now() - t0;
         }
         rec.calls = ctx.calls;
         rec.messages = ctx.messages;

@@ -1,0 +1,9 @@
+{
+  "_note": "Unit prices for the per-invocation cost estimate (PERF_OPTIMIZATION_DESIGN.md §4). us-east-1, on-demand, x86_64, taken from the assistant's knowledge (DynamoDB on-demand after the Nov-2024 price cut) -- verify against the AWS pricing pages before quoting absolute numbers. Verdicts only compare directions between two versions, so exact values matter little.",
+  "currency": "USD",
+  "dynamodb_write_request_unit": 6.25e-07,
+  "dynamodb_read_request_unit": 1.25e-07,
+  "sqs_request": 4.0e-07,
+  "lambda_gb_second": 1.66667e-05,
+  "lambda_request": 2.0e-07
+}

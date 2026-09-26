@@ -35,7 +35,10 @@ mcp__m2s-server__annotate_entry_point   （只给 S0 用）
 mcp__m2s-server__check_provenance
 mcp__m2s-server__run_validate           （验证线；你在 V2 之后亲自调一次做复核）
 mcp__m2s-server__run_coverage           （只给 m2s-verifier 用）
-mcp__m2s-server__run_equivalence        （只给 m2s-verifier 用）
+mcp__m2s-server__run_equivalence        （m2s-verifier、m2s-perf-optimizer 用）
+mcp__m2s-server__run_proxy_metrics      （只给 m2s-perf-optimizer 用）
+mcp__m2s-server__run_rie_verdict        （只给 m2s-perf-optimizer 用）
+mcp__m2s-server__update_ledger          （只给 m2s-perf-optimizer 用）
 ```
 
 Agent 名精确契约（`subagent_type` 必须逐字符匹配，拼错不会报错，只会得到一个没有专属 system prompt 的通用 Agent）：
@@ -47,6 +50,7 @@ m2s-code-developer
 m2s-sam-engineer   （复用同一个定义 spawn 三次：STAGE_ID = S3a / S3b / S3c）
 m2s-validator
 m2s-verifier       （复用同一个定义 spawn 两次：STAGE_ID = V1 / V2）
+m2s-perf-optimizer （STAGE_ID = S5）
 ```
 
 **关于 `mcp_auth`**：`WS` 下的 `m2s-server` 是本地 stdio MCP，不需要任何认证。已经用 `pre_tool_use` hook 把"对 m2s-server 调 mcp_auth"这一具体组合硬拦截了，但你自己和你 spawn 的子 Agent 都不应该主动调用 `mcp_auth`——不管是你自己还是任何子 Agent，看到 MCP 工具"连不上/需要认证"这类错觉时，直接重试调用目标工具本身，不要去配置认证。
@@ -73,6 +77,10 @@ S4  spawn m2s-validator
 V2  spawn m2s-verifier（STAGE_ID=V2：执行、失败分诊、白盒补测、记录故障行为基准）
         ↓ 你自己亲自 run_validate()（不带参数）复核，并读 WS/verification/verdict_A.json
     验收：gate(final) PASS 且 verdict_A.json 的 status 为 PASS → 在 WS 里打 git tag v0（见 §6）
+        ↓
+S5  spawn m2s-perf-optimizer（在 v0 上做语义保持的性能改动；每个改动由工具判决，保留的改动逐个 commit）
+        ↓
+阶段 6 最终检验：你亲自 gate(final) + run_validate()（不带参数，全量回归）→ 最终报告（§6）
 ```
 
 **V1 必须排在 S2 之前**：这是验证线"只看规格出题"的隔离手段——V1 运行时实现代码还不存在，所以一定看不到。不要为了省时间把 V1 挪到 S2 之后或和 S2 并行。
@@ -186,6 +194,14 @@ verification/coverage/                run_coverage 写
 verification/fault_baseline_v0.json   run_equivalence(mode="record", label="v0") 写
 storage/stage_reports/V2.json         V2 工作报告（含失败分诊和 routing）
 WS/.git + tag v0                      你在验收后打（§6）
+perf/benchmarks/<fn>/<id>.json        S5 产出（性能基准事件，改动前提交，之后不改）
+perf/requests/REQ-n.json              S5 产出（修改请求）
+perf/verdicts/*.json                  run_rie_verdict 写（每次判决的完整数据）
+perf/patches/REQ-n.patch              S5 产出（权衡型改动的补丁，交给人）
+output/perf_report.json               S5 产出（优化报告）
+storage/stage_reports/S5.json         S5 工作报告
+WS/.git 里 v0 之后的提交               S5 每保留一个改动提交一次
+m2s-mcp-server/perf-rules/ledger.json  update_ledger 写（放在仓库里，跨应用积累）
 ```
 
 ## §6 验收
@@ -209,7 +225,22 @@ git tag v0
 git log --oneline -1 && git tag   # 确认 tag 存在
 ```
 
-目前 S5（性能优化）还没接入：打完 v0 就结束，最终回复里写明 v0 的 commit、`verdict_A.json` 的用例数和通过数，以及 `verification/coverage/summary.json` 和 `verification/fault_baseline_v0.json` 是否已经生成。如果 `verdict_A.json` 带有 `disclaimer`（运行时检查在本机 Node 完成），也要原样写进最终回复。
+打完 v0 之后，进入 S5 和阶段 6：
+
+**S5（性能优化）**：
+- spawn `m2s-perf-optimizer`（STAGE_ID=S5）。prompt 里只写 §2 规定的要素：WS、MONOLITH、任务摘要、网络错误重试提醒。它读的是 WS 里的 v0 和测试资产，你不用转述任何测试内容（§2 的禁令同样适用）。
+- S5 报 `STAGE_BLOCKED` **不会让流水线失败**：它只表示"性能优化没有收敛"，交付的仍是最后一个通过验证的版本。
+- S5 结束后，`Read WS/output/perf_report.json` 和 `WS/storage/stage_reports/S5.json`，再用 `git -C "WS" log --oneline v0..HEAD` 核对：报告里每个 `kept`/`kept_inconclusive` 的改动，都要有对应的提交。
+
+**阶段 6（最终检验）**，你亲自做：
+1. `run_gate(phase="final")` 必须 `PASS`；
+2. `run_validate()`（不带参数，全量回归）必须 `PASS`。
+
+两项都通过：最终回复写明 v0 的 commit、S5 保留和回滚的改动（逐个写判决和关键数据）、`pending_human` 的数量、`verdict_A.json` 的用例数和通过数，以及覆盖率报告和故障行为基准是否存在。
+
+任何一项没通过：说明 S5 之后的版本有问题。在 WS 里执行 `git -C "WS" checkout v0 -- output`，然后 `git -C "WS" commit -am "revert S5: stage 6 failed"`，交付 v0 的实现；再重跑一次阶段 6，并如实报告。**不要用 `reset --hard`，不要删 tag。**
+
+如果 `verdict_A.json` 带有 `disclaimer`（运行时检查在本机 Node 完成），要原样写进最终回复；`perf_report.json` 的 `confidence` 是 `low` 时也一样。
 
 **`gate(final)` 不是 `PASS`，就是没有验收通过，没有例外，不允许任何形式的自我宣布成功**。不管前面 P0-S3 完成得多顺利、`gate(template)` 多么干净、代码和模板看起来多完整，只要 `gate(final)` 失败（包括"S4 没跑完导致 `consistency_report.json` 不存在"这种情况），你的最终回复就必须明确说"迁移未完成/失败"，把 `gate(final)` 的完整报告原样贴出来。**禁止说"核心产物已经就绪"、"流水线已成功执行"、"验证步骤不影响产出质量"这类淡化失败的措辞**——`consistency_report.json` 缺失本身就是失败，不是"次要的收尾步骤"。如果 S4 因为你自己的 turn/时间预算不够而没等到完成，如实说明"S4 尚未跑完，不是失败，但也还没验收通过"，不要因为等不下去了就把它包装成成功。
 
