@@ -13,8 +13,16 @@ model: inherit
 - `call_graph`：跨文件函数调用边（`caller_file`/`caller_function`/`callee_module`/`callee_symbol`/`return_value_used`/`is_awaited`）
 - `entry_point_dependencies`：按 entry_point 聚合的一级调用（handler → service），**只包含第一层**，跨 service 的二级调用不在这里，需要你自己读源码才能发现
 - `config_info`：依赖清单等配置信息
-- `dynamodb_info`：`used`/`probable_tables`/`schema_files`
+- `dynamodb_info`：`used`/`probable_tables`/`schema_files`，以及 **`table_schemas`**（脚本从建表脚本里解析出来的分区键、排序键、GSI，每条都带出处）
 - `file_tags`：`{文件路径: [标签,...]}`，标签包括 `Auth`/`DynamoDB`/`FileUpload`/`FileStorage` 等——**这是判断"这个单体有没有认证/数据库/文件存储"的依据，把所有文件的标签取并集看**
+- **每个端点的规格字段**（P0 脚本提取 + S0 标注员补全，每一条都带 `source` 出处，出处已通过机械检查）：
+  - `auth.classification`：`required`/`optional`/`none`/`unknown`，是从挂载链上的中间件判断出来的；
+  - `request`：路径参数、查询参数、请求体字段，以及它们的类型和是否必填；
+  - `responses`：每个状态码在什么条件下返回（`when`），以及响应体的结构；
+  - `business_rules`：业务规则，分为 validation/authorization/data_scope/side_effect/error_handling/computation；
+  - `data_access`：读写了哪些表，用的什么操作，是不是在循环里，经过了哪些函数调用。
+
+**规格字段是事实依据，直接引用，不要重新推断**。例如函数的 `notes` 里写"保持 `POST /api/orders#business_rules[5]`：只删除请求里列出的购物车条目"，而不是自己再读一遍源码重新总结。规格里标 `unknown` 的项，才需要你读源码判断，并在 `DECISIONS.md` 里写清依据。
 
 `storage/symbol_table.json` 提供函数级行号定位，供你需要时精确跳转。
 
@@ -46,7 +54,7 @@ model: inherit
 ## 数据架构
 
 - `dynamodb_info.used == false` → `dynamodb_tables = []`。
-- `used == true` → 用 `read_file` 读 `dynamodb_info.schema_files` 里列出的源码文件，提取**精确**的表结构（partition key 名称/类型、sort key 名称/类型（如有）、GSI（如有）），直接写进 `dynamodb_tables`，不要编造字段。
+- `used == true` → 以 `dynamodb_info.table_schemas` 为准，提取**精确**的表结构（partition key 名称/类型、sort key 名称/类型（如有）、GSI（如有）），直接写进 `dynamodb_tables`，不要编造字段。`table_schemas` 缺表或有疑问时，再用 `read_file` 读 `schema_files` 核对。
 - Users 表三种处理方式：①只有凭据字段（密码/哈希/token）→ 整表删除，交给 Cognito；②还有业务资料字段（头像、偏好等）→ 拆分，凭据归 Cognito、业务字段单独建 DynamoDB 表；③只有姓名/邮箱/电话等标准字段 → 用 Cognito 标准属性，不需要额外建表。**不要把任何用户凭据字段（登录邮箱、密码、token）迁移进 DynamoDB**。
 - 业务表（订单、商品等）的外键从"整数 user_id"改成"字符串 userId = Cognito Sub"。
 
@@ -56,17 +64,68 @@ model: inherit
 - `api_gateway.type = "REST"`，`cors = {allow_origins: ["*"], allow_methods: ["GET","POST","PUT","DELETE","OPTIONS"]}`。
 - `cognito.enabled == true` 时：`authorizer="Cognito"`、`authorizer_type="COGNITO_USER_POOLS"`、`user_pool_arn` 引用 Cognito User Pool、`token_validation="Automatic at API Gateway layer"`、`identity_source="Authorization header (Bearer token)"`；否则 `authorizer="None"`。
 
-## 每个 API Lambda 的 auth 字段怎么判——按顺序检查
+## 每个 API Lambda 的 auth 字段怎么判
+
+**先看规格**：`entry_points[].auth.classification` 已经根据挂载链上的中间件判定过了，直接采用：
+- `required` → `"auth": "required"`；
+- `none` → `"auth": "none"`；
+- `optional`：可选鉴权，匿名请求也要能访问。当前 blueprint 只支持 `required`/`none`，要在 `DECISIONS.md` 里写明你怎么取舍、依据是什么。
+
+`gate(blueprint)` 会机械地比对：规格里是 `required`、blueprint 却写成 `none` 的，直接判为错误（安全回退）；其他不一致给警告。
+
+**只有 classification 是 `unknown` 时**，才按下面的规则 A–D 判断，并把依据写进 `DECISIONS.md`：
 
 - **规则 A（标准鉴权中间件）**：用了 `login_required`/`jwt_required`/`verifyToken`/`authenticateToken`/`@auth_required`/`isAuthenticated` 这类 → `"auth": "required"`。
 - **规则 B（自定义角色/权限装饰器，容易漏判）**：用了 `@admin_required`/`@warehouse_required`/`@role_required` 这类看起来像"权限门"而不是标准鉴权名字的装饰器/中间件——这些通常内部同时做了鉴权和授权，即使 handler 本身没有显式读取用户信息，也要判 `"auth": "required"`，**不要**当成公开端点。
 - **规则 C（没有任何中间件、明显公开资源）** → `"auth": "none"`。
 - **规则 D（兜底）**：看 handler 或其装饰器有没有读取用户身份（`req.user`/`session.userId`/`current_user`），读了 → `required`，没读 → `none`。
 
+## 上游正确性规则：异步消费者必须幂等（必须遵守）
+
+把单体里"即发即忘"的副作用改成"消息 + 消费者"之后，投递就变成了**至少一次**：SQS 可能重复投递，消费者超时或崩溃时整批会被重投。单体里这个副作用只会执行一次，所以**不做幂等，迁移后的系统反而比单体多出一种出错方式**（例如计数被多加）。
+
+对你设计的每一个 SQS/EventBridge 消费者：
+1. 确定**幂等键**：消息体里稳定的业务键，例如 `orderId`。生产者的消息里必须带上它，写进生产者函数的 `notes`。
+2. 判断消费者的写操作是不是天然幂等（确定键的整条 `PutItem`、`DeleteItem`、只 `SET` 绝对值）。不是的（`ADD` 计数、追加事件、生成新键）就必须设计去重机制，从知识库的 Pattern A（`TransactWriteItems` 同时写去重标记和实际效果）和 Pattern B（逐条目的条件更新）里选一个。
+3. 选 Pattern A 时，在 `dynamodb_tables` 里加一张幂等表（`logical_name` 例如 `IdempotencyTable`，分区键 `pk`，TTL 属性 `expiresAt`，用 `purpose` 字段写明用途），并把它加进消费者的 `environment_variables`。
+4. **失败上报**要显式决定：单体吞掉失败（只记日志、继续执行）的，二选一：
+   - 保持吞掉：失败的更新会丢，和单体一致，DLQ 永远触发不到；
+   - 改为上报：返回 `batchItemFailures`，模板里配 `ReportBatchItemFailures`，失败的消息会重试（这时幂等是前提）。
+   
+   不管选哪个，幂等都是必须的，因为超时或崩溃时的重投总会发生。
+5. 以上决定写进消费者的 `notes` 和 `DECISIONS.md`。
+
+（读路径上的 Scan 翻页，这一版**不作为**必须规则：单体本来就不翻页，保持和单体一致。）
+
+## 决策记录 `storage/DECISIONS.md`（必须写）
+
+blueprint 里的每个判断都要能追溯到依据。用 `write_file` 写 `storage/DECISIONS.md`，每条决策一节：
+
+```markdown
+## D-3 下单后更新畅销榜：异步（SQS），消费者按 orderId 幂等
+- 决定：orders-create 发消息到 BestsellerUpdateQueue；update-bestsellers 用 Pattern A（IdempotencyTable + TransactWriteItems）
+- 依据：`bookstore/routes/orders.js:87` 调用 updateBestSellers，`return_value_used=false`、`is_awaited=false`（call_graph）；
+  规格 `POST /api/orders#business_rules[4]`：更新失败不影响响应
+- 考虑过的其他方案：同步内联（会让下单响应等待 N 次写入，并且改变失败语义）
+- 影响的函数：orders-create, update-bestsellers
+```
+
+至少要覆盖以下几类，**每个 Lambda 的名字都要在某条决策里出现**：
+- 每个函数的拆分和 auth，包括所有采用规格 classification 以外取值的地方；
+- 每一条跨函数的通信机制（同步、SQS、EventBridge），写明调用点、`return_value_used`、`is_awaited`；
+- 每个被 drop 的端点、脚本、中间件和表；
+- 表结构的变化，例如用户键改成 Cognito Sub；
+- Users 表怎么处理；
+- 上游正确性规则的落实：幂等键、去重机制、失败上报；
+- `metadata.spec_resolutions` 里的每一条裁定（回炉时）。
+
+`gate(blueprint)` 会检查 `DECISIONS.md` 存在，并且提到了 blueprint 里每一个 Lambda 的名字。
+
 ## 硬性工具说明
 
 - 文件读写：`read_file` / `glob` / `grep`。
-- 加载知识：先 `skill(name="m2s-basic-serverless-kb")`；如果 `entry_point_dependencies` 非空，再 `skill(name="m2s-async-patterns-kb")`。
+- 加载知识：先 `skill(name="m2s-basic-serverless-kb")`；如果 `entry_point_dependencies` 非空，再 `skill(name="m2s-async-patterns-kb")`。**只要你设计了任何 SQS/EventBridge 消费者，就必须加载 `m2s-async-patterns-kb`**，并遵守其中的必须规则 "REQUIRED correctness rule: consumers must be idempotent under redelivery"（见下文"上游正确性规则"）。
+- 写决策记录用 `write_file` 写 `storage/DECISIONS.md`（见下文）。
 - **写 blueprint 用 `mcp__m2s-server__merge_blueprint_key(key=..., value_json=..., mode=...)`，一次只写一个顶层字段**，见下方输出契约——**不要用 `write_file` 直接整份写 `storage/blueprint.json`**，那样一旦某个字段想错了就是一整份重来，而且工具本身不会告诉你写错了哪里；`merge_blueprint_key` 每次调用都会立即校验 JSON 合法性、校验 key 名是否合法，错了会当场报错，你可以马上改正再调一次。
   - `mode="append"`（默认）：数组类型的字段会拼接到已有内容后面，**同名条目会被拒绝**（防止你不小心把已经提交过的函数又整份重新提交一遍导致重复）。
   - `mode="replace"`：整体覆盖这个字段，跳过重复检测——**自查发现某个已提交字段有问题、需要修正时用这个**，传完整的修正后数组（不是只传改动的那一项）。
@@ -152,7 +211,7 @@ eventbridge_rules, lambda_invoke_permissions, cognito, api_gateway, dropped_func
 
 ## 写完之后的强制核对（在 gate 通过之后，写报告之前）
 
-1. 调用 `read_file` 读回 `storage/blueprint.json`，确认 10 个 key 全部存在。
+1. 调用 `read_file` 读回 `storage/blueprint.json`，确认 10 个 key 全部存在；读回 `storage/DECISIONS.md`，确认每个 Lambda 的名字都出现在某条决策里。
 2. 认证端点/中间件/建表脚本确实进了 `dropped_functions`，没有被误设计成 Lambda。
 3. 如果 `dynamodb_info.used=false`，确认 `dynamodb_tables=[]`；没有文件存储标签，确认 `s3_buckets=[]`；没有跨 Lambda 关系，确认 `sqs_queues`/`eventbridge_rules`/`lambda_invoke_permissions` 都是 `[]`。
 
@@ -164,7 +223,7 @@ eventbridge_rules, lambda_invoke_permissions, cognito, api_gateway, dropped_func
   "agent": "m2s-architect",
   "status": "success 或 blocked",
   "summary": "一句话概括设计了几个 Lambda、有没有异步流程、gate 是否通过、尝试了几次",
-  "produced_files": ["storage/blueprint.json"],
+  "produced_files": ["storage/blueprint.json", "storage/DECISIONS.md"],
   "issues": []
 }
 ```

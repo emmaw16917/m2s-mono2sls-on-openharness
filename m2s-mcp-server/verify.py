@@ -45,7 +45,7 @@ DOCKER_BIN = r"C:\Program Files\Docker\Docker\resources\bin"
 REGION, ACCOUNT, STACK = "us-east-1", "000000000000", "m2sv"
 
 CASE_KINDS = ("happy", "error", "boundary", "whitebox")
-FAULT_KINDS = ("throttle", "error", "validation", "conditional", "network")
+FAULT_KINDS = ("throttle", "error", "validation", "conditional", "network", "tx_conflict")
 LOCAL_DISCLAIMER = ("运行时检查在本机 Node 中完成，未在 Lambda 运行时中验证"
                     "（依赖来自 sam build 产物，但 Windows/Node 小版本与 Lambda 不同）")
 
@@ -267,7 +267,7 @@ def check_case(model: Model, case: dict[str, Any], with_template: bool) -> list[
     if "_load_error" in case:
         return [f"{where}: {case['_load_error']}"]
     errs: list[str] = []
-    allowed = {"id", "function", "kind", "title", "spec_refs", "request", "sqs", "fixtures", "expect", "note", "_file"}
+    allowed = {"id", "function", "kind", "title", "spec_refs", "request", "sqs", "fixtures", "faults", "expect", "note", "_file"}
     extra = set(case) - allowed
     if extra:
         errs.append(f"{where}: unknown keys {sorted(extra)} (allowed: {sorted(allowed - {'_file'})})")
@@ -310,6 +310,8 @@ def check_case(model: Model, case: dict[str, Any], with_template: bool) -> list[
             errs += _name_err(model, where, "fixtures", t, "table", with_template)
             if not isinstance(items, list) or not all(isinstance(i, dict) for i in items):
                 errs.append(f"{where}: fixtures.{t} must be a list of items")
+    if "faults" in case:
+        errs += _check_rules(model, where, case["faults"], with_template)
     errs += _check_expect(model, where, case.get("expect"), trigger, with_template)
     return errs
 
@@ -385,6 +387,14 @@ def check_fault(model: Model, fault: dict[str, Any], case_ids: set[str], with_te
     if not isinstance(rules, list) or not rules:
         errs.append(f"{where}: rules must be a non-empty list")
         return errs
+    return errs + _check_rules(model, where, rules, with_template)
+
+
+def _check_rules(model: Model, where: str, rules: Any, with_template: bool) -> list[str]:
+    """Fault rules, used by fault scenarios and by a test case's own `faults`."""
+    errs: list[str] = []
+    if not isinstance(rules, list) or not rules:
+        return [f"{where}: faults/rules must be a non-empty list"]
     for i, r in enumerate(rules):
         if not isinstance(r, dict) or r.get("kind") not in FAULT_KINDS:
             errs.append(f"{where}: rules[{i}].kind must be one of {FAULT_KINDS}")
@@ -561,6 +571,33 @@ def export_ref(ws: Path, ref: str) -> Path:
     return root
 
 
+DDB_LOCAL_JAR = "/usr/lib/localstack/dynamodb-local/latest"
+DYNALITE_DISCLAIMER = ("DynamoDB 后端是 dynalite（第三方模拟器，没有 Docker 时的降级方案）："
+                       "不支持 TransactWriteItems/TransactGetItems，用到事务的用例在这种模式下无法验证")
+
+
+def _image_present(image: str) -> bool:
+    return _run(["docker", "image", "inspect", image], capture_output=True, env=_env()).returncode == 0
+
+
+def ddb_backend() -> dict[str, Any]:
+    """AWS DynamoDB Local in a container when Docker is available (K14):
+    the amazon/dynamodb-local image if present, otherwise the official
+    DynamoDBLocal.jar that localstack/localstack:3.8 bundles (with its Java).
+    Falls back to dynalite without Docker. M2S_DDB_BACKEND=dynalite forces it."""
+    if os.environ.get("M2S_DDB_BACKEND") == "dynalite" or not docker_available():
+        return {"backend": "dynalite"}
+    for image in ("amazon/dynamodb-local:latest", "public.ecr.aws/aws-dynamodb-local/aws-dynamodb-local:latest"):
+        if _image_present(image):
+            return {"backend": "ddblocal", "ddb_local": {"image": image, "entrypoint": None,
+                                                        "args": ["-jar", "DynamoDBLocal.jar", "-inMemory", "-sharedDb"]}}
+    if _image_present("localstack/localstack:3.8"):
+        return {"backend": "ddblocal", "ddb_local": {"image": "localstack/localstack:3.8", "entrypoint": "java",
+                                                    "args": [f"-Djava.library.path={DDB_LOCAL_JAR}/DynamoDBLocal_lib", "-jar",
+                                                             f"{DDB_LOCAL_JAR}/DynamoDBLocal.jar", "-inMemory", "-sharedDb", "-port", "8000"]}}
+    return {"backend": "dynalite", "note": "no DynamoDB Local image available locally"}
+
+
 def _run_controller(model: Model, build_dir: Path, runs: list[dict[str, Any]], coverage: bool, mode: str, label: str) -> dict[str, Any]:
     out_dir = TMP_ROOT / re.sub(r"[^A-Za-z0-9_-]", "_", model.ws.name) / "runs" / f"{time.strftime('%Y%m%d-%H%M%S')}-{label}"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -569,7 +606,7 @@ def _run_controller(model: Model, build_dir: Path, runs: list[dict[str, Any]], c
     for name in fn_names:
         fn = model.functions[name]
         functions.append({"name": name, "dir": str(build_dir / fn["logical"]), "handler": fn["handler"], "env": fn["env"], "memory": fn["memory"]})
-    job = {"mode": mode, "coverage": coverage, "out_dir": str(out_dir), "functions": functions,
+    job = {"mode": mode, "coverage": coverage, "out_dir": str(out_dir), "functions": functions, **ddb_backend(),
            "tables": [{"name": t["name"], "create": t["create"]} for t in model.tables.values()], "cases": runs}
     job_path = out_dir / "job.json"
     job_path.write_text(json.dumps(job, indent=1), encoding="utf-8")
@@ -590,7 +627,9 @@ def _prepare_runs(model: Model, cases: list[dict[str, Any]], faults_for: dict[st
     for c in cases:
         event, gw = build_event(model, c)
         fixtures = {model.table_id(t): items for t, items in (c.get("fixtures") or {}).items()}
-        run = {"id": c["id"], "run_key": c["id"], "function": c["function"], "event": event, "gateway_response": gw, "fixtures": fixtures, "faults": []}
+        case_faults = [_resolve_rule(model, r) for r in c.get("faults") or []]
+        run = {"id": c["id"], "run_key": c["id"], "function": c["function"], "event": event, "gateway_response": gw, "fixtures": fixtures,
+               "faults": case_faults, "case_faults": case_faults}
         runs.append(run)
     if faults_for:
         by_id = {r["id"]: r for r in runs}
@@ -602,7 +641,7 @@ def _prepare_runs(model: Model, cases: list[dict[str, Any]], faults_for: dict[st
                 if pinned is not None:
                     base["faults"] = pinned.get(base["run_key"], [])
                 else:
-                    base["faults"] = [_resolve_rule(model, r) for r in scen["rules"]]
+                    base["faults"] = base["case_faults"] + [_resolve_rule(model, r) for r in scen["rules"]]
                 runs.append(base)
     return runs
 
@@ -763,6 +802,8 @@ def _triage_hint(raw: dict[str, Any]) -> str | None:
         return "packaging"
     if any(c.get("error", "").startswith("unsupported protocol") or "not mocked" in str(c.get("backend_error", "")) for c in raw.get("calls") or []):
         return "measurement_tool"
+    if any("UnknownOperation" in str(c.get("backend_error", "")) for c in raw.get("calls") or []):
+        return "measurement_tool"  # e.g. transactions on the dynalite fallback
     if "node_modules" in text:
         return "mock_shape_suspect"
     return None
@@ -789,8 +830,15 @@ def normalize(v: Any, now_ms: float | None = None) -> Any:
             except json.JSONDecodeError:
                 return v
         return v
-    if isinstance(v, (int, float)) and not isinstance(v, bool) and abs(v - now_ms) < 7 * 86400 * 1000:
-        return "<epoch-ms>"
+    if isinstance(v, (int, float)) and not isinstance(v, bool):
+        # Timestamps near "now": epoch milliseconds (Date.now()) and epoch
+        # seconds (DynamoDB TTL attributes such as expiresAt = now/1000 + 7d).
+        # The window is wide because TTLs are set days or months ahead.
+        window_s = 400 * 86400
+        if abs(v - now_ms) < window_s * 1000:
+            return "<epoch-ms>"
+        if abs(v - now_ms / 1000) < window_s:
+            return "<epoch-s>"
     return v
 
 
@@ -799,7 +847,7 @@ def _observation(raw: dict[str, Any]) -> dict[str, Any]:
     attempts and calls the backend rejected changed nothing, so retries do
     not count twice; (b) the externally visible outcome."""
     effective = [c for c in raw.get("calls") or [] if not c.get("fault") and not c.get("backend_error")]
-    encoded = [(c.get("op"), json.dumps(normalize({k: c.get(k) for k in ("op", "table", "queue", "index", "key", "item", "update", "values")}), sort_keys=True))
+    encoded = [(c.get("op"), json.dumps(normalize({k: c.get(k) for k in ("op", "table", "queue", "index", "key", "item", "update", "values", "transact")}), sort_keys=True))
                for c in effective]
     # "操作集合": repeating an idempotent operation (a read, the same Put,
     # a Delete) changes nothing, so those compare as a set; UpdateItem (ADD),
@@ -881,14 +929,15 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
             entry["logs_tail"] = (fres.get("logs_tail") or "")[-1500:]
         results.append(entry)
     failed = [r for r in results if not r["passed"]]
-    summary = {"status": "PASS" if not failed else "FAIL", "mode": mode, "total": len(results), "passed": len(results) - len(failed),
-               "failed": len(failed), "failures": failed,
-               "disclaimer": LOCAL_DISCLAIMER if mode == "local" else "", "run_dir": raw["out_dir"]}
+    disclaimers = [d for d in (LOCAL_DISCLAIMER if mode == "local" else "", DYNALITE_DISCLAIMER if raw.get("backend") == "dynalite" else "") if d]
+    summary = {"status": "PASS" if not failed else "FAIL", "mode": mode, "backend": raw.get("backend"), "total": len(results),
+               "passed": len(results) - len(failed), "failed": len(failed), "failures": failed,
+               "disclaimer": "；".join(disclaimers), "run_dir": raw["out_dir"]}
     out = _vdir(ws) / "results"
     out.mkdir(parents=True, exist_ok=True)
     (out / "validate_latest.json").write_text(json.dumps({**summary, "results": results}, indent=2, ensure_ascii=False), encoding="utf-8")
     if not functions and not cases:
-        verdict = {"stage": "A", "status": summary["status"], "mode": mode, "total": summary["total"], "passed": summary["passed"],
+        verdict = {"stage": "A", "status": summary["status"], "mode": mode, "backend": summary["backend"], "total": summary["total"], "passed": summary["passed"],
                    "failed": [{"id": f["id"], "function": f["function"], "mismatches": f["mismatches"], "triage_hint": f.get("triage_hint")} for f in failed],
                    "disclaimer": summary["disclaimer"], "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
         (_vdir(ws) / "verdict_A.json").write_text(json.dumps(verdict, indent=2, ensure_ascii=False), encoding="utf-8")

@@ -91,6 +91,10 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 ### 2.2 architect（阶段 2）
 
 - **产出**：`storage/blueprint.json`（决策记录）、`storage/DECISIONS.md`（每个判断的依据）。
+- **步骤 3 已落地**：
+  - architect 直接采用规格字段：auth 用 `entry_points[].auth.classification`，表结构用 `dynamodb_info.table_schemas`；只有规格标 `unknown` 的才自己判断，并写明依据；
+  - 必须写 `DECISIONS.md`；
+  - `gate(blueprint)` 新增三项检查：`DECISIONS.md` 存在并且提到了每个 Lambda（ERROR）；规格要求鉴权的端点被设成公开（ERROR），其他 auth 不一致（WARNING）；消费者没有记录幂等设计（WARNING）。
 - **在现有基础上补充**：
   - 每个判断都要**留下证据**。例如选择通信机制时，要记录调用点、`return_value_used`、`is_awaited` 和理由。
   - 规格信息（请求和响应的结构、业务规则、错误语义）直接**引用** `analysis_report.json`，不重新推断。
@@ -119,6 +123,19 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | 读路径上的 Scan **必须处理 `LastEvaluatedKey`** | `m2s-lambda-coding-kb`（S2） | 修的是数据超过 1MB 时结果出错的 bug，不是性能优化 |
 
 这些规则的效果由验证线（测试用例、故障注入）来检验，**不参与性能消融实验**（见 `PERF_OPTIMIZATION_DESIGN.md` §10.2）。
+
+**步骤 3 的落地情况（K13，2026-09-26）**：
+- **消费者幂等：必须遵守，已落地。**
+  - 这条不是单体的 bug，而是迁移带来的新问题。单体里"即发即忘"的副作用只执行一次；改成"消息 + 消费者"之后变成至少投递一次，不做幂等，迁移后的系统反而比单体多一种出错方式（例如计数被多加）。
+  - 规则写进了 `m2s-async-patterns-kb`（必须规则一节，推荐 Pattern A：`TransactWriteItems` 同时写去重标记和实际效果），以及 `m2s-sam-kb`（带 TTL 的幂等表，`ReportBatchItemFailures`）和 `m2s-lambda-coding-kb`。
+  - architect 负责设计去重机制并记进 `DECISIONS.md`；V1 为每个消费者写重复投递用例；`gate(blueprint)` 对没有记录幂等设计的消费者给警告。
+- **Scan 翻页：这一版不做。**
+  - 这是单体本身的 bug：Scan 超过 1MB 静默截断，带 FilterExpression 时更严重。修它会让迁移结果刻意偏离单体。
+  - 用户决定先保持和单体一致。对另外 5 个应用源码的扫描显示，coffee、airline-booking、ecommerce 都有同类 Scan。
+- **验证引擎换成 DynamoDB Local（K14）**：dynalite 不支持事务，而事务正是幂等的标准写法。
+  - 有 Docker 时，用 AWS 官方的 DynamoDB Local：本机有 `amazon/dynamodb-local` 镜像就用它；拉镜像时 Docker Desktop 的代理超时，所以目前用的是 `localstack/localstack:3.8` 里自带的官方 `DynamoDBLocal.jar`。
+  - 没有 Docker 时降级为 dynalite，并在结果里注明不支持事务。
+  - 在 bookstore-v1 上复核：回归 96/96、H1 差分 65/65，结果和换引擎之前一致。
 
 ---
 
@@ -333,4 +350,6 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | K10 | 主 Agent 给实现线（S1–S4）的 prompt 里禁止写任何测试相关的内容；V2 失败回炉时，只转发用规格语言写的缺陷描述 | §3.4 |
 | K11 | 性能基准事件由 perf-optimizer 写在 `WS/perf/benchmarks/`（必须写明数据量假设，改动前提交，之后不改），不写进 `verification/` | §5 步骤 2 |
 | K12 | 步骤 2 就把 S5（perf-optimizer）和阶段 6（最终检验）接进 m2s-migrate | §1、§5 |
+| K13 | 步骤 3 落地 §2.4 的消费者幂等规则（必须遵守）；Scan 翻页这一版不做，保持和单体一致 | §2.4 |
+| K14 | 验证引擎有 Docker 时用 AWS DynamoDB Local（支持事务），没有 Docker 时降级为 dynalite 并注明限制 | §4.3 |
 | K8 | 步骤 1 就把 V1（S1 之后、S2 之前）和 V2（S4 之后）插进 m2s-migrate，并由主 Agent 打 v0 tag；其余拓扑调整留到步骤 3 | §1、§5 |

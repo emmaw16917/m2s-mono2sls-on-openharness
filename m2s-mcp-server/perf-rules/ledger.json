@@ -29,17 +29,46 @@
           "pending_human": 0
         }
       }
+    },
+    {
+      "app": "bookstore",
+      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\bookstore-v2",
+      "recorded_at": "2026-09-27T15:49:01",
+      "confidence": "normal",
+      "rules": {
+        "R1": {
+          "hits": 1,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0
+        },
+        "R2": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0
+        },
+        "R3": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0
+        }
+      }
     }
   ],
   "candidate_rules": [],
   "totals": {
     "R1": {
-      "hits": 2,
+      "hits": 3,
       "kept": 2,
       "kept_inconclusive": 0,
       "reverted": 0,
       "pending_human": 0,
-      "apps": 1
+      "apps": 2
     },
     "R2": {
       "hits": 0,
@@ -47,7 +76,7 @@
       "kept_inconclusive": 0,
       "reverted": 0,
       "pending_human": 0,
-      "apps": 1
+      "apps": 2
     },
     "R3": {
       "hits": 0,
@@ -55,7 +84,7 @@
       "kept_inconclusive": 0,
       "reverted": 0,
       "pending_human": 0,
-      "apps": 1
+      "apps": 2
     }
   }
 }

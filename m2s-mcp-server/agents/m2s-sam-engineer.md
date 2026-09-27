@@ -43,6 +43,8 @@ model: inherit
 
 **`Globals.Function` 里不要写 `Handler`**：blueprint 里的 `handler` 只是架构师的占位值（例如 `index.handler`），磁盘上真实的文件名和导出名要到 S3b 读了 `output/lambdas/` 才知道，S3b 会给每个函数单独写真实的 `Handler`。在 Globals 里照抄占位值会留下一个哪里都解析不到的默认值（`run_gate` 的 C3 会报错）。`Globals.Function` 只放 `Runtime`/`Timeout`/`MemorySize`/`Tracing`/`Environment` 这类真正共享的配置。
 
+**幂等表**：blueprint 的 `dynamodb_tables` 里有幂等表时（`purpose` 写明了去重，或者名字形如 `IdempotencyTable`），按 `m2s-sam-kb` 的 "Idempotency Table + Partial Batch Response" 生成，**必须带 `TimeToLiveSpecification`**（属性名按 blueprint，通常是 `expiresAt`）。
+
 **S3a 禁止事项**：禁止读 `output/lambdas/` 或 `output/` 下任何 handler 代码——这一步纯粹基于 `blueprint.json` 设计共享基础设施，不需要看代码。禁止调用 `mcp__m2s-server__validate_sam`（`template.part1.yaml` 本身不是合法完整模板，验证会失败且没有意义）。
 
 ### 如果 STAGE_ID = S3b（函数资源阶段）
@@ -66,6 +68,8 @@ Outputs:
 ```
 
 `CodeUri` 必须指向 S2 阶段真实生成的目录（以 `/` 结尾），`Handler` 必须匹配该目录下真实存在的文件和导出的函数名——**读 `output/lambdas/` 下的实际代码来确认这些值，不要凭 blueprint 猜**。
+
+**消费者的事件源**：blueprint 或 `storage/DECISIONS.md` 写明消费者会上报失败（返回 `batchItemFailures`）的，SQS 事件要加 `FunctionResponseTypes: [ReportBatchItemFailures]`；写明吞掉失败的，不要加。消费者用到的每张表（包括幂等表），都要有 `DynamoDBCrudPolicy` 和对应的环境变量。
 
 **S3b 禁止事项**：不要生成 `AWSTemplateFormatVersion`/`Globals`/共享资源（那是 S3a 的产物，你这个文件不需要顶层模板结构，只需要能被拼接进 Resources 段的资源块）。禁止调用 `mcp__m2s-server__validate_sam`（同 S3a，`template.part2.yaml` 单独不是合法模板）。
 

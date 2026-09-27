@@ -498,3 +498,104 @@ run7 证明：网络稳定时，这套流水线可以在一个会话里从 P0 �
 - 第 3 点是在 **S5 运行之后**才修的。S5 当时只对 `update-bestsellers` 做差分（结果 EQUIVALENT），没有碰到这个问题；它的证据是用修复前的工具产生的。我用修好的工具重新复核过，结论不变。
 - 模拟延迟模型的局限（§2.1）在这次的 R1 判决里依然存在：并行调用没有上限。在 0.29 vCPU 下，30 个并行调用仍然要约 80ms，主要花在 SDK 的序列化和签名上。这是本机测得的量，不代表线上。
 - perf-optimizer 写基准时，数据量是它自己选的。这次的规模合理，但机制上只靠"必须写明 `data_volume`"来约束。
+
+## 流水线重构步骤 3：调整拓扑，接入 architect 改造和消费者幂等规则（2026-09-26 ~ 27）
+
+对应 `PIPELINE_REDESIGN.md` §2.2、§2.4、§4.1、§5 步骤 3。
+阶段拓扑（S0、V1/V2、S5、阶段 6）在步骤 0–2 里已经接好，这一步补上设计稿里剩下的部分，再用新结构把 bookstore 从头到尾跑一遍（新工作区 `runs/bookstore-v2`）。
+
+### 改动
+
+- **architect（§2.2）**：
+  - 直接采用规格字段：auth 用 `entry_points[].auth.classification`，表结构用 `dynamodb_info.table_schemas`，业务规则和 `data_access` 直接引用；只有规格标 `unknown` 的才按原来的规则 A–D 判断；
+  - 必须写 `storage/DECISIONS.md`，每条决策写清依据和考虑过的其他方案；
+  - 必须遵守"异步消费者幂等"规则，并显式决定失败是吞掉还是上报。
+- **`gate(blueprint)`（B0）新增三项检查**：
+  - `DECISIONS.md` 存在，并且提到了每个 Lambda（ERROR）；
+  - 规格要求鉴权、blueprint 却设成公开（ERROR，属于安全回退），其他 auth 不一致（WARNING）；
+  - 消费者没有记录幂等设计（WARNING，按关键词判断）。
+  
+  新增 3 个测试，另外有 2 个旧测试的夹具补上了 `DECISIONS.md`。
+- **消费者幂等（§2.4，K13）**：写进 `m2s-async-patterns-kb`（必须规则一节：为什么这是迁移带来的问题、幂等键、Pattern A 用 `TransactWriteItems` 同时写去重标记和实际效果、Pattern B 逐条目条件更新、失败上报和幂等的关系），以及 `m2s-sam-kb`（带 TTL 的幂等表、`ReportBatchItemFailures`）和 `m2s-lambda-coding-kb`。
+  - code-developer 必须按 blueprint 指定的机制实现，机制没写清楚就报 BLOCKED，不许自己发明；
+  - sam-engineer 负责生成幂等表，并按 blueprint 配置失败上报；
+  - V1 必须为每个消费者写重复投递用例。
+- **Scan 翻页这一版不做**（K13）：这是单体本身的 bug，按用户决定保持和单体一致。
+- **验证引擎的 DynamoDB 后端换成 AWS DynamoDB Local（K14）**：
+  - 原因：dynalite 不支持 `TransactWriteItems`。
+  - `docker pull amazon/dynamodb-local` 和 ECR Public 的镜像都拉不下来：Docker Desktop 内置代理在下载镜像层时一直超时，重试了 10 次，而宿主机经系统代理访问是通的。
+  - 改用本机已有的 `localstack/localstack:3.8` 镜像里自带的官方 `DynamoDBLocal.jar`，以及它的 Java 11。实测事务语义正确：重复的事务被 `TransactionCanceledException [ConditionalCheckFailed, None]` 拒绝，计数不会多加。
+  - 以后本机有了 `amazon/dynamodb-local` 镜像就会自动改用它；没有 Docker 时降级为 dynalite，结果里注明不支持事务。
+  - 在 bookstore-v1 上复核：回归 96/96、H1 差分 65/65 EQUIVALENT、没有不稳定的 run，和换引擎之前一致。代价是全量验证加差分从大约 7 分钟变成约 9 分钟。
+- **m2s-migrate 清理**：每个阶段的回炉上限从 1 次改为 2 次（J5）；最终报告要写明 v0 之后的 S5 改动没有经过 validator 审查，并列出仍然 open 的 spec_issues；description 和"四个 agent"这类过时的措辞也改掉了。
+
+### 找到"网络错误一次就杀死 agent"的根因（修在 OpenHarness 里，没有提交）
+
+bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `peer closed connection without sending complete message body (incomplete chunked read)` 退出。这是本次会话里第 4 次有运行被网络错误中途打断：run1 的 S0、bookstore-v1 的 S0，以及更早的 run6-netdrop 也属于这类。
+
+根因在 `OpenHarness/src/openharness/api/openai_client.py` 的 `_is_retryable()`：它只把 HTTP 429/500/502/503 和 Python 的 `ConnectionError`/`TimeoutError`/`OSError` 当作可重试。而下面这些错误都不是 `OSError` 的子类，所以一出现就被当成致命错误，结束整个 agent 会话，`MAX_RETRIES = 3` 的重试机制根本没有机会生效：
+- 流中途断开（`httpx.RemoteProtocolError`）；
+- "Request timed out"（`openai.APITimeoutError`）；
+- 连接失败（`openai.APIConnectionError`）。
+
+以前在 spawn prompt 里叮嘱子 Agent"遇到网络错误重试 1-2 次"没有效果，也是这个原因：这类错误发生在模型调用层，agent 自己根本没有机会去重试。
+
+修复：把 `openai.APIConnectionError`（`APITimeoutError` 是它的子类）和 `httpx.TransportError` 也判为可重试。用真实的异常类型验证过：这三种都返回 True，`ValueError` 仍然返回 False。确认了 `oh` 运行的就是这份源码（可编辑安装）。改动留在 OpenHarness 仓库的工作区里，**没有提交**，要不要提交由用户决定。
+
+**第二处修改（同一个文件，同样没有提交）**：修复后的第一次续跑里，重试确实触发了（1s/2s/4s 退避），但连续 4 次都是 `Connection error`，那次断网持续了几十分钟，最后还是退出了。原来 `MAX_RETRIES = 3` 总共只覆盖约 7 秒。现在改为 `MAX_RETRIES = 8`、`MAX_DELAY = 60`，退避依次是 1、2、4、8、16、32、60、60 秒，合计 183 秒，能扛过几分钟的断网；断网时间更长时仍然需要续跑。
+
+### bookstore-v2 全链运行（从 S0 续跑，2026-09-27）
+
+- **流程上全部跑通**，每一步我都单独复核过：
+  - S0：`check_provenance` PASS，346 条出处；
+  - S1：`gate(blueprint)` PASS，`DECISIONS.md` 11 节，幂等方案采用 Pattern A，新增 `IdempotencyTable`；
+  - V1：54 个用例、11 个故障场景，有 2 个重复投递用例；它提出的 4 个规格问题，architect 事先已经在 `spec_resolutions` 里裁定过，所以不需要回炉；
+  - S2–S4：各阶段 gate 都 PASS；
+  - V2：59/59，RIE + DynamoDB Local；
+  - v0 = `94313c2`；S5 保留了 REQ-1；阶段 6 PASS。
+- **但复核中发现 4 个问题，其中 2 个是真实的正确性问题**：
+  1. **S5 保留的 REQ-1 在真实 DynamoDB 上不安全**：它把多条消息的事务改成并行执行。
+     - 真实 DynamoDB 会以 `TransactionConflict` 取消重叠的并发事务，被取消的那条消息又被吞掉，计数就丢了。
+     - DynamoDB Local 把事务串行执行：实测 300 个互相冲突的并发事务，一个都没被取消。所以测试和等价性判决都看不出问题。
+     - 已在工作区里 `git revert`（`5b13ec5`）。新增 v1 规则：可能改到同一条目的事务或条件写入不许并行；`PERF_OPTIMIZATION_DESIGN.md` §2.1 局限表加了第 6 项"模拟器的并发语义"。
+  2. **v0 本身有 bug，源头是我写进知识库的 Pattern A 示例**：示例对 `books` 逐项生成事务操作，没有先合并同一个 `bookId`。
+     - 订单里同一本书出现两次时，DynamoDB 会整笔拒绝这个事务（一个事务里不能对同一条目做两次操作），错误又被吞掉，这笔订单的计数全部丢失。
+     - DynamoDB Local 会同样拒绝这种事务，所以只要有这个用例就能测出来，只是 V1 没写。
+     - **并发冲突即使在串行的 v0 上也会发生**：Lambda 会同时处理多个批次，"失败一律吞掉"加上 Pattern A，就成了单体没有的静默丢数据路径。
+  3. **我的等价性对比工具有漏洞**：`expiresAt` 是秒级时间戳，而归一化只处理毫秒。于是写了去重标记的运行都被判为不稳定、排除在外，REQ-1 在 4 次对比里只验证了 1 次。现在归一化覆盖当前时间前后 400 天内的秒级和毫秒级时间戳，修好后 4/4 等价，并补了测试。
+  4. **S4 加的 `dynamodb:TransactWriteItems` 权限不起作用**：IAM 里没有这个动作（AWS 文档：事务按逐条目的 `PutItem`/`UpdateItem`/`ConditionCheckItem` 授权，`DynamoDBCrudPolicy` 已经包含这些）。已在 `m2s-sam-kb` 里写明，不要再加这条。
+- **修复**（用户决定：Pattern A 加上冲突时重试或上报；验证引擎要能测冲突）：
+  - **知识库**：Pattern A 改为先按键合并；每个事务最多 100 项，超出就分块，每块用自己的标记；`TransactionConflict` 要么重试，要么上报，绝不能吞掉，这一点跨 Lambda 调用同样成立。
+  - **验证引擎**：
+    - 新增故障类型 `tx_conflict`：`TransactWriteItems` 返回带 `TransactionConflict` 原因的取消；
+    - 用例可以带上自己的 `faults` 和对应的预期；
+    - 事务调用记录它涉及的条目，用于把故障固定到操作上，也纳入 H1 的比较。
+    
+    在当前的 v0 代码上，重复 bookId 和注入冲突这两个探测用例**都判为失败**（计数停在 10），证明引擎能抓到这两个 bug。测试共 108 个通过。
+  - **验证线**：V1 必须写两类用例：同一条消息里重复的条目键；带 `tx_conflict` 的用例，按 blueprint 规定的冲突处理方式断言结果。
+  - **编排**：SKILL.md §6 新增"v0 之后才发现缺陷时，重新验收"：按正常流程退回修复，然后用 `git tag -f v0` 把 tag 移到新提交上，再重跑 S5 和阶段 6。
+  - 修复本身按流水线走，S1→V1→S2→S3c→S4→V2→重新打 v0→S5→阶段 6，结果记在下文。
+
+### bookstore-v2 修复后重新验收（2026-09-27）
+
+- **流程**：按 SKILL.md §6"v0 之后才发现缺陷时，重新验收"走完，全程没有手工改代码。
+  - S1：architect 写入 EXT-1（重复 `bookId` 先合并）和 EXT-2（用户裁定：冲突先在 handler 里有限次重试，仍失败就用 `batchItemFailures` 上报；格式损坏之类的失败照旧吞掉）；
+  - V1：补了重复条目和 `tx_conflict` 用例，共 64 个用例；
+  - S2：修复消费者代码；
+  - S3c：加上 `ReportBatchItemFailures`，删掉不起作用的 IAM 权限；
+  - S4 → V2 → 移动 v0。
+  - 中途 architect 顺手把 BatchSize 改成了 1，理由不成立（开启 `ReportBatchItemFailures` 后本来就只重投失败的消息），用户裁定改回 10（EXT-3），又走了一轮 S1→S3c→S4→V2。
+- **结果**：
+  - V2：80/80（新增 16 个白盒用例），故障基准重新录制（13 个场景，18 次运行，0 infra 错误）；
+  - 新 v0 = `3af5215`（工作区自己的仓库里 `git tag -f`，上层仓库不受影响）；
+  - S5：R1 命中 1 处，但被新规则排除（这些事务可能改到同一条目）；数据驱动提出 1 个改动（去掉 `ReturnValues`），判为 revert（前后范围重叠）；最终 kept 0 个；
+  - 阶段 6 PASS。
+- **独立复核**：`gate(final)` PASS；我自己跑的全量回归 80/80；交付代码和 v0 逐字节相同。
+- **这一轮暴露并修掉的问题**：
+  - OpenHarness 又有两类错误没被重试，都在 OpenHarness 工作区里修了，没有提交：
+    - `403 AccessDenied.Unpurchased`：账号恢复权限后，有一段时间会零星返回这个错误；
+    - 裸的 `httpcore.ReadError('')`：它不是 httpx 异常的子类，原来的判断漏掉了。之前这个错误信息是空的，我先加了诊断（在消息里带上异常类型），才定位到它。
+  - `perf.working_tree_changed()` 的路径解析 bug：`_git()` 会把整个输出 strip 掉，第一行的状态列因此少了一个字符（`utput/...`）。
+  - 台账的应用名改为统一小写（两轮运行中 architect 写的是 `bookstore` 和 `Bookstore`）。
+- **S5 提了一个复查建议**：bookstore-v1 台账里 R1 保留的 2 个改动，是不是也并行化了事务？已核对：v1 的消费者用的是普通 `UpdateItem ADD`，没有用事务。对同一条目的并发原子计数不会产生 `TransactionConflict`，所以那两处不受这个盲区影响。
+  不过 v1 的消费者没有做幂等（它早于 §2.4 的规则），这是另一个层面的问题，已经在 bookstore-v2 里解决。

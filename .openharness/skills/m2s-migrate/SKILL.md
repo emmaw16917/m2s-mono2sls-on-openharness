@@ -1,6 +1,6 @@
 ---
 name: m2s-migrate
-description: 编排 Mono2Sls → OpenHarness 的单体转 Serverless 迁移流水线（todo 基准，离线，不部署 AWS）。用户要求"迁移 todo"、"跑 m2s 流水线"、"生成 template.yaml"时使用。
+description: 编排 Mono2Sls → OpenHarness 的单体转 Serverless 迁移流水线（三条线：实现、验证、优化；离线，不部署 AWS）。用户要求"迁移某个单体"、"跑 m2s 流水线"、"生成 template.yaml"时使用。
 user-invocable: true
 disable-model-invocation: false
 argument-hint: "[可选：从某个阶段重跑，例如 'from S2']"
@@ -8,7 +8,7 @@ argument-hint: "[可选：从某个阶段重跑，例如 'from S2']"
 
 # m2s-migrate：Mono2Sls → OpenHarness 迁移编排协议
 
-你（主 Agent）负责编排这条流水线。你自己不写业务代码、不写 blueprint、不写 template——那些工作全部通过 `agent` 工具 spawn 给下面定义的四个子 Agent。
+你（主 Agent）负责编排这条流水线。你自己不写业务代码、不写 blueprint、不写 template——那些工作全部通过 `agent` 工具 spawn 给 §0 列出的子 Agent。
 
 **重要变化**：S1（架构师）、S2（代码开发）、S3c（模板组装）现在都会**自己**跑对应的 gate 并自我修正（最多 3 次尝试）才会报 `STAGE_COMPLETE`——不再是"子 Agent 写完就交差、主 Agent 发现问题再决定回炉哪个阶段"。这是为了两件事：①把重试留在同一个 agent 的同一次会话里，它比重新 spawn 一个全新 agent 更清楚自己刚才写错了什么；②避免主 Agent 在多个阶段之间来回猜"这个报错到底是谁的锅"（这条路线上真实出过一次误判：sam-engineer 的 CodeUri 路径写错，主 Agent 却一路回炉到了 architect）。
 
@@ -95,7 +95,7 @@ P0 和 S0 之后的 `check_provenance` 是你自己直接调用 MCP 工具的地
 2. Agent 名：例如 `m2s-architect`（写进 `subagent_type` 参数，不是写进 prompt 文本）
 3. 绝对路径清单：`MONOLITH`、`WS`（用 §0 的实际路径，不要用变量名字面量）
 4. 任务摘要：这一阶段具体要产出什么文件（引用 §5 文件契约表）
-5. 回炉信息（如果是你自己发起的第 2 次 spawn 同一阶段——见 §3，你自己最多回炉 1 次）：**上一次的工作报告全文 + 你复核用的 gate 报告全文**，拼接进 prompt，不要只给结论
+5. 回炉信息（如果是你自己发起的重新 spawn——见 §3，每个阶段最多 2 次）：**上一次的工作报告全文 + 你复核用的 gate 报告全文**，拼接进 prompt，不要只给结论
 6. 明确写："完成后必须写 `WS/storage/stage_reports/<STAGE_ID>.json`，再输出 `STAGE_COMPLETE: <一句话摘要>`"
 7. **明确写："如果调用工具或等待过程中遇到网络错误（例如 'Network error: Connection error'），重试 1-2 次再继续，不要因为一次网络错误就直接放弃或提前结束"**——这是实测过的真实故障模式：单次简单请求通常没问题，但长流程里调用次数一多，偶发的连接错误就会打断正在正常工作的子 Agent（不是逻辑错误，是外部网络抖动）。这条提醒必须写进**每一次** spawn 的 prompt 里，子 Agent 自己的 `.md` 没有这条规则。
 
@@ -119,7 +119,7 @@ S1/S2/S3c 现在自己负责"跑 gate → 不过就自己改 → 最多 3 次"�
 3. **复核没过，分两种情况**：
    - 子 Agent 报的是 `STAGE_BLOCKED` 且在报告里**明确指出**"这不是我这阶段的问题，是上游 XX 阶段的问题"（比如 S3c 自查后发现 C3/C10/C11/C12 报错是 handler 代码本身写错了，不是模板路径问题）→ 相信这个判断，回炉到它指出的那个更早的阶段，重新走一遍（该阶段会再自己走一次完整的 3 次自查循环）。
    - 其他情况（子 Agent 报 `STAGE_COMPLETE` 但你的复核不通过，或者报 `STAGE_BLOCKED` 没有说清楚是谁的问题）→ 把你这次复核的 gate 报告和子 Agent 的工作报告一起塞进新的 spawn prompt，**对同一个阶段再 spawn 一次**（它会重新走一遍自己的 3 次自查循环，这次带着更多上下文）。
-4. **每个阶段最多让你自己重新 spawn 1 次**（子 Agent 内部已经自己尝试过 3 次了，所以一个阶段全流程最多是"子 Agent 自查 3 次 + 你重新 spawn 1 次（该次又是 3 次自查）"）。这一次之后仍然不通过：停止流水线，把完整的 gate 报告和工作报告原样交给用户，不要继续往后走，也不要自己动手改文件。
+4. **每个阶段最多让你自己重新 spawn 2 次**（PIPELINE_REDESIGN J5；子 Agent 内部每次都会自查 3 次）。用满 2 次仍然不通过：停止流水线，把完整的 gate 报告和工作报告原样交给用户，不要继续往后走，也不要自己动手改文件。
 
 S4（validator）不适用上面这套——`final` 是终局裁决，`gate(final)` 永远由你亲自跑，不下放、没有"轻伤放过"。validator 自己没通过就报 `STAGE_BLOCKED`，你按第 4 条的次数上限回炉，用满次数仍不过就如实报告失败（见 §6）。
 
@@ -156,7 +156,7 @@ S4（validator）不适用上面这套——`final` 是终局裁决，`gate(fina
    - LLM 被限流（429/超时类错误）→ sleep 30 秒后重试一次轮询，不算失败。
    - **`status=running`/`pending` 且已经轮询了很多次——不代表"卡住了"，继续等，不要自己下判断**。子 Agent 要读多个知识文件、分析报告，几分钟内都是正常耗时。**只有 `task_get` 明确返回 `status=failed` 才算失败**，"感觉等了很久"不是失败信号，不要因为经过时间长就主动判定"process-level failure"。轮询到 20 次（≥10 分钟）仍是 `running`，才可以把这个情况如实写进最终报告交给用户判断，但在那之前不要自己采取任何纠正行动。
    - **不要调用任何"停止任务"类的工具去打断一个仍在 `running`/`pending` 的子 Agent**——除非它明确进入了 `failed` 状态，或者用户直接要求中止。杀掉一个正常工作中的子 Agent 只会浪费已经花掉的时间和调用成本。
-   - **不要擅自改写、精简、"优化"子 Agent 的系统提示词或输出契约**——四个 agent `.md` 文件的内容是固定的，你在 `prompt` 参数里只负责传递 §2 列出的那几项（STAGE_ID、绝对路径、任务摘要、回炉时的报告全文），不能因为一次运行慢或者你自己猜测"提示词里的示例造成了混淆"就在下一次 spawn 时删减或改写 agent 的既定设计。如果真的怀疑 agent 定义本身有问题，如实记录在最终报告里交给用户判断，不要自己动手改。
+   - **不要擅自改写、精简、"优化"子 Agent 的系统提示词或输出契约**——所有 agent `.md` 文件的内容是固定的，你在 `prompt` 参数里只负责传递 §2 列出的那几项（STAGE_ID、绝对路径、任务摘要、回炉时的报告全文），不能因为一次运行慢或者你自己猜测"提示词里的示例造成了混淆"就在下一次 spawn 时删减或改写 agent 的既定设计。如果真的怀疑 agent 定义本身有问题，如实记录在最终报告里交给用户判断，不要自己动手改。
 2. **报告级**：`status` 变成 `completed` 后，用 `task_output` 读它的摘要，再 `Read WS/storage/stage_reports/<STAGE_ID>.json`。
    - 报告缺失：不算失败（gate 才是权威），但在这一阶段的记录里注明"上次未提交工作报告"，如果后面真的回炉，把这句话也写进回炉 prompt。
 3. **事实级（权威）**：跑对应的 `mcp__m2s-server__run_gate(phase=...)`。**模型自己说"完成了"不可信，文件不说谎**——即使子 Agent 报告 status=success，也必须跑 gate 才能往下走。
@@ -225,6 +225,13 @@ git tag v0
 git log --oneline -1 && git tag   # 确认 tag 存在
 ```
 
+**v0 之后才发现缺陷时，重新验收**：
+1. 缺陷按 §3 的规则退回负责的阶段（规格或设计问题 → S1，代码 → S2，模板 → S3c），后面的 gate 依次重跑；
+2. 测试资产缺用例的，重新 spawn V1 回炉补用例（V1 仍然只看规格，不看 `output/`）；
+3. 重新 spawn V2（它会重新记录 `fault_baseline_v0.json`），然后你亲自 `run_validate()`；
+4. 通过后在 WS 里提交，**把 tag 移到新提交上**：`git -C "WS" tag -f v0`（不要删除历史，不要 `reset`）；
+5. 之前 S5 保留的改动如果已经作废，先用 `git revert` 撤掉；然后在新的 v0 上重新跑 S5 和阶段 6。已提交的 `perf/benchmarks/` 可以沿用，不要改。
+
 打完 v0 之后，进入 S5 和阶段 6：
 
 **S5（性能优化）**：
@@ -236,7 +243,7 @@ git log --oneline -1 && git tag   # 确认 tag 存在
 1. `run_gate(phase="final")` 必须 `PASS`；
 2. `run_validate()`（不带参数，全量回归）必须 `PASS`。
 
-两项都通过：最终回复写明 v0 的 commit、S5 保留和回滚的改动（逐个写判决和关键数据）、`pending_human` 的数量、`verdict_A.json` 的用例数和通过数，以及覆盖率报告和故障行为基准是否存在。
+两项都通过：最终回复写明 v0 的 commit、S5 保留和回滚的改动（逐个写判决和关键数据）、`pending_human` 的数量、`verdict_A.json` 的用例数和通过数，以及覆盖率报告和故障行为基准是否存在。**还要写明**：v0 之后 S5 的改动只经过了机械检查（`gate(final)`）和验证线的动态检查（回归、等价性、覆盖），没有经过 validator（S4）的审查（PIPELINE_REDESIGN §1）。V1 仍有 open 的 `spec_issues`（§3 用满往返次数后留下的）也要逐条列出。
 
 任何一项没通过：说明 S5 之后的版本有问题。在 WS 里执行 `git -C "WS" checkout v0 -- output`，然后 `git -C "WS" commit -am "revert S5: stage 6 failed"`，交付 v0 的实现；再重跑一次阶段 6，并如实报告。**不要用 `reset --hard`，不要删 tag。**
 

@@ -117,9 +117,11 @@ def _event(model: Model, b: dict[str, Any]) -> dict[str, Any]:
 def working_tree_changed(ws: Path, ref: str) -> list[str]:
     if not verify.has_own_repo(ws):
         raise VerifyError(f"{ws} has no .git of its own; the v0 snapshot (SKILL.md §6) must exist before optimization")
-    out = _git(ws, "status", "--porcelain", "--", "output")
+    # Not _git(): it strips the whole output, which eats the leading status
+    # column of the first porcelain line (" M output/x" -> "utput/x").
+    p = _run(["git", "-C", str(ws), "status", "--porcelain", "--", "output"], capture_output=True, text=True, encoding="utf-8", errors="replace")
     diff = _git(ws, "diff", "--name-only", ref, "--", "output")
-    return sorted({l[3:] for l in out.splitlines() if l} | set(diff.splitlines()))
+    return sorted({l[3:] for l in p.stdout.splitlines() if l.strip()} | set(diff.splitlines()))
 
 
 # ---------------------------------------------------------------------------
@@ -417,7 +419,9 @@ def update_ledger(workspace: str) -> dict[str, Any]:
         raise VerifyError("output/perf_report.json not found")
     report = json.loads(rp.read_text(encoding="utf-8"))
     bp = json.loads((ws / "storage" / "blueprint.json").read_text(encoding="utf-8"))
-    app = (bp.get("metadata") or {}).get("application_name") or ws.name
+    # Lower-cased: architects capitalize application_name inconsistently
+    # ("bookstore" vs "Bookstore"), which split one app into two in the ledger.
+    app = str((bp.get("metadata") or {}).get("application_name") or ws.name).strip().lower()
     scan = report.get("rule_scan") or {}
     if not isinstance(scan, dict) or not scan:
         raise VerifyError("perf_report.json needs rule_scan: {R1: {hits, locations}, R2: ..., R3: ...} (hits may be 0)")

@@ -367,6 +367,34 @@ ApiLogGroup:
           BatchSize: 10
 ```
 
+### Idempotency Table + Partial Batch Response (for idempotent consumers)
+
+Required whenever the blueprint gives an SQS/EventBridge consumer a dedupe mechanism (see `m2s-async-patterns-kb`, "REQUIRED correctness rule: consumers must be idempotent under redelivery"):
+
+```yaml
+  IdempotencyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  # on the consumer function:
+  #   Environment.Variables.IDEMPOTENCY_TABLE: !Ref IdempotencyTable
+  #   Policies: [DynamoDBCrudPolicy: {TableName: !Ref IdempotencyTable}, ...the tables it updates]
+  #   Events.<Queue>.Properties.FunctionResponseTypes: [ReportBatchItemFailures]   # only if the handler returns batchItemFailures
+```
+
+- `TransactWriteItems` across two tables needs write permission on **both** tables; `DynamoDBCrudPolicy` on each covers it. IAM authorizes a transaction through the per-item actions (`PutItem`, `UpdateItem`, `DeleteItem`, `ConditionCheckItem`, all included in `DynamoDBCrudPolicy`), optionally narrowed with the condition key `dynamodb:EnclosingOperation`. **There is no `dynamodb:TransactWriteItems` IAM action; do not add one**, it grants nothing.
+- Only add `FunctionResponseTypes: [ReportBatchItemFailures]` when the handler actually returns `{ batchItemFailures: [...] }` (the blueprint says which). Otherwise a returned object is ignored and any thrown error retries the whole batch.
+
 ### EventBridge Rule Pattern
 
 ```yaml

@@ -318,3 +318,75 @@ result = json.loads(response['Payload'].read())
 - **SQS**: Failed messages retry automatically (up to `maxReceiveCount`), then go to DLQ
 - **EventBridge**: Failed invocations can be configured with retry policy and DLQ on the rule target
 - **Both**: Consumer Lambdas should be idempotent (safe to process the same message twice)
+
+---
+
+## REQUIRED correctness rule: consumers must be idempotent under redelivery
+
+This is a **correctness rule, not an optimization** (PIPELINE_REDESIGN.md §2.4). It applies from v0 on to every SQS- or EventBridge-triggered consumer.
+
+**Why this comes from the migration itself.** In the monolith, a fire-and-forget side effect (for example `updateBestSellers(books)` called without `await`) ran **once**, inside the same process: it could be lost on a crash, but never applied twice. Once the architect turns it into a message plus a consumer, delivery becomes **at-least-once**:
+- SQS standard queues may deliver the same message more than once;
+- if the consumer times out or crashes mid-batch, the **whole batch** becomes visible again and is reprocessed, including the messages that had already been applied;
+- EventBridge targets are retried as well.
+
+A consumer that is not idempotent therefore makes the migrated system *less* correct than the monolith. Typical symptoms are double-counted `ADD` counters and duplicated audit events.
+
+**The rule.** Processing the same message twice must leave exactly the same final state as processing it once.
+
+1. **Idempotency key.** Use a stable business key carried in the message body, such as `orderId`. If the key is not there, the producer must add it.
+   - Do not rely on SQS `messageId` alone: a redelivery keeps the same `messageId`, but if the producer retries `SendMessage` itself, the resend gets a new one.
+2. **Writes that are already idempotent need nothing extra:**
+   - `PutItem` of a complete item whose key is deterministic (not a freshly generated UUID);
+   - `DeleteItem`;
+   - `UpdateItem` that only `SET`s absolute values.
+3. **Writes that are not idempotent need a dedupe mechanism.** These include `ADD` / `list_append` updates, `PutItem` with a generated key, and sending further messages. Choose one pattern and write the choice into the blueprint (the function's `notes`) and into `DECISIONS.md`:
+
+   **Pattern A (preferred): an atomic dedupe marker plus the effect, in one `TransactWriteItems`.**
+   ```javascript
+   const { TransactWriteCommand } = require('@aws-sdk/lib-dynamodb');
+   // 1. Merge entries that target the same item FIRST. DynamoDB rejects a transaction
+   //    containing two operations on one item (ValidationException "Transaction request
+   //    cannot include multiple operations on one item"), and an order may list the
+   //    same book twice -- without merging, the whole message fails and is lost.
+   const qtyByBook = new Map();
+   for (const b of books) qtyByBook.set(b.bookId, (qtyByBook.get(b.bookId) || 0) + b.quantity);
+   // 2. marker item: pk = "<consumer>#<idempotency key>", expiresAt = TTL (epoch seconds)
+   try {
+     await docClient.send(new TransactWriteCommand({ TransactItems: [
+       { Put: { TableName: process.env.IDEMPOTENCY_TABLE,
+                Item: { pk: `update-bestsellers#${orderId}`, expiresAt: Math.floor(Date.now() / 1000) + 7 * 86400 },
+                ConditionExpression: 'attribute_not_exists(pk)' } },
+       ...[...qtyByBook].map(([bookId, q]) => ({ Update: { TableName: process.env.BESTSELLERS_TABLE, Key: { bookId },
+                UpdateExpression: 'ADD salesCount :q', ExpressionAttributeValues: { ':q': q } } })),
+     ] }));
+   } catch (err) {
+     const dup = err.name === 'TransactionCanceledException' && err.CancellationReasons?.[0]?.Code === 'ConditionalCheckFailed';
+     if (!dup) throw err;            // real failure: let the message be retried (see "failure reporting")
+     // duplicate delivery: already applied -> success, nothing to do
+   }
+   ```
+   - The marker and the effects commit together or not at all, so a crash between them cannot happen.
+   - **One operation per item.** Merge the entries that target the same key before building `TransactItems` (sum quantities, keep the last `SET` value, and so on). The merged result must equal applying the entries one by one, as the monolith did.
+   - **At most 100 operations per transaction**, the marker included. When a message has more distinct items than that, split them into chunks, and give each chunk its own marker (`<consumer>#<key>#<chunk index>`): each chunk is then exactly-once on its own. Alternatively, use Pattern B.
+   - **Transactions that touch the same item conflict.** If another transaction on one of the same items is in flight, DynamoDB cancels one of them with `CancellationReasons[i].Code === 'TransactionConflict'`. That is not a duplicate; it is a transient failure. So:
+     - This happens **across Lambda invocations too**: SQS scales a consumer out to many concurrent batches under load, and two of them may update the same popular item. Processing the messages of one batch one after another only reduces conflicts; it does not remove them.
+     - So a `TransactionConflict` must be retried (a bounded in-handler retry with backoff) or reported as a failure (`batchItemFailures`, redelivered later; idempotency makes that safe). It must **never be swallowed**: swallowing it silently loses the update.
+     - Consequently, "swallow failures like the monolith did" is **not** an acceptable policy for conflict cancellations under Pattern A. The monolith's plain `ADD` never conflicted, so swallowing a conflict is a new loss mode that the migration introduced.
+     - Pattern B uses no transactions, so concurrent updates on one item simply serialize and do not conflict.
+     - Note: DynamoDB Local serializes transactions and never produces `TransactionConflict`, so local tests cannot show this. It has to be designed in.
+   - Transactional writes consume 2x write capacity. Record that trade-off; it is a correctness decision, not something the optimization line may undo.
+
+   **Pattern B (per item): a conditional update that remembers which keys were applied.** For example: `UpdateExpression: 'ADD salesCount :q, appliedOrders :oset'`, `ConditionExpression: 'NOT contains(appliedOrders, :oid)'`, and a `ConditionalCheckFailedException` means "already applied". This needs no transactions, but the set grows forever, so it must be pruned or bounded.
+
+4. **Where markers live.** Use a dedicated table, e.g. `IdempotencyTable` with partition key `pk` (S) and TTL on `expiresAt`. Keep markers longer than the queue's retention plus retries: SQS retention is 4 days by default, so 7 days is a safe TTL.
+
+**Failure reporting is a separate decision.** Returning `{ batchItemFailures: [{ itemIdentifier: messageId }] }`, with `FunctionResponseTypes: [ReportBatchItemFailures]` on the event source, makes only the failed messages retry instead of the whole batch. That narrows the redelivery scope, **but does not replace idempotency**:
+- the whole batch is still redelivered on a timeout or crash;
+- a message whose effects were partially applied is still retried in full, unless the effects are transactional.
+
+If the monolith swallowed failures (logged and continued), the architect must decide explicitly, and record it in `DECISIONS.md`, between:
+- (a) keep swallowing: failures are lost, exactly like the monolith, and the DLQ is unreachable;
+- (b) report failures so they retry: this requires idempotency.
+
+Idempotency itself is required in both cases, because redelivery on a timeout or crash happens either way.

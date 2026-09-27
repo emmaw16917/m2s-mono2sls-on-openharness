@@ -172,6 +172,8 @@ def _write_good_workspace(root: Path) -> Path:
     output = root / "output"
     storage.mkdir(parents=True)
     (storage / "blueprint.json").write_text(json.dumps(GOOD_BLUEPRINT), encoding="utf-8")
+    (storage / "DECISIONS.md").write_text(
+        "## D-1 one Lambda per endpoint\n- todo-list-items, todo-create-item: auth required (spec)\n", encoding="utf-8")
     (storage / "analysis_report.json").write_text(
         json.dumps({"entry_points": [{"method": "GET", "path": "/item"}, {"method": "POST", "path": "/item"}]}),
         encoding="utf-8",
@@ -195,6 +197,41 @@ def test_b0_good_blueprint_passes(tmp_path):
     _write_good_workspace(tmp_path)
     findings = gates.check_b0(tmp_path)
     assert findings == []
+
+
+def test_b0_requires_decisions_md_mentioning_every_function(tmp_path):
+    _write_good_workspace(tmp_path)
+    (tmp_path / "storage" / "DECISIONS.md").write_text("## D-1\n- todo-list-items only\n", encoding="utf-8")
+    msgs = [f["description"] for f in gates.check_b0(tmp_path) if f["severity"] == "ERROR"]
+    assert any("todo-create-item" in m and "DECISIONS.md" in m for m in msgs)
+    (tmp_path / "storage" / "DECISIONS.md").unlink()
+    msgs = [f["description"] for f in gates.check_b0(tmp_path) if f["severity"] == "ERROR"]
+    assert any("missing or empty" in m for m in msgs)
+
+
+def test_b0_auth_must_not_drop_spec_required(tmp_path):
+    """Spec says the endpoint needs auth, blueprint makes it public: security regression."""
+    _write_good_workspace(tmp_path)
+    (tmp_path / "storage" / "analysis_report.json").write_text(json.dumps({"entry_points": [
+        {"method": "GET", "path": "/item", "auth": {"classification": "required"}},
+        {"method": "POST", "path": "/item", "auth": {"classification": "required"}}]}), encoding="utf-8")
+    bp = json.loads(json.dumps(GOOD_BLUEPRINT))
+    bp["lambda_functions"][0]["auth"] = "none"
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    errs = [f for f in gates.check_b0(tmp_path) if f["severity"] == "ERROR"]
+    assert len(errs) == 1 and "requires authentication" in errs[0]["description"]
+
+
+def test_b0_warns_on_consumer_without_idempotency(tmp_path):
+    _write_good_workspace(tmp_path)
+    bp = json.loads(json.dumps(GOOD_BLUEPRINT))
+    bp["lambda_functions"].append({"name": "todo-consumer", "trigger_type": "sqs", "runtime": "nodejs22.x", "handler": "handler.handler"})
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    (tmp_path / "storage" / "DECISIONS.md").write_text("todo-list-items todo-create-item todo-consumer\n", encoding="utf-8")
+    warns = [f for f in gates.check_b0(tmp_path) if f["severity"] == "WARNING"]
+    assert any("idempotency" in f["description"] for f in warns)
+    (tmp_path / "storage" / "DECISIONS.md").write_text("todo-list-items todo-create-item todo-consumer: 按 orderId 幂等\n", encoding="utf-8")
+    assert not [f for f in gates.check_b0(tmp_path) if "idempotency" in f["description"]]
 
 
 def test_b0_residue_fixture_reports_findings():

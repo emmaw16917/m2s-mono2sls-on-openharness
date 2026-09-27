@@ -169,6 +169,17 @@ def test_spec_ref_to_architect_resolution(ws):
     assert errs and "no issue_id 'SI-9'" in errs[0]
 
 
+def test_case_level_faults_are_checked(ws):
+    m = verify.Model(ws)
+    ok = _case(faults=[{"match": {"op": "TransactWriteItems", "table": "Books"}, "nth": 1, "kind": "tx_conflict"}])
+    assert verify.check_case(m, ok, with_template=True) == []
+    bad = _case(faults=[{"match": {"op": "GetItem", "table": "Nope"}, "kind": "explode"}])
+    text = " | ".join(verify.check_case(m, bad, with_template=True))
+    assert "kind must be one of" in text
+    runs = verify._prepare_runs(m, [ok])
+    assert runs[0]["faults"] == [{"match": {"op": "TransactWriteItems", "table": "BooksTable"}, "nth": 1, "kind": "tx_conflict"}]
+
+
 def test_judge(ws):
     m = verify.Model(ws)
     raw = {"result": {"statusCode": 200, "body": json.dumps({"id": "b1", "tags": ["x"]})},
@@ -198,6 +209,14 @@ def test_observation_normalizes_nondeterminism():
     assert o["calls"][0]["item"]["id"] == "<uuid>"
     assert o["outcome"]["result"]["body"] == {"<json>": {"orderId": "<uuid>"}}
     assert verify._observation(raw) == o
+
+
+def test_normalize_epoch_seconds_and_future_ms():
+    import time
+    now_s = time.time()
+    assert verify.normalize(int(now_s) + 7 * 86400) == "<epoch-s>"          # TTL 7 days ahead
+    assert verify.normalize(int(now_s * 1000) + 30 * 86400 * 1000) == "<epoch-ms>"
+    assert verify.normalize(42) == 42 and verify.normalize(1.5) == 1.5
 
 
 def test_observation_effective_calls():

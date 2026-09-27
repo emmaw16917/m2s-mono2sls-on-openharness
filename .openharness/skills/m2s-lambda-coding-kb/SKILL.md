@@ -543,7 +543,7 @@ exports.handler = async (event) => {
 > - SQS consumers iterate `event['Records']` and parse `record['body']`.
 > - EventBridge consumers access `event['detail']` directly.
 > - Neither type returns `{ statusCode, headers, body }` — no API Gateway wrapper.
-> - Consumer Lambdas should be **idempotent** (safe to process the same message twice).
+> - Consumer Lambdas **must** be idempotent (processing the same message twice leaves the same state as once). This is a required correctness rule with concrete patterns in `m2s-async-patterns-kb` ("REQUIRED correctness rule: consumers must be idempotent under redelivery"); implement exactly the mechanism the blueprint names for the function.
 
 ---
 

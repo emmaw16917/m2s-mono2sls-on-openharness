@@ -78,6 +78,8 @@ function identityOf(call) {
   else if (call.item && TABLE_KEYS[call.table]) id = Object.fromEntries(TABLE_KEYS[call.table].map((k) => [k, call.item[k]]));
   else if (call.queue) id = { queue: call.queue, body: call.body };
   else if (call.key_condition) id = { key_condition: call.key_condition, values: call.values, index: call.index };
+  else if (call.transact) id = call.transact.map((t) => ({ kind: t.kind, table: t.table,
+    key: t.key || (t.item && TABLE_KEYS[t.table] ? Object.fromEntries(TABLE_KEYS[t.table].map((k) => [k, t.item[k]])) : null) }));
   return id === null ? '' : stable(id).replace(UUID_RE, '<uuid>');
 }
 
@@ -87,7 +89,7 @@ function matchFault(call) {
   for (const r of ctx.rules) {
     const m = r.rule.match || {};
     if (m.op && m.op !== call.op) continue;
-    if (m.table && m.table !== call.table && m.table !== call.queue) continue;
+    if (m.table && m.table !== call.table && m.table !== call.queue && !(call.tables || []).includes(m.table)) continue;
     if (m.identity !== undefined && m.identity !== call.identity) continue;
     // Every matching rule counts every matching call, even when an earlier
     // rule already fired -- otherwise later rules' "n-th call" counters fall
@@ -112,7 +114,19 @@ function summarize(op, req) {
   if (req.KeyConditionExpression) s.key_condition = req.KeyConditionExpression;
   if (req.ExpressionAttributeValues) s.values = unmarshall(req.ExpressionAttributeValues);
   if (req.RequestItems) s.request_items = Object.fromEntries(Object.entries(req.RequestItems).map(([t, v]) => [t, Array.isArray(v) ? v.length : (v.Keys || []).length]));
-  if (req.TransactItems) s.transact_items = req.TransactItems.length;
+  if (req.TransactItems) {
+    s.transact_items = req.TransactItems.length;
+    s.transact = req.TransactItems.map((t) => {
+      const [kind, v] = Object.entries(t)[0];
+      const it = { kind, table: v.TableName };
+      if (v.Key) it.key = unmarshall(v.Key);
+      if (v.Item) it.item = unmarshall(v.Item);
+      if (v.UpdateExpression) it.update = v.UpdateExpression;
+      if (v.ExpressionAttributeValues) it.values = unmarshall(v.ExpressionAttributeValues);
+      return it;
+    });
+    s.tables = [...new Set(s.transact.map((t) => t.table))];
+  }
   if (req.QueueUrl) s.queue = req.QueueUrl.split('/').pop();
   if (op === 'SendMessage') s.body = req.MessageBody;
   return s;
@@ -134,9 +148,36 @@ function sqsReply(op, req) {
   return null;
 }
 
+// DynamoDB backend: AWS's DynamoDB Local in a container when Docker is
+// available (job.backend = "ddblocal"), dynalite in-process otherwise (no
+// transactions -- verify.py reports that as a limitation).
+let ddbContainer = null;
+async function startDdbLocal() {
+  const spec = job.ddb_local;
+  const name = 'm2sv-ddb-' + process.pid;
+  try { execFileSync(DOCKER, ['rm', '-f', name], { stdio: 'ignore' }); } catch (e) { /* none */ }
+  execFileSync(DOCKER, ['run', '-d', '--name', name, '-p', '127.0.0.1::8000', ...(spec.entrypoint ? ['--entrypoint', spec.entrypoint] : []), spec.image, ...spec.args], { stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, MSYS_NO_PATHCONV: '1' } });
+  ddbContainer = name;
+  const firstLine = execFileSync(DOCKER, ['port', name, '8000']).toString().trim().split(String.fromCharCode(10))[0].trim();
+  const port = Number(firstLine.split(':').pop());
+  for (let i = 0; i < 120; i++) {
+    const ok = await new Promise((r) => http.get({ host: '127.0.0.1', port, path: '/' }, (res) => { res.resume(); r(true); }).on('error', () => r(false)));
+    if (ok) return { port, close: () => { try { execFileSync(DOCKER, ['rm', '-f', name], { stdio: 'ignore' }); } catch (e) { /* ignore */ } } };
+    await sleep(250);
+  }
+  throw new Error('DynamoDB Local did not start within 30s (' + spec.image + ')');
+}
+
 async function startBackends() {
-  const dyn = dynalite({ createTableMs: 0, deleteTableMs: 0, updateTableMs: 0 });
-  const dynPort = await listen(dyn, '127.0.0.1');
+  let dyn, dynPort;
+  if (job.backend === 'ddblocal') {
+    const d = await startDdbLocal();
+    dynPort = d.port;
+    dyn = { close: d.close };
+  } else {
+    dyn = dynalite({ createTableMs: 0, deleteTableMs: 0, updateTableMs: 0 });
+    dynPort = await listen(dyn, '127.0.0.1');
+  }
 
   const proxy = http.createServer((req, res) => {
     const chunks = [];
@@ -172,6 +213,24 @@ async function startBackends() {
       if (fault) call.fault = fault;
       ctx && ctx.calls.push(call);
       if (fault === 'network') { req.socket.destroy(); return; }
+      if (fault === 'tx_conflict' && service === 'dynamodb') {
+        // What real DynamoDB returns when an overlapping transaction is in
+        // flight: the transaction is cancelled; the conflicting item's reason
+        // is TransactionConflict (DynamoDB Local never produces this).
+        let body2;
+        if (op === 'TransactWriteItems' || op === 'TransactGetItems') {
+          const n = (body.TransactItems || []).length;
+          const at = n > 1 ? 1 : 0;
+          const reasons = Array.from({ length: n }, (_, i) => (i === at ? { Code: 'TransactionConflict', Message: 'Transaction is ongoing for the item (injected)' } : { Code: 'None' }));
+          body2 = { __type: 'com.amazonaws.dynamodb.v20120810#TransactionCanceledException',
+                    message: 'Transaction cancelled, please refer cancellation reasons for specific reasons [' + reasons.map((r) => r.Code).join(', ') + ']',
+                    CancellationReasons: reasons };
+        } else {
+          body2 = { __type: 'com.amazonaws.dynamodb.v20120810#TransactionConflictException', message: 'Transaction is ongoing for the item (injected)' };
+        }
+        res.writeHead(400, { 'content-type': 'application/x-amz-json-1.0' });
+        return res.end(JSON.stringify(body2));
+      }
       if (fault) {
         const [code, type, message] = faultResponse(fault, service);
         res.writeHead(code, { 'content-type': 'application/x-amz-json-1.0', 'x-amzn-query-error': type.split('#').pop() + ';Sender' });
@@ -393,7 +452,7 @@ async function convertCoverage(fn, covDir, reportDir) {
   const be = await startBackends();
   await createTables(be);
   log('proxy on', be.proxyPort, 'mode', job.mode);
-  const results = { mode: job.mode, cases: [], functions: {} };
+  const results = { mode: job.mode, backend: job.backend || 'dynalite', cases: [], functions: {} };
   let port = 9100;
   for (const fn of job.functions) {
     const cases = job.cases.filter((c) => c.function === fn.name);
@@ -454,4 +513,8 @@ async function convertCoverage(fn, covDir, reportDir) {
   be.proxy.close(); be.dyn.close();
   log('done', results.cases.length, 'cases');
   process.exit(0);
-})().catch((e) => { log('FATAL', e.stack || e); process.exit(2); });
+})().catch((e) => {
+  log('FATAL', e.stack || e);
+  if (ddbContainer) { try { execFileSync(DOCKER, ['rm', '-f', ddbContainer], { stdio: 'ignore' }); } catch (x) { /* ignore */ } }
+  process.exit(2);
+});

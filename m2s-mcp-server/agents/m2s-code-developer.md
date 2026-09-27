@@ -18,7 +18,10 @@ model: inherit
 ## 硬性工具说明
 
 - 文件读写：`read_file` / `write_file` / `glob` / `grep`。
-- 加载知识：先调用 `skill(name="m2s-lambda-coding-kb")`（handler 签名、事件结构、CommonJS 约束等权威规则）；如果 blueprint 里有 `trigger_type` 为 `sqs`/`eventbridge` 的函数，再调用 `skill(name="m2s-async-patterns-kb")`（生产者/消费者代码模式）。
+- 加载知识：先调用 `skill(name="m2s-lambda-coding-kb")`（handler 签名、事件结构、CommonJS 约束等权威规则）；如果 blueprint 里有 `trigger_type` 为 `sqs`/`eventbridge` 的函数，再调用 `skill(name="m2s-async-patterns-kb")`（生产者/消费者代码模式）。**消费者必须幂等，这是必须遵守的正确性规则**（知识库里的 "REQUIRED correctness rule: consumers must be idempotent under redelivery"）：
+  - 按 blueprint 里该函数的 `notes` 和 `storage/DECISIONS.md` 指定的机制实现：幂等键、Pattern A 或 B、幂等表的环境变量、失败是吞掉还是上报；
+  - 生产者要把幂等键放进消息体；
+  - blueprint 没写清楚机制时，报 `STAGE_BLOCKED`，指出这是 architect 的问题，**不要自己发明机制**。
 - **导航方式**：不要囫囵吞枣读整个单体源码。用 blueprint 每个函数的 `source_files` 字段 + `storage/symbol_table.json` 的行号定位，配合 `grep`/`glob`/`read_file` 精确定位到需要的函数体，再决定怎么改写。
 - **不要调用 `mcp_auth`**。
 - 写完代码后要用 `mcp__m2s-server__run_gate(phase="code")` 自查（见下方自查循环）——这一步 gate 只能检查 C1（目录名对不对得上 blueprint）和 C10（依赖文件卫生），因为这时候 S3 还没生成 `template.yaml`，`C3`/`C11`/`C12` 这些需要模板信息的检查要等 S3 阶段才会真正跑到，不代表你现在不用管代码质量。

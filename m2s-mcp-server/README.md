@@ -96,7 +96,7 @@ one directory:
 |---|---|---|
 | MCP tools, gates, merge logic | `m2s-mcp-server/` (this dir) | Ordinary Python package, run as a stdio MCP server |
 | Orchestration + knowledge skills | `Mono2Sls\.openharness\skills\{m2s-migrate,m2s-*-kb}\SKILL.md` | Project-level skill discovery walks up from cwd to git root looking for `.openharness/skills/` |
-| Four agent definitions | `~/.openharness/agents/*.md` (user-level, fixed path) | OpenHarness only loads agent `.md` files from this one path — no project-level equivalent exists. **Mirrored into `m2s-mcp-server/agents/`** as the version-controlled source of truth; the two copies must currently be kept in sync by hand (see CHANGELOG's "已知缺口" section — a sync script is a good P5 candidate) |
+| Agent definitions (m2s-spec-annotator, m2s-architect, m2s-verifier, m2s-code-developer, m2s-sam-engineer, m2s-validator, m2s-perf-optimizer) | `~/.openharness/agents/*.md` (user-level, fixed path) | OpenHarness only loads agent `.md` files from this one path — no project-level equivalent exists. **Mirrored into `m2s-mcp-server/agents/`** as the version-controlled source of truth; the two copies must currently be kept in sync by hand (see CHANGELOG's "已知缺口" section — a sync script is a good P5 candidate) |
 | MCP server registration, tool permissions, hooks | `~/.openharness/settings.json` (user-level, not in this repo — contains a live API key) | User-level settings; back up before editing (`settings.json.bak-pre-m2s` sits next to it from the original P0 edit) |
 
 If you sync a changed agent `.md` from `~/.openharness/agents/` back into

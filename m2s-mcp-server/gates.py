@@ -259,6 +259,55 @@ def check_b0(workspace: Path) -> list[dict[str, Any]]:
                         )
                     )
 
+            # 5. Auth vs the spec's endpoint-level classification (PIPELINE_REDESIGN
+            # §2.1/§2.2): the architect adopts it instead of re-inferring from
+            # file tags. required -> none would expose an endpoint the monolith
+            # protected, so that is an ERROR; other differences are warnings.
+            spec_auth = {
+                _normalize(f"{ep.get('method', '').upper()} {ep.get('path', '')}"): (ep.get("auth") or {}).get("classification")
+                for ep in analysis.get("entry_points", [])
+                if isinstance(ep, dict) and isinstance(ep.get("auth"), dict)
+            }
+            for fn in blueprint.get("lambda_functions", []) or []:
+                if not isinstance(fn, dict) or fn.get("trigger_type") != "api":
+                    continue
+                for ep in fn.get("entry_points") or []:
+                    if not isinstance(ep, str):
+                        continue
+                    want = spec_auth.get(_normalize(ep))
+                    got = fn.get("auth")
+                    if want == "required" and got == "none":
+                        findings.append(_finding(
+                            "B0", "ERROR",
+                            f"'{ep}' requires authentication in the monolith (spec auth.classification=required) "
+                            f"but {fn.get('name')} has auth='none'.", fn.get("name", "<unnamed>")))
+                    elif want in ("required", "none") and got in ("required", "none") and want != got:
+                        findings.append(_finding(
+                            "B0", "WARNING",
+                            f"'{ep}': spec auth.classification={want!r} but {fn.get('name')} has auth={got!r}; "
+                            "record the reason in DECISIONS.md.", fn.get("name", "<unnamed>")))
+
+    # 6. Decision record (PIPELINE_REDESIGN §2.2): storage/DECISIONS.md must
+    # exist and mention every lambda function.
+    decisions_path = storage_dir / "DECISIONS.md"
+    decisions = decisions_path.read_text(encoding="utf-8", errors="replace") if decisions_path.exists() else ""
+    fn_names = [fn.get("name") for fn in blueprint.get("lambda_functions", []) or [] if isinstance(fn, dict) and fn.get("name")]
+    if not decisions.strip():
+        findings.append(_finding("B0", "ERROR", "storage/DECISIONS.md is missing or empty; every design decision needs a recorded rationale.", "storage/DECISIONS.md"))
+    else:
+        missing = [n for n in fn_names if n not in decisions]
+        if missing:
+            findings.append(_finding("B0", "ERROR", f"storage/DECISIONS.md does not mention these lambda functions: {missing}.", "storage/DECISIONS.md"))
+    # 7. Async consumers must be idempotent (§2.4) -- keyword heuristic, warning only.
+    for fn in blueprint.get("lambda_functions", []) or []:
+        if isinstance(fn, dict) and fn.get("trigger_type") in ("sqs", "eventbridge"):
+            text = (json.dumps(fn, ensure_ascii=False) + decisions).lower()
+            if "幂等" not in text and "idempot" not in text:
+                findings.append(_finding(
+                    "B0", "WARNING",
+                    f"Consumer {fn.get('name')} has no recorded idempotency design (notes / DECISIONS.md); "
+                    "consumers must be idempotent under redelivery (m2s-async-patterns-kb).", fn.get("name", "<unnamed>")))
+
     return findings
 
 

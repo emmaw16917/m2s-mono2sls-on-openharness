@@ -81,6 +81,7 @@ model: inherit
   - `body` 写 JSON 对象，或者原样字符串（用来测非法 JSON）；
   - `identity`：已登录用户写 `{"sub": ...}`（Cognito Sub），匿名请求写 `null`。**鉴权由 API Gateway 做**：路由配置了 Cognito authorizer 时，匿名请求由网关直接返回 401，不会调用函数。
 - SQS 消费者函数写 `sqs`：`{"records": [{"message_id": "m1", "body": {...}}, ...]}`。消息体格式按 blueprint 里生产者和消费者的约定写。
+- `faults`（可选）：这个用例运行时注入的故障，格式和故障场景的 `rules` 相同。**只有当规格或 blueprint 明确规定了故障下的行为时才写**（例如 architect 规定"事务冲突要在 handler 里重试"），`expect` 按那条规定写。其他故障只写成故障场景，只记录、不写预期。
 - `fixtures`：用例开始前各表里的条目，表名用 blueprint `dynamodb_tables[].logical_name`（例如 `Books`、`Cart`）。键名按 **blueprint 的表结构**写（迁移后可能改过名，例如 `customerId` → `userId`）。每个用例开始时所有表都会清空，再放入这些条目。
 - `expect`：至少要有 `status`、`error`、`batch_item_failures` 之一。
   - `status`：HTTP 状态码。
@@ -98,6 +99,15 @@ model: inherit
 - 响应体只断言规格里写明的字段和值。规格里标 `unknown` 的项不要断言。
 - 500 这类未处理异常：只断言 `status`，不断言错误消息的内容（单体的错误中间件会带 `stack`，迁移后不会）。
 - blueprint 明确改变了单体行为的地方（例如用户 id 从 `req.customerId` 改为 Cognito `sub`、认证端点被删除），以 blueprint 为准，`spec_refs` 写 `"blueprint:..."`。
+- **SQS/EventBridge 消费者必须幂等**：这是上游正确性规则，设计写在 blueprint 函数的 `notes` 和 `DECISIONS.md` 里。每个消费者至少写一个**重复投递用例**：
+  - 同一个批次里放两条内容相同的消息（`message_id` 可以相同，也可以不同，按 blueprint 说的幂等键来），或者 fixture 里预先放好"已处理过"的标记；
+  - 断言表状态和**只处理一次**的结果相同，例如计数只加一次。
+  
+  另外按 blueprint 写的失败上报方式（吞掉，还是返回 `batchItemFailures`）写故障场景。
+- **用事务写入的消费者**：blueprint 或 `DECISIONS.md` 会规定冲突（`TransactionConflict`）怎么处理，例如在 handler 里重试，或者上报 `batchItemFailures`。据此写一个带 `faults: [{"match": {"op": "TransactWriteItems"}, "nth": 1, "kind": "tx_conflict"}]` 的用例，断言冲突之后的结果，例如计数最终正确，或者这条消息被上报为失败。
+- **同一条消息（或同一个请求）里出现重复的条目键**：只要规格允许重复（例如订单的 `books` 里同一个 `bookId` 出现两次），就必须写一个用例，断言最终效果等于"逐条执行"的结果，例如计数加两次的总和。
+  - 用事务一次写多个条目的实现，如果没有先合并同一条目，会被 DynamoDB 整个拒绝（一个事务里不能对同一条目做两次操作）。
+  - 这类 bug 本地测试能测出来，但必须有这个用例。
 - 业务规则里描述的**缺陷**（例如"数据超过 1MB 时被静默截断"、"重复传参返回 500"），v1 的预期按"保持单体行为"写；不确定迁移后是否应保持的，写进 `spec_issues`，不要写成用例。
 
 ### 故障场景 `verification/faults/<scenario>.json`
@@ -120,7 +130,8 @@ model: inherit
   - `error`：服务端 500，也会重试；
   - `validation`：参数错误，不重试；
   - `conditional`：条件检查失败，不重试；
-  - `network`：连接被断开，会重试。
+  - `network`：连接被断开，会重试；
+  - `tx_conflict`：模拟另一个事务正在处理同一条目。`TransactWriteItems` 会被取消，原因是 `TransactionConflict`（SDK 不会自动重试）。DynamoDB Local 自己从不产生这种冲突，只能靠注入来测。
 - 至少覆盖这几类（按函数实际做的写操作挑选）：
   - 第 k 次调用失败（`nth: k`）；
   - 全部失败（`nth: "all"`）；
@@ -133,7 +144,7 @@ model: inherit
 
 ## V1：测试设计（只看规格）
 
-**输入只有** `storage/blueprint.json` 和 `storage/analysis_report.json`。不读单体源码，也不读 `output/`（此时它还不存在）。
+**输入只有** `storage/blueprint.json`、`storage/DECISIONS.md`（architect 的决策记录，也属于规格）和 `storage/analysis_report.json`。不读单体源码，也不读 `output/`（此时它还不存在）。
 
 1. 读 blueprint 的 `lambda_functions`、`dynamodb_tables`、`sqs_queues`、`dropped_functions`，以及 analysis_report 里每个端点的 `request`/`responses`/`auth`/`data_access`/`business_rules`。
 2. 写 `verification/test_plan.json`：
