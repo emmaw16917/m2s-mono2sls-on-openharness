@@ -8,7 +8,9 @@
 //   - every SDK request from the handler goes to the proxy (the handler's
 //     AWS_ENDPOINT_URL_DYNAMODB / _SQS point at it); the proxy records the
 //     call, applies the case's fault rules, forwards DynamoDB calls to
-//     dynalite and answers SQS SendMessage itself (recording the message);
+//     dynalite and answers SQS SendMessage itself (recording the message),
+//     and rejects requests that touch an item of an ongoing transaction the
+//     way real DynamoDB does (tx-conflicts.js; call.conflict = 'emulated');
 //   - before each case every table is recreated and seeded with the case's
 //     fixtures, after it every table is dumped.
 // Handlers run either in the Lambda runtime image with RIE (mode "rie",
@@ -29,6 +31,7 @@ const dynalite = require('dynalite');
 const { DynamoDBClient, CreateTableCommand, DeleteItemCommand, ScanCommand } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
 const { unmarshall } = require('@aws-sdk/util-dynamodb');
+const TX = require('./tx-conflicts');
 
 const job = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const OUT = job.out_dir;
@@ -40,6 +43,8 @@ const log = (...a) => process.stderr.write('[controller] ' + a.join(' ') + '\n')
 // ---------------------------------------------------------------------------
 
 let ctx = null; // { calls, messages, rules: [{rule, seen}] } for the running case
+const txTracker = new TX.Tracker(); // ongoing DynamoDB writes, for conflict emulation
+const TX_HOLD_MS = 25;
 
 function listen(server, host) {
   return new Promise((resolve) => server.listen(0, host, () => resolve(server.address().port)));
@@ -83,6 +88,15 @@ function identityOf(call) {
   return id === null ? '' : stable(id).replace(UUID_RE, '<uuid>');
 }
 
+// match.item: the call reads or writes an item whose attributes include these
+// values (its Key / Item, or any item of a transaction) -- targets an
+// operation by content, so the fault stays on it whatever the call order.
+function touchesItem(call, want) {
+  const items = [call.key, call.item];
+  for (const t of call.transact || []) items.push(t.key, t.item);
+  return items.some((it) => it && Object.entries(want).every(([k, v]) => stable(it[k]) === stable(v)));
+}
+
 function matchFault(call) {
   if (!ctx) return null;
   let kind = null;
@@ -90,6 +104,7 @@ function matchFault(call) {
     const m = r.rule.match || {};
     if (m.op && m.op !== call.op) continue;
     if (m.table && m.table !== call.table && m.table !== call.queue && !(call.tables || []).includes(m.table)) continue;
+    if (m.item && !touchesItem(call, m.item)) continue;
     if (m.identity !== undefined && m.identity !== call.identity) continue;
     // Every matching rule counts every matching call, even when an earlier
     // rule already fired -- otherwise later rules' "n-th call" counters fall
@@ -236,6 +251,22 @@ async function startBackends() {
         res.writeHead(code, { 'content-type': 'application/x-amz-json-1.0', 'x-amzn-query-error': type.split('#').pop() + ';Sender' });
         return res.end(JSON.stringify({ __type: type, message }));
       }
+      // Emulated transaction conflicts (tx-conflicts.js): DynamoDB Local runs
+      // transactions one at a time, real DynamoDB rejects a request that
+      // touches an item of an ongoing transaction. The rejected call changed
+      // nothing, so it is recorded as a backend error, not as a fault (faults
+      // are what run_equivalence pins between versions).
+      const part = service === 'dynamodb' ? TX.classify(op, body, (t) => TABLE_KEYS[t]) : null;
+      if (part) {
+        const hit = txTracker.conflicts(part);
+        if (hit.length) {
+          const err = TX.errorBody(part, hit);
+          call.conflict = 'emulated';
+          call.backend_error = err.__type;
+          res.writeHead(400, { 'content-type': 'application/x-amz-json-1.0' });
+          return res.end(JSON.stringify(err));
+        }
+      }
       if (service === 'sqs') {
         const reply = sqsReply(op, body);
         if (!reply) {
@@ -245,6 +276,12 @@ async function startBackends() {
         res.writeHead(200, { 'content-type': 'application/x-amz-json-1.0' });
         return res.end(JSON.stringify(reply));
       }
+      // A write transaction stays ongoing for at least TX_HOLD_MS (a real one
+      // takes tens of ms), so overlapping requests sent concurrently are
+      // detected reliably instead of depending on DynamoDB Local's speed.
+      const arrived = Date.now();
+      const done = part ? txTracker.begin(part) : () => {};
+      const hold = part && part.cls === 'txw' ? TX_HOLD_MS : 0;
       const fwd = http.request({ host: '127.0.0.1', port: dynPort, method: req.method, path: req.url, headers: { ...req.headers, host: '127.0.0.1:' + dynPort } }, (up) => {
         const out = [];
         up.on('data', (c) => out.push(c));
@@ -253,11 +290,14 @@ async function startBackends() {
           if (up.statusCode >= 400) {
             try { call.backend_error = JSON.parse(buf.toString('utf8')).__type; } catch (e) { call.backend_error = String(up.statusCode); }
           }
-          res.writeHead(up.statusCode, up.headers);
-          res.end(buf);
+          setTimeout(() => {
+            done();
+            res.writeHead(up.statusCode, up.headers);
+            res.end(buf);
+          }, Math.max(0, arrived + hold - Date.now()));
         });
       });
-      fwd.on('error', (e) => { res.writeHead(500); res.end(String(e)); });
+      fwd.on('error', (e) => { done(); res.writeHead(500); res.end(String(e)); });
       fwd.end(raw);
     });
   });

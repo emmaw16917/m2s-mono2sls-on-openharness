@@ -237,6 +237,7 @@ def rie_round(model: Model, build_dir: Path, b: dict[str, Any], fixtures: Path, 
     try:
         _docker("cp", str(build_dir / fn["logical"]) + "/.", f"{name}:/var/task")
         _docker("cp", str(VERIFY_TOOLS / "perf-shim.js"), f"{name}:/var/task/.m2s-perf-shim.js")
+        _docker("cp", str(VERIFY_TOOLS / "tx-conflicts.js"), f"{name}:/var/task/.m2s-tx-conflicts.js")
         _docker("cp", str(fixtures), f"{name}:/var/task/.m2s-fixtures.json")
         _docker("start", name)
         time.sleep(1.0)
@@ -250,15 +251,16 @@ def rie_round(model: Model, build_dir: Path, b: dict[str, Any], fixtures: Path, 
     init = re.search(r"INIT REPORT\(durationMs: ([\d.]+)", logs)
     durs = [float(x) for x in re.findall(r"REPORT RequestId: \S+\s+Duration: ([\d.]+) ms", logs)]
     rss = [int(x) for x in re.findall(r'"max_rss_mb":(\d+)', logs)]
+    conflicts = sum(1 for l in logs.splitlines() if "[m2s-shim] " in l and '"conflict":true' in l)
     err = first if isinstance(first, dict) and "errorType" in first else None
     return {"init_ms": float(init.group(1)) if init else None, "cold_ms": durs[0] if durs else None,
-            "warm_ms": durs[1:], "max_rss_mb": max(rss) if rss else None, "error": err,
+            "warm_ms": durs[1:], "max_rss_mb": max(rss) if rss else None, "error": err, "conflicts": conflicts,
             "status": first.get("statusCode") if isinstance(first, dict) else None, "cpus": cpus}
 
 
 def _measure_pair(model: Model, builds: dict[str, Path], b: dict[str, Any], fixtures: Path, latency: int) -> dict[str, Any]:
     """ROUNDS alternating rounds (order flips each round to cancel drift)."""
-    res = {v: {"warm_round_medians": [], "init_ms": [], "warm_all": [], "max_rss_mb": 0, "errors": []} for v in builds}
+    res = {v: {"warm_round_medians": [], "init_ms": [], "warm_all": [], "max_rss_mb": 0, "errors": [], "conflicts": 0} for v in builds}
     for r in range(ROUNDS):
         order = list(builds) if r % 2 == 0 else list(reversed(list(builds)))
         for i, v in enumerate(order):
@@ -271,6 +273,7 @@ def _measure_pair(model: Model, builds: dict[str, Path], b: dict[str, Any], fixt
             if rr["init_ms"] is not None:
                 res[v]["init_ms"].append(rr["init_ms"])
             res[v]["max_rss_mb"] = max(res[v]["max_rss_mb"], rr["max_rss_mb"] or 0)
+            res[v]["conflicts"] += rr["conflicts"]
             res[v]["cpus"] = rr["cpus"]
     for v in res:
         w = sorted(res[v].pop("warm_all"))
@@ -299,23 +302,11 @@ def _proxy_direction(base: dict, cand: dict) -> dict[str, str]:
     return d
 
 
-def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", latencies: list[int] | None = None) -> dict[str, Any]:
-    """Judge the working tree against <baseline> on one benchmark (§3.2).
-    Only the latency / init / cost dimensions are judged here; the veto
-    checks (gate(final), stage-B regression/equivalence/coverage) are
-    separate tools and must pass first."""
-    ws = Path(workspace)
-    model = Model(ws)
-    b = load_benchmarks(ws, [benchmark])[0]
-    errs = check_benchmark(model, b)
-    if errs:
-        return {"status": "FAIL", "schema_errors": errs}
-    changed = working_tree_changed(ws, baseline)
-    if not changed:
-        return {"status": "FAIL", "error": f"working tree output/ is identical to {baseline}; nothing to judge"}
-    if not verify.docker_available():
-        return {"status": "NO_DOCKER", "error": "RIE verdict needs Docker; judge with run_proxy_metrics only and mark the change low-confidence (§3.5)"}
-    builds = {"base": sam_build(export_ref(ws, baseline)), "cand": sam_build(ws)}
+def _judge(ws: Path, model: Model, builds: dict[str, Path], b: dict[str, Any], baseline: str, changed: list[str],
+           latencies: list[int] | None) -> dict[str, Any]:
+    """One benchmark, base vs cand builds: proxies, conflict veto, RIE rounds
+    and the §3.2 decision. `veto` names a hard reason (conflicts / rss)."""
+    benchmark = b["id"]
     work = TMP_ROOT / re.sub(r"[^A-Za-z0-9_-]", "_", ws.name) / "perf" / f"{time.strftime('%Y%m%d-%H%M%S')}-verdict-{benchmark}"
     work.mkdir(parents=True, exist_ok=True)
     fx = _fixture_file(model, b, work / "fixtures.json")
@@ -325,6 +316,16 @@ def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", late
     invalid = {v: _valid(m) for v, m in proxies.items() if _valid(m)}
     if invalid:
         return {"status": "INVALID", "verdict": "revert", "reason": "benchmark does not reach the real code path (§3.1-1)", "invalid": invalid, "proxies": proxies}
+    # Conflict veto (§6.2): concurrent writes to one item that real DynamoDB
+    # would reject with TransactionConflict. Checked before the RIE rounds --
+    # the change is reverted whatever it measures.
+    if proxies["cand"].get("conflicts", 0) > proxies["base"].get("conflicts", 0):
+        return {"status": "OK", "benchmark": benchmark, "function": b["function"], "verdict": "revert", "veto": "conflicts",
+                "conflicts": {"proxy_10ms": {"base": proxies["base"].get("conflicts", 0), "cand": proxies["cand"]["conflicts"]}},
+                "reason": (f"introduces transaction conflicts: {proxies['cand']['conflicts']} emulated TransactionConflict "
+                           f"rejection(s) vs {proxies['base'].get('conflicts', 0)} in the baseline at {SCREEN_LATENCY}ms latency "
+                           "(concurrent requests touching the same item; DynamoDB Local would hide this)"),
+                "proxies": {"base": proxies["base"], "cand": proxies["cand"]}}
     pdir = _proxy_direction(proxies["base"], proxies["cand"])
     proxy_worse = any(v == "worse" for v in pdir.values())
     proxy_better = any(v == "better" for v in pdir.values())
@@ -363,9 +364,14 @@ def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", late
     # RSS guard (§3.1-4)
     rss = max(v["cand"]["max_rss_mb"] for v in rie.values())
     rss_veto = rss > 0.9 * mem
+    # Conflicts that only show in the RIE rounds (other latencies / warm runs)
+    rie_conflicts = {k: {"base": v["base"]["conflicts"], "cand": v["cand"]["conflicts"]} for k, v in rie.items()}
+    conflict_veto = [k for k, v in rie_conflicts.items() if v["cand"] > v["base"]]
 
     dims = {"latency": latency_dim, "init": init_dim, "cost": cost_dim}
-    if rss_veto:
+    if conflict_veto:
+        verdict, why = "revert", f"introduces transaction conflicts in the RIE rounds at {', '.join(conflict_veto)}: {rie_conflicts}"
+    elif rss_veto:
         verdict, why = "revert", f"RSS guard: candidate max RSS {rss}MB > 90% of MemorySize {mem}MB"
     elif latency_dim == "depends_on_rtt":
         verdict, why = "pending_human", "latency verdict flips with the simulated round-trip time"
@@ -385,16 +391,61 @@ def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", late
     result = {
         "status": "OK", "benchmark": benchmark, "function": b["function"], "data_volume": b["data_volume"],
         "baseline": f"{baseline} ({_git(ws, 'rev-parse', '--short', baseline)})", "changed_files": changed,
-        "verdict": verdict, "reason": why, "dimensions": dims, "warm_by_latency": warm_dir,
+        "verdict": verdict, "reason": why, "veto": "conflicts" if conflict_veto else "rss" if rss_veto else None,
+        "dimensions": dims, "warm_by_latency": warm_dir,
         "proxies": {"base": proxies["base"], "cand": proxies["cand"], "direction": pdir},
         "rie": {k: {"base": brief(v["base"]), "cand": brief(v["cand"])} for k, v in rie.items()},
         "init_ms": {"base": init_b, "cand": init_c},
         "cost_usd_per_invocation": {"base": cost_b, "cand": cost_c},
         "rss_guard": {"candidate_max_rss_mb": rss, "memory_mb": mem, "veto": rss_veto},
+        "conflicts": {"proxy_10ms": {"base": proxies["base"].get("conflicts", 0), "cand": proxies["cand"].get("conflicts", 0)}, "rie": rie_conflicts},
         "method": {"rounds": ROUNDS, "warm_invokes_per_round": WARM_INVOKES, "cpus": screen["base"].get("cpus"),
                    "clearly_different": "ranges of per-round warm medians (or init samples, or cost) do not overlap",
                    "latency_model": "fixed per-call latency (PERF_OPTIMIZATION_DESIGN §2.1 limits apply: e.g. parallel calls are unbounded)"},
     }
+    return result
+
+
+def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", latencies: list[int] | None = None,
+                    guard_benchmarks: list[str] | None = None) -> dict[str, Any]:
+    """Judge the working tree against <baseline> on one benchmark (§3.2).
+    Only the latency / init / cost dimensions are judged here; the veto
+    checks (gate(final), stage-B regression/equivalence/coverage) are
+    separate tools and must pass first."""
+    ws = Path(workspace)
+    model = Model(ws)
+    b = load_benchmarks(ws, [benchmark])[0]
+    errs = check_benchmark(model, b)
+    if errs:
+        return {"status": "FAIL", "schema_errors": errs}
+    changed = working_tree_changed(ws, baseline)
+    if not changed:
+        return {"status": "FAIL", "error": f"working tree output/ is identical to {baseline}; nothing to judge"}
+    if not verify.docker_available():
+        return {"status": "NO_DOCKER", "error": "RIE verdict needs Docker; judge with run_proxy_metrics only and mark the change low-confidence (§3.5)"}
+    builds = {"base": sam_build(export_ref(ws, baseline)), "cand": sam_build(ws)}
+    result = _judge(ws, model, builds, b, baseline, changed, latencies)
+    # Guard benchmarks (e.g. the hot-key case of a concurrency change): the
+    # change must not make them worse in any dimension, nor add conflicts.
+    if guard_benchmarks and result.get("verdict") != "revert":
+        guards = {}
+        for gid in guard_benchmarks:
+            g = load_benchmarks(ws, [gid])[0]
+            gerr = check_benchmark(model, g)
+            if gerr:
+                return {"status": "FAIL", "schema_errors": gerr}
+            gr = _judge(ws, model, builds, g, baseline, changed, latencies)
+            worse = [k for k, v in (gr.get("dimensions") or {}).items() if v in ("worse", "depends_on_rtt")]
+            bad = gr.get("status") == "INVALID" or bool(gr.get("veto")) or bool(worse)
+            guards[gid] = {"ok": not bad, "verdict": gr.get("verdict"), "reason": gr.get("reason"), "dimensions": gr.get("dimensions"),
+                           "warm_by_latency": gr.get("warm_by_latency"), "conflicts": gr.get("conflicts"), "data_volume": g.get("data_volume")}
+        result["guards"] = guards
+        failed = [k for k, v in guards.items() if not v["ok"]]
+        if failed and result.get("verdict") != "revert":
+            result["verdict"] = "revert"
+            result["reason"] = f"guard benchmark(s) {', '.join(failed)} got worse or gained conflicts: " + "; ".join(str(guards[k]["reason"]) for k in failed)
+    if result.get("status") != "OK":
+        return result
     out = ws / "perf" / "verdicts"
     out.mkdir(parents=True, exist_ok=True)
     path = out / f"{benchmark}-{time.strftime('%Y%m%d-%H%M%S')}.json"

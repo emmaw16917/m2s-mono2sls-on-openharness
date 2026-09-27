@@ -18,6 +18,11 @@
 // per call on stderr), SHIM_FN_DIR (where the handler's node_modules are;
 // default /var/task).
 //
+// A write that touches an item of an ongoing transaction is rejected the way
+// real DynamoDB does (tx-conflicts.js; call.conflict = true). A request is
+// ongoing while it waits out its latency, so conflicts only show at a
+// non-zero SHIM_LATENCY_MS.
+//
 // Known simplifications (reported by the tools): no 1MB pagination, no
 // FilterExpression, latency independent of payload size and operation.
 
@@ -25,6 +30,9 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { Readable } = require('stream');
+// In an RIE container the shim is copied in as /var/task/.m2s-perf-shim.js
+// next to .m2s-tx-conflicts.js; locally it runs from verify-tools/.
+const TX = require(fs.existsSync(path.join(__dirname, '.m2s-tx-conflicts.js')) ? './.m2s-tx-conflicts.js' : './tx-conflicts.js');
 
 process.env.AWS_ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID || 'AKIDPERF';
 process.env.AWS_SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY || 'perf';
@@ -37,6 +45,7 @@ const state = {
   tables: {},
   calls: [],
   maxRss: 0,
+  tx: new TX.Tracker(),
 };
 if (process.env.SHIM_FIXTURES) state.tables = JSON.parse(fs.readFileSync(process.env.SHIM_FIXTURES, 'utf8')).tables || {};
 
@@ -210,15 +219,34 @@ async function handle(request) {
   const req = request.body ? JSON.parse(typeof request.body === 'string' ? request.body : Buffer.from(request.body).toString('utf8')) : {};
   const call = { op, table: req.TableName || (req.QueueUrl ? req.QueueUrl.split('/').pop() : undefined), start: performance.now() };
   state.calls.push(call);
-  if (state.latency) await new Promise((r) => setTimeout(r, state.latency));
-  const { body, cu } = respond(op, req);
+  const part = TX.classify(op, req, (t) => (state.tables[t] || {}).key);
+  const hit = part ? state.tx.conflicts(part) : [];
+  let status = 200, body;
+  if (hit.length) {
+    // Rejected: the round trip and the capacity are still paid (a cancelled
+    // transaction consumes capacity), nothing is written.
+    call.conflict = true;
+    if (state.latency) await new Promise((r) => setTimeout(r, state.latency));
+    Object.assign(call, respond(op, req).cu);
+    status = 400;
+    body = TX.errorBody(part, hit);
+  } else {
+    const done = part ? state.tx.begin(part) : () => {};
+    try {
+      if (state.latency) await new Promise((r) => setTimeout(r, state.latency));
+      const r = respond(op, req);
+      body = r.body;
+      Object.assign(call, r.cu);
+    } finally {
+      done();
+    }
+  }
   call.end = performance.now();
-  Object.assign(call, cu);
   const rss = process.memoryUsage().rss;
   if (rss > state.maxRss) state.maxRss = rss;
   if (LOG) process.stderr.write('[m2s-shim] ' + JSON.stringify({ ...call, max_rss_mb: Math.round(state.maxRss / 1048576) }) + '\n');
   const payload = Buffer.from(JSON.stringify(body));
-  return { response: { statusCode: 200, headers: { 'content-type': 'application/x-amz-json-1.0', 'content-length': String(payload.length) }, body: Readable.from([payload]) } };
+  return { response: { statusCode: status, headers: { 'content-type': 'application/x-amz-json-1.0', 'content-length': String(payload.length) }, body: Readable.from([payload]) } };
 }
 
 const patched = [];

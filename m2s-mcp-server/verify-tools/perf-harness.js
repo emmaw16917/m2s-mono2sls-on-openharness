@@ -48,6 +48,7 @@ function depthOf(calls) {
     calls: calls.length,
     call_ops: calls.map((c) => c.op + ':' + (c.table || '')),
     depth: depthOf(calls),
+    conflicts: calls.filter((c) => c.conflict).length,
     rru: sum('rru'), wru: sum('wru'), sqs_requests: sum('sqs_requests'),
   };
   shim.state.latency = 0;

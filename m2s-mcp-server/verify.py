@@ -403,8 +403,10 @@ def _check_rules(model: Model, where: str, rules: Any, with_template: bool) -> l
         if not (nth == "all" or (isinstance(nth, int) and nth >= 1) or (isinstance(nth, list) and all(isinstance(x, int) for x in nth))):
             errs.append(f"{where}: rules[{i}].nth must be 'all', a positive integer or a list of them")
         m = r.get("match") or {}
-        if not isinstance(m, dict) or set(m) - {"op", "table", "queue"}:
-            errs.append(f"{where}: rules[{i}].match may only have op / table / queue")
+        if not isinstance(m, dict) or set(m) - {"op", "table", "queue", "item"}:
+            errs.append(f"{where}: rules[{i}].match may only have op / table / queue / item")
+        elif "item" in m and (not isinstance(m["item"], dict) or not m["item"]):
+            errs.append(f"{where}: rules[{i}].match.item must be a non-empty object of attribute values, e.g. {{\"pk\": \"...\"}}")
         else:
             if m.get("table"):
                 errs += _name_err(model, where, f"rules[{i}].match", m["table"], "table", with_template)
@@ -862,6 +864,7 @@ def _observation(raw: dict[str, Any]) -> dict[str, Any]:
                                 for t, items in sorted((raw.get("tables_after") or {}).items())}}
     return {"calls": [json.loads(c) for c in calls], "outcome": outcome,
             "attempts": len(raw.get("calls") or []), "calls_after_return": sum(1 for c in raw.get("calls") or [] if c.get("after_return")),
+            "conflicts": sum(1 for c in raw.get("calls") or [] if c.get("conflict")),
             "faults_applied": _pins(raw)}
 
 
@@ -922,7 +925,7 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
         entry = {"id": c["id"], "function": c["function"], "kind": c.get("kind"), "passed": not mism, "mismatches": mism,
                  "status": (r.get("result") or {}).get("statusCode") if isinstance(r.get("result"), dict) else None,
                  "error": r.get("error"), "gateway": bool(r.get("gateway")),
-                 "sdk_calls": [f"{x.get('op')}:{x.get('table') or x.get('queue') or ''}{'!' + x['fault'] if x.get('fault') else ''}" for x in r.get("calls") or []]}
+                 "sdk_calls": [f"{x.get('op')}:{x.get('table') or x.get('queue') or ''}{'!' + x['fault'] if x.get('fault') else '!conflict' if x.get('conflict') else ''}" for x in r.get("calls") or []]}
         if mism:
             entry["triage_hint"] = _triage_hint(r)
             fres = raw["functions"].get(c["function"], {})
@@ -932,6 +935,7 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
     disclaimers = [d for d in (LOCAL_DISCLAIMER if mode == "local" else "", DYNALITE_DISCLAIMER if raw.get("backend") == "dynalite" else "") if d]
     summary = {"status": "PASS" if not failed else "FAIL", "mode": mode, "backend": raw.get("backend"), "total": len(results),
                "passed": len(results) - len(failed), "failed": len(failed), "failures": failed,
+               "cases_with_conflicts": [r["id"] for r in results if any(x.endswith("!conflict") for x in r["sdk_calls"])],
                "disclaimer": "；".join(disclaimers), "run_dir": raw["out_dir"]}
     out = _vdir(ws) / "results"
     out.mkdir(parents=True, exist_ok=True)
@@ -1087,7 +1091,8 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
     (e.g. parallelization) does not move a fault onto a different item.
     H1 (a): same multiset of calls that took effect; (b): same externally
     visible outcome (return value / thrown error / batchItemFailures /
-    messages / table state). Without a workspace repo it falls back to the
+    messages / table state); (c): no emulated transaction conflicts where
+    the baseline had none. Without a workspace repo it falls back to the
     stored baseline file and the original n-th-call rules."""
     if mode not in ("record", "diff"):
         raise VerifyError("mode must be 'record' or 'diff'")
@@ -1103,12 +1108,20 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
         return {"status": "FAIL", "schema_errors": errs}
     scen = {f["id"]: f for f in faults}
     needed = list({cid: by_id[cid] for f in faults for cid in f["cases"]}.values())
+    # Without scenario faults every test case of the functions under check
+    # runs too (not only the scenarios' cases): a change of concurrency shows
+    # on the ordinary cases, e.g. two messages of one batch touching one item.
+    plain = [c for c in cases if "id" in c and (not functions or c.get("function") in functions)]
     runtime = _mode(runtime)
 
     def run_version(m: Model, root: Path, pinned: dict | None, tag: str) -> tuple[dict, dict]:
         build = sam_build(root)
         raw = _run_controller(m, build, _prepare_runs(m, needed, scen, pinned), coverage=False, mode=runtime, label=f"equiv-{tag}")
-        extra = _run_controller(m, build, _prepare_runs(m, needed), coverage=False, mode=runtime, label=f"equiv-{tag}-nofault")
+        plain_runs = _prepare_runs(m, plain)
+        if pinned is not None:  # case-level faults pinned to the same operations too
+            for r in plain_runs:
+                r["faults"] = pinned.get(r["run_key"], [])
+        extra = _run_controller(m, build, plain_runs, coverage=False, mode=runtime, label=f"equiv-{tag}-nofault")
         rs = raw["cases"] + extra["cases"]
         return {r["run_key"]: r for r in rs}, {r["run_key"]: r["infra_error"] for r in rs if r.get("infra_error")}
 
@@ -1160,7 +1173,13 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
             diffs.append({"run": key, "h1": "a", "detail": "different multiset of calls that took effect", "baseline": before["calls"], "now": now["calls"]})
         if now["outcome"] != before["outcome"]:
             diffs.append({"run": key, "h1": "b", "detail": "different externally visible outcome", "baseline": before["outcome"], "now": now["outcome"]})
-    h1 = [d for d in diffs if d["h1"] in ("a", "b")]
+        if now.get("conflicts", 0) and not before.get("conflicts", 0):
+            # H1 (c): the proxy rejected concurrent requests on one item the
+            # way real DynamoDB does. Even when retries hide it here, whether
+            # they succeed in production depends on timing.
+            diffs.append({"run": key, "h1": "c", "detail": f"introduces transaction conflicts: {now['conflicts']} emulated TransactionConflict "
+                          "rejection(s), none in the baseline (concurrent requests touching the same item)"})
+    h1 = [d for d in diffs if d["h1"] in ("a", "b", "c")]
     return {"status": "EQUIVALENT" if not h1 and not infra else "DIFFERENT" if h1 else "INFRA_ERROR", "runtime": runtime,
             "baseline": baseline_desc, "runs": len(obs), "differences": diffs, "infra_errors": infra,
             "unstable_in_baseline": unstable,

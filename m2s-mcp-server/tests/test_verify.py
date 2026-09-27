@@ -180,6 +180,14 @@ def test_case_level_faults_are_checked(ws):
     assert runs[0]["faults"] == [{"match": {"op": "TransactWriteItems", "table": "BooksTable"}, "nth": 1, "kind": "tx_conflict"}]
 
 
+def test_fault_match_item_targets_an_operation_by_content(ws):
+    m = verify.Model(ws)
+    ok = _case(faults=[{"match": {"op": "TransactWriteItems", "item": {"pk": "c#order-1#1"}}, "nth": 1, "kind": "validation"}])
+    assert verify.check_case(m, ok, with_template=True) == []
+    bad = _case(faults=[{"match": {"item": "c#order-1"}, "kind": "validation"}])
+    assert "match.item must be" in " | ".join(verify.check_case(m, bad, with_template=True))
+
+
 def test_judge(ws):
     m = verify.Model(ws)
     raw = {"result": {"statusCode": 200, "body": json.dumps({"id": "b1", "tags": ["x"]})},
@@ -230,6 +238,18 @@ def test_observation_effective_calls():
     assert retried["faults_applied"] == [{"match": {"op": "DeleteItem", "table": "T", "identity": "x"}, "nth": 1, "kind": "network"}]
     double_add = verify._observation({"calls": [d, u, u]})
     assert double_add["calls"] != once["calls"]
+
+
+def test_observation_counts_emulated_conflicts_without_pinning_them():
+    """An emulated TransactionConflict changed nothing (not an effective call)
+    and is not an injected fault (never pinned); H1 (c) compares the count."""
+    t = {"op": "TransactWriteItems", "transact": [{"kind": "Update", "table": "T", "key": {"id": "a"}}]}
+    rejected = dict(t, conflict="emulated", backend_error="com.amazonaws.dynamodb.v20120810#TransactionCanceledException")
+    clean = verify._observation({"calls": [t]})
+    retried = verify._observation({"calls": [rejected, t]})
+    assert clean["calls"] == retried["calls"]
+    assert (clean["conflicts"], retried["conflicts"]) == (0, 1)
+    assert retried["faults_applied"] == []
 
 
 @pytest.mark.skipif(os.environ.get("M2S_VERIFY_INTEGRATION") != "1", reason="set M2S_VERIFY_INTEGRATION=1 (needs sam, npm, runs/bookstore-oh)")

@@ -198,7 +198,9 @@ def run_validate(functions: list[str] | None = None, cases: list[str] | None = N
 
     Returns: JSON string {status: PASS|FAIL, total, passed, failed,
         failures: [{id, mismatches, triage_hint, logs_tail, sdk_calls}],
-        mode, disclaimer} or {status, dry_run, schema_errors, ...}.
+        cases_with_conflicts (cases where the proxy rejected a request that
+        touched an item of an ongoing transaction, as real DynamoDB does;
+        sdk_calls mark them "!conflict"), mode, disclaimer} or {status, dry_run, schema_errors, ...}.
     """
     return _verify_call(verify.run_validate, functions, cases, dry_run, mode)
 
@@ -233,8 +235,11 @@ def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str
         mode: "record" stores every scenario's observations (SDK call
             multiset, return value / thrown error / batchItemFailures,
             messages, table state) as verification/fault_baseline_<label>.json.
-            "diff" reruns them and compares with that file: H1 (a) same
-            calls, (b) same externally visible outcome.
+            "diff" reruns them, plus every test case of the functions
+            without scenario faults, on the baseline (git ref v0) and the
+            working tree and compares: H1 (a) same calls, (b) same
+            externally visible outcome, (c) no emulated TransactionConflict
+            (concurrent requests on one item) where the baseline had none.
         label: baseline label, "v0" by default.
         functions: only scenarios of these functions.
         runtime: "auto", "rie" or "local".
@@ -248,7 +253,9 @@ def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str
 @mcp.tool()
 def run_proxy_metrics(functions: list[str] | None = None, benchmarks: list[str] | None = None, ref: str | None = None) -> str:
     """Proxy metrics for the performance benchmarks (perf/benchmarks/<function>/*.json):
-    SDK call count, sequential depth (at a fixed 10ms per call), warm CPU
+    SDK call count, sequential depth (at a fixed 10ms per call), emulated
+    TransactionConflict rejections (at 10ms, concurrent requests on one
+    item), warm CPU
     (wall time at zero latency, median of 300 in local Node), estimated
     DynamoDB request units / SQS requests and cost. Proxies only locate and
     rank problems; they never decide a verdict on their own.
@@ -267,7 +274,8 @@ def run_proxy_metrics(functions: list[str] | None = None, benchmarks: list[str] 
 
 
 @mcp.tool()
-def run_rie_verdict(benchmark: str, baseline: str = "HEAD", latencies: list[int] | None = None) -> str:
+def run_rie_verdict(benchmark: str, baseline: str = "HEAD", latencies: list[int] | None = None,
+                    guard_benchmarks: list[str] | None = None) -> str:
     """Judge the working tree against <baseline> (a git ref, default HEAD =
     v0 plus the changes kept so far) on one benchmark, following
     PERF_OPTIMIZATION_DESIGN.md §3: validity check, proxies for both
@@ -276,15 +284,20 @@ def run_rie_verdict(benchmark: str, baseline: str = "HEAD", latencies: list[int]
     and at 0/5/15ms too when a proxy or the 10ms run gets worse; then the
     latency / init / cost dimensions ("clearly" = ranges do not overlap)
     and the RSS guard give the verdict: kept | kept_inconclusive |
-    pending_human | revert. Takes several minutes. Run the veto checks
-    (gate(final), run_validate, run_equivalence diff, run_coverage
-    changed_since) first -- this tool does not.
+    pending_human | revert. A change that adds emulated TransactionConflict
+    rejections (concurrent requests on one item) is reverted outright.
+    guard_benchmarks: further benchmark ids the change must not make worse
+    in any dimension nor add conflicts to (required by rule R4: the hot-key
+    benchmark); each costs another measurement. Takes several minutes. Run
+    the veto checks (gate(final), run_validate, run_equivalence diff,
+    run_coverage changed_since) first -- this tool does not.
 
-    Returns: JSON string {status, verdict, reason, dimensions, proxies, rie,
-        init_ms, cost_usd_per_invocation, rss_guard, saved_to}.
+    Returns: JSON string {status, verdict, reason, veto, dimensions, proxies,
+        rie, init_ms, cost_usd_per_invocation, rss_guard, conflicts, guards,
+        saved_to}.
     """
     try:
-        return json.dumps(perf.run_rie_verdict(str(_workspace()), benchmark, baseline, latencies), ensure_ascii=False)
+        return json.dumps(perf.run_rie_verdict(str(_workspace()), benchmark, baseline, latencies, guard_benchmarks), ensure_ascii=False)
     except verify.VerifyError as exc:
         return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
 

@@ -33,7 +33,7 @@
     {
       "app": "bookstore",
       "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\bookstore-v2",
-      "recorded_at": "2026-09-27T15:49:01",
+      "recorded_at": "2026-09-27T19:58:57",
       "confidence": "normal",
       "rules": {
         "R1": {
@@ -55,6 +55,13 @@
           "kept": 0,
           "kept_inconclusive": 0,
           "reverted": 0,
+          "pending_human": 0
+        },
+        "R4": {
+          "hits": 1,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 1,
           "pending_human": 0
         }
       }
@@ -85,6 +92,14 @@
       "reverted": 0,
       "pending_human": 0,
       "apps": 2
+    },
+    "R4": {
+      "hits": 1,
+      "kept": 0,
+      "kept_inconclusive": 0,
+      "reverted": 1,
+      "pending_human": 0,
+      "apps": 1
     }
   }
 }
