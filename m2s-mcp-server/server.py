@@ -179,7 +179,7 @@ def _verify_call(fn, *args, **kwargs) -> str:
 
 @mcp.tool()
 def run_validate(functions: list[str] | None = None, cases: list[str] | None = None,
-                 dry_run: bool = False, mode: str = "auto") -> str:
+                 dry_run: bool = False, mode: str = "auto", ref: str | None = None) -> str:
     """Run the verification test cases (verification/events/<function>/*.json)
     and judge each one against its expectations.
 
@@ -191,10 +191,15 @@ def run_validate(functions: list[str] | None = None, cases: list[str] | None = N
             template needed. This is what V1 uses before any code exists.
         mode: "auto" (RIE containers if Docker is available, else local
             Node), "rie" or "local".
+        ref: run the current test assets against the code of this git ref
+            of the workspace repo (e.g. "v0" after test cases were revised)
+            instead of the working tree's code.
 
     A full run (no functions/cases filter, not dry_run) also writes
     verification/verdict_A.json, the stage-A verdict. The first run does a
-    `sam build` (minutes); later runs reuse it until output/ changes.
+    `sam build` (minutes); later runs reuse it until output/ changes. The
+    verdict records which code it describes (code_state: the ref, or the
+    working tree with its uncommitted output/ changes).
 
     Returns: JSON string {status: PASS|FAIL, total, passed, failed,
         failures: [{id, mismatches, triage_hint, logs_tail, sdk_calls}],
@@ -202,7 +207,7 @@ def run_validate(functions: list[str] | None = None, cases: list[str] | None = N
         touched an item of an ongoing transaction, as real DynamoDB does;
         sdk_calls mark them "!conflict"), mode, disclaimer} or {status, dry_run, schema_errors, ...}.
     """
-    return _verify_call(verify.run_validate, functions, cases, dry_run, mode)
+    return _verify_call(verify.run_validate, functions, cases, dry_run, mode, ref)
 
 
 @mcp.tool()

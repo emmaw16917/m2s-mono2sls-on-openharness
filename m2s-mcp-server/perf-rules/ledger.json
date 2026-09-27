@@ -33,7 +33,7 @@
     {
       "app": "bookstore",
       "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\bookstore-v2",
-      "recorded_at": "2026-09-27T19:58:57",
+      "recorded_at": "2026-09-27T23:24:47",
       "confidence": "normal",
       "rules": {
         "R1": {
@@ -41,28 +41,48 @@
           "kept": 0,
           "kept_inconclusive": 0,
           "reverted": 0,
-          "pending_human": 0
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
         },
         "R2": {
           "hits": 0,
           "kept": 0,
           "kept_inconclusive": 0,
           "reverted": 0,
-          "pending_human": 0
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
         },
         "R3": {
           "hits": 0,
           "kept": 0,
           "kept_inconclusive": 0,
           "reverted": 0,
-          "pending_human": 0
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
         },
         "R4": {
           "hits": 1,
-          "kept": 0,
+          "kept": 1,
           "kept_inconclusive": 0,
-          "reverted": 1,
-          "pending_human": 0
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
         }
       }
     }
@@ -75,6 +95,11 @@
       "kept_inconclusive": 0,
       "reverted": 0,
       "pending_human": 0,
+      "blocked_by_test": 0,
+      "blocked_by_coverage": 0,
+      "kept_after_fix": 0,
+      "fix_attempted": 0,
+      "reviewed": 0,
       "apps": 2
     },
     "R2": {
@@ -83,6 +108,11 @@
       "kept_inconclusive": 0,
       "reverted": 0,
       "pending_human": 0,
+      "blocked_by_test": 0,
+      "blocked_by_coverage": 0,
+      "kept_after_fix": 0,
+      "fix_attempted": 0,
+      "reviewed": 0,
       "apps": 2
     },
     "R3": {
@@ -91,14 +121,24 @@
       "kept_inconclusive": 0,
       "reverted": 0,
       "pending_human": 0,
+      "blocked_by_test": 0,
+      "blocked_by_coverage": 0,
+      "kept_after_fix": 0,
+      "fix_attempted": 0,
+      "reviewed": 0,
       "apps": 2
     },
     "R4": {
       "hits": 1,
-      "kept": 0,
+      "kept": 1,
       "kept_inconclusive": 0,
-      "reverted": 1,
+      "reverted": 0,
       "pending_human": 0,
+      "blocked_by_test": 0,
+      "blocked_by_coverage": 0,
+      "kept_after_fix": 0,
+      "fix_attempted": 0,
+      "reviewed": 0,
       "apps": 1
     }
   }

@@ -239,11 +239,25 @@ git log --oneline -1 && git tag   # 确认 tag 存在
 - S5 报 `STAGE_BLOCKED` **不会让流水线失败**：它只表示"性能优化没有收敛"，交付的仍是最后一个通过验证的版本。
 - S5 结束后，`Read WS/output/perf_report.json` 和 `WS/storage/stage_reports/S5.json`，再用 `git -C "WS" log --oneline v0..HEAD` 核对：报告里每个 `kept`/`kept_inconclusive` 的改动，都要有对应的提交。
 
+**S5 之后的测试复核**（PERF_OPTIMIZATION_DESIGN §3.6，K15–K18）：`S5.json` 的 `blocked` 非空时做，**每轮 S5 只做一次**：
+1. spawn `m2s-verifier`（STAGE_ID=VR）。prompt 里写 WS、MONOLITH，以及"复核 S5.json 里 blocked 的改动"。
+   - 这里可以写测试相关的内容：§2 的禁令只针对 S1–S4；
+   - VR 只改 `verification/`。
+2. VR 报 `STAGE_COMPLETE` 后，你亲自检查两项：
+   - `run_validate(ref="v0")` 必须 PASS：修改后的测试资产在验收过的代码上成立；
+   - `run_validate()` 必须 PASS。
+3. 提交测试资产：`git -C "WS" add verification storage && git -C "WS" commit -m "verification: S5 test review (VR)"`。**v0 的 tag 不动**：v0 的代码没有变，S5 已经保留的改动也不能被算进 v0。
+4. VR 报告里结论是 `tests_fixed` / `cases_added` 的 REQ，交给 perf-optimizer 重新判决：
+   - spawn `m2s-perf-optimizer`（STAGE_ID=S5），prompt 里写明"重新判决模式"和这些 REQ 的 id；
+   - 结论是 `tests_kept` / `unreachable` 的 REQ 不再判决，在最终回复里列出来。`tests_kept` 说明等价性检查漏掉了一种差异，要作为工具问题写明。
+5. 然后进入阶段 6。
+- VR 报 `STAGE_BLOCKED` 时，跳过第 3–4 步：被阻塞的改动保持回滚，在最终回复里写明原因，然后进入阶段 6。
+
 **阶段 6（最终检验）**，你亲自做：
 1. `run_gate(phase="final")` 必须 `PASS`；
 2. `run_validate()`（不带参数，全量回归）必须 `PASS`。
 
-两项都通过：最终回复写明 v0 的 commit、S5 保留和回滚的改动（逐个写判决和关键数据）、`pending_human` 的数量、`verdict_A.json` 的用例数和通过数，以及覆盖率报告和故障行为基准是否存在。**还要写明**：v0 之后 S5 的改动只经过了机械检查（`gate(final)`）和验证线的动态检查（回归、等价性、覆盖），没有经过 validator（S4）的审查（PIPELINE_REDESIGN §1）。V1 仍有 open 的 `spec_issues`（§3 用满往返次数后留下的）也要逐条列出。
+两项都通过：最终回复写明 v0 的 commit、S5 保留和回滚的改动（逐个写判决和关键数据；修过一次才通过的、经过测试复核的要注明）、`pending_human` 的数量、`verdict_A.json` 的用例数和通过数，以及覆盖率报告和故障行为基准是否存在。**还要写明**：v0 之后 S5 的改动只经过了机械检查（`gate(final)`）和验证线的动态检查（回归、等价性、覆盖），没有经过 validator（S4）的审查（PIPELINE_REDESIGN §1）。V1 仍有 open 的 `spec_issues`（§3 用满往返次数后留下的）也要逐条列出。
 
 任何一项没通过：说明 S5 之后的版本有问题。在 WS 里执行 `git -C "WS" checkout v0 -- output`，然后 `git -C "WS" commit -am "revert S5: stage 6 failed"`，交付 v0 的实现；再重跑一次阶段 6，并如实报告。**不要用 `reset --hard`，不要删 tag。**
 

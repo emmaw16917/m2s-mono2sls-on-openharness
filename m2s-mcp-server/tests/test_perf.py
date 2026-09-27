@@ -92,3 +92,19 @@ def test_update_ledger(ws, tmp_path, monkeypatch):
     (ws / "output" / "perf_report.json").write_text(json.dumps({"changes": []}), encoding="utf-8")
     with pytest.raises(verify.VerifyError):
         perf.update_ledger(str(ws))
+
+
+def test_update_ledger_counts_fixes_and_reviews(ws, tmp_path, monkeypatch):
+    """§3.6: first-try reliability stays measurable -- a change kept only
+    after its one fix attempt, or after the verification line's test review,
+    is counted separately."""
+    monkeypatch.setattr(perf, "LEDGER", tmp_path / "ledger.json")
+    report = {"rule_scan": {"R1": {"hits": 2}, "R4": {"hits": 2}},
+              "changes": [{"id": "C1", "source": "rule:R1", "verdict": "kept", "fix_attempts": 1},
+                          {"id": "C2", "source": "rule:R1", "verdict": "revert", "fix_attempts": 1},
+                          {"id": "C3", "source": "rule:R4", "verdict": "kept", "review": {"blocked": "test", "outcome": "tests_fixed"}},
+                          {"id": "C4", "source": "rule:R4", "verdict": "blocked_by_coverage"}]}
+    (ws / "output" / "perf_report.json").write_text(json.dumps(report), encoding="utf-8")
+    r = perf.update_ledger(str(ws))["rules"]
+    assert (r["R1"]["kept"], r["R1"]["reverted"], r["R1"]["fix_attempted"], r["R1"]["kept_after_fix"]) == (1, 1, 2, 1)
+    assert (r["R4"]["kept"], r["R4"]["reviewed"], r["R4"]["blocked_by_coverage"], r["R4"]["kept_after_fix"]) == (1, 1, 1, 0)

@@ -159,21 +159,56 @@ R4 的请求另加 `"guard_benchmarks": ["<热点基准 id>"]`，`constraints` �
 按预期的代理指标改善幅度排序，例如顺序深度的下降量。
 
 ### 4. 逐个执行（W1：同一个函数里的多处改动，拆开一个一个做）
-对每一份请求：
+对每一份请求（`fix_attempts` 从 0 开始）：
 1. 只改请求里的目标文件。改完用 `node --check <文件>` 检查语法。
 2. `mcp__m2s-server__run_gate(phase="final")` 必须 `PASS`。
-3. 验证线阶段 B，受影响的函数 = 改了代码的函数：
-   - `mcp__m2s-server__run_validate(functions=[...])`：必须 `PASS`；
-   - `mcp__m2s-server__run_equivalence(mode="diff", functions=[...])`：必须 `EQUIVALENT`。它会重新运行 v0，并把故障固定打在同一个操作上，对比 H1 的 (a)(b)；
-   - `mcp__m2s-server__run_coverage(functions=[...], changed_since="HEAD")`：`changed_lines.all_covered` 必须为 true。有没被覆盖的改动行时，这个改动回滚，并把这些行写进报告的 `uncovered_paths`（验证线可以据此补用例，你自己不补）。
-4. 以上都通过后，`mcp__m2s-server__run_rie_verdict(benchmark="<请求里的基准>")`。它按设计文档 §3 给出判决：
+3. 验证线阶段 B，受影响的函数 = 改了代码的函数。**三项都要跑完**，不要第一项失败就停，分诊要用到全部结果：
+   - `mcp__m2s-server__run_validate(functions=[...])`：要求 `PASS`。**只按函数跑，不要对未提交的候选版本跑全量**；
+   - `mcp__m2s-server__run_equivalence(mode="diff", functions=[...])`：要求 `EQUIVALENT`。它会重新运行 v0 和受检函数的全部用例，把故障固定在同一个操作上，对比 H1 的 (a)(b)(c)；
+   - `mcp__m2s-server__run_coverage(functions=[...], changed_since="HEAD")`：要求 `changed_lines.all_covered` 为 true。
+4. 三项都通过，进入第 5 步。有任何一项没通过，按下面的"检查没通过时的分诊"处理。
+5. `mcp__m2s-server__run_rie_verdict(benchmark="<请求里的基准>")`。它按设计文档 §3 给出判决：
    - R4 的请求要把热点基准作为守卫：`run_rie_verdict(benchmark="<正常基准>", guard_benchmarks=["<热点基准>"])`。守卫基准在任何维度变差，或者出现冲突，工具都会判 `revert`。
    - 候选版本比基线多出冲突时（`conflicts`），工具直接判 `revert`，不跑 RIE。
    - `kept` / `kept_inconclusive`：`git -C WS add output && git -C WS commit -m "perf(REQ-n): <一句话> [<verdict>]"`，记下 commit sha；
    - `pending_human`（权衡型）：先把补丁存下来，`git -C WS diff -- output > WS/perf/patches/REQ-n.patch`，然后 `git -C WS checkout -- output` 回滚；
-   - `revert`、`INVALID`，或者第 2、3 步任何一项没通过：`git -C WS checkout -- output` 回滚。
+   - `revert`、`INVALID`：`git -C WS checkout -- output` 回滚。
    - `NO_DOCKER`：没有 Docker，只能看 `run_proxy_metrics` 的前后对比，改动标 `kept_inconclusive`，报告的 `confidence` 设为 `low`。打包和依赖类改动（R3）在没有 Docker 时跳过（§3.5）。
-5. 下一个改动在已保留的改动基础上进行，`run_rie_verdict` 的 baseline 默认是 `HEAD`。在报告里写清楚 `based_on`。
+6. 下一个改动在已保留的改动基础上进行，`run_rie_verdict` 的 baseline 默认是 `HEAD`。在报告里写清楚 `based_on`。
+
+### 检查没通过时的分诊（设计文档 §3.6）
+
+v0 是验收过的版本，所以用"和 v0 等不等价"来区分是代码的问题还是测试的问题。**分诊按工具结果机械地做，不凭你自己判断"测试写错了"**：
+
+| gate(final) | run_equivalence | run_validate | run_coverage | 分类 | 怎么处理 |
+|---|---|---|---|---|---|
+| FAIL | — | — | — | 代码问题 | 见下文"代码问题" |
+| PASS | `DIFFERENT`（H1 (a)(b)(c) 任何一项） | 任意 | 任意 | 代码问题：改动改变了相对于 v0 的行为，与测试怎么写无关 | 见下文"代码问题" |
+| PASS | `EQUIVALENT`，`unstable_in_baseline` 为空 | FAIL | 任意 | 测试问题：候选版本在每个用例上都和 v0 一样，但某个用例失败了。说明这个用例依赖规格没有规定的东西，例如调用顺序、故障落在哪个操作上、列表的顺序 | `blocked_by_test` |
+| PASS | 失败的用例在 `unstable_in_baseline` 里 | FAIL | 任意 | 测试问题：v0 自己跑两遍结果都不一样 | `blocked_by_test` |
+| PASS | `EQUIVALENT` | PASS | 有没覆盖的改动行 | 缺测试 | `blocked_by_coverage` |
+| PASS | `INFRA_ERROR` | — | — | 工具问题 | 重跑一次；仍然出错就回滚，原因写 `infra` |
+
+**代码问题**：
+- `fix_attempts == 0` 时，允许修一次：
+  - 根据 `differences`、`mismatches`、`logs_tail` 找出错的地方，只改请求里的目标文件；
+  - 修改的目标是恢复和 v0 一致的行为，**不是**去迎合某个用例；
+  - `fix_attempts` 记为 1，然后从第 1 步的 `node --check` 起重新做全部检查。
+- 修过一次仍然没通过：`git -C WS checkout -- output` 回滚，判为 `revert`，原因写清楚是哪项检查、什么差异。
+
+**`blocked_by_test` / `blocked_by_coverage`**：
+- 你不能修改测试，也不能自己认定测试写错了。把证据交给验证线去复核：
+  1. 存补丁：`git -C WS diff -- output > WS/perf/patches/REQ-n.patch`；
+  2. 回滚：`git -C WS checkout -- output`；
+  3. 在报告的 `changes[]` 里记下这个改动：`verdict` 写 `blocked_by_test` 或 `blocked_by_coverage`，`review` 写：
+     ```json
+     {"blocked": "test", "cases": ["<失败的用例 id>"],
+      "evidence": {"validate_mismatches": {"<用例 id>": ["..."]}, "equivalence": "EQUIVALENT", "unstable_in_baseline": []},
+      "patch": "perf/patches/REQ-n.patch"}
+     ```
+     缺测试时，`blocked` 写 `"coverage"`，`evidence` 放 `uncovered`（没覆盖的改动行，带文件、行号和代码）。
+  4. 接着做下一个请求。
+- 验证线复核完以后，主 Agent 会用"重新判决模式"再派你一次（见下文）。
 
 ### 5. 收尾
 1. `mcp__m2s-server__run_validate()`（不带参数，全量回归）必须 `PASS`。不通过就回退 S5 的全部提交：`git -C WS revert --no-edit <S5 的提交...>`，或者 `git -C WS checkout v0 -- output` 之后再提交，并如实报告。
@@ -182,10 +217,23 @@ R4 的请求另加 `"guard_benchmarks": ["<热点基准 id>"]`，`constraints` �
    "rule_scan": {"R1": {"hits": 1, "locations": ["output/lambdas/.../handler.js:47-77"]}, "R2": {"hits": 0, "locations": []}, "R3": {"hits": 0, "locations": []},
                  "R4": {"hits": 1, "locations": ["output/lambdas/.../handler.js:268-306"], "not_applicable": []}}
    ```
-   每个 `changes[]` 的 `evidence` 放入相应工具返回的关键数据：代理指标前后对比、`rie` 各延迟下的结果、`init`、`cost`、`equivalence`、`regression`、`coverage_of_changed_lines`。`run_rie_verdict` 保存的完整结果在 `perf/verdicts/` 下，报告里写出文件路径即可。
+   每个 `changes[]` 都写 `fix_attempts`（0 或 1）；经过复核的写 `review`。`evidence` 放入相应工具返回的关键数据：代理指标前后对比、`rie` 各延迟下的结果、`init`、`cost`、`equivalence`、`regression`、`coverage_of_changed_lines`。`run_rie_verdict` 保存的完整结果在 `perf/verdicts/` 下，报告里写出文件路径即可。
 3. `mcp__m2s-server__update_ledger()`：它根据 `perf_report.json` 机械地更新仓库里的规则台账，不要手写台账。
 4. `git -C WS add perf output/perf_report.json && git -C WS commit -m "perf: report"`。
-5. 写工作报告 `WS/storage/stage_reports/S5.json`，格式同其他阶段，另外写明 kept / reverted / pending_human 各多少个。
+5. 写工作报告 `WS/storage/stage_reports/S5.json`，格式同其他阶段，另外写明 kept / reverted / pending_human / blocked_by_test / blocked_by_coverage 各多少个。有 `blocked_*` 的改动时，把它们列在 `S5.json` 的 `blocked` 里（REQ id、类型、用例或未覆盖的行、补丁路径），主 Agent 靠它安排复核。
+
+## 重新判决模式（主 Agent 在 prompt 里写明"重新判决"和 REQ 列表时）
+
+验证线已经复核过上一轮 `blocked_*` 的改动：修了用例，或者补了用例。测试资产的改动已经提交，并且已经在 v0 的代码上重新验证通过。这一轮只处理 prompt 里列出的 REQ：
+1. 前置检查同上（`WS/.git` 存在、`output` 没有未提交的改动）。**不写新基准，不做新的规则扫描，不提新的请求。**
+2. 对每个 REQ：
+   - `git -C WS apply perf/patches/REQ-n.patch`。补丁打不上（例如和之后保留的改动冲突）就判 `revert`，原因写"补丁无法应用"；
+   - 从第 4 节的第 1 步起走完整流程，包括分诊。`fix_attempts` 沿用上一轮的值；
+   - 这一轮如果又被判成 `blocked_*`，**不再送复核**，直接回滚，判 `revert`，原因写"复核后仍未通过：<哪项检查>"。
+3. 收尾同第 5 节：
+   - 在原来的 `perf_report.json` 里更新这些 REQ 的 `verdict`，保留 `review`；
+   - 然后全量回归、`update_ledger`、提交；
+   - `S5.json` 的 `mode` 写 `rejudge`。
 
 ## 报告的写法
 
@@ -205,11 +253,12 @@ R4 的请求另加 `"guard_benchmarks": ["<热点基准 id>"]`，`constraints` �
 - 不做 §6.2 里不允许的改动；不改 `output/lambdas/` 的目录结构、`template.yaml` 里的 `Handler`/`CodeUri`/事件定义/MemorySize/架构。
 - 不修改 `verification/`、`storage/`（自己的 S5 工作报告除外）和单体源码。
 - 基准写完提交之后，不再修改。
-- 不自己宣布改动有效或等价，以工具的结果为准。任何一项检查没通过就回滚。
+- 不自己宣布改动有效或等价，以工具的结果为准。检查没通过时按"分诊"一节处理：代码问题最多修一次，测试问题交给验证线复核，都不行就回滚。
+- 不修改测试用例和故障场景，也不因为"测试写得不对"就保留改动。
 - 不部署到 AWS。
 
 ## 完成信号
 
-先写完 `S5.json`，再输出 `STAGE_COMPLETE: <kept/reverted/pending_human 数量 + 一句话>`。没有任何改动被保留也是 `STAGE_COMPLETE`。
+先写完 `S5.json`，再输出 `STAGE_COMPLETE: <kept/reverted/pending_human/blocked 数量 + 一句话>`。没有任何改动被保留也是 `STAGE_COMPLETE`。
 
 只有前置检查不满足，或者工具反复出错、无法完成时，才报 `STAGE_BLOCKED: <原因>`。S5 报 BLOCKED 不会让流水线失败，交付的仍是最后一个通过验证的版本。

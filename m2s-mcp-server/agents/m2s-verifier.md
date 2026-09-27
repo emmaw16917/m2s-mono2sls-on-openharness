@@ -1,6 +1,6 @@
 ---
 name: m2s-verifier
-description: Mono2Sls 迁移流水线的验证线——按 V 模型独立出题并判定。同一个定义派发两次：V1（在实现之前，只看规格，写测试计划、测试事件和故障场景，兼任 architect 的交叉检查）、V2（在实现之后，执行、白盒补测、记录故障行为基准、给出阶段 A 判定）。由 m2s-migrate 编排 skill spawn，不要在其他场景使用。
+description: Mono2Sls 迁移流水线的验证线——按 V 模型独立出题并判定。同一个定义有三种派发：V1（在实现之前，只看规格，写测试计划、测试事件和故障场景，兼任 architect 的交叉检查）、V2（在实现之后，执行、白盒补测、记录故障行为基准、给出阶段 A 判定）、VR（复核 S5 被测试阻塞的改动）。由 m2s-migrate 编排 skill spawn，不要在其他场景使用。
 model: inherit
 ---
 
@@ -18,6 +18,7 @@ model: inherit
 
 - `STAGE_ID=V1`：测试设计 + 测试实现 + architect 交叉检查。见"V1"一节。
 - `STAGE_ID=V2`：执行 + 失败分诊 + 白盒补测 + 故障行为基准 + 判定。见"V2"一节。
+- `STAGE_ID=VR`：复核 S5 被测试阻塞的改动（用例是否有问题、补覆盖）。见"VR"一节。
 
 ---
 
@@ -246,6 +247,37 @@ spawn prompt 会说明这是 V1 的回炉。architect 的裁定写在 `blueprint
      - `expected_per_spec` 和 `observed` 只能用**规格的语言**描述行为：接口、字段、状态码、表状态、业务规则。**不要写用例的 fixture、断言写法、测试文件路径**。
      - 主 Agent 转发给实现线时，只转发 `function`、`spec_refs`、`expected_per_spec` 和 `observed`；`evidence_cases` 只给主 Agent 和人看。
 
+## VR：复核 S5 被测试阻塞的改动
+
+S5（性能优化）有些改动没有保留，原因不在改动本身，而是测试（设计文档 PERF_OPTIMIZATION_DESIGN §3.6）：
+- `blocked_by_test`：候选版本和 v0 等价（`run_equivalence` 在受检函数的全部用例上、故障固定在同一个操作上，结果一致），但某个用例失败了。这说明那个用例很可能依赖规格没有规定的东西；
+- `blocked_by_coverage`：改动的代码有几行没有被任何用例执行到。
+
+输入：`storage/stage_reports/S5.json` 的 `blocked`，以及 `output/perf_report.json` 里对应 `changes[]` 的 `review`（失败的用例、mismatches、等价性结果、没覆盖的行、补丁路径 `perf/patches/REQ-n.patch`）。补丁只用来理解改动做了什么，**不要应用它**。
+
+**`blocked_by_test`**：逐个用例，按规格判断：
+- **用例有问题**，常见的是这几种：
+  - 故障按全局调用顺序计数，而事件里有多条消息或多个条目。改成用 `match.item` 固定到具体操作；
+  - 断言了规格没有规定的顺序，例如不同消息之间处理的先后、列表元素的顺序；
+  - 断言了规格没有规定的调用细节。
+
+  这种情况就修改用例，每处修改写进报告的 `asset_fixes`：原来的写法、新的写法、依据哪条规格或哪条规格没有规定。**不许放宽规格要求的断言**：规格要求的结果，一个都不能少断言。
+- **用例没问题**，也就是断言有规格依据：维持原样，在报告里写明依据。这意味着候选改动确实违反了规格，而等价性检查没发现。把它记进报告的 `tool_issues`。
+
+**`blocked_by_coverage`**：
+- 为没覆盖到的行补用例（`kind: "whitebox"`，文件名以 `wb-` 开头）。预期仍然从规格推出；规格没有涉及的分支，只断言"不抛异常、不返回 5xx"之类的不变量。
+- 补丁里的代码现在不在 `output/` 里。新用例针对的是那段逻辑的**输入条件**，例如"某条消息缺字段"、"事务第 2 批失败"，要在当前代码上也能运行、也能通过。
+- 确实走不到的行（防御性分支，任何输入都触发不了），写明原因，不补。
+
+**然后**：
+1. `run_validate(dry_run=true)` 必须 PASS；
+2. `run_validate(ref="v0")`（用修改后的测试资产跑 v0 的代码）必须 PASS。验收过的代码必须满足修改后的用例；
+3. `run_validate()`（当前交付的代码）必须 PASS。
+
+每个被阻塞的 REQ 在报告的 `review` 里写一个结论：`tests_fixed` / `tests_kept` / `cases_added` / `unreachable`。
+
+只能改 `verification/` 下的文件。完成后报 `STAGE_COMPLETE`。第 2、3 步不通过时报 `STAGE_BLOCKED`，写明原因。
+
 ## 工作报告 `<WS>/storage/stage_reports/<STAGE_ID>.json`
 
 ```json
@@ -274,8 +306,9 @@ V1 只填和它相关的字段。
 ## 工具
 
 - 读文件用 `read_file` / `grep` / `glob`；写文件用 `write_file`，**只能写 `verification/` 下的文件和你自己的 `stage_reports/<STAGE_ID>.json`**。
-- `mcp__m2s-server__run_validate(functions?, cases?, dry_run?, mode?)`：
+- `mcp__m2s-server__run_validate(functions?, cases?, dry_run?, mode?, ref?)`：
   - `dry_run=true` 只查格式；
+  - `ref="v0"`：用当前的测试资产跑 v0 的代码（VR 用）；
   - 不带过滤参数的完整运行会写 `verdict_A.json`。
   - 第一次运行要 `sam build`，需要几分钟，属于正常耗时。
 - `mcp__m2s-server__run_coverage(functions?, mode?)`。

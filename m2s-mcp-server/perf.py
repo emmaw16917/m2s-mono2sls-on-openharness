@@ -458,7 +458,11 @@ def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", late
 # Ledger (§8.3)
 # ---------------------------------------------------------------------------
 
-OUTCOMES = ("kept", "kept_inconclusive", "reverted", "pending_human")
+OUTCOMES = ("kept", "kept_inconclusive", "reverted", "pending_human", "blocked_by_test", "blocked_by_coverage")
+# Per rule, besides the final outcomes: changes kept only after the one fix
+# attempt (§3.6), how many fix attempts were made, and how many changes went
+# through the verification line's test review before their final verdict.
+COUNTERS = ("kept_after_fix", "fix_attempted", "reviewed")
 
 
 def update_ledger(workspace: str) -> dict[str, Any]:
@@ -476,7 +480,8 @@ def update_ledger(workspace: str) -> dict[str, Any]:
     scan = report.get("rule_scan") or {}
     if not isinstance(scan, dict) or not scan:
         raise VerifyError("perf_report.json needs rule_scan: {R1: {hits, locations}, R2: ..., R3: ...} (hits may be 0)")
-    per_rule: dict[str, dict[str, int]] = {r: {"hits": int((v or {}).get("hits", 0)), **{o: 0 for o in OUTCOMES}} for r, v in scan.items()}
+    blank = {**{o: 0 for o in OUTCOMES}, **{k: 0 for k in COUNTERS}}
+    per_rule: dict[str, dict[str, int]] = {r: {"hits": int((v or {}).get("hits", 0)), **blank} for r, v in scan.items()}
     candidates = []
     for c in report.get("changes") or []:
         src = str(c.get("source", ""))
@@ -484,9 +489,13 @@ def update_ledger(workspace: str) -> dict[str, Any]:
         verdict = "reverted" if verdict == "revert" else verdict
         if src.startswith("rule:"):
             r = src.split(":", 1)[1]
-            per_rule.setdefault(r, {"hits": 0, **{o: 0 for o in OUTCOMES}})
+            per_rule.setdefault(r, {"hits": 0, **blank})
             if verdict in OUTCOMES:
                 per_rule[r][verdict] += 1
+            fixes = int(c.get("fix_attempts") or 0)
+            per_rule[r]["fix_attempted"] += 1 if fixes else 0
+            per_rule[r]["kept_after_fix"] += 1 if fixes and verdict in ("kept", "kept_inconclusive") else 0
+            per_rule[r]["reviewed"] += 1 if c.get("review") else 0
         elif src == "analysis" and verdict in ("kept", "kept_inconclusive"):
             candidates.append({"app": app, "change": c.get("id"), "request": c.get("request"), "functions": c.get("functions"),
                                "note": "data-driven finding judged effective; promotion to a rule needs human review"})
@@ -499,8 +508,8 @@ def update_ledger(workspace: str) -> dict[str, Any]:
     totals: dict[str, dict[str, int]] = {}
     for run in ledger["runs"]:
         for r, v in run["rules"].items():
-            t = totals.setdefault(r, {"hits": 0, **{o: 0 for o in OUTCOMES}, "apps": 0})
-            for k in ("hits", *OUTCOMES):
+            t = totals.setdefault(r, {"hits": 0, **{o: 0 for o in OUTCOMES}, **{k: 0 for k in COUNTERS}, "apps": 0})
+            for k in ("hits", *OUTCOMES, *COUNTERS):
                 t[k] += v.get(k, 0)
             t["apps"] += 1
     ledger["totals"] = totals

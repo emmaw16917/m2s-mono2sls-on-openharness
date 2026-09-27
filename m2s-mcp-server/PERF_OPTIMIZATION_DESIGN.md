@@ -130,11 +130,11 @@ handler 代码
 
 ### 3.1 一票否决
 
-以下任何一项不通过，改动直接回滚：
+以下任何一项不通过，改动都不能保留。不通过时先按 §3.6 分诊，再决定是修代码、交给验证线复核，还是回滚：
 
 1. **有效性校验**：事件确实走到了预期的代码路径（结果符合预期、SDK 调用次数和预期一致）。
 2. **正确性 gate**：`gate(final)`。
-3. **验证线阶段 B**：回归测试全部符合预期；故障差分满足 H1 的 (a)(b) 两条（§6.1）；改动碰到的代码行被测试覆盖到。没覆盖到的，先请验证线补事件；补完还是覆盖不到，就回滚。
+3. **验证线阶段 B**：回归测试全部符合预期；故障差分满足 H1 的 (a)(b)(c) 三条（§6.1）；改动碰到的代码行被测试覆盖到。没覆盖到的，先请验证线补事件；补完还是覆盖不到，就回滚。
 4. **RSS 内存护栏**：实际内存占用接近配置的 MemorySize 时，判定为有风险。
 
 ### 3.2 性能判决流程
@@ -179,6 +179,33 @@ handler 代码
 ### 3.5 没有 Docker 时
 
 改用代理指标做判决：顺序深度和 `warm_cpu.js` 代替热调用 Duration；成本照常计算。报告标注"**低置信度**"。init 维度判不了，所以打包和依赖类的改动（包括 R3）**跳过**。
+
+### 3.6 检查没通过时的分诊（2026-09-27 加，K15–K18）
+
+**起因**：bookstore-v2 的 S5 第 3 轮，R4 的改动（REQ-2）各项都通过了（等价、无冲突、覆盖完整），却因为一个用例失败被回滚。那个用例的故障按全局调用顺序数"第 2 个事务"，改成并行之后，故障落到了另一条消息上。以前的规则是"任何一项没通过就回滚"，测试写得有问题时，正确的优化也会丢掉。
+
+**怎么分**：v0 是验收过的版本，所以用"和 v0 等不等价"区分问题出在代码还是测试。`run_equivalence` 会跑受检函数的全部用例，故障固定在 v0 实际打中的操作上。
+
+| gate(final) | run_equivalence | run_validate | run_coverage | 分类 |
+|---|---|---|---|---|
+| FAIL | — | — | — | 代码问题 |
+| PASS | DIFFERENT（H1 任何一项） | 任意 | 任意 | 代码问题：相对 v0 的行为变了，与测试怎么写无关 |
+| PASS | EQUIVALENT，基线稳定 | FAIL | 任意 | 测试问题：候选版本在每个用例上都与 v0 一致，某个用例仍然失败，说明它依赖规格没有规定的东西（调用顺序、故障落点、列表顺序） |
+| PASS | 失败的用例在 `unstable_in_baseline` 里 | FAIL | 任意 | 测试问题（不稳定） |
+| PASS | EQUIVALENT | PASS | 有没覆盖的改动行 | 缺测试 |
+
+**谁来处理**：
+- **K15**：分类由工具结果机械地决定。perf-optimizer 是改动的作者，不能自己认定"测试写错了"，也不能改测试。
+- **K16 代码问题**：每个改动允许修一次。修改目标是恢复和 v0 一致的行为，修完从头重做全部检查；仍然不通过就回滚。台账分开记录"修过之后才保留"的数量（`kept_after_fix`），这样规则第一次就改对的比例仍然可以统计。
+- **K17 测试问题**：
+  1. perf-optimizer 存补丁、回滚，把改动标为 `blocked_by_test`，附上证据，继续下一个；
+  2. S5 结束后，主 Agent 派 verifier 复核（`STAGE_ID=VR`）。verifier 按规格逐个判断：
+     - 用例确实有问题，就修改它，要写明依据哪条规格，不许放宽规格要求的断言；
+     - 用例没问题，就维持原样。这时改动回滚，并且说明 H1 漏掉了某种差异，要作为工具问题报告。
+  3. 修改后的用例先在 v0 的代码上跑通：`run_validate(ref="v0")`。然后提交测试资产，v0 的 tag **不动**：代码没变，S5 已经保留的改动也不能被算进 v0；
+  4. 主 Agent 用"重新判决模式"再派 perf-optimizer，只重新判决被阻塞的补丁；
+  5. 每轮 S5 最多复核一次。重新判决时再次被阻塞，直接回滚。
+- **K18 缺测试**：标为 `blocked_by_coverage`，走同一个复核流程。verifier 为没覆盖到的行补用例，预期从规格推出；规格没有涉及的分支只断言不变量。确实走不到的分支，写明原因后补不了，这个改动回滚。
 
 ---
 
@@ -325,6 +352,7 @@ v1 由 perf-optimizer **自己改代码**。"验"和"判"调用验证线的 MCP 
 4. **逐轮执行**（按 §7 组织）：修改代码 → `gate(final)` → 验证线阶段 B → §3 的判决 →
    - 保留：`git commit`，写清是哪份修改请求、判决证据是什么；
    - 权衡型：回滚，写进 `pending_human`，附上补丁；
+   - 检查没通过：按 §3.6 分诊。代码问题修一次；测试问题和缺测试存补丁，标 `blocked_*`，等验证线复核之后重新判决；
    - 其他：回滚。
 5. **收尾**：对全部函数跑一次全量回归，更新台账，写报告。
 
@@ -340,7 +368,9 @@ v1 由 perf-optimizer **自己改代码**。"验"和"判"调用验证线的 MCP 
   "changes": [
     {"id": "C1", "request": "<修改请求 id>", "source": "rule:R1 | analysis", "functions": ["..."],
      "based_on": ["<之前已保留的改动 id>"],
-     "verdict": "kept | reverted | pending_human | kept_inconclusive",
+     "verdict": "kept | reverted | pending_human | kept_inconclusive | blocked_by_test | blocked_by_coverage",
+     "fix_attempts": 0,
+     "review": {"blocked": "test | coverage", "cases": ["..."], "evidence": {}, "patch": "perf/patches/REQ-n.patch", "outcome": "tests_fixed | tests_kept | cases_added | unreachable"},
      "evidence": {"proxies": {}, "rie": {"10ms": {}, "0ms": {}, "5ms": {}, "15ms": {}}, "init": {}, "cost": {}, "equivalence": {}, "regression": {}, "coverage_of_changed_lines": {}},
      "commit": "<sha>"}
   ],

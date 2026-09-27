@@ -352,4 +352,8 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | K12 | 步骤 2 就把 S5（perf-optimizer）和阶段 6（最终检验）接进 m2s-migrate | §1、§5 |
 | K13 | 步骤 3 落地 §2.4 的消费者幂等规则（必须遵守）；Scan 翻页这一版不做，保持和单体一致 | §2.4 |
 | K14 | 验证引擎有 Docker 时用 AWS DynamoDB Local（支持事务），没有 Docker 时降级为 dynalite 并注明限制 | §4.3 |
+| K15 | S5 的检查没通过时，按工具结果机械分诊：和 v0 不等价（或 gate 失败）是代码问题；和 v0 等价但用例失败是测试问题；等价、用例全过但改动行没覆盖是缺测试。perf-optimizer 不能自己认定测试有错，也不能改测试 | PERF §3.6 |
+| K16 | 代码问题：每个改动允许修一次，修完重做全部检查，仍不通过就回滚；台账分开记"修过之后才保留"的数量 | PERF §3.6 |
+| K17 | 测试问题：存补丁、标 `blocked_by_test` → S5 之后 verifier 按规格复核（VR）→ 修改后的用例在 v0 代码上跑通（`run_validate(ref="v0")`），v0 tag 不动 → perf-optimizer 重新判决被阻塞的补丁；每轮 S5 最多复核一次 | PERF §3.6 |
+| K18 | 缺测试（改动行没覆盖）：标 `blocked_by_coverage`，走同一个复核流程，由 verifier 补用例 | PERF §3.6 |
 | K8 | 步骤 1 就把 V1（S1 之后、S2 之前）和 V2（S4 之后）插进 m2s-migrate，并由主 Agent 打 v0 tag；其余拓扑调整留到步骤 3 | §1、§5 |

@@ -893,8 +893,23 @@ def _select(cases: list[dict], functions: list[str] | None, case_ids: list[str] 
     return [c for c in out if not case_ids or c.get("id") in case_ids]
 
 
+def _code_state(ws: Path, ref: str | None) -> dict[str, Any]:
+    """Which code a verdict describes: a git ref, or the working tree with
+    any uncommitted changes under output/ listed (e.g. an S5 candidate)."""
+    if not has_own_repo(ws):
+        return {"code": "working tree", "repo": False}
+    if ref:
+        return {"code": ref, "commit": _git(ws, "rev-parse", "--short", ref)}
+    p = _run(["git", "-C", str(ws), "status", "--porcelain", "--", "output"], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    return {"code": "working tree", "head": _git(ws, "rev-parse", "--short", "HEAD"),
+            "uncommitted_output_changes": sorted(l[3:] for l in p.stdout.splitlines() if l.strip())}
+
+
 def run_validate(workspace: str, functions: list[str] | None = None, cases: list[str] | None = None,
-                 dry_run: bool = False, mode: str = "auto") -> dict[str, Any]:
+                 dry_run: bool = False, mode: str = "auto", ref: str | None = None) -> dict[str, Any]:
+    """ref: run the working tree's test assets against the code of this git
+    ref of the workspace repo (e.g. "v0" after the tests were revised)
+    instead of the working tree's code."""
     ws = Path(workspace)
     model = Model(ws, need_template=not dry_run)
     all_cases = load_cases(ws)
@@ -915,8 +930,13 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
                 "cases": len(all_cases), "fault_scenarios": len(faults), "functions_without_cases": uncovered_fns,
                 "note": "" if dry_run else "schema errors must be fixed before cases can run"}
     mode = _mode(mode)
-    build_dir = sam_build(ws)
-    raw = _run_controller(model, build_dir, _prepare_runs(model, selected), coverage=False, mode=mode, label="validate")
+    if ref:
+        code_root = export_ref(ws, ref)
+        run_model = Model(code_root)
+    else:
+        code_root, run_model = ws, model
+    build_dir = sam_build(code_root)
+    raw = _run_controller(run_model, build_dir, _prepare_runs(model, selected), coverage=False, mode=mode, label=f"validate-{ref}" if ref else "validate")
     by_key = {r["run_key"]: r for r in raw["cases"]}
     results = []
     for c in selected:
@@ -936,14 +956,14 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
     summary = {"status": "PASS" if not failed else "FAIL", "mode": mode, "backend": raw.get("backend"), "total": len(results),
                "passed": len(results) - len(failed), "failed": len(failed), "failures": failed,
                "cases_with_conflicts": [r["id"] for r in results if any(x.endswith("!conflict") for x in r["sdk_calls"])],
-               "disclaimer": "；".join(disclaimers), "run_dir": raw["out_dir"]}
+               "disclaimer": "；".join(disclaimers), "run_dir": raw["out_dir"], "code_state": _code_state(ws, ref)}
     out = _vdir(ws) / "results"
     out.mkdir(parents=True, exist_ok=True)
     (out / "validate_latest.json").write_text(json.dumps({**summary, "results": results}, indent=2, ensure_ascii=False), encoding="utf-8")
     if not functions and not cases:
         verdict = {"stage": "A", "status": summary["status"], "mode": mode, "backend": summary["backend"], "total": summary["total"], "passed": summary["passed"],
                    "failed": [{"id": f["id"], "function": f["function"], "mismatches": f["mismatches"], "triage_hint": f.get("triage_hint")} for f in failed],
-                   "disclaimer": summary["disclaimer"], "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
+                   "disclaimer": summary["disclaimer"], "code_state": summary["code_state"], "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
         (_vdir(ws) / "verdict_A.json").write_text(json.dumps(verdict, indent=2, ensure_ascii=False), encoding="utf-8")
         summary["verdict_path"] = "verification/verdict_A.json"
     return summary
