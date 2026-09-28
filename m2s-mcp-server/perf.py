@@ -6,6 +6,8 @@ Benchmarks are written by m2s-perf-optimizer under WS/perf/benchmarks/
 fixtures) plus:
     "data_volume": "<the data-volume assumption, in words>"   (required)
     "generate": {"<Table>": {"count": N, "template": {... "{i}" ...}}}
+        placeholders are integer expressions over i, now_ms, now_s, e.g.
+        "{now_ms // 300000 - 432 + i}" for time buckets around the run
 The same benchmark is used before and after a change. Measurements use
 verify-tools/perf-shim.js: the SDK's HTTP send is replaced by a fixed
 latency plus a response computed from the benchmark's table data (§2.1).
@@ -72,16 +74,58 @@ def load_benchmarks(ws: Path, ids: list[str] | None = None, functions: list[str]
     return out
 
 
-def _fill(tpl: Any, i: int) -> Any:
+_EXPR_RE = re.compile(r"\{([^{}]+)\}")
+
+
+def _eval_int(expr: str, names: dict[str, int]) -> int | None:
+    """Integer arithmetic over i / now_ms / now_s (+ - * // %), or None if
+    `expr` is anything else -- so ordinary braces in text stay untouched."""
+    import ast as _ast
+    try:
+        tree = _ast.parse(expr.strip(), mode="eval")
+    except SyntaxError:
+        return None
+
+    def ev(n: Any) -> int:
+        if isinstance(n, _ast.Expression):
+            return ev(n.body)
+        if isinstance(n, _ast.Constant) and isinstance(n.value, int) and not isinstance(n.value, bool):
+            return n.value
+        if isinstance(n, _ast.Name) and n.id in names:
+            return names[n.id]
+        if isinstance(n, _ast.UnaryOp) and isinstance(n.op, _ast.USub):
+            return -ev(n.operand)
+        ops = {_ast.Add: lambda a, b: a + b, _ast.Sub: lambda a, b: a - b, _ast.Mult: lambda a, b: a * b,
+               _ast.FloorDiv: lambda a, b: a // b, _ast.Mod: lambda a, b: a % b}
+        if isinstance(n, _ast.BinOp) and type(n.op) in ops:
+            return ops[type(n.op)](ev(n.left), ev(n.right))
+        raise ValueError(expr)
+
+    try:
+        return ev(tree)
+    except (ValueError, ZeroDivisionError):
+        return None
+
+
+def _fill(tpl: Any, i: int, now_ms: int | None = None) -> Any:
+    """Expand a generate template for item i. Placeholders are integer
+    expressions over i, now_ms and now_s ("{i}", "{i % 7}",
+    "{now_ms // 300000 - 432 + i}"): time-relative data, such as buckets
+    around the current time, keeps a benchmark valid whenever it runs. A
+    placeholder that is the whole string becomes a number."""
+    now_ms = int(time.time() * 1000) if now_ms is None else now_ms
+    names = {"i": i, "now_ms": now_ms, "now_s": now_ms // 1000}
     if isinstance(tpl, str):
-        full = re.fullmatch(r"\{i(?:\s*%\s*(\d+))?\}", tpl)
-        if full:  # a bare "{i}" / "{i % 7}" becomes a number
-            return i % int(full.group(1)) if full.group(1) else i
-        return re.sub(r"\{i(?:\s*%\s*(\d+))?\}", lambda m: str(i % int(m.group(1)) if m.group(1) else i), tpl)
+        full = _EXPR_RE.fullmatch(tpl)
+        if full:
+            value = _eval_int(full.group(1), names)
+            if value is not None:
+                return value
+        return _EXPR_RE.sub(lambda m: str(v) if (v := _eval_int(m.group(1), names)) is not None else m.group(0), tpl)
     if isinstance(tpl, dict):
-        return {k: _fill(v, i) for k, v in tpl.items()}
+        return {k: _fill(v, i, now_ms) for k, v in tpl.items()}
     if isinstance(tpl, list):
-        return [_fill(v, i) for v in tpl]
+        return [_fill(v, i, now_ms) for v in tpl]
     return tpl
 
 
@@ -111,7 +155,8 @@ def _fixture_file(model: Model, b: dict[str, Any], out: Path) -> Path:
     for alias, items in (b.get("fixtures") or {}).items():
         tables[model.table_id(alias)]["items"].extend(items)
     for alias, g in (b.get("generate") or {}).items():
-        tables[model.table_id(alias)]["items"].extend(_fill(g["template"], i) for i in range(g["count"]))
+        now_ms = int(time.time() * 1000)  # one "now" for the whole table: buckets cannot straddle a boundary
+        tables[model.table_id(alias)]["items"].extend(_fill(g["template"], i, now_ms) for i in range(g["count"]))
     out.write_text(json.dumps({"tables": tables}), encoding="utf-8")
     return out
 

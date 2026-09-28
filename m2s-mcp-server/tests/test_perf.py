@@ -117,3 +117,17 @@ def test_ledger_app_name_is_the_monolith_directory(ws, tmp_path, monkeypatch):
     (ws / "storage" / "analysis_report.json").write_text(json.dumps({"spec_meta": {"monolith_root": "D:/bench/coffee"}}), encoding="utf-8")
     (ws / "output" / "perf_report.json").write_text(json.dumps({"rule_scan": {"R1": {"hits": 0}}, "changes": []}), encoding="utf-8")
     assert perf.update_ledger(str(ws))["app"] == "coffee"
+
+
+def test_fill_time_relative_placeholders():
+    """Buckets around the time of the run: a benchmark whose data depends on
+    the current time never expires (coffee's verify-token benchmark seeded
+    fixed buckets and would have turned INVALID on 2026-10-01)."""
+    now = 1_790_571_600_000
+    tpl = {"PK": "evt-7-{now_ms // 300000 - 432 + i}", "last_id": "{now_ms // 300000 - 432 + i}",
+           "start_ts": "{(now_ms // 300000 - 432 + i) * 300000}", "note": "keep {literal} braces", "n": "{i % 3}"}
+    item = perf._fill(tpl, 432, now)
+    assert item["PK"] == f"evt-7-{now // 300000}" and item["last_id"] == now // 300000
+    assert item["start_ts"] == (now // 300000) * 300000 and item["n"] == 0
+    assert item["note"] == "keep {literal} braces"
+    assert perf._fill("{__import__('os')}", 0, now) == "{__import__('os')}"  # not arithmetic: left alone
