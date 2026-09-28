@@ -85,6 +85,62 @@
           "reviewed": 0
         }
       }
+    },
+    {
+      "app": "coffee",
+      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\coffee-e0",
+      "recorded_at": "2026-09-28T15:03:46",
+      "confidence": "normal",
+      "rules": {
+        "R1": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R2": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R3": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R4": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        }
+      }
     }
   ],
   "candidate_rules": [],
@@ -100,7 +156,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 2
+      "apps": 3
     },
     "R2": {
       "hits": 0,
@@ -113,7 +169,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 2
+      "apps": 3
     },
     "R3": {
       "hits": 0,
@@ -126,7 +182,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 2
+      "apps": 3
     },
     "R4": {
       "hits": 1,
@@ -139,7 +195,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 1
+      "apps": 2
     }
   }
 }

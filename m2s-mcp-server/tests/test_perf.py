@@ -108,3 +108,12 @@ def test_update_ledger_counts_fixes_and_reviews(ws, tmp_path, monkeypatch):
     r = perf.update_ledger(str(ws))["rules"]
     assert (r["R1"]["kept"], r["R1"]["reverted"], r["R1"]["fix_attempted"], r["R1"]["kept_after_fix"]) == (1, 1, 2, 1)
     assert (r["R4"]["kept"], r["R4"]["reviewed"], r["R4"]["blocked_by_coverage"], r["R4"]["kept_after_fix"]) == (1, 1, 1, 0)
+
+
+def test_ledger_app_name_is_the_monolith_directory(ws, tmp_path, monkeypatch):
+    """The architect's application_name is free text ("presso (coffee order
+    management)"); the ledger keys apps by the monolith's directory name."""
+    monkeypatch.setattr(perf, "LEDGER", tmp_path / "ledger.json")
+    (ws / "storage" / "analysis_report.json").write_text(json.dumps({"spec_meta": {"monolith_root": "D:/bench/coffee"}}), encoding="utf-8")
+    (ws / "output" / "perf_report.json").write_text(json.dumps({"rule_scan": {"R1": {"hits": 0}}, "changes": []}), encoding="utf-8")
+    assert perf.update_ledger(str(ws))["app"] == "coffee"

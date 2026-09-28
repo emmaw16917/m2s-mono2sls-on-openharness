@@ -512,6 +512,22 @@ OUTCOMES = ("kept", "kept_inconclusive", "reverted", "pending_human", "blocked_b
 COUNTERS = ("kept_after_fix", "fix_attempted", "reviewed")
 
 
+def _ledger_app_name(ws: Path) -> str:
+    """The benchmark app a workspace migrated: the monolith's directory name
+    (analysis_report spec_meta.monolith_root), so every app has one stable
+    key. The blueprint's application_name is the architect's free text
+    ("presso (coffee order management)" for coffee, "Bookstore" vs
+    "bookstore" across runs) and only a fallback."""
+    ar = ws / "storage" / "analysis_report.json"
+    if ar.exists():
+        root = (json.loads(ar.read_text(encoding="utf-8")).get("spec_meta") or {}).get("monolith_root")
+        if root:
+            return Path(root).name.strip().lower()
+    bp = ws / "storage" / "blueprint.json"
+    meta = (json.loads(bp.read_text(encoding="utf-8")).get("metadata") or {}) if bp.exists() else {}
+    return str(meta.get("application_name") or ws.name).strip().lower()
+
+
 def update_ledger(workspace: str) -> dict[str, Any]:
     """Fold WS/output/perf_report.json into perf-rules/ledger.json (per app,
     per rule). Re-running for the same workspace replaces its earlier entry."""
@@ -520,10 +536,7 @@ def update_ledger(workspace: str) -> dict[str, Any]:
     if not rp.exists():
         raise VerifyError("output/perf_report.json not found")
     report = json.loads(rp.read_text(encoding="utf-8"))
-    bp = json.loads((ws / "storage" / "blueprint.json").read_text(encoding="utf-8"))
-    # Lower-cased: architects capitalize application_name inconsistently
-    # ("bookstore" vs "Bookstore"), which split one app into two in the ledger.
-    app = str((bp.get("metadata") or {}).get("application_name") or ws.name).strip().lower()
+    app = _ledger_app_name(ws)
     scan = report.get("rule_scan") or {}
     if not isinstance(scan, dict) or not scan:
         raise VerifyError("perf_report.json needs rule_scan: {R1: {hits, locations}, R2: ..., R3: ...} (hits may be 0)")
