@@ -1,0 +1,4 @@
+{"id": "items-delete-many-empty", "function": "items-delete-many", "kind": "boundary", "spec_refs": ["blueprint:items-delete-many"],
+ "request": {"method": "POST", "path": "/items/delete", "body": {"ids": []}},
+ "fixtures": {"Items": [{"id": "keep"}]},
+ "expect": {"status": 200, "body": {"equals": {"deleted": 0, "missing": [], "failed": []}}}}

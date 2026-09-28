@@ -187,8 +187,10 @@ def _validate_field(files: _Files, field: str, value: Any, where: str, errors: l
             st = item["status"]
             if not ((isinstance(st, int) and not isinstance(st, bool) and 100 <= st <= 599) or st == "unknown"):
                 errors.append(f"{iw}: 'status' must be an HTTP status integer or \"unknown\"")
-            if item["kind"] not in RESPONSE_KINDS:
-                errors.append(f"{iw}: 'kind' must be one of {RESPONSE_KINDS}")
+            # A status held in a variable is "unknown", and then so is whether
+            # the response is a success or an error.
+            if item["kind"] not in RESPONSE_KINDS and not (item["kind"] == "unknown" and st == "unknown"):
+                errors.append(f"{iw}: 'kind' must be one of {RESPONSE_KINDS} (or \"unknown\" together with status \"unknown\")")
             body = item["body"]
             if not isinstance(body, dict) or not _keys_ok(body, {"fields", "expression"}, {"description"}, f"{iw}.body", errors):
                 if not isinstance(body, dict):

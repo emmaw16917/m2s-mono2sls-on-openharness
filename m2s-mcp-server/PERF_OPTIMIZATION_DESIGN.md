@@ -311,7 +311,7 @@ handler 代码
 |---|---|---|---|
 | **R1** | 循环里对互相独立的操作顺序 `await`，并且原代码对每条都 try/catch、失败后继续 | 改用 `allSettled` 并行，最后汇总结果 | 顺序深度 + RIE |
 | **R2** | 同一个请求体被重复解析 | 只解析一次 | `warm_cpu.js` + RIE |
-| **R3** | `package.json` 里声明了、但代码没有引用的依赖 | 删掉这个依赖 | RIE init。预计会测出"无效"：没被 `require()` 的依赖运行时根本不会加载，只影响部署包大小。可以用它检验台账机制本身能否正确记录"无效" |
+| **R3** | `package.json`（Python 是 `requirements.txt`）里声明了、但代码没有引用的依赖 | 删掉这个依赖 | RIE init。预计会测出"无效"：没被 `require()` 的依赖运行时根本不会加载，只影响部署包大小。可以用它检验台账机制本身能否正确记录"无效" |
 | **R4**（2026-09-27 加） | 批处理（典型是 SQS 消费者）逐条 `await` 每条消息的处理；每条消息的写入可能与别的消息改到同一个条目（事务、条件写入），失败按单条处理 | 按条目键分波次：先算出每条消息会读写的条目键（从构造写入的同一个函数里取，不另写一套），每条消息排在"与它共享条目的前面消息中最晚的那一波 + 1"；波与波之间顺序执行，同一波里用 `allSettled` 并行。消息体原地包成 `async (record) => {...}`，不挪位置、不改缩进，`continue` 改成 `return` | 顺序深度 + RIE；热点基准做守卫（`guard_benchmarks`），不得在任何维度变差、不得增加冲突 |
 
 ### 8.3 规则台账
@@ -409,6 +409,32 @@ v1 里，perf-optimizer 生成请求后自己执行（`semantic_class` 必须是
 - 报告里只写直接测得的量（例如"顺序深度 30→1、调用次数不变、热调用 Duration 从深度 30 组落到深度 1 组"），**不写"预计线上提升 X ms / X%"**。
 
 ---
+
+### 9.6 Python 函数（2026-09-28，K19–K25）
+
+基准里有 3 个 Python（Flask）应用，迁移后是 `python3.12` 的 Lambda。优化线对 Python 的支持如下：
+
+- **测量垫片**：`verify-tools/py/m2s_perf_shim.py` 替换 `botocore.httpsession.URLLib3Session.send`，位置和 Node 垫片替换的 `NodeHttpHandler.handle` 相同。
+  - botocore 自己的序列化、签名、重试和解析照常运行；
+  - 延迟模型、按夹具数据计算响应、容量单位、冲突模拟，都与 Node 版一致；
+  - 冲突模拟由 `m2s_tx_conflicts.py` 实现，这是 `tx-conflicts.js` 的移植，加了锁，用同一组用例检查两者结果一致。
+- **代理指标**：在本机 Python 3.12 里运行（conda 环境 `m2s-py312`，装了和 Lambda 相同版本的 boto3/botocore 1.35.92）。
+- **RIE**：使用官方镜像 `amazon/aws-lambda-python:3.12`（Python 3.12.7）。
+  - 垫片通过 `AWS_LAMBDA_EXEC_WRAPPER` 加载，不能用 `PYTHONPATH`：一旦设置了 `PYTHONPATH`，Lambda 的 bootstrap 就不再把层的路径（`/opt/python...`）加进 `sys.path`，层就导入不了；
+  - 容器里同时设置 `AWS_REGION` 和 `AWS_DEFAULT_REGION`，botocore 读的是后者，真实 Lambda 两个都会设置。
+- **顺序深度改在第二次调用上测**（Node 和 Python 都改了）。第一次调用要做一次性的准备工作，例如建线程池、每个线程建自己的 resource，这会把调用错开。实测 Python R1 在第一次调用上测得深度 8→3，热调用上是 8→1。
+- **R1、R4 的 Python 写法**（写在 `m2s-perf-optimizer.md` 里，都在测试工作区上跑通过）：
+  - 用模块级线程池，最多 10 个线程，这是 botocore 默认连接池的大小。所以对 Python 来说，§2.1 第 2 项"并发不受限"的局限就变成了"并发上限 10"；
+  - boto3 的 resource/`Table` 不是线程安全的，每个线程建自己的；
+  - 循环体给循环外的变量重新赋值（计数器）的，不适用；
+  - R4 里只有一条消息的波次，直接在当前线程里执行：去掉这一条的话，热点守卫基准的 CPU 会变差。
+- **实测**（测试工作区；RIE 10ms，5 轮中位数）：
+
+  | 改动 | 结果 |
+  |---|---|
+  | R4 分波次，SQS 消费者，一批 10 条 | `kept`：[118.4..119.0] → [22.3..28.6]ms；5ms 与 15ms 下同样更快；0ms 没有显著差异；热点守卫基准没有差异 |
+  | R1 并行删除 8 个条目 | `kept`：[93.6..94.5] → [17.8..20.1]ms；init 没有差异 |
+  | 全部消息无条件并行（不安全） | 热点基准 18 次冲突，1 条消息被上报重投；等价性差分报 H1 (c) |
 
 ## 10. prompt 注入策略与消融实验
 

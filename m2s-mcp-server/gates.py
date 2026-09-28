@@ -24,7 +24,7 @@ convention, rooted at $M2S_WORKSPACE instead of the M2S repo root):
 
 Only checks that cross-reference structured data (blueprint.json vs
 template.yaml vs the on-disk directory layout) produce a pass/fail verdict
-here: B0, C1, C2, C3, C7, C7b, C8, C9, C10, C11, C12. C4/C5/C6 are
+here: B0, C1, C2, C3, C7, C7b, C8, C9, C10, C11, C12, C13. C4/C5/C6 are
 "suspects": mechanically extracted data handed to the m2s-validator agent
 for semantic judgment, because they require interpreting arbitrary
 generated code (env var usage, IAM-relevant SDK calls, layer imports)
@@ -964,6 +964,53 @@ def _stage_report_status(workspace: Path, phase: str) -> dict[str, Any]:
     return {"dir": str(reports_dir), "exists": reports_dir.exists(), "files": [p.name for p in candidates]}
 
 
+def check_c13(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
+    """C13: shared layer layout. Lambda adds /opt/python (Python) and
+    /opt/nodejs/node_modules (Node) to the module path, and M2S code requires
+    /opt/nodejs/... directly. `sam build` with Metadata.BuildMethod puts the
+    ContentUri's contents under python/ or nodejs/ itself, so the source must
+    NOT already have that directory (python/python/x.py is not importable);
+    without BuildMethod it copies ContentUri as-is, so the source MUST have it."""
+    findings: list[dict[str, Any]] = []
+    output_root = workspace / "output"
+    for logical, res in (template.get("Resources") or {}).items():
+        if not isinstance(res, dict) or res.get("Type") not in ("AWS::Serverless::LayerVersion", "AWS::Lambda::LayerVersion"):
+            continue
+        props = res.get("Properties") or {}
+        content_uri = str(props.get("ContentUri") or "").strip()
+        if not content_uri or content_uri.startswith("s3://"):
+            continue
+        root = (output_root / content_uri).resolve()
+        if not root.is_dir():
+            findings.append(_finding("C13", "ERROR", f"{logical}.ContentUri '{content_uri}' does not exist on disk.", logical))
+            continue
+        runtimes = [str(r) for r in (props.get("CompatibleRuntimes") or [])]
+        build_method = str(((res.get("Metadata") or {}).get("BuildMethod")) or "")
+        if build_method.startswith("python") or any(r.startswith("python") for r in runtimes):
+            kind, ext = "python", ".py"
+        elif build_method.startswith("nodejs") or any(r.startswith("nodejs") for r in runtimes):
+            kind, ext = "nodejs", ".js"
+        else:
+            continue
+        nested = root / kind
+        has_nested_code = nested.is_dir() and any(nested.rglob(f"*{ext}"))
+        has_root_code = any(root.glob(f"*{ext}"))
+        if build_method and has_nested_code:
+            findings.append(_finding(
+                "C13", "ERROR",
+                f"{logical}: with Metadata.BuildMethod {build_method}, sam build puts the contents of ContentUri '{content_uri}' "
+                f"under {kind}/ itself, so the code in '{content_uri.rstrip('/')}/{kind}/' ends up in /opt/{kind}/{kind}/ and "
+                f"cannot be {'imported' if kind == 'python' else 'required'}. Put the {ext} files at the ContentUri root "
+                f"(or point ContentUri at the {kind}/ directory).", logical))
+        elif not build_method and has_root_code and not has_nested_code:
+            findings.append(_finding(
+                "C13", "ERROR",
+                f"{logical}: without Metadata.BuildMethod, sam build copies ContentUri '{content_uri}' as-is, so its {ext} files "
+                f"land directly in /opt/ where Lambda does not look. Put them under '{content_uri.rstrip('/')}/{kind}/' "
+                f"or add Metadata.BuildMethod.", logical))
+    return findings
+
+
 def run_gate(phase: str, workspace: str) -> dict[str, Any]:
     ws = Path(workspace).resolve()
     template_path = ws / "output" / "template.yaml"
@@ -1018,6 +1065,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c10(ws)
                 + check_c11(ws, template)
                 + check_c12(ws, template)
+                + check_c13(ws, template)
             )
             suspects = {
                 "C4": suspects_c4_env(ws, template),
@@ -1044,6 +1092,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c10(ws)
                 + check_c11(ws, template)
                 + check_c12(ws, template)
+                + check_c13(ws, template)
             )
         report_path = ws / "output" / "consistency_report.json"
         report = None

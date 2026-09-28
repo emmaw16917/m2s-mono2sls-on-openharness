@@ -269,3 +269,81 @@ def test_integration_bookstore_local(tmp_path):
     assert rec["status"] == "RECORDED", rec
     diff = verify.run_equivalence(str(ws), mode="diff", runtime="local")
     assert diff["status"] == "EQUIVALENT", diff
+
+
+LAYOUT_TEMPLATE = """
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  Shared:
+    Type: AWS::Serverless::LayerVersion
+    Properties: {ContentUri: layers/shared/, CompatibleRuntimes: [python3.12]}
+  Nested:
+    Type: AWS::Serverless::Function
+    Properties: {CodeUri: lambdas/books/books-get/, Handler: handler.handler, Runtime: nodejs22.x}
+  Flat:
+    Type: AWS::Serverless::Function
+    Properties: {CodeUri: lambdas/items-get/, Handler: handler.lambda_handler, Runtime: python3.12, Layers: [!Ref Shared]}
+"""
+
+
+def test_changed_lines_follow_code_uri_and_layers(tmp_path):
+    """Changed files are mapped through CodeUri / ContentUri, whatever the
+    directory depth; a layer change counts for every function using it; a
+    code file outside every function is reported, not skipped."""
+    import subprocess
+    out = tmp_path / "output"
+    files = {"template.yaml": LAYOUT_TEMPLATE, "lambdas/books/books-get/handler.js": "a\n", "lambdas/items-get/handler.py": "a\n",
+             "layers/shared/shared_utils.py": "a\n", "lambdas/orphan/x.py": "a\n"}
+    for rel, text in files.items():
+        (out / rel).parent.mkdir(parents=True, exist_ok=True)
+        (out / rel).write_text(text, encoding="utf-8")
+    git = lambda *a: subprocess.run(["git", "-C", str(tmp_path), *a], check=True, capture_output=True)
+    git("init", "-q")
+    git("add", "-A")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "v0")
+    for rel in ("lambdas/books/books-get/handler.js", "lambdas/items-get/handler.py", "layers/shared/shared_utils.py", "lambdas/orphan/x.py"):
+        (out / rel).write_text("a\nb\n", encoding="utf-8")
+    (out / "lambdas/items-get/requirements.txt").write_text("requests\n", encoding="utf-8")  # not code
+    model = verify.Model(tmp_path)
+    changed, unmapped = verify._changed_lines(tmp_path, "HEAD", model)
+    assert changed == {"books-get": {"handler.js": {2}}, "items-get": {"handler.py": {2}, "layer:Shared:shared_utils.py": {2}}}
+    assert unmapped == ["output/lambdas/orphan/x.py"]
+
+
+def test_changed_coverage_reports_files_no_case_loaded(tmp_path):
+    final = tmp_path / "coverage-final.json"
+    final.write_text(json.dumps({"/b/Flat/handler.py": {"statementMap": {"0": {"start": {"line": 2}, "end": {"line": 2}}}, "s": {"0": 1}},
+                                 "/b/Shared/python/shared_utils.py": {"statementMap": {"0": {"start": {"line": 2}, "end": {"line": 2}}}, "s": {"0": 0}}}),
+                     encoding="utf-8")
+    r = verify._changed_coverage(final, "Flat", {"handler.py": {2}, "layer:Shared:shared_utils.py": {2}, "helpers.py": {1, 2}})
+    assert r["covered"] == 1
+    assert [(u["file"], u["line"]) for u in r["uncovered"]] == [("shared_utils.py", 2), ("helpers.py", None)]
+
+
+@pytest.mark.skipif(os.environ.get("M2S_VERIFY_INTEGRATION") != "1", reason="set M2S_VERIFY_INTEGRATION=1 (needs sam, Docker, amazon/aws-lambda-python:3.12)")
+def test_integration_python_rie(tmp_path):
+    """A python3.12 function with a shared layer, in the Lambda Python image
+    against DynamoDB Local: cases, coverage (coverage.py) and a fault run."""
+    ws = tmp_path / "pyws"
+    shutil.copytree(Path(__file__).parent / "fixtures" / "verify_python", ws)
+    r = verify.run_validate(str(ws), mode="rie")
+    assert r["status"] == "PASS", r
+    c = verify.run_coverage(str(ws), mode="rie")
+    fn = c["functions"]["items-get"]
+    assert fn["uncovered_count"] == 2 and fn["functions_pct"] == 100.0  # the 400 branch: its branch arm + its statement
+    e = verify.run_equivalence(str(ws), mode="record", label="t")
+    assert e["status"] == "RECORDED" and e["runs"] == 7  # 2 fault-scenario runs + 5 plain cases
+
+
+@pytest.mark.skipif(os.environ.get("M2S_VERIFY_INTEGRATION") != "1", reason="set M2S_VERIFY_INTEGRATION=1 (needs sam, Docker, amazon/aws-lambda-python:3.12)")
+def test_integration_python_consumer_pattern_a(tmp_path):
+    """The Python Pattern A consumer (the m2s-async-patterns-kb snippet's
+    logic) against DynamoDB Local: duplicates, merged keys, injected conflicts
+    pinned with match.item, a 100-item message in two chunks, redelivery
+    after a partial commit."""
+    ws = tmp_path / "pyc"
+    shutil.copytree(Path(__file__).parent / "fixtures" / "verify_python_consumer", ws)
+    r = verify.run_validate(str(ws), mode="rie")
+    assert r["status"] == "PASS" and r["total"] == 8, r
+    assert r["cases_with_conflicts"] == []

@@ -1,0 +1,10 @@
+{
+  "id": "items-get-happy",
+  "function": "items-get",
+  "kind": "happy",
+  "spec_refs": ["blueprint:items-get"],
+  "request": {"method": "GET", "path": "/items/i1"},
+  "fixtures": {"Items": [{"id": "i1", "name": "first"}]},
+  "expect": {"status": 200, "body": {"equals": {"id": "i1", "name": "first"}},
+             "tables_after": {"Items": {"contains": [{"id": "i1", "views": 1}]}}}
+}

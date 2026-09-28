@@ -28,12 +28,25 @@ from pathlib import Path
 from typing import Any
 
 import verify
-from verify import VerifyError, Model, _run, _env, _git, export_ref, sam_build, TMP_ROOT, VERIFY_TOOLS
+from verify import VerifyError, Model, _run, _env, _git, export_ref, sam_build, TMP_ROOT, VERIFY_TOOLS, PY_RIE_IMAGE, PY312_DIR
 
 REPO_PERF = Path(__file__).resolve().parent / "perf-rules"
 LEDGER = REPO_PERF / "ledger.json"
 PRICES = REPO_PERF / "prices.json"
 RIE_IMAGE = "public.ecr.aws/lambda/nodejs:22-x86_64"
+PY_TOOLS = VERIFY_TOOLS / "py"
+# Files of the Python shim, copied flat into /opt/m2s-shim of an RIE container;
+# AWS_LAMBDA_EXEC_WRAPPER=/opt/m2s-shim/wrapper starts the runtime through m2s_boot.py.
+PY_SHIM_FILES = [PY_TOOLS / "m2s_boot.py", PY_TOOLS / "m2s_perf_shim.py", PY_TOOLS / "m2s_tx_conflicts.py"]
+PY_WRAPPER = "\n".join(['#!/bin/sh', 'py="$1"; shift', 'exec "$py" /opt/m2s-shim/m2s_boot.py "$@"', ''])
+
+
+def _is_python(fn: dict[str, Any]) -> bool:
+    return str(fn.get("runtime", "")).startswith("python")
+
+
+def _layer_dirs(build_dir: Path, fn: dict[str, Any]) -> list[Path]:
+    return [build_dir / ly for ly in fn.get("layers", [])]
 ROUNDS = 5          # alternating rounds; gives >= 5 init samples and 5 warm medians (§3.3)
 WARM_INVOKES = 30
 SCREEN_LATENCY = 10
@@ -133,11 +146,19 @@ def _harness(model: Model, build_dir: Path, b: dict[str, Any], work: Path) -> di
     work.mkdir(parents=True, exist_ok=True)
     fx = _fixture_file(model, b, work / f"{b['id']}.fixtures.json")
     job = {"fn_dir": str(build_dir / fn["logical"]), "handler": fn["handler"], "env": fn["env"], "event": _event(model, b),
-           "fixtures_path": str(fx), "depth_latency_ms": SCREEN_LATENCY, "cpu_warmup": 30, "cpu_reps": 300}
+           "fixtures_path": str(fx), "depth_latency_ms": SCREEN_LATENCY, "cpu_warmup": 30, "cpu_reps": 300,
+           "layer_dirs": [str(d / "python") for d in _layer_dirs(build_dir, fn)]}
     jp = work / f"{b['id']}.harness.json"
     jp.write_text(json.dumps(job), encoding="utf-8")
-    node = shutil.which("node", path=_env()["PATH"]) or "node"
-    p = _run([node, str(VERIFY_TOOLS / "perf-harness.js"), str(jp)], capture_output=True, text=True, encoding="utf-8", errors="replace", env=_env(), timeout=900)
+    if _is_python(fn):
+        # Python 3.12 with Lambda's boto3/botocore (conda env m2s-py312).
+        py = PY312_DIR / "python.exe"
+        if not py.exists():
+            raise VerifyError(f"{py} not found: proxy metrics of Python functions need a local Python 3.12 with boto3")
+        cmd = [str(py), str(PY_TOOLS / "m2s_perf_harness.py"), str(jp)]
+    else:
+        cmd = [shutil.which("node", path=_env()["PATH"]) or "node", str(VERIFY_TOOLS / "perf-harness.js"), str(jp)]
+    p = _run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", env=_env(), timeout=900)
     line = next((l for l in p.stdout.splitlines() if l.startswith("@@M2S@@")), None)
     if not line:
         raise VerifyError(f"perf-harness produced no result for {b['id']}: {p.stderr[-2000:]}")
@@ -174,7 +195,8 @@ def run_proxy_metrics(workspace: str, functions: list[str] | None = None, benchm
         m["data_volume"] = b["data_volume"]
         res[b["id"]] = m
     return {"status": "OK", "version": ref or "working tree", "benchmarks": res,
-            "note": "calls/depth at 10ms fixed latency; warm_cpu = wall time per invocation at 0 latency (median of 300, local Node); "
+            "note": "calls/depth at 10ms fixed latency; warm_cpu = wall time per invocation at 0 latency (median of 300, "
+                    "local Node, or local Python 3.12 with Lambda's boto3 for Python functions); "
                     "capacity units estimated from request/response sizes; no 1MB pagination or FilterExpression in the shim"}
 
 
@@ -222,22 +244,47 @@ def _docker(*args: str, check: bool = True) -> str:
     return p.stdout + p.stderr
 
 
+def _copy_py_shim(container: str) -> None:
+    """docker cp creates only the last path component, so stage the shim
+    files in one directory and copy that as /opt/m2s-shim."""
+    stage = TMP_ROOT / "py-shim"
+    shutil.rmtree(stage, ignore_errors=True)
+    stage.mkdir(parents=True, exist_ok=True)
+    for f in PY_SHIM_FILES:
+        shutil.copyfile(f, stage / f.name)
+    # Written here with LF line endings (a CRLF shebang does not run); docker
+    # cp from Windows gives files mode 0755, so it is executable.
+    (stage / "wrapper").write_bytes(PY_WRAPPER.encode())
+    _docker("cp", str(stage) + "/.", f"{container}:/opt/m2s-shim")
+
+
 def rie_round(model: Model, build_dir: Path, b: dict[str, Any], fixtures: Path, latency: int, label: str, port: int) -> dict[str, Any]:
     """One fresh container: 1 cold + WARM_INVOKES warm invocations; returns
     init (rapid INIT REPORT), warm REPORT durations and the shim's max RSS."""
     fn = model.functions[b["function"]]
     name = f"m2sp-{label}"
     _docker("rm", "-f", name, check=False)
-    env = {**fn["env"], "AWS_REGION": "us-east-1", "AWS_ACCESS_KEY_ID": "AKIDPERF", "AWS_SECRET_ACCESS_KEY": "perf",
-           "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": str(fn["memory"]), "NODE_OPTIONS": "--require /var/task/.m2s-perf-shim.js",
+    py = _is_python(fn)
+    # Lambda sets both region variables; botocore reads AWS_DEFAULT_REGION.
+    env = {**fn["env"], "AWS_REGION": "us-east-1", "AWS_DEFAULT_REGION": "us-east-1", "AWS_ACCESS_KEY_ID": "AKIDPERF", "AWS_SECRET_ACCESS_KEY": "perf",
+           "AWS_LAMBDA_FUNCTION_MEMORY_SIZE": str(fn["memory"]),
            "SHIM_FIXTURES": "/var/task/.m2s-fixtures.json", "SHIM_LATENCY_MS": str(latency), "SHIM_LOG": "1", "SHIM_FN_DIR": "/var/task"}
+    # Node: the shim is preloaded with --require. Python: an exec wrapper, not
+    # PYTHONPATH -- setting PYTHONPATH makes the Lambda bootstrap skip the
+    # layer paths (/opt/python...).
+    env.update({"AWS_LAMBDA_EXEC_WRAPPER": "/opt/m2s-shim/wrapper"} if py else {"NODE_OPTIONS": "--require /var/task/.m2s-perf-shim.js"})
     cpus = round(int(fn["memory"]) / 1769, 3)
     env_args = [a for k, v in env.items() for a in ("-e", f"{k}={v}")]
-    _docker("create", "--name", name, "--cpus", str(cpus), "-p", f"127.0.0.1:{port}:8080", *env_args, RIE_IMAGE, fn["handler"])
+    _docker("create", "--name", name, "--cpus", str(cpus), "-p", f"127.0.0.1:{port}:8080", *env_args, PY_RIE_IMAGE if py else RIE_IMAGE, fn["handler"])
     try:
         _docker("cp", str(build_dir / fn["logical"]) + "/.", f"{name}:/var/task")
-        _docker("cp", str(VERIFY_TOOLS / "perf-shim.js"), f"{name}:/var/task/.m2s-perf-shim.js")
-        _docker("cp", str(VERIFY_TOOLS / "tx-conflicts.js"), f"{name}:/var/task/.m2s-tx-conflicts.js")
+        for layer in _layer_dirs(build_dir, fn):
+            _docker("cp", str(layer) + "/.", f"{name}:/opt")
+        if py:
+            _copy_py_shim(name)
+        else:
+            _docker("cp", str(VERIFY_TOOLS / "perf-shim.js"), f"{name}:/var/task/.m2s-perf-shim.js")
+            _docker("cp", str(VERIFY_TOOLS / "tx-conflicts.js"), f"{name}:/var/task/.m2s-tx-conflicts.js")
         _docker("cp", str(fixtures), f"{name}:/var/task/.m2s-fixtures.json")
         _docker("start", name)
         time.sleep(1.0)

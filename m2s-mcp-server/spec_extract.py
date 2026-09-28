@@ -20,8 +20,8 @@ mechanically confirm the cited line really mentions the cited symbol.
 
 This is deliberately a pattern extractor, not a JS parser: anything it cannot
 recognize is recorded as "unknown" (never guessed) and left for the annotator.
-Only JS/TS (Express) is handled; Python entry points get
-spec_status.script = "unsupported" and are left entirely to the annotator.
+JS/TS (Express) is handled here; Python (Flask) entry points by the
+ast-based twin in spec_extract_py.py, with the same fields and shapes.
 See PIPELINE_REDESIGN.md §2.1.
 """
 
@@ -731,7 +731,21 @@ def enrich_report(report: dict[str, Any], monolith_root: Path) -> dict[str, Any]
 
     unknown = 0
     extracted = unsupported = 0
+    py_project = None
     for ep in report.get("entry_points", []):
+        if str(ep.get("file", "")).endswith(".py"):
+            import spec_extract_py
+            py_project = py_project or spec_extract_py.PyProject(monolith_root)
+            if not spec_extract_py.extract_entry_point(py_project, ep):
+                _empty_spec(ep, "not_found")
+                unsupported += 1
+                continue
+            extracted += 1
+            for loc in ep["request"].values():
+                unknown += sum(1 for f in loc if f["type"] == "unknown") + sum(1 for f in loc if f["required"] == "unknown")
+            unknown += sum(1 for r in ep["responses"] if r["body"]["fields"] is None)
+            unknown += sum(1 for d in ep["data_access"] if d["table"]["config_key"] == "unknown" and d["table"]["default_name"] == "unknown")
+            continue
         key = (ep.get("file"), (ep.get("method") or "").upper(), ep.get("path"))
         route = routes.get(key)
         if route is None:
@@ -763,7 +777,12 @@ def enrich_report(report: dict[str, Any], monolith_root: Path) -> dict[str, Any]
 
     ddb = report.get("dynamodb_info")
     if isinstance(ddb, dict):
-        ddb["table_schemas"] = _extract_table_schemas(project, ddb.get("schema_files", []))
+        files = ddb.get("schema_files", [])
+        ddb["table_schemas"] = _extract_table_schemas(project, files)
+        if any(str(f).endswith(".py") for f in files):
+            import spec_extract_py
+            py_project = py_project or spec_extract_py.PyProject(monolith_root)
+            ddb["table_schemas"] += spec_extract_py.table_schemas(py_project, [f for f in files if str(f).endswith(".py")])
 
     report["spec_meta"] = {
         "schema_version": SPEC_SCHEMA_VERSION,

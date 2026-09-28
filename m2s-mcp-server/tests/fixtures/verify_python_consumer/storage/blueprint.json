@@ -1,0 +1,7 @@
+{
+  "lambda_functions": [
+    {"name": "bestsellers-update", "trigger_type": "sqs", "runtime": "python3.12", "sqs_source": "BestsellerQueue"}
+  ],
+  "dynamodb_tables": [{"logical_name": "BestsellersTable"}, {"logical_name": "IdempotencyTable"}],
+  "sqs_queues": [{"logical_name": "BestsellerQueue"}]
+}

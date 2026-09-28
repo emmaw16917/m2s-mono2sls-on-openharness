@@ -1,0 +1,51 @@
+{
+ "id": "bestsellers-update-boundary-duplicate-bookid-merged",
+ "function": "bestsellers-update",
+ "kind": "boundary",
+ "spec_refs": [
+  "blueprint:bestsellers-update"
+ ],
+ "sqs": {
+  "records": [
+   {
+    "message_id": "m1",
+    "body": {
+     "orderId": "order-1",
+     "books": [
+      {
+       "bookId": "b1",
+       "quantity": 1
+      },
+      {
+       "bookId": "b1",
+       "quantity": 2
+      },
+      {
+       "bookId": "b2",
+       "quantity": 1
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "fixtures": {},
+ "expect": {
+  "batch_item_failures": [],
+  "tables_after": {
+   "BestsellersTable": {
+    "count": 2,
+    "contains": [
+     {
+      "bookId": "b1",
+      "salesCount": 3
+     },
+     {
+      "bookId": "b2",
+      "salesCount": 1
+     }
+    ]
+   }
+  }
+ }
+}

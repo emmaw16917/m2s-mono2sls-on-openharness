@@ -42,6 +42,10 @@ model: inherit
 - 仅当有非内置第三方依赖时：`requirements.txt` 或 `package.json`
 
 如果 blueprint 判定需要共享层（多个函数有公共逻辑），额外在 `<WS>/output/layers/shared/` 下生成共享代码；如果不需要，就不要创建这个目录（会被 C6 检查判定为不一致）。
+- 共享层的目录布局按运行时区分：
+  - **Python**：代码直接放在 `layers/shared/` 下，例如 `layers/shared/shared_utils.py`，**不要**再套一层 `python/`。模板里的 `BuildMethod: python3.12` 会让 `sam build` 自动把它放进 `python/`。多套一层会变成 `/opt/python/python/`，导入失败；
+  - **Node.js**：代码放在 `layers/shared/nodejs/` 下，例如 `layers/shared/nodejs/shared.js`，模板的 `ContentUri` 指向 `layers/shared/nodejs/`。
+- 这两条由 gate 的 C13 检查。
 
 自检要点（Node.js 文件里没有 `import`/`export` 关键字、没有裸 `require('aws-sdk')`；依赖文件里没有 Python 运行时内置包 boto3/botocore/s3transfer/jmespath/urllib3；每个 handler 实际用到的环境变量名心里有数，方便后面排查 C4）——这些是给自己核对用的，不是可以跳过自查循环的理由。
 

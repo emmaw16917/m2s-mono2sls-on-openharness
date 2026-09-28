@@ -1,0 +1,9 @@
+{
+  "id": "items-get-missing",
+  "function": "items-get",
+  "kind": "error",
+  "spec_refs": ["blueprint:items-get"],
+  "request": {"method": "GET", "path": "/items/nope"},
+  "fixtures": {"Items": []},
+  "expect": {"status": 404}
+}

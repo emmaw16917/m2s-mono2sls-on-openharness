@@ -1,0 +1,60 @@
+{
+ "id": "bestsellers-update-idempotent-same-batch-duplicate",
+ "function": "bestsellers-update",
+ "kind": "happy",
+ "spec_refs": [
+  "blueprint:bestsellers-update"
+ ],
+ "sqs": {
+  "records": [
+   {
+    "message_id": "m1",
+    "body": {
+     "orderId": "order-1",
+     "books": [
+      {
+       "bookId": "b1",
+       "quantity": 2
+      }
+     ]
+    }
+   },
+   {
+    "message_id": "m2",
+    "body": {
+     "orderId": "order-1",
+     "books": [
+      {
+       "bookId": "b1",
+       "quantity": 2
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "fixtures": {
+  "BestsellersTable": [
+   {
+    "bookId": "b1",
+    "salesCount": 3
+   }
+  ]
+ },
+ "expect": {
+  "batch_item_failures": [],
+  "tables_after": {
+   "BestsellersTable": {
+    "contains": [
+     {
+      "bookId": "b1",
+      "salesCount": 5
+     }
+    ]
+   },
+   "IdempotencyTable": {
+    "count": 1
+   }
+  }
+ }
+}

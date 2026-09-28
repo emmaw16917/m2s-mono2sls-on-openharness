@@ -1,0 +1,7 @@
+{
+  "lambda_functions": [
+    {"name": "items-get", "trigger_type": "api", "runtime": "python3.12", "entry_points": ["GET /items/{id}"]},
+    {"name": "items-delete-many", "trigger_type": "api", "runtime": "python3.12", "entry_points": ["POST /items/delete"]}
+  ],
+  "dynamodb_tables": [{"logical_name": "Items"}]
+}

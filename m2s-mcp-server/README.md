@@ -30,6 +30,14 @@ pipeline produces:
 - conda env `mono2esls` (OpenHarness's own env): runs `oh`. Must have `mcp` pinned to a
   **1.x** release (see "Known environment gotchas" below) — this is unrelated to this
   project's own code but will silently break every MCP tool if violated.
+- For Python (Flask) monoliths, which migrate to `python3.12` Lambdas:
+  - conda env `m2s-py312` next to `mono2sls` (Python 3.12 with Lambda's boto3/botocore 1.35.92):
+    `sam build` needs a local Python 3.12 for python3.12 functions, and the perf harness runs there
+    (`M2S_PY312_DIR` overrides the location);
+  - Docker image `amazon/aws-lambda-python:3.12` (linux/amd64) for RIE runs; verification,
+    coverage (coverage.py, unpacked on first use into `verify-tools/py/vendor/`) and RIE
+    verdicts of Python functions use it. `public.ecr.aws/lambda/python` did not pull through
+    this machine's Docker proxy; the Docker Hub mirror did.
 - `~/.openharness/settings.json` already has `mcp_servers.m2s-server`,
   `permission.allowed_tools` (the four `mcp__m2s-server__*` tools), and two hooks
   wired up (see "Where things live"). If you're setting this up fresh on another
@@ -107,9 +115,9 @@ identical.
 
 | Tool | What it does |
 |---|---|
-| `analyze_project(monolith_root?)` | Runs M2S's static analyzer plus `spec_extract.py` (per-endpoint `handler_location`/`auth`/`request`/`responses`/`data_access`, `dynamodb_info.table_schemas`, every item with a `source` citation), writes `storage/analysis_report.json` + `storage/symbol_table.json` |
+| `analyze_project(monolith_root?)` | Runs M2S's static analyzer plus `spec_extract.py` (Express) / `spec_extract_py.py` (Flask, ast-based) (per-endpoint `handler_location`/`auth`/`request`/`responses`/`data_access`, `dynamodb_info.table_schemas`, every item with a `source` citation), writes `storage/analysis_report.json` + `storage/symbol_table.json` |
 | `annotate_entry_point(method, path, field, value_json)` | How `m2s-spec-annotator` (S0) writes: replaces one spec field of one endpoint after schema + provenance checks; rejects the whole call on any bad citation (`provenance.py`) |
-| `run_validate(functions?, cases?, dry_run?, mode?)` | Verification line: runs `verification/events/<fn>/*.json` against a `sam build` of the output (RIE containers with Docker, local Node without) with DynamoDB Local (dynalite without Docker) behind a recording/fault proxy that also rejects requests touching an item of an ongoing transaction, as real DynamoDB does (`verify.py`, `verify-tools/`, `tx-conflicts.js`; reported as `cases_with_conflicts`), judges each case; a full run writes `verification/verdict_A.json`. `dry_run=true` only checks the test assets (used by V1 before code exists) |
+| `run_validate(functions?, cases?, dry_run?, mode?)` | Verification line: runs `verification/events/<fn>/*.json` against a `sam build` of the output (RIE containers with Docker -- the Node or Python Lambda image by runtime, shared layers copied to /opt -- local Node / Python without) with DynamoDB Local (dynalite without Docker) behind a recording/fault proxy that also rejects requests touching an item of an ongoing transaction, as real DynamoDB does (`verify.py`, `verify-tools/`, `tx-conflicts.js`; reported as `cases_with_conflicts`), judges each case; a full run writes `verification/verdict_A.json`. `dry_run=true` only checks the test assets (used by V1 before code exists) |
 | `run_coverage(functions?, mode?, changed_since?)` | Same run with V8 coverage (c8); per-function branch/statement % and every uncovered branch with its line, in `verification/coverage/`. `changed_since="HEAD"` also checks that every changed executable line is executed by a test |
 | `run_equivalence(mode, label, functions?, runtime?, baseline_ref?)` | Fault-injection scenarios (`verification/faults/*.json`): `record` writes `fault_baseline_<label>.json`; `diff` re-runs `baseline_ref` (default `v0`) from the workspace git repo, pins the faults it applied to the same operations, and checks H1 on the working tree (same multiset of calls that took effect, same visible outcome, no emulated transaction conflicts the baseline did not have); every test case of the functions also runs without scenario faults |
 | `run_proxy_metrics(functions?, benchmarks?, ref?)` | Optimization line (`perf.py`): per benchmark (`perf/benchmarks/<fn>/*.json`) SDK calls, sequential depth, emulated transaction conflicts, warm CPU, request units, cost -- local Node with `verify-tools/perf-shim.js` |

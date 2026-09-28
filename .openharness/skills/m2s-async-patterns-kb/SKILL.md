@@ -366,6 +366,88 @@ A consumer that is not idempotent therefore makes the migrated system *less* cor
      // duplicate delivery: already applied -> success, nothing to do
    }
    ```
+
+   The same in Python (boto3). This version also carries the per-chunk markers and the conflict retry described below; it has been run against DynamoDB Local with duplicate deliveries, a duplicate key in one message, a 100-item message split into two chunks, a redelivery after only the first chunk committed, and injected conflicts:
+   ```python
+   import json, os, random, time
+   import boto3
+   from botocore.exceptions import ClientError
+
+   ddb = boto3.client("dynamodb")  # transactions are a client operation; clients are thread-safe, resources are not
+   CONSUMER = "update-bestsellers"
+   MAX_EFFECTS = 99                # 100 items per transaction, one of them the chunk's own marker
+   MAX_RETRIES = 3
+   RETRYABLE = {"ProvisionedThroughputExceededException", "ThrottlingException", "RequestLimitExceeded",
+                "InternalServerError", "ServiceUnavailable", "TransactionConflictException"}
+
+   def merge_by_key(books):        # one operation per item; dicts keep first-appearance order
+       merged = {}
+       for b in books:
+           merged[b["bookId"]] = merged.get(b["bookId"], 0) + int(b.get("quantity") or 0)
+       return merged
+
+   def transaction_chunks(order_id, merged):
+       updates = [{"Update": {"TableName": os.environ["BESTSELLERS_TABLE"], "Key": {"bookId": {"S": k}},
+                              "UpdateExpression": "ADD salesCount :q", "ExpressionAttributeValues": {":q": {"N": str(q)}}}}
+                  for k, q in merged.items()]
+       chunks = [updates[i:i + MAX_EFFECTS] for i in range(0, len(updates), MAX_EFFECTS)]
+       expires_at = str(int(time.time()) + 7 * 86400)
+       out = []
+       for i, chunk in enumerate(chunks):
+           pk = f"{CONSUMER}#{order_id}#{i}" if len(chunks) > 1 else f"{CONSUMER}#{order_id}"
+           marker = {"Put": {"TableName": os.environ["IDEMPOTENCY_TABLE"], "Item": {"pk": {"S": pk}, "expiresAt": {"N": expires_at}},
+                             "ConditionExpression": "attribute_not_exists(pk)"}}
+           out.append([marker, *chunk])  # marker first: a duplicate shows as CancellationReasons[0]
+       return out
+
+   def classify(error):
+       code = error.response.get("Error", {}).get("Code")
+       if code == "TransactionCanceledException":
+           reasons = error.response.get("CancellationReasons") or []
+           if reasons and reasons[0].get("Code") == "ConditionalCheckFailed":
+               return "duplicate"   # this chunk was committed by an earlier delivery
+           if any(r.get("Code") == "TransactionConflict" for r in reasons):
+               return "retryable"
+           return "permanent"
+       return "retryable" if code in RETRYABLE else "permanent"
+
+   def apply_message(order_id, books):
+       """'applied' | 'duplicate' | 'failed_retryable' (report it) | 'failed_permanent'"""
+       chunks = transaction_chunks(order_id, merge_by_key(books))
+       duplicates = 0
+       for items in chunks:
+           for attempt in range(MAX_RETRIES + 1):
+               if attempt:
+                   time.sleep((min(50 * 2 ** (attempt - 1), 800) + random.randint(0, 50)) / 1000)
+               try:
+                   ddb.transact_write_items(TransactItems=items)
+                   break
+               except ClientError as error:
+                   kind = classify(error)
+                   if kind == "duplicate":
+                       duplicates += 1
+                       break
+                   if kind == "permanent":
+                       return "failed_permanent"
+           else:
+               return "failed_retryable"   # never swallow: report it, redelivery skips the committed chunks
+       return "duplicate" if duplicates == len(chunks) else "applied"
+
+   def lambda_handler(event, context):
+       failures = []
+       for record in event.get("Records") or []:
+           try:
+               body = json.loads(record["body"])
+               order_id, books = body["orderId"], body["books"]
+           except (ValueError, KeyError, TypeError):
+               print(f"Skipping malformed message {record.get('messageId')}")
+               continue
+           if apply_message(order_id, books) == "failed_retryable":
+               failures.append({"itemIdentifier": record["messageId"]})
+       return {"batchItemFailures": failures}  # with FunctionResponseTypes: [ReportBatchItemFailures]
+   ```
+   - In boto3 the cancellation reasons are in `error.response["CancellationReasons"]`, the error code in `error.response["Error"]["Code"]`.
+   - The low-level client takes typed values (`{"S": ...}`, `{"N": "3"}`); a `Table` resource has no `transact_write_items`.
    - The marker and the effects commit together or not at all, so a crash between them cannot happen.
    - **One operation per item.** Merge the entries that target the same key before building `TransactItems` (sum quantities, keep the last `SET` value, and so on). The merged result must equal applying the entries one by one, as the monolith did.
    - **At most 100 operations per transaction**, the marker included. When a message has more distinct items than that, split them into chunks, and give each chunk its own marker (`<consumer>#<key>#<chunk index>`): each chunk is then exactly-once on its own. Alternatively, use Pattern B.

@@ -356,4 +356,11 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | K16 | 代码问题：每个改动允许修一次，修完重做全部检查，仍不通过就回滚；台账分开记"修过之后才保留"的数量 | PERF §3.6 |
 | K17 | 测试问题：存补丁、标 `blocked_by_test` → S5 之后 verifier 按规格复核（VR）→ 修改后的用例在 v0 代码上跑通（`run_validate(ref="v0")`），v0 tag 不动 → perf-optimizer 重新判决被阻塞的补丁；每轮 S5 最多复核一次 | PERF §3.6 |
 | K18 | 缺测试（改动行没覆盖）：标 `blocked_by_coverage`，走同一个复核流程，由 verifier 补用例 | PERF §3.6 |
+| K19 | 步骤 4 先跑 coffee（JS），同时补齐 Python 支持；另外 3 个应用（Flask）在 Python 支持完成后再跑 | §5 |
+| K20 | Python 函数的执行：官方 RIE 镜像 `amazon/aws-lambda-python:3.12`；没有 Docker 时用本机 Python 子进程，并注明限制 | §4.3 |
+| K21 | Python 覆盖率：使用 coverage.py（cp312 manylinux wheel，复制进容器），转换成与 Node 相同的覆盖率结构 | §4.3 |
+| K22 | Python 测量垫片：替换 `botocore.httpsession.URLLib3Session.send`；冲突模拟移植到 Python | PERF §9.6 |
+| K23 | R1–R4 的 Python 写法：线程池最多 10 个线程；resource 按线程建；不许在线程之间共享 `Table` 对象 | PERF §9.6 |
+| K24 | Flask 规格提取由脚本做（语法树分析），与 Express 的字段相同；业务规则仍由标注员写 | §2.1 |
+| K25 | 知识库加入 Pattern A 的 Python 版本，先在 DynamoDB Local 上验证；Python 从 shopping-cart 开始试点 | §2.4 |
 | K8 | 步骤 1 就把 V1（S1 之后、S2 之前）和 V2（S4 之后）插进 m2s-migrate，并由主 Agent 打 v0 tag；其余拓扑调整留到步骤 3 | §1、§5 |

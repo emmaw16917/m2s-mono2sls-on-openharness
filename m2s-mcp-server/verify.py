@@ -48,6 +48,19 @@ CASE_KINDS = ("happy", "error", "boundary", "whitebox")
 FAULT_KINDS = ("throttle", "error", "validation", "conditional", "network", "tx_conflict")
 LOCAL_DISCLAIMER = ("运行时检查在本机 Node 中完成，未在 Lambda 运行时中验证"
                     "（依赖来自 sam build 产物，但 Windows/Node 小版本与 Lambda 不同）")
+LOCAL_DISCLAIMER_PY = ("运行时检查在本机 Python（{version}）中完成，未在 Lambda 运行时中验证"
+                       "（Lambda 是 Python 3.12，boto3 版本也不同）；Python 函数的覆盖率在这种模式下测不了")
+
+
+def local_disclaimer(model: "Model") -> str:
+    """The no-Docker disclaimer, naming the runtimes actually used locally."""
+    runtimes = {str(f.get("runtime", "")) for f in model.functions.values()}
+    parts = []
+    if not runtimes or any(r.startswith("nodejs") or not r for r in runtimes):
+        parts.append(LOCAL_DISCLAIMER)
+    if any(r.startswith("python") for r in runtimes):
+        parts.append(LOCAL_DISCLAIMER_PY.format(version=sys.version.split()[0]))
+    return "；".join(parts)
 
 
 class VerifyError(ValueError):
@@ -116,6 +129,11 @@ class Model:
             elif t == "AWS::SQS::Queue":
                 self.queues.add(lid)
         glob_fn = ((self.template.get("Globals", {}) or {}).get("Function", {}) or {})
+        # Layer logical id -> ContentUri (relative to output/), to map changed
+        # layer files to the functions that use the layer.
+        self.layers = {lid: str((r.get("Properties") or {}).get("ContentUri", "")).strip().strip("./").rstrip("/")
+                       for lid, r in res.items()
+                       if isinstance(r, dict) and r.get("Type") in ("AWS::Serverless::LayerVersion", "AWS::Lambda::LayerVersion")}
         glob_env = ((glob_fn.get("Environment", {}) or {}).get("Variables", {}) or {})
         glob_api_auth = (((self.template.get("Globals", {}) or {}).get("Api", {}) or {}).get("Auth", {}) or {})
         for lid, r in res.items():
@@ -125,7 +143,15 @@ class Model:
             code_uri = str(p.get("CodeUri", "")).rstrip("/")
             name = Path(code_uri).name if code_uri else lid
             env = {**glob_env, **((p.get("Environment", {}) or {}).get("Variables", {}) or {})}
+            layers = []
+            for ly in (p.get("Layers") if p.get("Layers") is not None else glob_fn.get("Layers")) or []:
+                ref = ly.get("Ref") if isinstance(ly, dict) else ly
+                if isinstance(ref, str) and (res.get(ref) or {}).get("Type") in ("AWS::Serverless::LayerVersion", "AWS::Lambda::LayerVersion"):
+                    layers.append(ref)  # logical id; sam build puts it in build/<id>/
             fn = {"name": name, "logical": lid, "handler": p.get("Handler") or glob_fn.get("Handler"),
+                  "code_uri": code_uri.strip().strip("./").rstrip("/"),
+                  "runtime": str(p.get("Runtime") or glob_fn.get("Runtime") or ""),
+                  "layers": layers,
                   "memory": p.get("MemorySize") or glob_fn.get("MemorySize") or 128,
                   "env": {k: self._resolve(v) for k, v in env.items()}, "api": [], "sqs": []}
             for ev in (p.get("Events", {}) or {}).values():
@@ -481,6 +507,11 @@ def build_event(model: Model, case: dict[str, Any]) -> tuple[dict[str, Any] | No
 # Build + run
 # ---------------------------------------------------------------------------
 
+# sam build of a python3.12 function needs a local Python 3.12 on PATH; the
+# MCP server runs in a 3.11 conda env, the 3.12 one sits next to it.
+PY312_DIR = Path(os.environ["M2S_PY312_DIR"]) if os.environ.get("M2S_PY312_DIR") else Path(sys.executable).resolve().parent.parent / "m2s-py312"
+
+
 def _env() -> dict[str, str]:
     env = dict(os.environ)
     if Path(DOCKER_BIN).exists() and DOCKER_BIN not in env.get("PATH", ""):
@@ -524,7 +555,11 @@ def sam_build(ws: Path) -> Path:
     of the template and every file under output/lambdas."""
     out = ws / "output"
     h = hashlib.sha256()
-    for p in sorted([out / "template.yaml", *[q for q in (out / "lambdas").rglob("*") if q.is_file() and "node_modules" not in q.parts]]):
+    # Layers are part of the build too: leaving them out reused a stale build
+    # after a layer changed.
+    sources = [q for d in ("lambdas", "layers") if (out / d).is_dir() for q in (out / d).rglob("*")
+               if q.is_file() and "node_modules" not in q.parts and "__pycache__" not in q.parts]
+    for p in sorted([out / "template.yaml", *sources]):
         h.update(str(p.relative_to(out)).encode())
         h.update(p.read_bytes())
     digest = h.hexdigest()[:12]
@@ -533,8 +568,11 @@ def sam_build(ws: Path) -> Path:
     if (root / "BUILD_OK").exists():
         return build_dir
     root.mkdir(parents=True, exist_ok=True)
+    env = _env()
+    if (PY312_DIR / "python.exe").exists():
+        env["PATH"] = os.pathsep.join([str(PY312_DIR), str(PY312_DIR / "Scripts"), env.get("PATH", "")])
     proc = _run([_find_sam(), "build", "--template-file", str(out / "template.yaml"), "--build-dir", str(build_dir)],
-                          cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", env=_env(), timeout=900)
+                          cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace", env=env, timeout=900)
     (root / "sam_build.log").write_text(proc.stdout + "\n" + proc.stderr, encoding="utf-8")
     if proc.returncode != 0:
         raise VerifyError(f"sam build failed (exit {proc.returncode}), a packaging problem; log tail:\n{(proc.stdout + proc.stderr)[-3000:]}")
@@ -582,6 +620,32 @@ def _image_present(image: str) -> bool:
     return _run(["docker", "image", "inspect", image], capture_output=True, env=_env()).returncode == 0
 
 
+PY_RIE_IMAGE = "amazon/aws-lambda-python:3.12"
+COVERAGE_PY = "coverage==7.16.2"
+PY_VENDOR = VERIFY_TOOLS / "py" / "vendor"
+
+
+def ensure_py_vendor() -> Path:
+    """coverage.py for the Lambda Python (cp312, manylinux x86_64, with its C
+    tracer), unpacked once into verify-tools/py/vendor and copied into RIE
+    containers as /opt/m2s-cov."""
+    if (PY_VENDOR / "coverage" / "__init__.py").exists():
+        return PY_VENDOR
+    import zipfile
+    dl = TMP_ROOT / "py-wheels"
+    dl.mkdir(parents=True, exist_ok=True)
+    p = _run([sys.executable, "-m", "pip", "download", COVERAGE_PY, "--no-deps", "--only-binary=:all:", "--python-version", "3.12",
+              "--platform", "manylinux2014_x86_64", "--implementation", "cp", "-d", str(dl)],
+             capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=300)
+    wheels = sorted(dl.glob("coverage-*.whl"))
+    if p.returncode != 0 or not wheels:
+        raise VerifyError(f"could not download {COVERAGE_PY} for Python coverage: {(p.stdout + p.stderr)[-800:]}")
+    PY_VENDOR.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(wheels[-1]) as z:
+        z.extractall(PY_VENDOR)
+    return PY_VENDOR
+
+
 def ddb_backend() -> dict[str, Any]:
     """AWS DynamoDB Local in a container when Docker is available (K14):
     the amazon/dynamodb-local image if present, otherwise the official
@@ -607,8 +671,13 @@ def _run_controller(model: Model, build_dir: Path, runs: list[dict[str, Any]], c
     functions = []
     for name in fn_names:
         fn = model.functions[name]
-        functions.append({"name": name, "dir": str(build_dir / fn["logical"]), "handler": fn["handler"], "env": fn["env"], "memory": fn["memory"]})
-    job = {"mode": mode, "coverage": coverage, "out_dir": str(out_dir), "functions": functions, **ddb_backend(),
+        functions.append({"name": name, "dir": str(build_dir / fn["logical"]), "handler": fn["handler"], "env": fn["env"], "memory": fn["memory"],
+                          "runtime": fn.get("runtime", ""), "layers": [str(build_dir / ly) for ly in fn.get("layers", [])]})
+    has_py = any(f["runtime"].startswith("python") for f in functions)
+    py = {"rie_image_python": PY_RIE_IMAGE, "python_exe": sys.executable}
+    if has_py and coverage and mode == "rie":
+        py["py_vendor"] = str(ensure_py_vendor())
+    job = {"mode": mode, "coverage": coverage, "out_dir": str(out_dir), "functions": functions, **ddb_backend(), **py,
            "tables": [{"name": t["name"], "create": t["create"]} for t in model.tables.values()], "cases": runs}
     job_path = out_dir / "job.json"
     job_path.write_text(json.dumps(job, indent=1), encoding="utf-8")
@@ -952,7 +1021,7 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
             entry["logs_tail"] = (fres.get("logs_tail") or "")[-1500:]
         results.append(entry)
     failed = [r for r in results if not r["passed"]]
-    disclaimers = [d for d in (LOCAL_DISCLAIMER if mode == "local" else "", DYNALITE_DISCLAIMER if raw.get("backend") == "dynalite" else "") if d]
+    disclaimers = [d for d in (local_disclaimer(model) if mode == "local" else "", DYNALITE_DISCLAIMER if raw.get("backend") == "dynalite" else "") if d]
     summary = {"status": "PASS" if not failed else "FAIL", "mode": mode, "backend": raw.get("backend"), "total": len(results),
                "passed": len(results) - len(failed), "failed": len(failed), "failures": failed,
                "cases_with_conflicts": [r["id"] for r in results if any(x.endswith("!conflict") for x in r["sdk_calls"])],
@@ -969,25 +1038,50 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
     return summary
 
 
-def _changed_lines(ws: Path, ref: str) -> dict[str, dict[str, set[int]]]:
-    """{function: {path-inside-function-dir: {new line numbers}}} for every
-    line under output/lambdas that differs from <ref> (added or modified;
-    untracked files count as fully changed)."""
+CODE_SUFFIXES = (".js", ".mjs", ".cjs", ".ts", ".py")
+
+
+def _changed_lines(ws: Path, ref: str, model: "Model") -> tuple[dict[str, dict[str, set[int]]], list[str]]:
+    """({function: {file key: {new line numbers}}}, [unmapped files]) for
+    every changed line of a code file under output/lambdas and output/layers
+    (added or modified; untracked files count as fully changed).
+
+    Files are mapped through the template: a function's CodeUri, or a
+    layer's ContentUri (then the change counts for every function using the
+    layer, keyed "layer:<LayerId>:<path>"). The directory layout does not
+    matter. A changed code file that belongs to no function is returned as
+    unmapped -- never silently skipped."""
     def git(*args: str) -> str:
         p = _run(["git", "-C", str(ws), *args], capture_output=True, text=True, encoding="utf-8", errors="replace")
         if p.returncode != 0:
             raise VerifyError(f"git {' '.join(args)} failed: {p.stderr.strip()}")
         return p.stdout
     out: dict[str, dict[str, set[int]]] = {}
+    unmapped: list[str] = []
+
+    def owners(path: str) -> list[tuple[str, str]]:
+        rel = path[len("output/"):] if path.startswith("output/") else path
+        for name, fn in model.functions.items():
+            cu = fn.get("code_uri") or ""
+            if cu and rel.startswith(cu + "/"):
+                return [(name, rel[len(cu) + 1:])]
+        hits = []
+        for lid, cu in getattr(model, "layers", {}).items():
+            if cu and rel.startswith(cu + "/"):
+                hits += [(name, f"layer:{lid}:{rel[len(cu) + 1:]}") for name, fn in model.functions.items() if lid in fn.get("layers", [])]
+        return hits
 
     def add(path: str, lines: set[int]) -> None:
-        parts = path.split("/")
-        if len(parts) < 5 or parts[:2] != ["output", "lambdas"]:
+        if not path.endswith(CODE_SUFFIXES):
             return
-        out.setdefault(parts[3], {}).setdefault("/".join(parts[4:]), set()).update(lines)
+        who = owners(path)
+        if not who:
+            unmapped.append(path)
+        for name, key in who:
+            out.setdefault(name, {}).setdefault(key, set()).update(lines)
 
     cur = None
-    for line in git("diff", "-U0", ref, "--", "output/lambdas").splitlines():
+    for line in git("diff", "-U0", ref, "--", "output/lambdas", "output/layers").splitlines():
         if line.startswith("+++ "):
             cur = line[6:] if line.startswith("+++ b/") else None
         elif line.startswith("@@") and cur:
@@ -995,20 +1089,35 @@ def _changed_lines(ws: Path, ref: str) -> dict[str, dict[str, set[int]]]:
             if m:
                 start, n = int(m.group(1)), int(m.group(2) or 1)
                 add(cur, set(range(start, start + n)))
-    for path in git("ls-files", "--others", "--exclude-standard", "--", "output/lambdas").splitlines():
+    for path in git("ls-files", "--others", "--exclude-standard", "--", "output/lambdas", "output/layers").splitlines():
         n = len((ws / path).read_text(encoding="utf-8", errors="ignore").splitlines())
         add(path, set(range(1, n + 1)))
-    return out
+    return out, sorted(set(unmapped))
 
 
 def _changed_coverage(final_json: Path, logical: str, changed: dict[str, set[int]]) -> dict[str, Any]:
     data = _read_json(final_json)
     covered, uncovered = [], []
+    seen: set[str] = set()
+
+    def key_of(fpath: str) -> str | None:
+        norm = fpath.replace("\\", "/")
+        for key in changed:
+            if key.startswith("layer:"):
+                _, lid, rel = key.split(":", 2)
+                # build/<LayerId>/[python/|nodejs/]<rel>
+                if f"/{lid}/" in norm and norm.endswith("/" + rel):
+                    return key
+        rel = norm.split(f"/{logical}/", 1)[-1]
+        return rel if rel in changed else None
+
     for fpath, fc in data.items():
-        rel = fpath.replace("\\", "/").split(f"/{logical}/", 1)[-1]
-        lines = changed.get(rel)
-        if not lines:
+        key = key_of(fpath)
+        if not key:
             continue
+        seen.add(key)
+        rel = key.split(":", 2)[2] if key.startswith("layer:") else key
+        lines = changed[key]
         src = Path(fpath).read_text(encoding="utf-8", errors="ignore").splitlines() if Path(fpath).exists() else []
         for ln in sorted(lines):
             hits = [fc["s"][sid] for sid, loc in fc["statementMap"].items() if loc["start"]["line"] <= ln <= loc["end"]["line"]]
@@ -1016,6 +1125,10 @@ def _changed_coverage(final_json: Path, logical: str, changed: dict[str, set[int
                 continue  # not executable (comment, brace, blank)
             (covered if any(h > 0 for h in hits) else uncovered).append(
                 {"file": rel, "line": ln, "code": src[ln - 1].strip()[:160] if 0 < ln <= len(src) else ""})
+    for key in sorted(set(changed) - seen):
+        # No test case loaded the file at all, so none of its changed lines ran.
+        rel = key.split(":", 2)[2] if key.startswith("layer:") else key
+        uncovered.append({"file": rel, "line": None, "code": f"file not loaded by any test case ({len(changed[key])} changed lines)"})
     return {"changed_executable_lines": len(covered) + len(uncovered), "covered": len(covered), "uncovered": uncovered}
 
 
@@ -1042,8 +1155,11 @@ def run_coverage(workspace: str, functions: list[str] | None = None, mode: str =
         (out / f"{name}.json").write_text(json.dumps(per_fn[name], indent=2, ensure_ascii=False), encoding="utf-8")
     changed_report = None
     if changed_since:
-        changed = _changed_lines(ws, changed_since)
+        changed, unmapped = _changed_lines(ws, changed_since, model)
         changed_report = {}
+        if unmapped:
+            changed_report["(unmapped)"] = {"error": "changed code files that belong to no function's CodeUri or any layer's ContentUri: "
+                                                     + ", ".join(unmapped)}
         for name, files in changed.items():
             cov = (raw["functions"].get(name) or {}).get("coverage") or {}
             if name not in model.functions:
@@ -1055,7 +1171,7 @@ def run_coverage(workspace: str, functions: list[str] | None = None, mode: str =
     summary = {"mode": mode, "functions": {n: {k: v for k, v in s.items() if k != "uncovered"} | {"uncovered_count": len(s.get("uncovered", []))}
                                            for n, s in per_fn.items()},
                "details": "verification/coverage/<function>.json lists every uncovered branch/statement with its line",
-               "disclaimer": LOCAL_DISCLAIMER if mode == "local" else ""}
+               "disclaimer": local_disclaimer(model) if mode == "local" else ""}
     if changed_report is not None:
         summary["changed_lines"] = {"since": changed_since, "functions": changed_report,
                                     "all_covered": all(not r.get("uncovered") and not r.get("error") for r in changed_report.values())}
@@ -1122,8 +1238,12 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
     by_id = {c["id"]: c for c in cases if "id" in c}
     faults = [f for f in load_faults(ws) if not functions or f.get("function") in functions]
     errs = [e for f in faults for e in check_fault(model, f, set(by_id), with_template=True)]
-    if not faults:
+    if not faults and mode == "record":
         errs.append("no fault scenarios under verification/faults/*.json")
+    if mode == "diff" and not faults and not any(not functions or c.get("function") in functions for c in cases):
+        # diff also compares every plain case, so scenarios are not required
+        # -- but there must be something to compare.
+        errs.append("nothing to compare: no fault scenarios and no test cases for these functions")
     if errs:
         return {"status": "FAIL", "schema_errors": errs}
     scen = {f["id"]: f for f in faults}
@@ -1136,7 +1256,8 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
 
     def run_version(m: Model, root: Path, pinned: dict | None, tag: str) -> tuple[dict, dict]:
         build = sam_build(root)
-        raw = _run_controller(m, build, _prepare_runs(m, needed, scen, pinned), coverage=False, mode=runtime, label=f"equiv-{tag}")
+        scen_runs = _prepare_runs(m, needed, scen, pinned) if scen else []
+        raw = _run_controller(m, build, scen_runs, coverage=False, mode=runtime, label=f"equiv-{tag}") if scen_runs else {"cases": []}
         plain_runs = _prepare_runs(m, plain)
         if pinned is not None:  # case-level faults pinned to the same operations too
             for r in plain_runs:
@@ -1155,7 +1276,7 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
                "note": "v1 records fault behaviour only; whether it is correct is judged in v2 together with monolith diffing"}
         path.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
         return {"status": "RECORDED" if not infra else "RECORDED_WITH_INFRA_ERRORS", "runtime": runtime, "path": str(path.relative_to(ws)),
-                "runs": len(obs), "infra_errors": infra, "disclaimer": LOCAL_DISCLAIMER if runtime == "local" else ""}
+                "runs": len(obs), "infra_errors": infra, "disclaimer": local_disclaimer(model) if runtime == "local" else ""}
 
     if baseline_ref and has_own_repo(ws):
         base_root = export_ref(ws, baseline_ref)

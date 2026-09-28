@@ -3,8 +3,9 @@
 //   node perf-harness.js <job.json>
 // job: {fn_dir, handler, env, event, fixtures_path, depth_latency_ms, cpu_warmup, cpu_reps}
 // Prints one line "@@M2S@@<json>":
-//   valid run (latency = depth_latency_ms): status/error, calls, sequential
-//   depth, capacity units; warm run (latency 0): median/p90 wall time per
+//   valid run (latency = depth_latency_ms, the second invocation -- warm):
+//   status/error, calls, sequential depth, capacity units; warm run
+//   (latency 0): median/p90 wall time per
 //   invocation over cpu_reps runs after cpu_warmup runs. At zero latency the
 //   wall time is the CPU part of warm execution (Windows' 15.6ms clock tick
 //   makes process.cpuUsage() useless at this scale).
@@ -37,8 +38,11 @@ function depthOf(calls) {
   const invoke = async () => { try { return { result: await handler(JSON.parse(JSON.stringify(job.event)), ctx) }; } catch (e) { return { error: { type: e.name, message: String(e.message) } }; } };
 
   shim.state.latency = job.depth_latency_ms || 10;
-  shim.reset();
-  const first = await invoke();
+  // The first invocation pays one-time work (clients, pools, per-thread
+  // resources) that staggers its calls; calls and depth describe a warm
+  // invocation, the second one. A first invocation that fails is reported.
+  let first = await invoke();
+  if (!first.error) { shim.reset(); first = await invoke(); }
   const calls = shim.calls();
   const sum = (k) => calls.reduce((n, c) => n + (c[k] || 0), 0);
   const res = {

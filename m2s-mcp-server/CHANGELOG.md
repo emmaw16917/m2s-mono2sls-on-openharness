@@ -721,3 +721,83 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
   - 台账新增 `blocked_by_test`、`blocked_by_coverage` 两种结果，以及 `kept_after_fix`、`fix_attempted`、`reviewed` 三个计数。
 - **文档**：PERF_OPTIMIZATION_DESIGN §3.1、新增 §3.6、§9.2、§9.3；PIPELINE_REDESIGN 附录 A 的 K15–K18；SKILL.md 的"S5 之后的测试复核"；m2s-perf-optimizer（分诊表、代码问题修一次、重新判决模式）；m2s-verifier（VR 一节）。
 - **测试**：114 个通过（新增台账计数的测试）。
+
+## 步骤 4 准备：Python 支持（P1–P7，2026-09-28，K19–K25）
+
+**起因**：基准里的另外 4 个应用中，3 个是 Flask（Python）。原版 M2S 同时支持 Python 和 JS（分析器、prompt、共享层都支持），迁移后仍是 Python 的 Lambda。但重构新加的规格提取、验证引擎、测量垫片、R1–R4 都只支持 Node。
+
+**用户决定**：先跑 coffee（JS），同时补齐 Python 支持；P1–P7 都按建议来。Python 的 Lambda 镜像拉不下来，用户在另一个网络拉到了 Docker Hub 上的镜像 `amazon/aws-lambda-python:3.12`（Python 3.12.7，boto3 1.35.92）。
+
+开发放在单独的 git worktree（`../Mono2SLs-pydev`，分支 `feat/python-support`）里进行。原因是 coffee 正在运行，子 Agent 在派发时会加载当前的工具代码，不能在运行途中替换。
+
+### P1 执行（验证线）
+- 按运行时选择 RIE 镜像。Python 的测试用例在官方镜像里跑；没有 Docker 时退回本机 Python 子进程（`py/m2s_local_invoker.py`），这时不测覆盖率。
+- 本机免责声明区分 Node 和 Python。
+- **共享层**：以前 Node 和 Python 都没有处理，恰好 bookstore 和 todo 都没用共享层。现在把 `sam build` 产出的层目录复制到容器的 `/opt` 下。
+- **`sam build` 的缓存没有包括 `output/layers`**：改了层之后，仍然沿用旧的构建产物。已修复。
+- 错误判定：Python 运行时的错误响应里多一个 `requestId` 字段，原来的判定因此漏掉了。
+- `sam build` 构建 python3.12 函数需要本机有 Python 3.12，新建了 conda 环境 `m2s-py312`，构建时放在 PATH 最前面。
+- **M2S 原版就有的一个 bug**：知识库和 tasks.yaml 规定的 Python 共享层布局是"代码放在 `layers/shared/python/` 下，并且设置 `BuildMethod: python3.12`"。实测 `sam build` 会自己再套一层 `python/`，结果变成 `/opt/python/python/`，导入失败，真实的 Lambda 也会这样。
+  - 改了 SAM 知识库和 code-developer 的 prompt；
+  - 新增 gate 检查 C13（层的目录布局，Node 和 Python 都检查）。
+
+### P2 覆盖率
+- coverage.py（cp312 manylinux wheel，第一次使用时解包到 `py/vendor/`，这个目录不进仓库）复制进容器。
+- 由包装模块 `m2s_cov_handler.py` 先启动覆盖率，再导入真正的 handler，所以模块级别的代码也会被测到；每次调用后保存一次。
+- 容器里的 `m2s_cov_report.py` 把结果转换成与 Node 相同的结构：多行语句覆盖它占的所有行，复合语句只覆盖头部。
+- **改动行覆盖检查以前会漏报**，Node 也受影响，已修复：
+  - 以前是按固定的目录深度（`lambdas/<domain>/<fn>/`）把改动文件对应到函数，平铺的目录布局会被静默跳过，结果"全部覆盖"；
+  - 共享层的改动根本不检查；
+  - 现在按模板里的 CodeUri / ContentUri 来对应；
+  - 没有任何用例加载过的改动文件，算作没覆盖；
+  - 不属于任何函数的改动文件，单独报告；
+  - Node 的覆盖率现在也包括层的文件。
+
+### P3 测量垫片
+- **`py/m2s_perf_shim.py`**：替换 `URLLib3Session.send`，其余逻辑与 Node 垫片相同。冲突模拟由 `py/m2s_tx_conflicts.py` 实现，加了锁；用同一组用例检查它与 JS 版结果一致。
+- **本机代理指标**：`py/m2s_perf_harness.py`，在 `m2s-py312` 环境里运行，boto3/botocore 的版本与 Lambda 一致（1.35.92）。
+- **在 RIE 里加载垫片**：一开始用 `PYTHONPATH`，结果层导入失败。原因是只要设置了 `PYTHONPATH`，Lambda 的 bootstrap 就不再添加 `/opt/python`。改用 `AWS_LAMBDA_EXEC_WRAPPER` 加 `m2s_boot.py`。另外补上了 `AWS_DEFAULT_REGION`。
+- **Python 垫片的日志一开始解析不到**：Python 的 `json.dumps` 默认在冒号后面带空格，perf.py 按 Node 的紧凑格式解析 `"max_rss_mb":` 和 `"conflict":true`，结果 RSS 显示为 0，冲突也会漏数。已改成紧凑格式，并加了测试。
+- **顺序深度改在第二次调用上测**（两个运行时都改了），原因见设计文档 §9.6。
+- **`run_equivalence(diff)` 不再要求必须有故障场景**：它现在会跑全部用例；只有 record 模式仍然要求。
+
+### P4 规则 R1–R4 的 Python 写法
+写进 `m2s-perf-optimizer.md` 的"Python 函数的写法"一节，代码骨架都在测试工作区上跑通了全部检查：
+
+| 改动 | 验证 / 等价性 / 改动行覆盖 | RIE 10ms（5 轮中位数） |
+|---|---|---|
+| R4 分波次（SQS 消费者，一批 10 条） | 8/8 / EQUIVALENT / 40/40 | `kept`：[118.4..119.0] → [22.3..28.6]ms；热点守卫基准没有差异 |
+| R1 并行删除 8 个条目 | 3/3 / EQUIVALENT / 24/24 | `kept`：[93.6..94.5] → [17.8..20.1]ms |
+| 不安全的全并行（对照） | 用例全过，但有 2 个用例出现冲突 / H1 (c) DIFFERENT | 热点基准 18 次冲突，1 条消息被上报重投 |
+
+写法上的讲究：
+- 线程池最多 10 个线程，这是 botocore 的连接池大小；
+- `Table` 按线程建；
+- 只有一条消息的波次在当前线程里直接执行。去掉这一条的话，热点基准的 CPU 从 5.2ms 升到 8.8ms；
+- R1 的适用前提要写清楚：每一条的异常都在循环里处理掉了。原来的测试工作区里有"其他错误就 raise"，这种情况按 §6.2 不适用。
+
+### P5 Flask 规格提取
+- `spec_extract_py.py` 基于语法树分析，字段和格式与 Express 的提取相同。
+- 数据访问能跟到项目内的函数、类方法、模块级实例（`storage = DataStorage()`）。
+- 表名能解析到：`Table(...)` 的参数；返回表的辅助函数（逐层绑定参数，例如 `get_users_table()` → `get_table('TABLE_USERS_NAME')` → `current_app.config[key]`）；模块常量；`os.environ` / `os.getenv`；配置类的常量；`self.X = os.environ.get(...)`；f-string 形式的默认值（保留为模板）。
+- 表结构支持两种写法：`create_table(...)` 的关键字参数（包括参数通过调用处或元组列表传进来的情况），以及包含 `TableName` 和 `KeySchema` 的字典。
+- 三个应用的结果：
+
+  | 应用 | 端点提取 | 数据访问的表解析出来 | 表结构 | 出处检查 |
+  |---|---|---|---|---|
+  | shopping-cart | 10/10 | 33/33 | 1 | 0 错误 |
+  | ecommerce | 30/30 | 36/36 | 6 | 0 错误 |
+  | airline-booking | 18/18 | 22/22 | 4 | 0 错误 |
+
+- `provenance` 现在允许在 `status` 为 `unknown` 时 `kind` 也是 `unknown`（状态码放在变量里的情况）。
+- 标注员 prompt 补充了 Flask 的说明。
+- **M2S 分析器的一个潜在 bug**：`methods=['GET','POST']` 只记下了最后一个方法。这三个应用里没有这种写法，暂时不修。
+
+### P6 知识库
+- `m2s-async-patterns-kb` 加入 Pattern A 的 Python 版本，包括按键合并、每个分块自己的标记、冲突重试和上报。
+- 把知识库里的这段代码原样放进测试工作区，在 DynamoDB Local 上跑 8 个用例，8/8 通过。
+
+### 测试
+- 125 个通过。
+- 新增 `test_py_perf.py`、`test_spec_py.py`；C13、改动行对应、台账计数的测试。
+- 两个可选的 Python 集成测试（需要设置 `M2S_VERIFY_INTEGRATION=1`），都通过。

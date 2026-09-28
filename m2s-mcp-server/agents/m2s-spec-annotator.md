@@ -17,13 +17,13 @@ model: inherit
 | 字段 | 内容 | 你要做的 |
 |---|---|---|
 | `handler_location` | `{file, start_line, end_line}`，handler 在源码里的范围 | 从这里开始读代码 |
-| `auth` | `classification`（`required`/`optional`/`none`/`unknown`）、`middleware`（挂载链上的中间件名） | 核对；`unknown` 的读中间件源码后确定 |
+| `auth` | `classification`（`required`/`optional`/`none`/`unknown`）、`middleware`（挂载链上的中间件名；Flask 是 handler 上除路由之外的装饰器，加上所在模块的 `before_request` 钩子） | 核对；`unknown` 的读中间件或装饰器源码后确定。Flask 里有些端点不用装饰器，而是在函数体里调用辅助函数读取 `Authorization`（可选登录），脚本看不出来，要读代码判断 |
 | `request` | `path_params`/`query`/`body`/`headers` 四个列表，每项 `{name, type, required, source, origin}` | 核对；补 `type`/`required` 的 `unknown`；数组或对象字段补元素结构 `fields` |
-| `responses` | 每个 `res.*` 调用点一项：`{status, kind, body:{fields, expression}, source, origin}`，可能带 `in_catch`、`via` | 核对；**每一项都补 `when`**（在什么条件下返回它）；`body.fields` 为 `null` 的补 `body.description` |
+| `responses` | 每个响应点一项：Express 是 `res.*` 调用，Flask 是 `return ..., status`、`abort(status)`、`make_response(...)`。每项 `{status, kind, body:{fields, expression}, source, origin}`，可能带 `in_catch`、`via` | 核对；**每一项都补 `when`**（在什么条件下返回它）；`body.fields` 为 `null` 的补 `body.description`；状态码放在变量里的（`status` 和 `kind` 都是 `unknown`），读代码确定可能取的值，确定不了就保持 `unknown` |
 | `data_access` | DynamoDB 操作：`operation`、`table`、`index`、`repeated`（是否在循环里）、`via`（经过哪些函数调用） | 核对；一般不用改 |
 | `business_rules` | 空列表 | **你来写**，见下文 |
 
-`origin` 是 `"script"` 的项是脚本写的。脚本是模式匹配，不是完整的 JS 解析器，可能漏项或判错——所以要核对，不要照单全收。
+`origin` 是 `"script"` 的项是脚本写的。JS 端点用的是模式匹配，Python（Flask）端点用的是语法树分析，都不完整，可能漏项或判错——所以要核对，不要照单全收。
 
 `dynamodb_info.table_schemas` 是脚本从建表脚本里解析的表结构，出处同样会被检查；你一般不用改它。
 
@@ -52,7 +52,7 @@ model: inherit
 
 `source` 是一个非空列表，每项严格是 `{"file": ..., "line": ..., "symbol": ...}`，不能有其他键：
 
-- `file`：带应用名前缀的相对路径，和报告里的写法一致，例如 `"bookstore/routes/cart.js"`；
+- `file`：带应用名前缀的相对路径，和报告里的写法一致，例如 `"bookstore/routes/cart.js"`、`"ecommerce/app/models/user.py"`；
 - `line`：从 1 开始的真实行号。**用 `grep` 拿行号，不要自己数行**；
 - `symbol`：这一行（或上下 2 行以内）**逐字出现**的一段文本，例如变量名 `bookId`、状态码 `400`、调用 `docClient.update`、字符串 `'category-index'`。不超过 120 个字符。不要写解释性的话，不要写代码里不存在的名字。
 

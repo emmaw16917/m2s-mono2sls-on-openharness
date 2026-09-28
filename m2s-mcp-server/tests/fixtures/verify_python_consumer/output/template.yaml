@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Python SQS consumer with the Pattern A idempotency of m2s-async-patterns-kb (the KB snippet, verified here).
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 30
+    MemorySize: 512
+Resources:
+  BestsellersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: bookId, AttributeType: S}]
+      KeySchema: [{AttributeName: bookId, KeyType: HASH}]
+  IdempotencyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: pk, AttributeType: S}]
+      KeySchema: [{AttributeName: pk, KeyType: HASH}]
+      TimeToLiveSpecification: {AttributeName: expiresAt, Enabled: true}
+  BestsellerQueue:
+    Type: AWS::SQS::Queue
+  BestsellersUpdate:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/bestsellers-update/
+      Handler: handler.lambda_handler
+      Environment:
+        Variables:
+          BESTSELLERS_TABLE: !Ref BestsellersTable
+          IDEMPOTENCY_TABLE: !Ref IdempotencyTable
+      Events:
+        Queue:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt BestsellerQueue.Arn
+            BatchSize: 10
+            FunctionResponseTypes: [ReportBatchItemFailures]

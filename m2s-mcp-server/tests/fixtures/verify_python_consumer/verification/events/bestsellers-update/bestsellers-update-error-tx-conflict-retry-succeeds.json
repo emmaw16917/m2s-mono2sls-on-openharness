@@ -1,0 +1,58 @@
+{
+ "id": "bestsellers-update-error-tx-conflict-retry-succeeds",
+ "function": "bestsellers-update",
+ "kind": "error",
+ "spec_refs": [
+  "blueprint:bestsellers-update"
+ ],
+ "sqs": {
+  "records": [
+   {
+    "message_id": "m-tc1",
+    "body": {
+     "orderId": "order-tc1",
+     "books": [
+      {
+       "bookId": "b1",
+       "quantity": 2
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "fixtures": {},
+ "expect": {
+  "batch_item_failures": [],
+  "tables_after": {
+   "BestsellersTable": {
+    "contains": [
+     {
+      "bookId": "b1",
+      "salesCount": 2
+     }
+    ]
+   }
+  },
+  "sdk_calls": {
+   "includes": [
+    {
+     "op": "TransactWriteItems",
+     "count": 2
+    }
+   ]
+  }
+ },
+ "faults": [
+  {
+   "match": {
+    "op": "TransactWriteItems",
+    "item": {
+     "pk": "bestsellers-update#order-tc1"
+    }
+   },
+   "nth": 1,
+   "kind": "tx_conflict"
+  }
+ ]
+}

@@ -39,7 +39,7 @@ model: inherit
 |---|---|---|
 | **R1** | 循环里对互相独立的操作逐个 `await`，并且原代码对每条都 try/catch、失败后继续。**不适用于**可能改到同一条目的事务或条件写入，那种情况用 R4 | 先收集，再用 `Promise.allSettled` 并行执行，最后按原来的方式汇总结果（计数、日志、返回值不变）。同步抛出的异常要包进 `async` 函数，让它变成单条的 rejected，不影响其他条 |
 | **R2** | 同一个请求体被重复解析（例如 `JSON.parse(event.body)` 出现多次） | 只解析一次 |
-| **R3** | `package.json` 里声明了、但没有任何 `require()` 引用的依赖 | 删掉这个依赖 |
+| **R3** | `package.json`（Python 是 `requirements.txt`）里声明了、但没有任何 `require()`/`import` 引用的依赖 | 删掉这个依赖 |
 | **R4** | 批处理（典型是 SQS 消费者的 `for (const record of records)`）逐条 `await` 每条消息的处理；不同消息的写入**可能**改到同一个条目（事务、条件写入）；失败按单条处理（try/catch 后继续，或记进 `batchItemFailures`） | 按条目键分波次并行，写法见下文"R4 的写法"。同一波里的消息读写的条目两两不同，每个条目上的执行顺序与原来一致 |
 
 R4 **不适用**的情况，命中了也不改，在报告的 `rule_scan` 里写明原因：
@@ -109,6 +109,148 @@ exports.lambda_handler = async (event) => {
 - 同一个 `orderId`（或其他幂等键）重复出现的两条消息，标记条目的键相同，会自动排进不同的波次。所以键里**必须**包含幂等标记条目。
 - `batchItemFailures` 最后要按批内顺序排序，否则同一波里多条失败时，返回值的顺序会变，H1 (b) 会报不等价。
 - 键算错（漏了条目）时，并发的重叠请求会被冲突模拟拒绝，H1 (c) 会报出来。不要为了通过检查去改测试或基准。
+
+## Python 函数（`python3.12`）的写法
+
+Python 的 Lambda handler 是同步函数，只能用线程来并行，所以 R1 和 R4 的写法和 JS 不同。下面的代码都已经在测试工作区上跑通了全部检查：验证、等价性 H1 (a)(b)(c)、改动行覆盖、RIE 判决。**照着写，不要自己发明别的写法。**
+
+**适用条件**：在 JS 条件的基础上，另外还要满足这几条，否则不适用，在 `rule_scan` 的 `not_applicable` 里写明原因：
+- 被并行的代码里，boto3 调用走的是 **client**（线程安全），或者按下面的写法让每个线程用自己的 resource。**不许在线程之间共享同一个 `boto3.resource(...)` 或 `Table` 对象**，它们不是线程安全的；
+- 循环体里没有给循环外的变量重新赋值，例如 `count += 1`。在嵌套函数里这需要 `nonlocal`，多线程下也不是原子操作。计数应该改成像 R1 那样：并行执行，按原顺序汇总；
+- 循环体对每一条的异常都自己处理了（try/except 之后继续，或者记下失败）。有异常会逃出循环、让处理中途停止的，不适用（§6.2"遇到失败就停止"那一行）。
+
+**线程池**：模块级建一个，同一个执行环境里的热调用都复用它；最多 10 个线程，这是 botocore 默认连接池的大小，再多只会排队等连接。
+
+```python
+from concurrent.futures import ThreadPoolExecutor, wait
+
+# [R1/R4] One pool per execution environment, reused by warm invocations; at
+# most 10 threads, botocore's default connection pool size.
+_POOL = ThreadPoolExecutor(max_workers=10)
+```
+
+需要 resource 时，每个线程建自己的：
+
+```python
+import threading
+
+_local = threading.local()
+
+
+def _thread_table():
+    # boto3 resources are not thread-safe: one Table per pool thread.
+    if not hasattr(_local, "table"):
+        _local.table = boto3.resource("dynamodb").Table(os.environ["ITEMS_TABLE"])
+    return _local.table
+```
+
+### R1（Python）：先并行执行，再按原顺序汇总
+
+把循环体里对单条的调用，提成一个**返回结果、不改共享状态**的函数；`_POOL.map` 保持输入顺序；汇总部分沿用原来的逻辑，计数、列表、日志都不变。
+
+```python
+def _delete_one(item_id):
+    """[R1] The loop body's call for one item. Returns its outcome instead of
+    changing shared state; every error is caught here, as in the loop."""
+    try:
+        _thread_table().delete_item(Key={"id": item_id}, ConditionExpression="attribute_exists(id)")
+    except ClientError as error:
+        if error.response["Error"]["Code"] == "ConditionalCheckFailedException":
+            return "missing", None
+        return "failed", error
+    return "deleted", None
+
+
+def lambda_handler(event, context):
+    ...
+    # [R1] The calls run in parallel; the results are folded in the original
+    # order, with the loop's own logic (counters, lists, logs unchanged).
+    for item_id, (outcome, error) in zip(ids, _POOL.map(_delete_one, ids)):
+        if outcome == "missing":
+            print(f"item {item_id} does not exist")
+            missing.append(item_id)
+            continue
+        if outcome == "failed":
+            print(f"could not delete {item_id}: {error}")
+            failed.append(item_id)
+            continue
+        deleted += 1
+```
+
+### R4（Python）：按条目键分波次
+
+`record_item_keys` 和 `schedule_waves` 与 JS 版本的逻辑相同。循环体**原地不动**：`for record in records:` 改成同一缩进层级的 `def handle_record(record):`，循环体的缩进不变，`continue` 改成 `return`。**只有一条消息的波次，直接在当前线程里执行**：热点批次每一波都只有一条，这样不会白白付出线程调度的开销。实测过：去掉这一条的话，热点守卫基准的 CPU 会变差。
+
+```python
+def record_item_keys(record):
+    """[R4] Items ("table|key") one message will read or write, from the same
+    builders the handler uses; [] when the message is skipped before any call."""
+    try:
+        body = json.loads(record["body"])
+        batches = transaction_batches(body["orderId"], merge_by_key(body["books"]))
+    except (ValueError, KeyError, TypeError):
+        return []
+    keys = []
+    for items in batches:
+        for item in items:
+            op = next(iter(item.values()))  # the Put / Update / Delete / ConditionCheck
+            key = {"pk": op["Item"]["pk"]} if "Put" in item else op["Key"]  # key attributes only
+            keys.append(op["TableName"] + "|" + json.dumps(key, sort_keys=True))
+    return keys
+
+
+def schedule_waves(records, keys_of):
+    """[R4] A message goes one wave after the latest earlier message it shares
+    an item with: messages of one wave touch disjoint items, and every item
+    still sees the messages in batch order."""
+    last_wave, waves = {}, []
+    for record in records:
+        keys = keys_of(record)
+        wave = max((last_wave[k] + 1 for k in keys if k in last_wave), default=0)
+        for k in keys:
+            last_wave[k] = wave
+        if wave == len(waves):
+            waves.append([])
+        waves[wave].append(record)
+    return waves
+
+
+def run_in_waves(records, keys_of, handle):
+    """[R4] Waves one after another, the messages of a wave on the thread pool;
+    a wave of one message runs in this thread (no pool overhead). An exception
+    a message did not handle is re-raised after its wave."""
+    for wave in schedule_waves(records, keys_of):
+        if len(wave) == 1:
+            handle(wave[0])
+            continue
+        futures = [_POOL.submit(handle, record) for record in wave]
+        wait(futures)
+        for future in futures:
+            future.result()
+
+
+def lambda_handler(event, context):
+    records = event.get("Records") or []
+    batch_item_failures = []
+
+    def handle_record(record):  # [R4] was: for record in records:
+        # ... the loop body, UNCHANGED and at the same indentation;
+        #     only `continue` becomes `return` ...
+
+    run_in_waves(records, record_item_keys, handle_record)
+    # [R4] Batch order, as the sequential loop reported them.
+    order = {record["messageId"]: index for index, record in enumerate(records)}
+    batch_item_failures.sort(key=lambda failure: order[failure["itemIdentifier"]])
+    return {"batchItemFailures": batch_item_failures}
+```
+
+### R2、R3（Python）
+- R2：同一个请求体被重复解析（`json.loads(event["body"])` 出现多次），改成只解析一次。
+- R3：`requirements.txt` 里声明了、但没有任何 `import` 引用的包，删掉。`boto3`、`botocore` 由运行时提供，本来就不该出现在 `requirements.txt` 里。
+
+**Python 的判决要注意**：
+- 线程调度本身要消耗 CPU。0ms 延迟下，并行版本的热调用 CPU 可能比原来高，这是真实的代价，工具会按 §3 的多延迟规则处理，不要去"优化掉"测量；
+- `evidence` 里除了"并发不受限"的说明，还要写明线程数上限（10）。
 
 ## 工作流程
 

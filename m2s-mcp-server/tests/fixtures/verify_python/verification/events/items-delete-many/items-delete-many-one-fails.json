@@ -1,0 +1,6 @@
+{"id": "items-delete-many-one-fails", "function": "items-delete-many", "kind": "error", "spec_refs": ["blueprint:items-delete-many"],
+ "request": {"method": "POST", "path": "/items/delete", "body": {"ids": ["a", "b", "c"]}},
+ "fixtures": {"Items": [{"id": "a"}, {"id": "b"}, {"id": "c"}]},
+ "faults": [{"match": {"op": "DeleteItem", "item": {"id": "b"}}, "nth": "all", "kind": "validation"}],
+ "expect": {"status": 200, "body": {"equals": {"deleted": 2, "missing": [], "failed": ["b"]}}, "tables_after": {"Items": {"count": 1, "contains": [{"id": "b"}]}}},
+ "note": "one delete fails with an error other than 'missing': the others still happen, the failure is listed"}

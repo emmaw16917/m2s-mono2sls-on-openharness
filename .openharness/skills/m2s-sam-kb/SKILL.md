@@ -657,7 +657,7 @@ nested artifact breaks module resolution and causes imports like
 ### Correct Layer Patterns
 
 #### Python Layer
-Use the layer root as `ContentUri`, with code placed under `python/`:
+Use the layer root as `ContentUri`, with the code **at that root** (not in a `python/` subdirectory). With `BuildMethod: python3.12`, `sam build` itself puts the ContentUri's contents, and the packages from its `requirements.txt`, under `python/` in the layer, which Lambda mounts as `/opt/python` (on `sys.path`). A `python/` directory in the source would end up as `/opt/python/python/` and `import shared_utils` fails with `Runtime.ImportModuleError` (verified with `sam build`; the gate's C13 check reports it):
 
 ```yaml
 SharedUtilsLayer:
@@ -674,10 +674,11 @@ Directory layout:
 
 ```text
 layers/shared/
-├── python/
-│   └── shared_utils.py
-└── requirements.txt
+├── shared_utils.py
+└── requirements.txt      # optional; only third-party packages that are not in the runtime
 ```
+
+(Without `Metadata.BuildMethod`, `sam build` copies ContentUri as-is; then the code must be under `layers/shared/python/` instead, and no packages are installed.)
 
 #### Node.js Layer
 Use the `nodejs/` directory itself as `ContentUri`:

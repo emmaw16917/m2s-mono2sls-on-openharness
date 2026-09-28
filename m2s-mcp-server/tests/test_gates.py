@@ -847,3 +847,33 @@ def test_run_gate_final_rejects_unfinished_or_failed_report(tmp_path, status):
 
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))
+
+
+def _layer_ws(tmp_path, files, content_uri, runtime, build_method):
+    for rel in files:
+        (tmp_path / "output" / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / "output" / rel).write_text("x = 1\n", encoding="utf-8")
+    res = {"Type": "AWS::Serverless::LayerVersion", "Properties": {"ContentUri": content_uri, "CompatibleRuntimes": [runtime]}}
+    if build_method:
+        res["Metadata"] = {"BuildMethod": build_method}
+    return {"Resources": {"SharedLayer": res}}
+
+
+def test_c13_layer_layout(tmp_path):
+    """sam build with BuildMethod nests ContentUri under python/ / nodejs/
+    itself; M2S's documented Python layout (code in layers/shared/python/ +
+    BuildMethod) produced /opt/python/python/ and an ImportModuleError."""
+    cases = [
+        (["layers/shared/python/shared_utils.py"], "layers/shared/", "python3.12", "python3.12", True),   # double nesting
+        (["layers/shared/shared_utils.py"], "layers/shared/", "python3.12", "python3.12", False),          # correct
+        (["layers/shared/python/shared_utils.py"], "layers/shared/", "python3.12", None, False),           # plain copy, correct
+        (["layers/shared/shared_utils.py"], "layers/shared/", "python3.12", None, True),                   # plain copy to /opt/
+        (["layers/shared/nodejs/shared.js"], "layers/shared/", "nodejs22.x", "nodejs22.x", True),          # nodejs/nodejs
+        (["layers/shared/nodejs/shared.js"], "layers/shared/nodejs/", "nodejs22.x", "nodejs22.x", False),  # M2S's Node layout
+    ]
+    for i, (files, uri, runtime, bm, bad) in enumerate(cases):
+        ws = tmp_path / str(i)
+        template = _layer_ws(ws, files, uri, runtime, bm)
+        found = gates.check_c13(ws, template)
+        assert bool(found) == bad, (i, found)
+        assert all(f["check_id"] == "C13" and f["severity"] == "ERROR" for f in found)

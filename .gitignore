@@ -7,3 +7,5 @@ Mono2Sls-artifacts/M2S/runs/
 
 # verify-tools npm dependencies (installed by `npm install` in that dir)
 m2s-mcp-server/verify-tools/node_modules/
+# coverage.py for Python functions (unpacked on first use by verify.ensure_py_vendor)
+m2s-mcp-server/verify-tools/py/vendor/
