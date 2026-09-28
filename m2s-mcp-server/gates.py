@@ -203,11 +203,12 @@ def check_b0(workspace: Path) -> list[dict[str, Any]]:
                 for ep in analysis.get("entry_points", [])
                 if isinstance(ep, dict)
             }
-            # Endpoint spelling differs between analyzer ("GET /item/:id") and
-            # blueprint ("GET /item/{id}") -- normalize :param and {param} the
-            # same way before comparing, to avoid false positives.
+            # Endpoint spelling differs between analyzer ("GET /item/:id", Flask
+            # "GET /item/<id>") and blueprint ("GET /item/{id}") -- normalize
+            # :param, {param} and Flask's <param> / <converter:param> the same
+            # way before comparing, to avoid false positives.
             def _normalize(ep: str) -> str:
-                return re.sub(r"(:([A-Za-z0-9_]+)|\{([A-Za-z0-9_]+)\})", "{param}", ep)
+                return re.sub(r"(:([A-Za-z0-9_]+)|\{([A-Za-z0-9_]+)\}|<(?:[A-Za-z0-9_]+:)?([A-Za-z0-9_]+)>)", "{param}", ep)
 
             # Track WHO claims each normalized endpoint, not just whether it's
             # claimed, so a double assignment (the same endpoint given to two
@@ -486,7 +487,12 @@ def check_c3(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _normalize_path(path: str) -> str:
-    return re.sub(r"(:([A-Za-z0-9_]+)|\{([A-Za-z0-9_]+)\})", "{param}", path)
+    """Fold Express (":id", "{id}") and Flask ("<id>", "<int:id>") resource
+    variables to one canonical "{param}" form so blueprint paths (written in
+    the API Gateway "{id}" shape) can be compared against analyzer paths
+    (which keep the framework's own spelling, e.g. Flask "/<product_id>") and
+    against template Paths."""
+    return re.sub(r"(:([A-Za-z0-9_]+)|\{([A-Za-z0-9_]+)\}|<([A-Za-z0-9_]+:)?[A-Za-z0-9_]+>)", "{param}", path)
 
 
 def check_c7(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:

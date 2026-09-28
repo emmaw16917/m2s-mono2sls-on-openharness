@@ -446,9 +446,10 @@ def _check_rules(model: Model, where: str, rules: Any, with_template: bool) -> l
 # ---------------------------------------------------------------------------
 
 def _path_match(pattern: str, path: str) -> dict[str, str] | None:
-    """Match a template/blueprint path ('/api/books/{id}' or ':id') against a
-    concrete path; returns path parameters or None."""
-    regex = re.sub(r"\\\{(\w+)(?:\\\+)?\\\}|:(\w+)",lambda m: f"(?P<{m.group(1) or m.group(2)}>[^/]+)", re.escape(pattern))
+    """Match a template/blueprint path ('/api/books/{id}', ':id' or the Flask
+    '/books/<id>' / '/books/<int:id>') against a concrete path; returns path
+    parameters or None."""
+    regex = re.sub(r"\\\{(\w+)(?:\\\+)?\\\}|:(\w+)|<(?:\w+:)?(\w+)>", lambda m: f"(?P<{m.group(1) or m.group(2) or m.group(3)}>[^/]+)", re.escape(pattern))
     m = re.fullmatch(regex, path.split("?")[0])
     return m.groupdict() if m else None
 

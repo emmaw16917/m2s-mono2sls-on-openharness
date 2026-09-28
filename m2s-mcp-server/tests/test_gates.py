@@ -199,6 +199,31 @@ def test_b0_good_blueprint_passes(tmp_path):
     assert findings == []
 
 
+def test_normalize_path_folds_flask_angle_brackets():
+    """P0 keeps the framework's own route spelling. Express (":id" / "{id}")
+    was already folded; Flask "<id>" / "<int:id>" must fold to the same
+    canonical form, because the blueprint can only carry the deployable
+    API Gateway shape "/{id}"."""
+    assert gates._normalize_path("/item/<id>") == "/item/{param}"
+    assert gates._normalize_path("/item/<int:id>") == "/item/{param}"
+    assert gates._normalize_path("/item/{id}") == gates._normalize_path("/item/:id")
+
+
+def test_b0_flask_spec_path_covered_by_curly_blueprint(tmp_path):
+    """A Flask monolith: analysis_report says GET /item/<id>, the blueprint
+    must say GET /item/{id}. That is correct, not uncovered."""
+    _write_good_workspace(tmp_path)
+    bp_path = tmp_path / "storage" / "blueprint.json"
+    bp = json.loads(bp_path.read_text(encoding="utf-8"))
+    bp["lambda_functions"][0]["entry_points"] = ["GET /item/{id}"]
+    bp_path.write_text(json.dumps(bp), encoding="utf-8")
+    (tmp_path / "storage" / "analysis_report.json").write_text(json.dumps({"entry_points": [
+        {"method": "GET", "path": "/item/<id>", "auth": {"classification": "required"}},
+        {"method": "POST", "path": "/item"},
+    ]}), encoding="utf-8")
+    assert gates.check_b0(tmp_path) == []
+
+
 def test_b0_requires_decisions_md_mentioning_every_function(tmp_path):
     _write_good_workspace(tmp_path)
     (tmp_path / "storage" / "DECISIONS.md").write_text("## D-1\n- todo-list-items only\n", encoding="utf-8")
