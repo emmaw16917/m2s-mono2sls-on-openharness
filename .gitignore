@@ -9,3 +9,6 @@ Mono2Sls-artifacts/M2S/runs/
 m2s-mcp-server/verify-tools/node_modules/
 # coverage.py for Python functions (unpacked on first use by verify.ensure_py_vendor)
 m2s-mcp-server/verify-tools/py/vendor/
+
+# run logs left next to the MCP server (not tool code)
+m2s-mcp-server/*.log

@@ -76,6 +76,9 @@ model: inherit
 
 ## 禁止事项
 
+- **不许修改流水线自己的工具**：`m2s-mcp-server/`（gate、验证和测量工具、测试）、`.openharness/`（skill、知识库）、`~/.openharness/`（agent 定义、设置）都不许改。只能写本阶段规定的工作区文件。
+  - 如果认为某个工具的结果是错的（例如 gate 报了误报），报 `STAGE_BLOCKED`，写明证据：哪个检查、输入是什么、为什么认为是误报。**不要自己去修工具**。
+  - `gate(final)` 会检查这些目录有没有未提交的改动，有就判 FAIL。
 - 不要碰 `output/template.yaml`、`template.part1.yaml`、`template.part2.yaml`。
 - 不要调用 `mcp_auth`。
 - 不要给运行时内置包（boto3 等）写依赖文件。

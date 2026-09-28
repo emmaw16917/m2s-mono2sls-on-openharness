@@ -1017,6 +1017,44 @@ def check_c13(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]
     return findings
 
 
+# Pipeline tools an agent must never modify during a run (TOOLS check). The
+# rule ledger is written by update_ledger during S5, so it is exempt.
+TOOL_DIRS = ("m2s-mcp-server", ".openharness")
+TOOL_EXEMPT = {"m2s-mcp-server/perf-rules/ledger.json"}
+
+
+def check_tools_unmodified(repo: Path | None = None, home_agents: Path | None = None) -> list[dict[str, Any]]:
+    """TOOLS: the pipeline's own code, skills and agent definitions are the
+    committed versions. shopping-cart's architect edited gates.py/verify.py
+    to get past a gate it judged wrong; agents must report such a gate with
+    evidence (STAGE_BLOCKED) instead. Checks uncommitted changes (and new
+    files) under TOOL_DIRS of the repo, and that ~/.openharness/agents/m2s-*
+    equal the repo's agents/ copies."""
+    import subprocess
+    repo = repo or Path(__file__).resolve().parent.parent
+    home_agents = home_agents or Path.home() / ".openharness" / "agents"
+    findings: list[dict[str, Any]] = []
+    if (repo / ".git").exists():
+        p = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all", "--", *TOOL_DIRS],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL)
+        if p.returncode != 0:
+            findings.append(_finding("TOOLS", "WARNING", f"could not check the pipeline tools with git: {p.stderr.strip()[:200]}", str(repo)))
+        else:
+            for line in p.stdout.splitlines():
+                path = line[3:].strip().strip('"').split(" -> ")[-1]
+                if line.strip() and path not in TOOL_EXEMPT:
+                    findings.append(_finding("TOOLS", "ERROR",
+                                             f"pipeline tool file changed and not committed: {line[:2].strip()} {path} "
+                                             "(agents must not modify the pipeline's tools; report a suspected tool bug instead)", path))
+    agents_dir = repo / "m2s-mcp-server" / "agents"
+    for src in sorted(agents_dir.glob("m2s-*.md")) if agents_dir.is_dir() else []:
+        installed = home_agents / src.name
+        if installed.exists() and installed.read_bytes() != src.read_bytes():
+            findings.append(_finding("TOOLS", "ERROR", f"{installed} differs from the committed {src.relative_to(repo)} "
+                                     "(agent definitions were edited, or not synced after a change)", str(installed)))
+    return findings
+
+
 def run_gate(phase: str, workspace: str) -> dict[str, Any]:
     ws = Path(workspace).resolve()
     template_path = ws / "output" / "template.yaml"
@@ -1100,6 +1138,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c12(ws, template)
                 + check_c13(ws, template)
             )
+        checks += check_tools_unmodified()
         report_path = ws / "output" / "consistency_report.json"
         report = None
         if report_path.exists():

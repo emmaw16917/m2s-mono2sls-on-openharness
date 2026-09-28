@@ -108,6 +108,15 @@ P0 和 S0 之后的 `check_provenance` 是你自己直接调用 MCP 工具的地
 - S1 因为 `spec_issues` 回炉时，可以把 `spec_issues` 全文交给 architect，因为那是规格问题，不是题目；
 - V2 判定失败、按 routing 回炉时，只转发 routing 里用规格语言写的 `function`、`spec_refs`、`expected_per_spec`、`observed`（见 §3）。
 
+**流水线自己的工具不许改，包括子 Agent 和你自己**。`m2s-mcp-server/`、`.openharness/`、`~/.openharness/` 下的文件都是工具。
+- 每个子阶段结束后，检查一次 `git -C <仓库根目录> status --porcelain -- m2s-mcp-server .openharness`。`m2s-mcp-server/perf-rules/ledger.json` 除外，它由 S5 的 `update_ledger` 写。
+- 发现子 Agent 改了工具（改文件、加文件都算），**不要采用**，即使改动看起来是对的：
+  1. 用 git 恢复：`git -C <仓库根目录> checkout -- <文件>`，新加的文件删掉；
+  2. 这个阶段按 `STAGE_BLOCKED` 处理；
+  3. 把子 Agent 的理由和证据原样写进最终回复，交给人决定是否修改工具。
+- `gate(final)` 的 TOOLS 检查也会拦下未提交的工具改动。
+- 要写 TODO 清单时，用 `todo_write` 写到工作区里：路径写 `Mono2Sls-artifacts/M2S/runs/<WS 目录名>/storage/TODO.md`，也就是相对仓库根目录的路径。**不要写到仓库根目录。**
+
 ## §3 分层裁决规则（已大幅简化——回炉判断大部分下放给子 Agent 自己了）
 
 S1/S2/S3c 现在自己负责"跑 gate → 不过就自己改 → 最多 3 次"这一整套（细节见各自的 `.md`），所以你不需要再去猜"这个 check_id 失败该回炉哪个阶段"——写错东西的那个 agent 自己会在同一次会话里发现并修正，比你事后靠 check_id 分类猜测准得多。

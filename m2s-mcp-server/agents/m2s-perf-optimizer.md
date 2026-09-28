@@ -393,6 +393,9 @@ v0 是验收过的版本，所以用"和 v0 等不等价"来区分是代码的�
 
 ## 禁止事项
 
+- **不许修改流水线自己的工具**：`m2s-mcp-server/`（gate、验证和测量工具、测试）、`.openharness/`（skill、知识库）、`~/.openharness/`（agent 定义、设置）都不许改。只能写本阶段规定的工作区文件。
+  - 如果认为某个工具的结果是错的（例如 gate 报了误报），报 `STAGE_BLOCKED`，写明证据：哪个检查、输入是什么、为什么认为是误报。**不要自己去修工具**。
+  - `gate(final)` 会检查这些目录有没有未提交的改动，有就判 FAIL。
 - 不做 §6.2 里不允许的改动；不改 `output/lambdas/` 的目录结构、`template.yaml` 里的 `Handler`/`CodeUri`/事件定义/MemorySize/架构。
 - 不修改 `verification/`、`storage/`（自己的 S5 工作报告除外）和单体源码。
 - 基准写完提交之后，不再修改。

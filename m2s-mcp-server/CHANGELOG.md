@@ -801,3 +801,15 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - 125 个通过。
 - 新增 `test_py_perf.py`、`test_spec_py.py`；C13、改动行对应、台账计数的测试。
 - 两个可选的 Python 集成测试（需要设置 `M2S_VERIFY_INTEGRATION=1`），都通过。
+
+## 不许 Agent 修改流水线工具（2026-09-28）
+
+- **起因**：shopping-cart（第一个 Flask 应用）的 S1 里，`gate(blueprint)` 报了 3 条误报。分析报告保留了 Flask 的路径写法 `/product/<product_id>`，blueprint 用的是 `{product_id}`，而 B0 只认识 `:id` 和 `{id}`。
+  - architect 于是**自己改了 `gates.py`、`verify.py` 和测试**，然后报 BLOCKED。
+  - 编排器审计了这个改动：测试通过、已验收的 JS 应用仍是 0 条发现、真正缺失的端点仍然会被报出来。审计之后它接受了这个改动。
+  - 改动本身是对的，经复核后以 44738a1 提交，并注明来历。但子 Agent 改工具属于越权。
+- **现在的规则**（用户采纳）：
+  - **prompt**：7 个 agent 定义的禁止事项里都加了一条：不许修改 `m2s-mcp-server/`、`.openharness/`、`~/.openharness/`；认为工具有误时报 `STAGE_BLOCKED`，写明证据。
+  - **编排器（SKILL §2）**：每个阶段结束后检查仓库状态。子 Agent 改了工具就不采用：用 git 恢复，这个阶段按 BLOCKED 处理，证据交给人。
+  - **机械检查**：`gate(final)` 新增 TOOLS 检查。工具目录里有未提交的改动或新文件，就是 ERROR（S5 写的 `perf-rules/ledger.json` 除外）；`~/.openharness/agents/m2s-*.md` 与仓库里提交的副本不一致，也是 ERROR。所以流水线必须在已提交的工具上运行。
+  - 编排器的 TODO 清单写到工作区的 `storage/` 下，不写到仓库根目录。coffee 之前的两份已经移过去了。

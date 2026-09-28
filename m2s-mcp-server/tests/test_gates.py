@@ -14,6 +14,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import gates  # noqa: E402
 
+_real_check_tools_unmodified = gates.check_tools_unmodified
+
+
+@pytest.fixture(autouse=True)
+def _tools_check_off(monkeypatch):
+    """gate(final)'s TOOLS check looks at the real repo's git state; unit
+    tests of the other checks must not depend on it (tested on its own)."""
+    monkeypatch.setattr(gates, "check_tools_unmodified", lambda *a, **k: [])
+
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 GOOD_BLUEPRINT = {
@@ -902,3 +911,32 @@ def test_c13_layer_layout(tmp_path):
         found = gates.check_c13(ws, template)
         assert bool(found) == bad, (i, found)
         assert all(f["check_id"] == "C13" and f["severity"] == "ERROR" for f in found)
+
+
+def test_tools_check_flags_modified_pipeline_files(tmp_path):
+    """TOOLS (gate final): an agent editing gates.py, adding a file to the
+    tools, or a stale ~/.openharness agent copy fails the gate; the ledger
+    that S5 writes does not."""
+    import subprocess
+    repo, home = tmp_path / "repo", tmp_path / "home_agents"
+    (repo / "m2s-mcp-server" / "agents").mkdir(parents=True)
+    (repo / "m2s-mcp-server" / "perf-rules").mkdir()
+    home.mkdir()
+    (repo / "m2s-mcp-server" / "gates.py").write_text("x = 1\n", encoding="utf-8")
+    (repo / "m2s-mcp-server" / "perf-rules" / "ledger.json").write_text("{}\n", encoding="utf-8")
+    (repo / "m2s-mcp-server" / "agents" / "m2s-architect.md").write_text("prompt\n", encoding="utf-8")
+    (home / "m2s-architect.md").write_bytes((repo / "m2s-mcp-server" / "agents" / "m2s-architect.md").read_bytes())
+    git = lambda *a: subprocess.run(["git", "-C", str(repo), *a], check=True, capture_output=True)
+    git("init", "-q")
+    git("add", "-A")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "tools")
+    assert _real_check_tools_unmodified(repo, home) == []
+    (repo / "m2s-mcp-server" / "perf-rules" / "ledger.json").write_text('{"runs": []}\n', encoding="utf-8")
+    assert _real_check_tools_unmodified(repo, home) == []  # S5's ledger is exempt
+    (repo / "m2s-mcp-server" / "gates.py").write_text("x = 2  # 'fixed' by an agent\n", encoding="utf-8")
+    (repo / "m2s-mcp-server" / "helper.py").write_text("y = 1\n", encoding="utf-8")
+    (home / "m2s-architect.md").write_text("edited\n", encoding="utf-8")
+    found = _real_check_tools_unmodified(repo, home)
+    assert {f["check_id"] for f in found} == {"TOOLS"} and all(f["severity"] == "ERROR" for f in found)
+    text = " | ".join(f["description"] for f in found)
+    assert "gates.py" in text and "helper.py" in text and "m2s-architect.md" in text
