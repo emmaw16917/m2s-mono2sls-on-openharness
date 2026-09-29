@@ -833,3 +833,15 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **H1 不用改**：`_observation` 的 outcome 本来就包含整个返回值，响应头已经在等价性比较范围内。
 - **不模拟的部分**：预检请求（`OPTIONS`）由 API Gateway 按模板 `Cors` 直接应答，不调用函数，工具不模拟；规格对预检有要求时，仍交给 S4 静态复核。m2s-verifier 的 prompt 已写明这一点。
 - **测试**：新增 3 个，覆盖网关 401 的头（含 `DEFAULT_4XX` 回退和长写法）、`judge` 的三种匹配和双表合并、`expect.headers` 格式错误。全部 133 passed / 3 skipped。
+
+### 补充：`contains` 支持子串列表，新增 `count`（2026-09-29）
+
+- **起因**：shopping-cart 补测（a87e2f1）里暴露了两处断言不了的情况，已登记在 SI-13 (5)。
+  - `contains` 一个头只能写一个子串。cookie 值是随机的，只能把"名字"和"属性"拆成两条断言，还要借大小写不同的头名来绕开。
+  - `equals` 按集合判断，而且合并两张表时会去重，所以断言不了"只有一个"。
+- **改动**：
+  - `contains` 的值可以写成子串列表，要求**同一个值**包含列表里的每一个子串。
+  - 新增 `count: {头名: n}`，要求这个头恰好出现 n 次。
+- **合并规则改为 API Gateway 的实际行为**：`multiValueHeaders` 的值全部保留（其中重复的值也算多次）；`headers` 里的一对头和值如果也出现在 `multiValueHeaders` 里，只算一次；大小写不同的同名头算作多次出现。
+  - 之前的写法会把 `multiValueHeaders` 内部的重复值也去掉，`count` 会因此少算。
+- **测试**：新增 1 个，扩展了格式检查的用例。134 passed / 3 skipped。

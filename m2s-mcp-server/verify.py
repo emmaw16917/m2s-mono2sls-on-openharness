@@ -392,12 +392,17 @@ def _check_expect(model: Model, where: str, exp: Any, trigger: str | None, with_
         errs.append(f"{where}: expect.status must be an integer")
     if "headers" in exp:
         h = exp["headers"]
-        if not isinstance(h, dict) or not h or set(h) - {"equals", "contains", "absent"}:
-            errs.append(f"{where}: expect.headers must use equals {{name: value}} / contains {{name: substring}} / absent [names]")
+        if not isinstance(h, dict) or not h or set(h) - {"equals", "contains", "absent", "count"}:
+            errs.append(f"{where}: expect.headers must use equals {{name: value}} / contains {{name: substring or [substrings]}} / absent [names] / count {{name: n}}")
         else:
-            for key in ("equals", "contains"):
-                if key in h and not (isinstance(h[key], dict) and all(isinstance(v, str) for v in h[key].values())):
-                    errs.append(f"{where}: expect.headers.{key} must map header names to strings")
+            if "equals" in h and not (isinstance(h["equals"], dict) and all(isinstance(v, str) for v in h["equals"].values())):
+                errs.append(f"{where}: expect.headers.equals must map header names to strings")
+            if "contains" in h and not (isinstance(h["contains"], dict) and all(
+                    isinstance(v, str) or (isinstance(v, list) and v and all(isinstance(x, str) for x in v)) for v in h["contains"].values())):
+                errs.append(f"{where}: expect.headers.contains must map header names to a substring or a non-empty list of substrings")
+            if "count" in h and not (isinstance(h["count"], dict) and all(
+                    isinstance(v, int) and not isinstance(v, bool) and v >= 0 for v in h["count"].values())):
+                errs.append(f"{where}: expect.headers.count must map header names to non-negative integers")
             if "absent" in h and not (isinstance(h["absent"], list) and all(isinstance(v, str) for v in h["absent"])):
                 errs.append(f"{where}: expect.headers.absent must be a list of header names")
     if "body" in exp:
@@ -809,18 +814,23 @@ def _get(obj: Any, dotted: str) -> tuple[bool, Any]:
 
 
 def _response_headers(result: Any) -> dict[str, list[str]]:
-    """lower-cased header name -> values, from both `headers` and
-    `multiValueHeaders` (API Gateway merges them; Set-Cookie is often
-    multi-valued)."""
-    out: dict[str, list[str]] = {}
+    """lower-cased header name -> values, merged the way API Gateway merges
+    `headers` and `multiValueHeaders`: every multi value is kept, and a
+    `headers` pair that also appears in `multiValueHeaders` is dropped.
+    Names differing only in case are separate response headers, so they
+    all count."""
+    multi: dict[str, list[str]] = {}
+    single: dict[str, list[str]] = {}
     if not isinstance(result, dict):
-        return out
-    for name, value in (result.get("headers") or {}).items():
-        out.setdefault(str(name).lower(), []).append(str(value))
+        return {}
     for name, values in (result.get("multiValueHeaders") or {}).items():
         for value in values if isinstance(values, list) else [values]:
-            if str(value) not in out.setdefault(str(name).lower(), []):
-                out[str(name).lower()].append(str(value))
+            multi.setdefault(str(name).lower(), []).append(str(value))
+    for name, value in (result.get("headers") or {}).items():
+        single.setdefault(str(name).lower(), []).append(str(value))
+    out: dict[str, list[str]] = {}
+    for name in [*single, *(n for n in multi if n not in single)]:
+        out[name] = [v for v in single.get(name, []) if v not in multi.get(name, [])] + multi.get(name, [])
     return out
 
 
@@ -849,10 +859,17 @@ def judge(model: Model, case: dict[str, Any], raw: dict[str, Any]) -> list[str]:
             values = got.get(name.lower(), [])
             if want not in values:
                 mism.append(f"header {name}: expected {want!r}, got {values if values else 'absent'}")
-        for name, part in (spec.get("contains") or {}).items():
+        for name, parts in (spec.get("contains") or {}).items():
+            # a list means one value that contains every substring (e.g. a
+            # cookie's name and its attributes, whatever its random value)
+            parts = [parts] if isinstance(parts, str) else parts
             values = got.get(name.lower(), [])
-            if not any(part in v for v in values):
-                mism.append(f"header {name}: expected a value containing {part!r}, got {values if values else 'absent'}")
+            if not any(all(p in v for p in parts) for v in values):
+                mism.append(f"header {name}: expected a value containing {parts if len(parts) > 1 else parts[0]!r}, got {values if values else 'absent'}")
+        for name, n in (spec.get("count") or {}).items():
+            values = got.get(name.lower(), [])
+            if len(values) != n:
+                mism.append(f"header {name}: expected {n} value(s), got {len(values)}: {values}")
         for name in spec.get("absent") or []:
             if got.get(name.lower()):
                 mism.append(f"header {name}: expected absent, got {got[name.lower()]}")

@@ -192,10 +192,28 @@ def test_judge_headers(ws):
     assert verify._response_headers(both["result"]) == {"set-cookie": ["a=1", "b=2"]}
 
 
+def test_judge_headers_contains_all_and_count(ws):
+    m = verify.Model(ws)
+    raw = {"result": {"statusCode": 200, "body": "{}",
+                      "headers": {"Access-Control-Allow-Origin": "http://a", "access-control-allow-origin": "http://a"},
+                      "multiValueHeaders": {"Set-Cookie": ["cartId=9f3; Path=/; HttpOnly", "cartId=9f3; Path=/; HttpOnly"]}}}
+    # every substring in the list must be in the same value
+    assert verify.judge(m, _case(expect={"headers": {"contains": {"Set-Cookie": ["cartId=", "HttpOnly", "Path=/"]}}}), raw) == []
+    assert verify.judge(m, _case(expect={"headers": {"contains": {"Set-Cookie": ["cartId=", "Secure"]}}}), raw)
+    # duplicates are counted: a case-variant name and a repeated multi value are both real duplicates
+    assert verify.judge(m, _case(expect={"headers": {"count": {"Access-Control-Allow-Origin": 2, "set-cookie": 2, "X-None": 0}}}), raw) == []
+    mism = verify.judge(m, _case(expect={"headers": {"count": {"Access-Control-Allow-Origin": 1}}}), raw)
+    assert len(mism) == 1 and "expected 1 value(s), got 2" in mism[0]
+    # a headers pair repeated in multiValueHeaders is not a second header
+    assert verify._response_headers({"headers": {"X-A": "1"}, "multiValueHeaders": {"x-a": ["1"]}}) == {"x-a": ["1"]}
+
+
 def test_check_case_headers_schema(ws):
     m = verify.Model(ws)
     assert verify.check_case(m, _case(expect={"status": 200, "headers": {"equals": {"X-A": "1"}, "absent": ["X-B"]}}), with_template=True) == []
-    for bad in ({}, {"exact": {"X-A": "1"}}, {"equals": {"X-A": 1}}, {"absent": "X-B"}, ["X-A"]):
+    assert verify.check_case(m, _case(expect={"status": 200, "headers": {"contains": {"X-A": ["a", "b"]}, "count": {"X-A": 1}}}), with_template=True) == []
+    for bad in ({}, {"exact": {"X-A": "1"}}, {"equals": {"X-A": 1}}, {"absent": "X-B"}, ["X-A"],
+                {"contains": {"X-A": []}}, {"contains": {"X-A": ["a", 1]}}, {"count": {"X-A": -1}}, {"count": {"X-A": True}}):
         errs = verify.check_case(m, _case(expect={"status": 200, "headers": bad}), with_template=True)
         assert any("expect.headers" in e for e in errs), bad
 

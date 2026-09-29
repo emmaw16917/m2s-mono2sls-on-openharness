@@ -87,7 +87,7 @@ model: inherit
 - `expect`：至少要有 `status`、`error`、`batch_item_failures` 之一。
   - `status`：HTTP 状态码。
   - `body`：可组合使用 `equals`（完全相等）、`subset`（对象按键递归包含；数组要求等长，逐个递归包含）、`contains` / `not_contains`（响应是数组时，某个元素递归包含给定对象）、`has_fields`（字段存在，可用 `a.b.0` 点路径）、`types`（字段类型：`string`/`number`/`boolean`/`array`/`object`/`null`）、`length`（数组长度）。
-  - `headers`：响应头。`equals: {头名: 值}`（该头的某个值与之完全相等）、`contains: {头名: 子串}`（该头的某个值包含这个子串）、`absent: [头名]`（不能出现）。头名不区分大小写；`headers` 和 `multiValueHeaders` 合并判断，同一个头出现多次时（例如多个 `Set-Cookie`）任意一个值满足即可。匿名请求被网关拦下的 401 也能断言：工具会带上模板 `GatewayResponses` 里 `UNAUTHORIZED`（没有就用 `DEFAULT_4XX`）声明的响应头，参数引用按默认值解析。
+  - `headers`：响应头。`equals: {头名: 值}`（该头的某个值与之完全相等）、`contains: {头名: 子串或子串列表}`（该头的某个值包含这个子串；写成列表时，要求**同一个值**包含列表里的每一个子串，例如 `["cartId=", "HttpOnly", "Path=/"]`）、`absent: [头名]`（不能出现）、`count: {头名: n}`（这个头恰好出现 n 次，用来断言"只有一个"）。头名不区分大小写，大小写不同的同名头算作多次出现；`headers` 和 `multiValueHeaders` 按 API Gateway 的规则合并（两边都有的同一对头和值只算一次）。equals / contains 在同一个头出现多次时（例如多个 `Set-Cookie`），任意一个值满足即可。匿名请求被网关拦下的 401 也能断言：工具会带上模板 `GatewayResponses` 里 `UNAUTHORIZED`（没有就用 `DEFAULT_4XX`）声明的响应头，参数引用按默认值解析。
   - `error`：`{}` 或 `{"type": "..."}`，表示预期函数**抛出**异常（主要用于 SQS 消费者整批失败）。
   - `batch_item_failures`：SQS 消费者预期返回的失败消息 id 列表，全部成功写 `[]`。
   - `tables_after`：`{表: {contains: [...], not_contains: [...], count: n}}`，用例结束后的表状态。
@@ -99,7 +99,7 @@ model: inherit
 - **优先断言可观察的行为**：状态码、响应体、表状态、发出的消息。这些不依赖实现细节。
 - `sdk_calls` 只在规格能确定时使用。例如：校验失败时不应该访问数据库（`total: 0`）；不应该写某张表（`excludes: [{table: "Orders"}]`）。**不要断言具体用 GetItem 还是 Query**——规格只说读哪张表，实现可以选不同的操作。
 - 响应体只断言规格里写明的字段和值。规格里标 `unknown` 的项不要断言。
-- 响应头同理，只断言规格明确要求的头（CORS 头、`Set-Cookie`、规格指定的 `Content-Type` 等），值里依赖部署参数的部分按规格写明的默认值断言。cookie 只断言规格规定的部分（例如 `contains: {"Set-Cookie": "cartId="}`，属性按规格逐个断言），不要断言随机生成的值。预检请求（`OPTIONS`）由 API Gateway 按模板 `Cors` 直接应答、不调用函数，工具不模拟，所以不要写成用例；规格对预检有要求时，留给 S4 的静态复核。
+- 响应头同理，只断言规格明确要求的头（CORS 头、`Set-Cookie`、规格指定的 `Content-Type` 等），值里依赖部署参数的部分按规格写明的默认值断言。cookie 只断言规格规定的部分（例如 `contains: {"Set-Cookie": ["cartId=", "HttpOnly"]}`，名字和规格规定的属性写在同一个列表里），不要断言随机生成的值。规格要求某个头只有一个时，用 `count`。预检请求（`OPTIONS`）由 API Gateway 按模板 `Cors` 直接应答、不调用函数，工具不模拟，所以不要写成用例；规格对预检有要求时，留给 S4 的静态复核。
 - 500 这类未处理异常：只断言 `status`，不断言错误消息的内容（单体的错误中间件会带 `stack`，迁移后不会）。
 - blueprint 明确改变了单体行为的地方（例如用户 id 从 `req.customerId` 改为 Cognito `sub`、认证端点被删除），以 blueprint 为准，`spec_refs` 写 `"blueprint:..."`。
 - **SQS/EventBridge 消费者必须幂等**：这是上游正确性规则，设计写在 blueprint 函数的 `notes` 和 `DECISIONS.md` 里。每个消费者至少写一个**重复投递用例**：
