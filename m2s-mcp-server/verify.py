@@ -164,6 +164,26 @@ class Model:
                 elif ev.get("Type") == "SQS":
                     fn["sqs"].append(str(ep.get("Queue", "")).split(".")[0])
             self.functions[name] = fn
+        self._index_gateway_responses(res)
+
+    def _index_gateway_responses(self, res: dict) -> None:
+        """GatewayResponses of the Api (and Globals.Api): the headers API
+        Gateway puts on the answers it generates itself, e.g. the 401 of an
+        authorizer. SAM writes header values as quoted literals ("'*'") or
+        !Sub "'${Param}'"."""
+        self.gateway_responses: dict[str, dict[str, Any]] = {}
+        glob = (((self.template.get("Globals", {}) or {}).get("Api", {}) or {}).get("GatewayResponses") or {})
+        apis = [((r.get("Properties") or {}).get("GatewayResponses") or {}) for r in res.values()
+                if isinstance(r, dict) and r.get("Type") == "AWS::Serverless::Api"]
+        for src in [glob, *apis]:
+            for rtype, spec in (src or {}).items():
+                spec = spec or {}
+                headers = ((spec.get("ResponseParameters") or {}).get("Headers") or {})
+                status = self._resolve(spec["StatusCode"]).strip("'") if spec.get("StatusCode") is not None else ""
+                self.gateway_responses[str(rtype)] = {
+                    "status": int(status) if status.isdigit() else None,
+                    "headers": {str(k): self._resolve(v).strip().strip("'") for k, v in headers.items()},
+                }
 
     def _api_authorized(self, ev_props: dict, glob_auth: dict) -> bool:
         ev_auth = (ev_props.get("Auth") or {}).get("Authorizer")
@@ -180,6 +200,10 @@ class Model:
         "X.Y" and !Sub keeps its ${...} placeholders."""
         if isinstance(v, (int, float, bool)):
             return str(v)
+        if isinstance(v, dict) and len(v) == 1 and next(iter(v)) in ("Ref", "Fn::Sub", "Fn::GetAtt"):
+            key, v = next(iter(v.items()))  # long form: {Ref: X} / {Fn::Sub: ...} / {Fn::GetAtt: [X, Y]}
+            if key == "Fn::GetAtt" and isinstance(v, list):
+                v = ".".join(map(str, v))
         if isinstance(v, list):  # !Sub [str, {vars}]
             v = v[0] if v else ""
         if not isinstance(v, str):
@@ -359,13 +383,23 @@ def _check_expect(model: Model, where: str, exp: Any, trigger: str | None, with_
     if not isinstance(exp, dict):
         return [f"{where}: expect must be an object"]
     errs = []
-    allowed = {"status", "body", "error", "batch_item_failures", "tables_after", "sdk_calls", "messages"}
+    allowed = {"status", "body", "error", "batch_item_failures", "tables_after", "sdk_calls", "messages", "headers"}
     if set(exp) - allowed:
         errs.append(f"{where}: expect has unknown keys {sorted(set(exp) - allowed)} (allowed: {sorted(allowed)})")
     if not ({"status", "error", "batch_item_failures"} & set(exp)):
         errs.append(f"{where}: expect needs at least one of status / error / batch_item_failures")
     if "status" in exp and not isinstance(exp["status"], int):
         errs.append(f"{where}: expect.status must be an integer")
+    if "headers" in exp:
+        h = exp["headers"]
+        if not isinstance(h, dict) or not h or set(h) - {"equals", "contains", "absent"}:
+            errs.append(f"{where}: expect.headers must use equals {{name: value}} / contains {{name: substring}} / absent [names]")
+        else:
+            for key in ("equals", "contains"):
+                if key in h and not (isinstance(h[key], dict) and all(isinstance(v, str) for v in h[key].values())):
+                    errs.append(f"{where}: expect.headers.{key} must map header names to strings")
+            if "absent" in h and not (isinstance(h["absent"], list) and all(isinstance(v, str) for v in h["absent"])):
+                errs.append(f"{where}: expect.headers.absent must be a list of header names")
     if "body" in exp:
         b = exp["body"]
         if not isinstance(b, dict) or not b or set(b) - {"equals", "subset", "contains", "not_contains", "has_fields", "types", "length"}:
@@ -482,7 +516,11 @@ def build_event(model: Model, case: dict[str, Any]) -> tuple[dict[str, Any] | No
     r, path_params = route
     ident = req.get("identity")
     if r["authorized"] and not ident:
-        return None, {"statusCode": 401, "headers": {"Content-Type": "application/json"}, "body": json.dumps({"message": "Unauthorized"})}
+        gw = getattr(model, "gateway_responses", {})
+        spec = gw.get("UNAUTHORIZED") or gw.get("DEFAULT_4XX") or {}
+        return None, {"statusCode": spec.get("status") or 401,
+                      "headers": {"Content-Type": "application/json", **(spec.get("headers") or {})},
+                      "body": json.dumps({"message": "Unauthorized"})}
     query = req.get("query") or {}
     single = {k: (v[-1] if isinstance(v, list) else str(v)) for k, v in query.items()}
     multi = {k: ([str(x) for x in v] if isinstance(v, list) else [str(v)]) for k, v in query.items()}
@@ -770,6 +808,22 @@ def _get(obj: Any, dotted: str) -> tuple[bool, Any]:
     return True, cur
 
 
+def _response_headers(result: Any) -> dict[str, list[str]]:
+    """lower-cased header name -> values, from both `headers` and
+    `multiValueHeaders` (API Gateway merges them; Set-Cookie is often
+    multi-valued)."""
+    out: dict[str, list[str]] = {}
+    if not isinstance(result, dict):
+        return out
+    for name, value in (result.get("headers") or {}).items():
+        out.setdefault(str(name).lower(), []).append(str(value))
+    for name, values in (result.get("multiValueHeaders") or {}).items():
+        for value in values if isinstance(values, list) else [values]:
+            if str(value) not in out.setdefault(str(name).lower(), []):
+                out[str(name).lower()].append(str(value))
+    return out
+
+
 def judge(model: Model, case: dict[str, Any], raw: dict[str, Any]) -> list[str]:
     """Mismatches between one case's expectations and its raw observation."""
     exp = case.get("expect") or {}
@@ -789,6 +843,19 @@ def judge(model: Model, case: dict[str, Any], raw: dict[str, Any]) -> list[str]:
         got = result.get("statusCode") if isinstance(result, dict) else None
         if got != exp["status"]:
             mism.append(f"status: expected {exp['status']}, got {got} (body {str(_parse_body(result))[:300]})")
+    if "headers" in exp:
+        got, spec = _response_headers(result), exp["headers"]
+        for name, want in (spec.get("equals") or {}).items():
+            values = got.get(name.lower(), [])
+            if want not in values:
+                mism.append(f"header {name}: expected {want!r}, got {values if values else 'absent'}")
+        for name, part in (spec.get("contains") or {}).items():
+            values = got.get(name.lower(), [])
+            if not any(part in v for v in values):
+                mism.append(f"header {name}: expected a value containing {part!r}, got {values if values else 'absent'}")
+        for name in spec.get("absent") or []:
+            if got.get(name.lower()):
+                mism.append(f"header {name}: expected absent, got {got[name.lower()]}")
     if "body" in exp:
         body, spec = _parse_body(result), exp["body"]
         if "equals" in spec and body != spec["equals"]:

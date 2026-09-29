@@ -813,3 +813,23 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
   - **编排器（SKILL §2）**：每个阶段结束后检查仓库状态。子 Agent 改了工具就不采用：用 git 恢复，这个阶段按 BLOCKED 处理，证据交给人。
   - **机械检查**：`gate(final)` 新增 TOOLS 检查。工具目录里有未提交的改动或新文件，就是 ERROR（S5 写的 `perf-rules/ledger.json` 除外）；`~/.openharness/agents/m2s-*.md` 与仓库里提交的副本不一致，也是 ERROR。所以流水线必须在已提交的工具上运行。
   - 编排器的 TODO 清单写到工作区的 `storage/` 下，不写到仓库根目录。coffee 之前的两份已经移过去了。
+
+## 响应头断言 `expect.headers`（2026-09-29）
+
+- **起因**：shopping-cart 的 CORS-1 重新验收里，V1 开了 SI-12，指出响应头没法断言：`expect` 只认状态码、响应体、表状态、SDK 调用和消息，而网关模拟的 401 只带 `Content-Type`。
+  - architect 的裁定是：CORS 头和 `Set-Cookie` 的覆盖交给 S4 静态复核，外加 V2 观察原始响应。
+  - 这相当于把一个可以机械判定的性质交给了人工阅读，所以补上这个工具能力。
+- **`expect.headers`**：
+  - `equals: {头名: 值}`：某个值完全相等；
+  - `contains: {头名: 子串}`：某个值包含子串；
+  - `absent: [头名]`：不能出现。
+  - 头名不区分大小写，`headers` 和 `multiValueHeaders` 合并判断；同一个头有多个值时（例如多个 `Set-Cookie`），任意一个值满足即可。
+  - `_check_expect` 会校验格式。
+- **网关 401 带上模板声明的头**：
+  - `Model` 解析 `AWS::Serverless::Api` 和 `Globals.Api` 的 `GatewayResponses`；
+  - 匿名请求命中鉴权路由时，模拟的 401 使用 `UNAUTHORIZED` 的头；没有 `UNAUTHORIZED` 就用 `DEFAULT_4XX`；声明了 `StatusCode` 时也照用；
+  - 头的值写成 `"'...'"` 或 `!Sub "'${Param}'"`，参数按默认值解析，并去掉外层单引号。
+  - `_resolve` 也支持长写法 `{Ref: X}` / `{Fn::Sub: ...}` / `{Fn::GetAtt: [X, Y]}`。
+- **H1 不用改**：`_observation` 的 outcome 本来就包含整个返回值，响应头已经在等价性比较范围内。
+- **不模拟的部分**：预检请求（`OPTIONS`）由 API Gateway 按模板 `Cors` 直接应答，不调用函数，工具不模拟；规格对预检有要求时，仍交给 S4 静态复核。m2s-verifier 的 prompt 已写明这一点。
+- **测试**：新增 3 个，覆盖网关 401 的头（含 `DEFAULT_4XX` 回退和长写法）、`judge` 的三种匹配和双表合并、`expect.headers` 格式错误。全部 133 passed / 3 skipped。

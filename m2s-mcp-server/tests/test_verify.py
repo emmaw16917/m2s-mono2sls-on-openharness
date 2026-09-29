@@ -141,6 +141,65 @@ def test_build_event_api_and_gateway_401(ws):
     assert gw is None and "authorizer" not in ev["requestContext"]
 
 
+def test_gateway_401_carries_gateway_response_headers(ws):
+    tpl = TEMPLATE.replace("""Parameters:
+  Environment:""", """Parameters:
+  AllowedOrigin:
+    Type: String
+    Default: http://localhost:3000
+  Environment:""").replace("""      Auth:
+        DefaultAuthorizer: CognitoAuth""", """      Auth:
+        DefaultAuthorizer: CognitoAuth
+      GatewayResponses:
+        UNAUTHORIZED:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: !Sub "'${AllowedOrigin}'"
+              Access-Control-Allow-Credentials: "'true'"
+        DEFAULT_4XX:
+          ResponseParameters:
+            Headers:
+              Access-Control-Allow-Origin: {"Fn::Sub": "'${AllowedOrigin}'"}""")
+    (ws / "output" / "template.yaml").write_text(tpl, encoding="utf-8")
+    m = verify.Model(ws)
+    assert m.gateway_responses["DEFAULT_4XX"]["headers"] == {"Access-Control-Allow-Origin": "http://localhost:3000"}
+    _, gw = verify.build_event(m, _case(request={"method": "GET", "path": "/api/books/b1", "identity": None}))
+    assert gw["statusCode"] == 401
+    assert gw["headers"] == {"Content-Type": "application/json", "Access-Control-Allow-Origin": "http://localhost:3000",
+                             "Access-Control-Allow-Credentials": "true"}
+    # without UNAUTHORIZED the authorizer's 401 falls back to DEFAULT_4XX
+    del m.gateway_responses["UNAUTHORIZED"]
+    _, gw = verify.build_event(m, _case(request={"method": "GET", "path": "/api/books/b1", "identity": None}))
+    assert gw["headers"]["Access-Control-Allow-Origin"] == "http://localhost:3000"
+    assert "Access-Control-Allow-Credentials" not in gw["headers"]
+
+
+def test_judge_headers(ws):
+    m = verify.Model(ws)
+    raw = {"result": {"statusCode": 200, "body": "{}",
+                      "headers": {"access-control-allow-origin": "http://localhost:3000", "Content-Type": "application/json"},
+                      "multiValueHeaders": {"Set-Cookie": ["cartId=c1; Path=/; HttpOnly", "x=1"]}}, "calls": []}
+    good = {"headers": {"equals": {"Access-Control-Allow-Origin": "http://localhost:3000"},
+                        "contains": {"set-cookie": "cartId=c1"}, "absent": ["Access-Control-Allow-Credentials"]}}
+    assert verify.judge(m, _case(expect=good), raw) == []
+    bad = {"headers": {"equals": {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Credentials": "true"},
+                       "contains": {"Set-Cookie": "cartId=c2"}, "absent": ["content-type"]}}
+    mism = verify.judge(m, _case(expect=bad), raw)
+    assert len(mism) == 4
+    assert any("Access-Control-Allow-Credentials" in x and "absent" in x for x in mism)
+    # a header sent in both maps is not counted twice
+    both = {"result": {"statusCode": 200, "headers": {"Set-Cookie": "a=1"}, "multiValueHeaders": {"set-cookie": ["a=1", "b=2"]}}}
+    assert verify._response_headers(both["result"]) == {"set-cookie": ["a=1", "b=2"]}
+
+
+def test_check_case_headers_schema(ws):
+    m = verify.Model(ws)
+    assert verify.check_case(m, _case(expect={"status": 200, "headers": {"equals": {"X-A": "1"}, "absent": ["X-B"]}}), with_template=True) == []
+    for bad in ({}, {"exact": {"X-A": "1"}}, {"equals": {"X-A": 1}}, {"absent": "X-B"}, ["X-A"]):
+        errs = verify.check_case(m, _case(expect={"status": 200, "headers": bad}), with_template=True)
+        assert any("expect.headers" in e for e in errs), bad
+
+
 def test_build_event_sqs(ws):
     m = verify.Model(ws)
     ev, _ = verify.build_event(m, {"id": "s", "function": "consumer", "sqs": {"records": [{"message_id": "m1", "body": {"a": 1}}]}})
