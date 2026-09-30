@@ -225,7 +225,7 @@ spawn prompt 会说明这是 V1 的回炉。architect 的裁定写在 `blueprint
    - 对没走到的分支，补 `kind: "whitebox"` 的用例，文件名以 `wb-` 开头。预期仍然要从规格推出。规格没有涉及的分支，只断言"不抛异常、不返回 5xx"之类的不变量，并在 `note` 里写明"规格未涉及"。
    - v1 **只报告**覆盖率，不设门槛。补完再跑一次 `run_coverage()` 和 `run_validate()`。
 6. **记录故障行为基准**：
-   - 调用 `mcp__m2s-server__run_equivalence(mode="record", label="v0")`，生成 `verification/fault_baseline_v0.json`；
+   - 调用 `mcp__m2s-server__run_equivalence(mode="record", label="v0")`，生成 `verification/fault_baseline_v0.json`。带 `functions` 时只重录这些函数，结果合并进已有的基准，其他函数的记录保留；
    - 只记录，不判断故障行为对不对。
    - 如果 `infra_errors` 非空，把它们写进报告。
 7. **判定**：以 `verification/verdict_A.json` 的 `status` 为准（工具判的，不是你判的）。

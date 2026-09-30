@@ -845,3 +845,14 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **合并规则改为 API Gateway 的实际行为**：`multiValueHeaders` 的值全部保留（其中重复的值也算多次）；`headers` 里的一对头和值如果也出现在 `multiValueHeaders` 里，只算一次；大小写不同的同名头算作多次出现。
   - 之前的写法会把 `multiValueHeaders` 内部的重复值也去掉，`count` 会因此少算。
 - **测试**：新增 1 个，扩展了格式检查的用例。134 passed / 3 skipped。
+
+## 判决规则：0ms 只作参考；带过滤的故障基准重录改为合并（2026-09-30）
+
+- **真实延迟规则**（用户裁定）：
+  - 起因：R1 并行化已经四次判成 `pending_human`（shopping-cart 的 REQ-1，ecommerce 的 REQ-1/2/3），形状都一样：0ms 变慢，5/10/15ms 明显变快。四次都由人裁定保留。
+  - 规则：`_judge` 在 5/10/15ms 全部明显变好、且热调用 CPU 中位数不超过基线 2 倍（`CPU_RATIO_LIMIT`）时，把延迟维度判为 better。0ms 只作参考，记在 `realistic_latency_rule.reference_0ms`。init、成本、冲突、RSS 的否决照旧。
+  - 同时修了一处：成本维度一律按 10ms 那一轮计算。以前用传入的第一个延迟值，传 `[0,5,10,15]` 时就按 0ms 算成本，ecommerce REQ-2 的成本就是这样变成 worse 的。
+- **`run_equivalence(mode="record", functions=...)` 改为合并**：
+  - 起因：ecommerce 的 V2 带函数过滤重录了一次，整个 `fault_baseline_v0.json` 被覆盖成只有那一个函数的 12 条记录，只能全量重录恢复。
+  - 现在的行为：已有基准时，只替换这些函数的场景、观察和 infra_errors，其余保留，并在 `partial_updates` 里记下时间和函数名。runtime 不一致时拒绝合并。没有旧基准时照常写入，并标注 `partial`。
+- **文档与测试**：更新了设计文档 §3.2、m2s-perf-optimizer 和 m2s-verifier 的 prompt、server 的 docstring。新增测试 4 个（真实延迟规则 3 个、合并 1 个），共 138 passed / 3 skipped。

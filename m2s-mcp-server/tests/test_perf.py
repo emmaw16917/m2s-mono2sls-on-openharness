@@ -131,3 +131,51 @@ def test_fill_time_relative_placeholders():
     assert item["start_ts"] == (now // 300000) * 300000 and item["n"] == 0
     assert item["note"] == "keep {literal} braces"
     assert perf._fill("{__import__('os')}", 0, now) == "{__import__('os')}"  # not arithmetic: left alone
+
+
+def _fake_judge(monkeypatch, tmp_path, warm, cpu_base=6.0, cpu_cand=10.0):
+    """_judge with the measurements replaced: warm = {latency: (base medians, cand medians)}."""
+    monkeypatch.setattr(perf, "TMP_ROOT", tmp_path / "tmp")
+    monkeypatch.setattr(perf, "_fixture_file", lambda model, b, out: out)
+    monkeypatch.setattr(perf, "_git", lambda ws, *a: "abc123")
+
+    def proxies(model, build, b, work):
+        cpu = cpu_base if build == "base" else cpu_cand
+        return {"calls": 10, "depth": 10 if build == "base" else 3, "rru": 1, "wru": 9, "sqs_requests": 0, "conflicts": 0,
+                "warm_cpu_ms": {"median": cpu, "p90": cpu * 1.1}}
+    monkeypatch.setattr(perf, "_harness", proxies)
+    monkeypatch.setattr(perf, "_valid", lambda m: None)
+
+    def pair(model, builds, b, fx, latency):
+        base, cand = warm[latency]
+        side = lambda med: {"warm_round_medians": med, "init_ms": [300, 310, 320], "max_rss_mb": 46, "conflicts": 0, "cpus": 0.3}
+        return {"base": side(base), "cand": side(cand)}
+    monkeypatch.setattr(perf, "_measure_pair", pair)
+
+    class M:
+        functions = {"f": {"memory": 512}}
+    return perf._judge(tmp_path, M(), {"base": "base", "cand": "cand"}, {"id": "bm", "function": "f", "data_volume": {}},
+                       "v0", ["output/x.py"], [0, 5, 10, 15])
+
+
+FAST = {5: ([60, 61, 62], [40, 41, 42]), 10: ([120, 121, 122], [60, 61, 62]), 15: ([170, 172, 174], [70, 71, 72])}
+
+
+def test_realistic_latency_rule_keeps_despite_0ms(monkeypatch, tmp_path):
+    r = _fake_judge(monkeypatch, tmp_path, {0: ([9, 10, 11], [20, 22, 25]), **FAST})
+    assert r["warm_by_latency"]["0ms"] == "worse"
+    assert r["verdict"] == "kept" and r["dimensions"]["latency"] == "better"
+    rule = r["realistic_latency_rule"]
+    assert rule["applied"] and rule["reference_0ms"] == "worse" and rule["cost_latency"] == "10ms"
+
+
+def test_realistic_latency_rule_needs_every_realistic_latency(monkeypatch, tmp_path):
+    warm = {0: ([9, 10, 11], [20, 22, 25]), **FAST, 5: ([60, 61, 62], [59, 61, 63])}  # 5 ms no_diff
+    r = _fake_judge(monkeypatch, tmp_path, warm)
+    assert not r["realistic_latency_rule"]["applied"] and r["verdict"] == "pending_human"
+
+
+def test_realistic_latency_rule_needs_cpu_in_range(monkeypatch, tmp_path):
+    r = _fake_judge(monkeypatch, tmp_path, {0: ([9, 10, 11], [20, 22, 25]), **FAST}, cpu_base=6.0, cpu_cand=13.0)
+    assert r["realistic_latency_rule"]["warm_cpu_ratio"] > perf.CPU_RATIO_LIMIT
+    assert not r["realistic_latency_rule"]["applied"] and r["verdict"] == "pending_human"
