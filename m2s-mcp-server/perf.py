@@ -53,6 +53,14 @@ ROUNDS = 5          # alternating rounds; gives >= 5 init samples and 5 warm med
 WARM_INVOKES = 30
 SCREEN_LATENCY = 10
 MULTI_LATENCIES = [0, 5, 15]
+# Real DynamoDB round trips are several ms, so 0 ms only shows the fixed
+# overhead of a change (e.g. a thread pool) with nothing to overlap. When
+# every realistic latency is clearly better, 0 ms is reported as a reference
+# and does not decide (user ruling 2026-09-30).
+REALISTIC_LATENCIES = [5, 10, 15]
+# "CPU in a reasonable range" for that rule: candidate warm CPU median at
+# most this many times the baseline median.
+CPU_RATIO_LIMIT = 2.0
 
 
 # ---------------------------------------------------------------------------
@@ -426,7 +434,7 @@ def _judge(ws: Path, model: Model, builds: dict[str, Path], b: dict[str, Any], b
     rie: dict[str, Any] = {}
     for L in lat_list:
         rie[f"{L}ms"] = _measure_pair(model, builds, b, fx, L)
-    screen = rie[f"{lat_list[0]}ms"]
+    screen = rie.get(f"{SCREEN_LATENCY}ms") or rie[f"{lat_list[0]}ms"]
     warm_dir = {k: _direction(v["base"]["warm_round_medians"], v["cand"]["warm_round_medians"]) for k, v in rie.items()}
     need_multi = latencies is None and (proxy_worse or warm_dir[f"{SCREEN_LATENCY}ms"] == "worse")
     if need_multi:
@@ -434,9 +442,18 @@ def _judge(ws: Path, model: Model, builds: dict[str, Path], b: dict[str, Any], b
             rie[f"{L}ms"] = _measure_pair(model, builds, b, fx, L)
             warm_dir[f"{L}ms"] = _direction(rie[f"{L}ms"]["base"]["warm_round_medians"], rie[f"{L}ms"]["cand"]["warm_round_medians"])
 
-    # Latency dimension (§3.2 steps 1-2)
+    # Latency dimension (§3.2 steps 1-2). Realistic-latency rule first: all of
+    # 5/10/15 ms clearly better and CPU within CPU_RATIO_LIMIT -> better,
+    # whatever 0 ms shows (kept as a reference).
+    realistic = [f"{L}ms" for L in REALISTIC_LATENCIES]
+    cpu_b, cpu_c = proxies["base"]["warm_cpu_ms"]["median"], proxies["cand"]["warm_cpu_ms"]["median"]
+    cpu_ratio = round(cpu_c / cpu_b, 2) if cpu_b else None
+    cpu_ok = cpu_ratio is not None and cpu_ratio <= CPU_RATIO_LIMIT
+    realistic_rule = all(warm_dir.get(k) == "better" for k in realistic) and cpu_ok
     dirs = list(warm_dir.values())
-    if any(d == "better" for d in dirs) and not any(d == "worse" for d in dirs):
+    if realistic_rule:
+        latency_dim = "better"
+    elif any(d == "better" for d in dirs) and not any(d == "worse" for d in dirs):
         latency_dim = "better"
     elif any(d == "better" for d in dirs) and any(d == "worse" for d in dirs):
         latency_dim = "depends_on_rtt"
@@ -485,6 +502,9 @@ def _judge(ws: Path, model: Model, builds: dict[str, Path], b: dict[str, Any], b
         "baseline": f"{baseline} ({_git(ws, 'rev-parse', '--short', baseline)})", "changed_files": changed,
         "verdict": verdict, "reason": why, "veto": "conflicts" if conflict_veto else "rss" if rss_veto else None,
         "dimensions": dims, "warm_by_latency": warm_dir,
+        "realistic_latency_rule": {"applied": realistic_rule, "latencies": realistic,
+                                   "reference_0ms": warm_dir.get("0ms"), "warm_cpu_ratio": cpu_ratio,
+                                   "cpu_ratio_limit": CPU_RATIO_LIMIT, "cost_latency": f"{SCREEN_LATENCY}ms" if f"{SCREEN_LATENCY}ms" in rie else f"{lat_list[0]}ms"},
         "proxies": {"base": proxies["base"], "cand": proxies["cand"], "direction": pdir},
         "rie": {k: {"base": brief(v["base"]), "cand": brief(v["cand"])} for k, v in rie.items()},
         "init_ms": {"base": init_b, "cand": init_c},

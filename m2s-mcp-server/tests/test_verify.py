@@ -424,3 +424,37 @@ def test_integration_python_consumer_pattern_a(tmp_path):
     r = verify.run_validate(str(ws), mode="rie")
     assert r["status"] == "PASS" and r["total"] == 8, r
     assert r["cases_with_conflicts"] == []
+
+
+def test_filtered_record_merges_into_the_existing_baseline(ws, monkeypatch):
+    cases = [{"id": "a1", "function": "books-get"}, {"id": "c1", "function": "consumer"}]
+    faults = [{"id": "fa", "function": "books-get", "cases": ["a1"], "rules": []},
+              {"id": "fc", "function": "consumer", "cases": ["c1"], "rules": []}]
+    monkeypatch.setattr(verify, "load_cases", lambda ws: cases)
+    monkeypatch.setattr(verify, "load_faults", lambda ws: faults)
+    monkeypatch.setattr(verify, "check_fault", lambda *a, **k: [])
+    monkeypatch.setattr(verify, "sam_build", lambda root: root)
+    monkeypatch.setattr(verify, "_mode", lambda r: "local")
+    tag = {"v": "first"}
+
+    def prepare(m, cs, scen=None, pinned=None):
+        if scen:
+            return [{"run_key": f"{sid}::{cid}"} for sid, f in scen.items() for cid in f["cases"]]
+        return [{"run_key": c["id"]} for c in cs]
+    monkeypatch.setattr(verify, "_prepare_runs", prepare)
+    monkeypatch.setattr(verify, "_run_controller", lambda m, b, runs, **k: {"cases": [
+        {"run_key": r["run_key"], "result": {"statusCode": 200, "body": tag["v"]}, "calls": []} for r in runs]})
+
+    (ws / "verification").mkdir(exist_ok=True)
+    full = verify.run_equivalence(str(ws), mode="record", runtime="local")
+    assert full["runs"] == 4 and not full["merged_into_existing"]
+    tag["v"] = "second"
+    part = verify.run_equivalence(str(ws), mode="record", runtime="local", functions=["consumer"])
+    assert part["runs"] == 2 and part["merged_into_existing"] and part["total_runs_in_baseline"] == 4
+    doc = json.loads((ws / "verification" / "fault_baseline_v0.json").read_text(encoding="utf-8"))
+    bodies = {k: v["outcome"]["result"]["body"] for k, v in doc["observations"].items()}
+    assert bodies == {"fa::a1": "first", "a1": "first", "fc::c1": "second", "c1": "second"}
+    assert set(doc["scenarios"]) == {"fa", "fc"} and doc["partial_updates"][0]["functions"] == ["consumer"]
+    # a runtime mismatch is refused rather than mixed into one baseline
+    monkeypatch.setattr(verify, "_mode", lambda r: "rie")
+    assert verify.run_equivalence(str(ws), mode="record", functions=["consumer"])["status"] == "FAIL"

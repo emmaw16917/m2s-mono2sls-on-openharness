@@ -1353,15 +1353,36 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
 
     path = _vdir(ws) / f"fault_baseline_{label}.json"
     if mode == "record":
+        # A functions-filtered record updates only those functions in an
+        # existing baseline; it used to overwrite the whole file with just
+        # their observations.
+        old = json.loads(path.read_text(encoding="utf-8")) if functions and path.exists() else None
+        if old and old.get("runtime") != runtime:
+            return {"status": "FAIL", "error": f"{path.name} was recorded with runtime {old.get('runtime')!r}; a functions-filtered "
+                    f"record with runtime {runtime!r} cannot be merged into it -- record all functions instead"}
         raws, infra = run_version(model, ws, None, "record")
         obs = {k: _observation(r) for k, r in raws.items()}
-        doc = {"label": label, "runtime": runtime, "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-               "scenarios": {k: {"description": v.get("description", ""), "function": v["function"], "cases": v["cases"], "rules": v["rules"]} for k, v in scen.items()},
-               "observations": obs, "infra_errors": infra,
+        scenarios = {k: {"description": v.get("description", ""), "function": v["function"], "cases": v["cases"], "rules": v["rules"]} for k, v in scen.items()}
+        now = time.strftime("%Y-%m-%dT%H:%M:%S")
+        doc = {"label": label, "runtime": runtime, "recorded_at": now, "scenarios": scenarios, "observations": obs, "infra_errors": infra,
                "note": "v1 records fault behaviour only; whether it is correct is judged in v2 together with monolith diffing"}
+        if old:
+            def fn_of(key: str) -> str | None:
+                if "::" in key:
+                    return (old.get("scenarios", {}).get(key.split("::", 1)[0]) or scenarios.get(key.split("::", 1)[0]) or {}).get("function")
+                return (by_id.get(key) or {}).get("function")
+            keep = lambda k: fn_of(k) not in functions
+            doc = {**old, "recorded_at": now,
+                   "scenarios": {**{k: v for k, v in old.get("scenarios", {}).items() if v.get("function") not in functions}, **scenarios},
+                   "observations": {**{k: v for k, v in old.get("observations", {}).items() if keep(k)}, **obs},
+                   "infra_errors": {**{k: v for k, v in (old.get("infra_errors") or {}).items() if keep(k)}, **infra},
+                   "partial_updates": [*old.get("partial_updates", []), {"at": now, "functions": sorted(functions)}]}
+        elif functions:
+            doc["partial"] = {"functions": sorted(functions), "note": "no earlier baseline: only these functions are recorded"}
         path.write_text(json.dumps(doc, indent=2, ensure_ascii=False), encoding="utf-8")
         return {"status": "RECORDED" if not infra else "RECORDED_WITH_INFRA_ERRORS", "runtime": runtime, "path": str(path.relative_to(ws)),
-                "runs": len(obs), "infra_errors": infra, "disclaimer": local_disclaimer(model) if runtime == "local" else ""}
+                "runs": len(obs), "total_runs_in_baseline": len(doc["observations"]),
+                "merged_into_existing": bool(old), "infra_errors": infra, "disclaimer": local_disclaimer(model) if runtime == "local" else ""}
 
     if baseline_ref and has_own_repo(ws):
         base_root = export_ref(ws, baseline_ref)

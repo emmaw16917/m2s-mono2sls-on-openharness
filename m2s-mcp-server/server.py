@@ -246,7 +246,9 @@ def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str
             externally visible outcome, (c) no emulated TransactionConflict
             (concurrent requests on one item) where the baseline had none.
         label: baseline label, "v0" by default.
-        functions: only scenarios of these functions.
+        functions: only scenarios of these functions. A filtered record
+            replaces just these functions' scenarios and observations in an
+            existing baseline file (same runtime required) and keeps the rest.
         runtime: "auto", "rie" or "local".
 
     Returns: JSON string {status: RECORDED|EQUIVALENT|DIFFERENT|..., runs,
