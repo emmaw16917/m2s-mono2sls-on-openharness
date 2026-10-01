@@ -1236,7 +1236,8 @@ def run_coverage(workspace: str, functions: list[str] | None = None, mode: str =
         if cov.get("error") or not cov.get("report_dir"):
             per_fn[name] = {"error": cov.get("error", "no coverage collected")}
             continue
-        per_fn[name] = _summarize_coverage(Path(cov["report_dir"]) / "coverage-final.json", Path(model.functions[name]["logical"]))
+        per_fn[name] = _summarize_coverage(Path(cov["report_dir"]) / "coverage-final.json", Path(model.functions[name]["logical"]),
+                                           _project_files(ws, model, name))
         (out / f"{name}.json").write_text(json.dumps(per_fn[name], indent=2, ensure_ascii=False), encoding="utf-8")
     changed_report = None
     if changed_since:
@@ -1264,15 +1265,57 @@ def run_coverage(workspace: str, functions: list[str] | None = None, mode: str =
     return summary
 
 
-def _summarize_coverage(final_json: Path, logical: Path) -> dict[str, Any]:
+def _project_files(ws: Path, model: Model, name: str) -> dict[str, set[str]] | None:
+    """The function's own source files, as paths relative to its CodeUri
+    ("" key) and to each of its layers' ContentUri (layer id keys). Coverage
+    counts only these: what sam build bundles next to them (pip packages,
+    node_modules) is not code under test. None when the CodeUri is unknown."""
+    fn = model.functions.get(name) or {}
+    out_dir = ws / "output"
+    roots = {"": fn.get("code_uri") or ""} | {lid: getattr(model, "layers", {}).get(lid, "") for lid in fn.get("layers", [])}
+    if not roots[""] or not (out_dir / roots[""]).is_dir():
+        return None
+    own: dict[str, set[str]] = {}
+    for key, cu in roots.items():
+        base = out_dir / cu if cu else None
+        if base is None or not base.is_dir():
+            own[key] = set()
+            continue
+        own[key] = {q.relative_to(base).as_posix() for q in base.rglob("*")
+                    if q.is_file() and q.suffix in (".py", ".js", ".mjs", ".cjs", ".ts")
+                    and not {"node_modules", "__pycache__", ".aws-sam"} & set(q.relative_to(base).parts)}
+    return own
+
+
+def _own_file(norm: str, rel: str, own: dict[str, set[str]]) -> str | None:
+    """Display path of a covered file if it is project source, else None."""
+    if rel in own.get("", set()):
+        return rel
+    for lid, rels in own.items():
+        if lid and f"/{lid}/" in norm:
+            for r in rels:
+                if norm.endswith("/" + r) or norm.endswith("/" + r.split("/", 1)[-1]):
+                    return f"layer:{lid}:{r}"
+    return None
+
+
+def _summarize_coverage(final_json: Path, logical: Path, own: dict[str, set[str]] | None = None) -> dict[str, Any]:
     data = _read_json(final_json)
     files = {}
     uncovered = []
+    excluded = 0
     tot = {"statements": [0, 0], "branches": [0, 0], "functions": [0, 0]}
     for fpath, fc in data.items():
-        rel = fpath.replace("\\", "/").split(f"/{logical.name}/", 1)[-1]
+        norm = fpath.replace("\\", "/")
+        rel = norm.split(f"/{logical.name}/", 1)[-1]
         if rel.startswith(".m2s-cov-flush") or "node_modules" in rel:
             continue
+        if own is not None:
+            shown = _own_file(norm, rel, own)
+            if shown is None:
+                excluded += 1  # bundled dependency, not code under test
+                continue
+            rel = shown
         s_hit = sum(1 for v in fc["s"].values() if v > 0)
         b_all = [c for arr in fc["b"].values() for c in arr]
         b_hit = sum(1 for c in b_all if c > 0)
@@ -1297,7 +1340,7 @@ def _summarize_coverage(final_json: Path, logical: Path) -> dict[str, Any]:
     pct = lambda h, n: round(100.0 * h / n, 1) if n else 100.0
     uncovered.sort(key=lambda u: (u["file"], u["line"], u["kind"]))
     return {"statements_pct": pct(*tot["statements"]), "branches_pct": pct(*tot["branches"]), "functions_pct": pct(*tot["functions"]),
-            "files": files, "uncovered": uncovered}
+            "files": files, "excluded_files": excluded, "uncovered": uncovered}
 
 
 def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", functions: list[str] | None = None,

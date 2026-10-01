@@ -458,3 +458,34 @@ def test_filtered_record_merges_into_the_existing_baseline(ws, monkeypatch):
     # a runtime mismatch is refused rather than mixed into one baseline
     monkeypatch.setattr(verify, "_mode", lambda r: "rie")
     assert verify.run_equivalence(str(ws), mode="record", functions=["consumer"])["status"] == "FAIL"
+
+
+def test_coverage_counts_only_project_source(ws, tmp_path):
+    """Packages that sam build bundles next to the handler (pip / npm) are
+    not code under test; a shared layer's own files still count."""
+    src = ws / "output" / "lambdas" / "books-get"
+    (src / "lib").mkdir(parents=True)
+    (src / "handler.py").write_text("x = 1\n", encoding="utf-8")
+    (src / "lib" / "util.py").write_text("y = 2\n", encoding="utf-8")
+    (ws / "output" / "layers" / "shared").mkdir(parents=True)
+    (ws / "output" / "layers" / "shared" / "common.py").write_text("z = 3\n", encoding="utf-8")
+    m = verify.Model(ws)
+    m.layers = {"SharedLayer": "layers/shared"}
+    m.functions["books-get"]["layers"] = ["SharedLayer"]
+    own = verify._project_files(ws, m, "books-get")
+    assert own == {"": {"handler.py", "lib/util.py"}, "SharedLayer": {"common.py"}}
+
+    def fc(hit):  # one statement, one 2-arm branch, one function
+        return {"s": {"0": hit}, "b": {"0": [hit, 0]}, "f": {"0": hit},
+                "statementMap": {"0": {"start": {"line": 1}, "end": {"line": 1}}},
+                "branchMap": {"0": {"type": "if", "loc": {"start": {"line": 1}}, "locations": [{"start": {"line": 1}}, {"start": {"line": 1}}]}}}
+    b = "/build/GetBook/"
+    final = tmp_path / "coverage-final.json"
+    final.write_text(json.dumps({b + "handler.py": fc(1), b + "lib/util.py": fc(1), "/build/SharedLayer/python/common.py": fc(1),
+                                 b + "stripe/api.py": fc(0), b + "urllib3/pool.py": fc(0)}), encoding="utf-8")
+    r = verify._summarize_coverage(final, Path("GetBook"), own)
+    assert set(r["files"]) == {"handler.py", "lib/util.py", "layer:SharedLayer:common.py"}
+    assert r["excluded_files"] == 2 and r["statements_pct"] == 100.0 and r["branches_pct"] == 50.0
+    assert all(not u["file"].startswith(("stripe", "urllib3")) for u in r["uncovered"])
+    # without the source map the old behaviour stays (everything but node_modules)
+    assert len(verify._summarize_coverage(final, Path("GetBook"))["files"]) == 5

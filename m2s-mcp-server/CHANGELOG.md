@@ -856,3 +856,15 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
   - 起因：ecommerce 的 V2 带函数过滤重录了一次，整个 `fault_baseline_v0.json` 被覆盖成只有那一个函数的 12 条记录，只能全量重录恢复。
   - 现在的行为：已有基准时，只替换这些函数的场景、观察和 infra_errors，其余保留，并在 `partial_updates` 里记下时间和函数名。runtime 不一致时拒绝合并。没有旧基准时照常写入，并标注 `partial`。
 - **文档与测试**：更新了设计文档 §3.2、m2s-perf-optimizer 和 m2s-verifier 的 prompt、server 的 docstring。新增测试 4 个（真实延迟规则 3 个、合并 1 个），共 138 passed / 3 skipped。
+
+## 覆盖率只统计项目源码（2026-10-01）
+
+- **起因**：airline-booking 的函数用 `requirements.txt` 声明了 stripe 和 requests，`sam build` 把这些包（连同 urllib3、idna 等依赖）装在 handler 旁边。
+  - 覆盖率因此把 413 个第三方文件也算了进去。`bookings-create` 显示语句 54.0%、分支 10.4%，`uncovered` 列表有 25822 条，其中 handler.py 只占 116 条。
+  - 以前只排除 `node_modules`，Python 的 pip 包没有排除。
+- **改动**：
+  - `run_coverage` 现在只统计项目源码，也就是函数 CodeUri 下的文件，和它所用 Layer 的 ContentUri 下的文件（显示为 `layer:<Id>:<path>`）；
+  - 其余文件只计数，记在 `excluded_files`；
+  - 拿不到 CodeUri 时，维持旧行为。
+- **实测**：用 airline-booking 现有的原始覆盖率数据重算，`bookings-create` 从 54.0% / 10.4%（414 个文件）变为 **72.5% / 64.7%**（只有 handler.py），排除 413 个文件。
+- **测试**：新增 1 个，共 139 passed / 3 skipped。
