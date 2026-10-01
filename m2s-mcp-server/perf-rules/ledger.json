@@ -253,13 +253,69 @@
           "reviewed": 0
         }
       }
+    },
+    {
+      "app": "airline-booking",
+      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\airline-booking-e0",
+      "recorded_at": "2026-10-01T11:47:48",
+      "confidence": "normal",
+      "rules": {
+        "R1": {
+          "hits": 3,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R2": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R3": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R4": {
+          "hits": 1,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        }
+      }
     }
   ],
   "candidate_rules": [],
   "totals": {
     "R1": {
-      "hits": 7,
-      "kept": 6,
+      "hits": 10,
+      "kept": 7,
       "kept_inconclusive": 0,
       "reverted": 0,
       "pending_human": 0,
@@ -268,7 +324,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 5
+      "apps": 6
     },
     "R2": {
       "hits": 0,
@@ -281,7 +337,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 5
+      "apps": 6
     },
     "R3": {
       "hits": 0,
@@ -294,11 +350,11 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 5
+      "apps": 6
     },
     "R4": {
-      "hits": 1,
-      "kept": 1,
+      "hits": 2,
+      "kept": 2,
       "kept_inconclusive": 0,
       "reverted": 0,
       "pending_human": 0,
@@ -307,7 +363,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 4
+      "apps": 5
     }
   }
 }
