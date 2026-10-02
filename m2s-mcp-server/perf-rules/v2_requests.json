@@ -46,7 +46,7 @@
         "spec ruling",
         "H1(a) relaxed for dropped duplicate reads"
       ],
-      "status": "blocked: spec pins the 2nd/3rd read (SI-6, wb-bookings-confirm-second-read-fails-400 expects 400 when it fails) -> needs a spec ruling first"
+      "status": "kept 2026-10-02 via the S5->S1 spec relaxation flow (airline-booking-e0): REQ-3 -> SI-8 accepted -> VS adjusted 9 cases (186/186 on v0) -> calls 7->5, depth 6->4, RIE warm p50 72.6->49.9 ms @10ms (88bb743); gate(final) PASS, full regression 186/186"
     },
     {
       "id": "V2-02",
