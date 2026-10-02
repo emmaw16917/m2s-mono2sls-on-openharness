@@ -125,3 +125,11 @@ def test_annotate_accepts_and_completes(tmp_path):
 def test_annotate_unknown_endpoint(ws):
     with pytest.raises(provenance.SpecError):
         provenance.annotate_entry_point(ws, "POST", "/api/nope", "responses", "[]")
+
+
+def test_business_rule_class_and_trace_arm():
+    import provenance
+    errors: list = []
+    provenance._validate_field({}, "business_rules", [{"rule": "r", "kind": "other", "source": [], "origin": "llm", "class": "maybe"}],
+                               "ep.business_rules", errors)
+    assert any("'class' must be one of" in e for e in errors)

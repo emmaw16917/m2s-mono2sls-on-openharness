@@ -33,6 +33,9 @@ REQUEST_LOCATIONS = ("path_params", "query", "body", "headers")
 AUTH_CLASSES = ("required", "optional", "none", "unknown")
 RESPONSE_KINDS = ("success", "error")
 RULE_KINDS = ("validation", "authorization", "data_scope", "side_effect", "error_handling", "computation", "other")
+# Contract testing (PIPELINE_REDESIGN.md section 3.6): whether a rule is an
+# externally observable effect or just how the monolith happens to do it.
+RULE_CLASSES = ("contract", "implementation-trace")
 ORIGINS = ("script", "llm")
 
 
@@ -182,13 +185,15 @@ def _validate_field(files: _Files, field: str, value: Any, where: str, errors: l
             continue
         if field == "responses":
             if not _keys_ok(item, {"status", "kind", "body", "source", "origin"},
-                            {"when", "in_catch", "via", "note"}, iw, errors):
+                            {"when", "in_catch", "via", "note", "trace_arm"}, iw, errors):
                 continue
             st = item["status"]
             if not ((isinstance(st, int) and not isinstance(st, bool) and 100 <= st <= 599) or st == "unknown"):
                 errors.append(f"{iw}: 'status' must be an HTTP status integer or \"unknown\"")
             # A status held in a variable is "unknown", and then so is whether
             # the response is a success or an error.
+            if "trace_arm" in item and not isinstance(item["trace_arm"], bool):
+                errors.append(f"{iw}: 'trace_arm' must be a boolean (true: only an implementation step of the monolith produces this response)")
             if item["kind"] not in RESPONSE_KINDS and not (item["kind"] == "unknown" and st == "unknown"):
                 errors.append(f"{iw}: 'kind' must be one of {RESPONSE_KINDS} (or \"unknown\" together with status \"unknown\")")
             body = item["body"]
@@ -206,12 +211,14 @@ def _validate_field(files: _Files, field: str, value: Any, where: str, errors: l
             if not isinstance(item["repeated"], bool):
                 errors.append(f"{iw}: 'repeated' must be a boolean")
         elif field == "business_rules":
-            if not _keys_ok(item, {"rule", "kind", "source", "origin"}, {"id", "note"}, iw, errors):
+            if not _keys_ok(item, {"rule", "kind", "source", "origin"}, {"id", "note", "class"}, iw, errors):
                 continue
             if not isinstance(item["rule"], str) or not item["rule"].strip():
                 errors.append(f"{iw}: 'rule' must be a non-empty string")
             if item["kind"] not in RULE_KINDS:
                 errors.append(f"{iw}: 'kind' must be one of {RULE_KINDS}")
+            if "class" in item and item["class"] not in RULE_CLASSES:
+                errors.append(f"{iw}: 'class' must be one of {RULE_CLASSES}")
         else:
             errors.append(f"{where}: unknown spec field {field!r}")
             return
@@ -346,6 +353,15 @@ def check_provenance(workspace: str | Path) -> dict[str, Any]:
             "business_rules": len(ep.get("business_rules") or []),
             "unknown_items": _count_unknown(ep),
         })
+
+    # A contract-2 spec classifies every rule; a report with some classes but
+    # not all is an annotator that stopped halfway.
+    rules = [r for ep in report.get("entry_points", []) for r in ep.get("business_rules") or [] if isinstance(r, dict)]
+    if any("class" in r for r in rules):
+        for ep in report.get("entry_points", []):
+            for j, r in enumerate(ep.get("business_rules") or []):
+                if isinstance(r, dict) and "class" not in r:
+                    incomplete.append(f"{ep.get('method')} {ep.get('path')}.business_rules[{j}]: no 'class' (contract / implementation-trace)")
 
     for i, t in enumerate((report.get("dynamodb_info") or {}).get("table_schemas", []) or []):
         where = f"dynamodb_info.table_schemas[{i}]"

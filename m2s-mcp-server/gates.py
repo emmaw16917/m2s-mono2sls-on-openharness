@@ -107,6 +107,47 @@ def _endpoint_from_entry_point(entry_point: str) -> str | None:
     return entry_point.strip() if entry_point else None
 
 
+def check_contract(workspace: Path) -> list[dict[str, Any]]:
+    """Contract testing (PIPELINE_REDESIGN.md section 3.6). A spec whose
+    business rules carry a class is a contract-2 spec: the blueprint must say
+    so, and every response arm the annotator marked trace_arm must be ruled on
+    (voided, or given its allowed outcomes) by an implementation-trace SI that
+    lists it in `targets`. Implementation-trace SIs, wherever they come from
+    (S1, or an S5 spec relaxation request), must name their targets."""
+    findings: list[dict[str, Any]] = []
+    try:
+        blueprint = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+        report = json.loads((workspace / "storage" / "analysis_report.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return findings  # B0 reports a missing / broken blueprint; no report yet means nothing to check
+    meta = blueprint.get("metadata") if isinstance(blueprint, dict) else None
+    meta = meta if isinstance(meta, dict) else {}
+    eps = report.get("entry_points", []) if isinstance(report, dict) else []
+    classified = any(isinstance(r, dict) and "class" in r for ep in eps for r in ep.get("business_rules") or [])
+    if classified and meta.get("verification_contract") != 2:
+        findings.append(_finding("CT1", "ERROR", "analysis_report.json classifies business rules (contract / implementation-trace) "
+                                 "but blueprint metadata.verification_contract is not 2.", "blueprint.json"))
+    if meta.get("verification_contract") not in (None, 1, 2):
+        findings.append(_finding("CT1", "ERROR", "metadata.verification_contract must be 1 or 2.", "blueprint.json"))
+    targets: set[str] = set()
+    for r in meta.get("spec_resolutions") or []:
+        if not isinstance(r, dict) or r.get("class") != "implementation-trace":
+            continue
+        t = r.get("targets")
+        if not (isinstance(t, list) and t and all(isinstance(x, str) for x in t)):
+            findings.append(_finding("CT2", "ERROR", f"spec_resolutions[{r.get('issue_id')}] is class implementation-trace but has no "
+                                     "'targets' (the spec items it rules on, e.g. 'POST /x#responses[6]').", "blueprint.json"))
+        else:
+            targets.update(t)
+    for ep in eps:
+        for i, resp in enumerate(ep.get("responses") or []):
+            ref = f"{ep.get('method')} {ep.get('path')}#responses[{i}]"
+            if isinstance(resp, dict) and resp.get("trace_arm") and ref not in targets:
+                findings.append(_finding("CT3", "ERROR", f"{ref} is marked trace_arm but no implementation-trace spec_resolution "
+                                         "targets it (void it, or give its allowed outcomes).", "blueprint.json"))
+    return findings
+
+
 def check_b0(workspace: Path) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
     storage_dir = workspace / "storage"
@@ -1071,7 +1112,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
     severe = False
 
     if phase == "blueprint":
-        checks = check_b0(ws)
+        checks = check_b0(ws) + check_contract(ws)
         severe = any(f["severity"] == "ERROR" for f in checks)
 
     elif phase == "code":

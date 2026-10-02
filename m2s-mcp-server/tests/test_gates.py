@@ -940,3 +940,35 @@ def test_tools_check_flags_modified_pipeline_files(tmp_path):
     assert {f["check_id"] for f in found} == {"TOOLS"} and all(f["severity"] == "ERROR" for f in found)
     text = " | ".join(f["description"] for f in found)
     assert "gates.py" in text and "helper.py" in text and "m2s-architect.md" in text
+
+
+# -- contract testing (PIPELINE_REDESIGN.md section 3.6) -------------------
+
+def _contract_ws(tmp_path, meta, rules, responses):
+    (tmp_path / "storage").mkdir()
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps({"metadata": meta}), encoding="utf-8")
+    report = {"entry_points": [{"method": "POST", "path": "/x", "business_rules": rules, "responses": responses}]}
+    (tmp_path / "storage" / "analysis_report.json").write_text(json.dumps(report), encoding="utf-8")
+    return tmp_path
+
+
+def _ids(findings):
+    return sorted(f["check_id"] for f in findings)
+
+
+def test_contract_unclassified_spec_needs_nothing(tmp_path):
+    ws = _contract_ws(tmp_path, {}, [{"rule": "r"}], [{"status": 200}])
+    assert gates.check_contract(ws) == []
+
+
+def test_contract_classified_spec_needs_the_switch_and_rulings(tmp_path):
+    rules = [{"rule": "r", "class": "implementation-trace"}]
+    resp = [{"status": 200}, {"status": 400, "trace_arm": True}]
+    ws = _contract_ws(tmp_path, {}, rules, resp)
+    assert _ids(gates.check_contract(ws)) == ["CT1", "CT3"]
+    si = {"issue_id": "SI-1", "class": "implementation-trace", "decision": "void"}
+    (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"verification_contract": 2, "spec_resolutions": [si]}}), encoding="utf-8")
+    assert _ids(gates.check_contract(ws)) == ["CT2", "CT3"]
+    si["targets"] = ["POST /x#responses[1]"]
+    (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"verification_contract": 2, "spec_resolutions": [si]}}), encoding="utf-8")
+    assert gates.check_contract(ws) == []
