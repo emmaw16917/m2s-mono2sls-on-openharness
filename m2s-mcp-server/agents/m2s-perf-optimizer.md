@@ -29,6 +29,8 @@ model: inherit
 | 跨消息按 key 聚合写入（失败粒度变粗） | ❌ |
 | 多次 Put/Delete 合并成 `BatchWriteItem`；把 `UpdateItem` 合并成批量写 | ❌ |
 | 事务化、数据模型改动（GSI、物化视图）、异步机制改动 | ❌ → 写进 advisories |
+| 去掉 `class: implementation-trace` 条目对应的冗余读（blueprint 是 contract 2，或者那一条已经有 `implementation-trace` 的 SI） | ✅，仍要过 H1、覆盖率和判决 |
+| 冗余读被 spec 或测试规定成必经步骤（contract 1 应用，或者漏标的条目） | ❌，写申请（见"申请放宽 spec"一节） |
 | 配置类改动（MemorySize、架构、SQS 参数），模板里的 `Handler`/`CodeUri`/事件定义，目录结构 | ❌ |
 
 不允许的改动如果被诊断出来，写进报告的 `advisories`，附上诊断数据。**不要去改。**

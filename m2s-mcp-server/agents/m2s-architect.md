@@ -160,6 +160,27 @@ blueprint 里的每个判断都要能追溯到依据。用 `write_file` 写 `sto
    - 以前回炉写过的裁定要保留，不要删。
 4. 照常跑 `run_gate(phase="blueprint")` 自查，再写工作报告，在 `issues` 里逐条列出你的裁定。
 
+## 契约测试（contract 2）
+
+`analysis_report.json` 的 `business_rules` 带 `class` 字段时，说明这是一份 contract 2 的规格（`PIPELINE_REDESIGN.md` §3.6）。这时：
+
+1. **打开开关**：在 `metadata` 里写 `"verification_contract": 2`。`run_gate(phase="blueprint")` 的 CT1 检查这一项。
+2. **复核分类**：逐条看 spec-annotator 标的 `class`。
+   - 标成 `contract` 但其实只是单体的做法的，或者反过来，写一条 SI 改正它；
+   - 带 `note` 的疑问条目，也要逐条给出结论。
+3. **对每个 `trace_arm` 做裁定**：每一项都写一条 SI，格式如下：
+   ```json
+   {"issue_id": "SI-12", "class": "implementation-trace",
+    "targets": ["POST /bookings/<booking_id>/cancel#responses[6]", "POST /bookings/<booking_id>/cancel#business_rules[0]"],
+    "decision": "作废或允许的结果集合，写具体",
+    "allowed_outcomes": "例如：{400 ValueError，或按正常取消完成}；Flight 和 Payment 要么都不变，要么按正常取消执行",
+    "applies_to": ["bookings-cancel"], "rationale": "为什么这是实现轨迹，引用规格出处"}
+   ```
+   - `targets` 必须逐字列出被裁定的规格条目（`<METHOD> <path>#responses[i]` 或 `#business_rules[j]`）。gate 的 CT2 和 CT3 会检查：每个 `trace_arm` 都要出现在某条 `implementation-trace` SI 的 `targets` 里；
+   - 只能把单体的**内部步骤**裁定为实现轨迹。写了哪些条目、发了哪些消息、权限判定、单条消息的失败粒度，都是契约，不能这样裁定；
+   - `decision` 二选一：作废这一臂，验证线不再为它出题；或者给出允许的结果集合，验证线用 `alternatives` 出题。
+4. 没有 `class` 字段的规格（旧应用）不需要做这些，也不要写 `verification_contract`。
+
 ## 输出契约：逐字段调用 merge_blueprint_key 构建 blueprint.json
 
 `storage/blueprint.json` 只能有这 10 个顶层 key，`merge_blueprint_key` 会拒绝其他任何 key 名——不要发明新字段：

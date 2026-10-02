@@ -97,7 +97,10 @@ model: inherit
 ### 怎么写预期（最容易出错的地方）
 
 - **优先断言可观察的行为**：状态码、响应体、表状态、发出的消息。这些不依赖实现细节。
-- `sdk_calls` 只在规格能确定时使用。例如：校验失败时不应该访问数据库（`total: 0`）；不应该写某张表（`excludes: [{table: "Orders"}]`）。**不要断言具体用 GetItem 还是 Query**——规格只说读哪张表，实现可以选不同的操作。
+- **只断言契约，不断言实现轨迹**（`PIPELINE_REDESIGN.md` §3.6）。判断标准：如果代码少读一次、换个调用顺序、把两步合成一步，但外部效果完全一样，这条断言会不会失败？会失败，它就是实现轨迹，不要写。
+- `sdk_calls` 只在规格能确定时使用。例如：不应该写某张表（`excludes: [{table: "Orders"}]`）；403 时不应该读别人的数据（`excludes: [{op: "GetItem", table: "Payment"}]`）。**不要断言具体用 GetItem 还是 Query**——规格只说读哪张表，实现可以选不同的操作。
+  - blueprint 的 `metadata.verification_contract` 是 2 时，工具强制要求：`includes` 只能写写操作和发消息（PutItem / UpdateItem / DeleteItem / BatchWriteItem / TransactWriteItems / SendMessage(Batch)），不能用 `total`。读了几次这类信息，想留给人看的话，写进 `expect.trace`（内容随意，只记录、不判定）。
+  - `excludes` 仍然可以写读操作：它断言的是"不该访问"，属于权限或数据范围契约。
 - 响应体只断言规格里写明的字段和值。规格里标 `unknown` 的项不要断言。
 - 响应头同理，只断言规格明确要求的头（CORS 头、`Set-Cookie`、规格指定的 `Content-Type` 等），值里依赖部署参数的部分按规格写明的默认值断言。cookie 只断言规格规定的部分（例如 `contains: {"Set-Cookie": ["cartId=", "HttpOnly"]}`，名字和规格规定的属性写在同一个列表里），不要断言随机生成的值。规格要求某个头只有一个时，用 `count`。预检请求（`OPTIONS`）由 API Gateway 按模板 `Cors` 直接应答、不调用函数，工具不模拟，所以不要写成用例；规格对预检有要求时，留给 S4 的静态复核。
 - 500 这类未处理异常：只断言 `status`，不断言错误消息的内容（单体的错误中间件会带 `stack`，迁移后不会）。
@@ -137,7 +140,7 @@ model: inherit
 - `rules[].match`：`op` / `table` / `queue` / `item`，都可省略（省略就是匹配所有调用）。
   - `item`：调用读写的条目包含这些属性值，例如 `{"pk": "bestsellers-update#order-1#1"}` 或 `{"bookId": "b-7"}`。事务里任何一个条目符合就算匹配。
 - `rules[].nth`：第几次**匹配到的**调用出故障：整数、整数数组，或 `"all"`（每次都失败）。
-- **故障要固定到具体的操作上**：
+- **故障要固定到具体的操作上**（contract 2 时由工具强制：`nth` 不是 `"all"` 的规则必须带 `match.item`，`nth` 的含义变成"这个条目上的第 N 次操作"。Query 没有 Key，`item` 匹配它的键条件里的值，例如 `{"pk": "user#u1"}`）：
   - 事件里有多条消息或多个条目时，用 `match.item` 指明故障针对的是哪个条目的操作。例如"订单 A 的第 2 批事务失败"，写成 `{"match": {"op": "TransactWriteItems", "item": {"pk": "<订单 A 第 2 批的标记键>"}}, "nth": 1}`；
   - 不要写 `{"op": "TransactWriteItems", "nth": 2}` 这种按全局调用顺序数的规则。规格不规定不同消息之间的执行顺序，实现（以及之后的性能优化）可以并行处理互不相干的消息。调用顺序一变，故障就落到别的消息上，用例会误报失败；
   - 只有一个条目、只有一个操作的事件，才可以省略 `item`。
@@ -150,7 +153,7 @@ model: inherit
   - `network`：连接被断开，会重试；
   - `tx_conflict`：模拟另一个事务正在处理同一条目。`TransactWriteItems` 会被取消，原因是 `TransactionConflict`（SDK 不会自动重试）。DynamoDB Local 自己从不产生这种冲突，只能靠注入来测。
 - 至少覆盖这几类（按函数实际做的写操作挑选）：
-  - 第 k 次调用失败（`nth: k`）；
+  - 某个条目上的操作失败（`match.item` + `nth`）；
   - 全部失败（`nth: "all"`）；
   - 限流后重试成功（`throttle` + `nth: 1`）；
   - 网络中断（`network`）；
@@ -158,6 +161,12 @@ model: inherit
 - 故障场景**不写预期**：v1 只记录 v0 在故障下的行为，作为以后对照的基准。
 
 ---
+
+### 规格允许多种结果，以及"不适用"
+
+- **`expect.alternatives`**：architect 的 SI 裁定给出了允许的结果集合时，用它出题，例如 `{"alternatives": [{"status": 400, "body": {...}, "tables_after": {...}}, {"status": 200, "tables_after": {...}}]}`。满足任意一组就算通过。每组都要是完整的预期。用例的 `spec_refs` 必须引用这条 SI。
+- **`not_applicable`**：用例的故障规则一次都没触发（它针对的那次操作，在实现里不存在），并且用例引用了一条 `class: implementation-trace` 的 SI 时，工具判为 `not_applicable`，不算失败，单独列在结果里。没有这样的 SI 时，仍然判失败。不要为了得到 `not_applicable` 去引用无关的 SI。
+- 被 SI 作废的那一臂，不要出题。
 
 ## V1：测试设计（只看规格）
 
@@ -203,7 +212,7 @@ spawn prompt 会说明这是 V1 的回炉。architect 的裁定写在 `blueprint
    - 请求字段是否都被读取；
    - 状态码和响应字段是否一致。
    
-   结果写进报告的 `static_review`。这一步只记录问题，不改预期。
+   结果写进报告的 `static_review`。这一步只记录问题，不改预期。规格是 contract 2 时，只对照 `class: contract` 的条目；实现没有照单体的 `implementation-trace` 条目去做，不算问题。
 2. **跑全部用例**：`mcp__m2s-server__run_validate()`（不带参数，才会写 `verification/verdict_A.json`）。
 3. **失败分诊**（每个失败的用例都要做）：
    - 先看工具给的 `triage_hint`：
