@@ -262,6 +262,17 @@ git log --oneline -1 && git tag   # 确认 tag 存在
 5. 然后进入阶段 6。
 - VR 报 `STAGE_BLOCKED` 时，跳过第 3–4 步：被阻塞的改动保持回滚，在最终回复里写明原因，然后进入阶段 6。
 
+**S5 之后的 spec 放宽申请**（`m2s-mcp-server/CONTRACT_TESTING_PLAN.md` §7）：`perf_report.json` 里有 `verdict: "pending_spec"` 的改动时做，**每轮 S5 只做一次**，在上面的测试复核之后：
+1. spawn `m2s-architect`，prompt 写"裁定 perf 申请"，逐条附上每个 `pending_spec` 请求的 `spec_relaxation`：`targets`、`why_trace`、`allowed_outcomes`、`evidence`。**`blocking_tests` 不要转给 architect**（K10）。你自己不做裁定。
+2. architect 完成后，亲自跑 `run_gate(phase="blueprint")`，必须 `PASS`。读出 `origin` 是这些 REQ 的 SI，分成接受和驳回两类。
+3. 有接受的 SI 时：
+   - spawn `m2s-verifier`（STAGE_ID=VS），prompt 里写 WS 和这些 SI 的编号；
+   - VS 完成后，亲自 `run_validate(ref="v0")`，必须全部通过（`not_applicable` 不算失败，但要在最终回复里列出）；
+   - 然后在 v0 的代码上重录故障基准 `run_equivalence(mode="record")`，提交 `git -C "WS" add verification storage && git -C "WS" commit -m "verification: spec relaxation (VS)"`，再把 v0 移到这次提交：`git -C "WS" tag -f v0`。v0 的**代码**不变，变的是验收它的测试；
+   - 没通过：不移 tag，这些 REQ 在 `perf_report.json` 里改成 `spec_rejected`，原因写"测试调整后 v0 未通过"。
+4. spawn `m2s-perf-optimizer`（STAGE_ID=S5），prompt 写"重新判决模式"，列出被接受的 REQ 和对应的 SI 编号，以及被驳回的 REQ（这些只需要把 `verdict` 改成 `spec_rejected`）。
+5. 最终回复里单独列出"本次 spec 放宽"：每条 SI、对应的 REQ、判决结果。这些都属于"需人复核"。
+
 **阶段 6（最终检验）**，你亲自做：
 1. `run_gate(phase="final")` 必须 `PASS`；
 2. `run_validate()`（不带参数，全量回归）必须 `PASS`。

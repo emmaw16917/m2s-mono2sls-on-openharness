@@ -19,6 +19,7 @@ model: inherit
 - `STAGE_ID=V1`：测试设计 + 测试实现 + architect 交叉检查。见"V1"一节。
 - `STAGE_ID=V2`：执行 + 失败分诊 + 白盒补测 + 故障行为基准 + 判定。见"V2"一节。
 - `STAGE_ID=VR`：复核 S5 被测试阻塞的改动（用例是否有问题、补覆盖）。见"VR"一节。
+- `STAGE_ID=VS`：architect 接受了 S5 的 spec 放宽申请后，按新的 SI 定向调整用例。见"VS"一节。
 
 ---
 
@@ -257,6 +258,20 @@ spawn prompt 会说明这是 V1 的回炉。architect 的裁定写在 `blueprint
 
      - `expected_per_spec` 和 `observed` 只能用**规格的语言**描述行为：接口、字段、状态码、表状态、业务规则。**不要写用例的 fixture、断言写法、测试文件路径**。
      - 主 Agent 转发给实现线时，只转发 `function`、`spec_refs`、`expected_per_spec` 和 `observed`；`evidence_cases` 只给主 Agent 和人看。
+
+## VS：按 spec 放宽裁定调整用例（CONTRACT_TESTING_PLAN.md §7）
+
+spawn prompt 会列出 architect 新写的 SI 编号（`origin` 是 `perf-request ...`，`ruling` 是 `accepted`）。只看规格：读这些 SI 的 `targets`、`decision` 和 `allowed_outcomes`。
+
+1. 找出受影响的用例：`spec_refs` 引用了 `targets` 里任何一条的用例，以及按位置钉在被放宽的那次操作上的故障规则。
+2. 逐个调整：
+   - SI 作废了某一臂：为那一臂出的用例撤下（删除文件），报告里写明；
+   - SI 给出了允许的结果集合：把预期改成 `expect.alternatives`，`spec_refs` 加上这条 SI；
+   - 故障按位置钉（`nth: k` 没有 `match.item`），而 SI 放宽的正是这个位置：改成用 `match.item` 钉在具体条目上；被放宽的那次操作可能根本不存在，用例要引用这条 SI，工具才会判 `not_applicable` 而不是失败；
+   - `expect.sdk_calls` 里断言了被放宽的那几次读：删掉这部分，必要时写进 `expect.trace`。
+3. **只改受影响的用例**。规格要求的其他断言一条都不能放宽；每处修改写进报告的 `asset_fixes`（原写法、新写法、依据的 SI）。
+4. `run_validate(dry_run=true)` 通过后，再用 `run_validate(ref="v0")` 在 v0 的代码上跑全量，必须全部通过。没通过的，按 V2 的分诊写报告，不要为了通过去改断言。
+5. 写 `storage/stage_reports/VS.json`，格式同 VR。
 
 ## VR：复核 S5 被测试阻塞的改动
 

@@ -179,3 +179,19 @@ def test_realistic_latency_rule_needs_cpu_in_range(monkeypatch, tmp_path):
     r = _fake_judge(monkeypatch, tmp_path, {0: ([9, 10, 11], [20, 22, 25]), **FAST}, cpu_base=6.0, cpu_cand=13.0)
     assert r["realistic_latency_rule"]["warm_cpu_ratio"] > perf.CPU_RATIO_LIMIT
     assert not r["realistic_latency_rule"]["applied"] and r["verdict"] == "pending_human"
+
+
+def test_update_ledger_counts_spec_relaxations(ws, tmp_path, monkeypatch):
+    monkeypatch.setattr(perf, "LEDGER", tmp_path / "ledger.json")
+    report = {"rule_scan": {"R1": {"hits": 0}},
+              "changes": [{"id": "C1", "source": "analysis", "request": "REQ-1", "verdict": "kept",
+                           "spec_relaxation": {"ruling": "accepted", "si": "SI-20"}},
+                          {"id": "C2", "source": "analysis", "request": "REQ-2", "verdict": "spec_rejected",
+                           "spec_relaxation": {"ruling": "rejected"}},
+                          {"id": "C3", "source": "analysis", "request": "REQ-3", "verdict": "pending_spec",
+                           "spec_relaxation": {"ruling": "pending"}}]}
+    (ws / "output" / "perf_report.json").write_text(json.dumps(report), encoding="utf-8")
+    r = perf.update_ledger(str(ws))
+    assert r["spec_relaxations"] == {"requested": 3, "accepted": 1, "rejected": 1, "pending": 1, "kept": 1}
+    led = json.loads((tmp_path / "ledger.json").read_text(encoding="utf-8"))
+    assert led["totals_spec_relaxations"]["kept"] == 1

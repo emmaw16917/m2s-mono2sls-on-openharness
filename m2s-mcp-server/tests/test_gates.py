@@ -972,3 +972,19 @@ def test_contract_classified_spec_needs_the_switch_and_rulings(tmp_path):
     si["targets"] = ["POST /x#responses[1]"]
     (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"verification_contract": 2, "spec_resolutions": [si]}}), encoding="utf-8")
     assert gates.check_contract(ws) == []
+
+
+def test_spec_relaxations_must_be_finished(tmp_path):
+    (tmp_path / "storage").mkdir()
+    (tmp_path / "output").mkdir()
+    si = {"issue_id": "SI-20", "class": "implementation-trace", "origin": "perf-request REQ-1", "targets": ["POST /x#responses[1]"]}
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"spec_resolutions": [si]}}), encoding="utf-8")
+    rp = tmp_path / "output" / "perf_report.json"
+    rp.write_text(json.dumps({"changes": [{"id": "C1", "request": "perf/requests/REQ-1.json", "verdict": "pending_spec"}]}), encoding="utf-8")
+    assert _ids(gates.check_spec_relaxations(tmp_path)) == ["SR1", "SR2"]
+    rp.write_text(json.dumps({"changes": [{"id": "C1", "request": "perf/requests/REQ-1.json", "verdict": "reverted"}]}), encoding="utf-8")
+    assert gates.check_spec_relaxations(tmp_path) == []
+    si["ruling"] = "rejected"
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"spec_resolutions": [si]}}), encoding="utf-8")
+    rp.write_text(json.dumps({"changes": []}), encoding="utf-8")
+    assert gates.check_spec_relaxations(tmp_path) == []

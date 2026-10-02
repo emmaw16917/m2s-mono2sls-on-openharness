@@ -370,6 +370,8 @@ v0 是验收过的版本，所以用"和 v0 等不等价"来区分是代码的�
 
 ## 重新判决模式（主 Agent 在 prompt 里写明"重新判决"和 REQ 列表时）
 
+REQ 来自 spec 放宽申请时（prompt 会写明，并给出 architect 的 SI 编号）：这个 REQ 没有补丁，按 `spec_relaxation` 和请求里的 `proposal` 重新写改动，再走第 4 节的完整流程。其余步骤和下面一样。
+
 验证线已经复核过上一轮 `blocked_*` 的改动：修了用例，或者补了用例。测试资产的改动已经提交，并且已经在 v0 的代码上重新验证通过。这一轮只处理 prompt 里列出的 REQ：
 1. 前置检查同上（`WS/.git` 存在、`output` 没有未提交的改动）。**不写新基准，不做新的规则扫描，不提新的请求。**
 2. 对每个 REQ：
@@ -380,6 +382,22 @@ v0 是验收过的版本，所以用"和 v0 等不等价"来区分是代码的�
    - 在原来的 `perf_report.json` 里更新这些 REQ 的 `verdict`，保留 `review`；
    - 然后全量回归、`update_ledger`、提交；
    - `S5.json` 的 `mode` 写 `rejudge`。
+
+## 申请放宽 spec（CONTRACT_TESTING_PLAN.md §7）
+
+有些冗余读，例如同一条记录读了两次，被 spec 或测试规定成了必经步骤，所以不能直接删。这时你**只能申请，不能自己改 spec、也不能改测试**：
+
+1. **前提**，三条都满足才能申请：
+   - 被规定的是单体的**内部步骤**：读了几次、按什么顺序、哪一层去读。写了哪些条目、发了哪些消息、权限判定、单条消息的失败粒度，都是契约，不能申请，写进 advisories；
+   - 收益已经量出来：在临时改动上跑 `run_proxy_metrics`，量完立刻 `git checkout -- output` 撤回，不提交；
+   - 本轮 S5 还没有申请过（每轮最多一个申请批次，同一批可以有多条）。
+2. **写请求**：照常写 `perf/requests/REQ-n.json`，加上 `spec_relaxation` 字段（格式见设计文档 §9.4），`semantic_class` 写 `semantic`。
+3. **写报告**：在 `perf_report.json` 的 `changes` 里加一条，`verdict: "pending_spec"`，`spec_relaxation: {"ruling": "pending", "targets": [...]}`。本轮**不改代码**，也不提交补丁。
+4. 主 Agent 会把申请交给 architect 裁定，再让验证线调整用例、重新验收 v0，然后用"重新判决模式"把这个 REQ 交还给你：
+   - architect 接受了：照常走第 4 节的流程（`run_equivalence`、`run_validate`、`run_coverage`、`run_rie_verdict`），`spec_relaxation` 改成 `{"ruling": "accepted", "si": "SI-x", ...}`；
+   - architect 驳回了：`verdict` 改成 `spec_rejected`，`spec_relaxation.ruling` 写 `rejected`，原因引用 SI。本轮不要再为同一处申请。
+
+`gate(final)` 会拒绝还留着 `pending_spec` 的报告（SR1），也会拒绝被接受了却没有重判的申请（SR2）。
 
 ## 报告的写法
 

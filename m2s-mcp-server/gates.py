@@ -107,6 +107,37 @@ def _endpoint_from_entry_point(entry_point: str) -> str | None:
     return entry_point.strip() if entry_point else None
 
 
+def check_spec_relaxations(workspace: Path) -> list[dict[str, Any]]:
+    """S5 -> S1 spec relaxation (CONTRACT_TESTING_PLAN.md section 7) must be
+    finished before delivery: no request still waiting for a ruling (SR1),
+    and every ruling that came from a perf request has its re-judged change
+    in perf_report.json (SR2) -- an accepted relaxation nobody re-judged would
+    leave the spec and the tests changed for nothing."""
+    findings: list[dict[str, Any]] = []
+    try:
+        report = json.loads((workspace / "output" / "perf_report.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        report = {}
+    changes = [c for c in (report.get("changes") or []) if isinstance(c, dict)] if isinstance(report, dict) else []
+    for c in changes:
+        if c.get("verdict") == "pending_spec":
+            findings.append(_finding("SR1", "ERROR", f"perf change {c.get('id')} ({c.get('request')}) is still pending_spec: the spec "
+                                     "relaxation it asked for was never ruled on and re-judged.", "output/perf_report.json"))
+    try:
+        meta = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8")).get("metadata") or {}
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return findings
+    req = lambda v: (m.group(0) if (m := re.search(r"REQ-\d+", str(v or ""))) else None)
+    judged = {req(c.get("request")) for c in changes if c.get("verdict") in ("kept", "kept_inconclusive", "reverted", "revert")}
+    for r in meta.get("spec_resolutions") or [] if isinstance(meta, dict) else []:
+        if not isinstance(r, dict) or not str(r.get("origin", "")).startswith("perf-request"):
+            continue
+        if r.get("ruling", "accepted") == "accepted" and req(r.get("origin")) not in judged:
+            findings.append(_finding("SR2", "ERROR", f"spec_resolutions[{r.get('issue_id')}] accepted {r.get('origin')} but perf_report.json "
+                                     "has no kept / reverted verdict for that request (re-judge it).", "blueprint.json"))
+    return findings
+
+
 def check_contract(workspace: Path) -> list[dict[str, Any]]:
     """Contract testing (PIPELINE_REDESIGN.md section 3.6). A spec whose
     business rules carry a class is a contract-2 spec: the blueprint must say
@@ -1179,7 +1210,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c12(ws, template)
                 + check_c13(ws, template)
             )
-        checks += check_tools_unmodified()
+        checks += check_tools_unmodified() + check_spec_relaxations(ws)
         report_path = ws / "output" / "consistency_report.json"
         report = None
         if report_path.exists():

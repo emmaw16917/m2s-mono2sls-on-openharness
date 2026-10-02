@@ -181,6 +181,15 @@ blueprint 里的每个判断都要能追溯到依据。用 `write_file` 写 `sto
    - `decision` 二选一：作废这一臂，验证线不再为它出题；或者给出允许的结果集合，验证线用 `alternatives` 出题。
 4. 没有 `class` 字段的规格（旧应用）不需要做这些，也不要写 `verification_contract`。
 
+## 裁定 S5 的 spec 放宽申请（CONTRACT_TESTING_PLAN.md §7）
+
+spawn prompt 写明"裁定 perf 申请"时，主 Agent 会给你若干条申请。每条包括：要放宽的规格条目、为什么认为它是实现轨迹、放宽后允许的外部结果、测出来的收益。不会给你用例或代码 diff，你也不要去找。
+
+1. 逐条对照 `analysis_report.json` 里的出处判断：被规定的确实只是单体的内部步骤吗？放宽后，写入、消息、权限判定、失败粒度这些契约一条都没有变吗？
+2. **接受**：写一条 SI，格式同"契约测试"一节的 `implementation-trace` SI，另外加两个字段：`"origin": "perf-request REQ-n"`、`"ruling": "accepted"`。`targets` 逐字列出被放宽的条目；`decision` 写具体，是作废这一臂，还是允许哪几种结果。
+3. **驳回**：同样写一条 SI，带 `"origin": "perf-request REQ-n"`、`"ruling": "rejected"`，`rationale` 写明这条为什么是契约。驳回的 SI 不要写 `class: implementation-trace`。
+4. 照常跑 `run_gate(phase="blueprint")`，工作报告的 `issues` 里逐条列出你的裁定。
+
 ## 输出契约：逐字段调用 merge_blueprint_key 构建 blueprint.json
 
 `storage/blueprint.json` 只能有这 10 个顶层 key，`merge_blueprint_key` 会拒绝其他任何 key 名——不要发明新字段：

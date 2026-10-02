@@ -570,7 +570,11 @@ def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", late
 # Ledger (§8.3)
 # ---------------------------------------------------------------------------
 
-OUTCOMES = ("kept", "kept_inconclusive", "reverted", "pending_human", "blocked_by_test", "blocked_by_coverage")
+OUTCOMES = ("kept", "kept_inconclusive", "reverted", "pending_human", "blocked_by_test", "blocked_by_coverage",
+            # S5 -> S1 spec relaxation (CONTRACT_TESTING_PLAN.md section 7): waiting
+            # for the architect's ruling / the architect rejected it.
+            "pending_spec", "spec_rejected")
+SPEC_COUNTS = ("requested", "accepted", "rejected", "pending", "kept")
 # Per rule, besides the final outcomes: changes kept only after the one fix
 # attempt (§3.6), how many fix attempts were made, and how many changes went
 # through the verification line's test review before their final verdict.
@@ -608,10 +612,18 @@ def update_ledger(workspace: str) -> dict[str, Any]:
     blank = {**{o: 0 for o in OUTCOMES}, **{k: 0 for k in COUNTERS}}
     per_rule: dict[str, dict[str, int]] = {r: {"hits": int((v or {}).get("hits", 0)), **blank} for r, v in scan.items()}
     candidates = []
+    spec = {k: 0 for k in SPEC_COUNTS}
     for c in report.get("changes") or []:
         src = str(c.get("source", ""))
         verdict = c.get("verdict")
         verdict = "reverted" if verdict == "revert" else verdict
+        sr = c.get("spec_relaxation")
+        if isinstance(sr, dict):
+            # one per request: the re-judged change carries the same block
+            spec["requested"] += 1
+            ruling = sr.get("ruling", "pending")
+            spec[{"accepted": "accepted", "rejected": "rejected"}.get(ruling, "pending")] += 1
+            spec["kept"] += 1 if ruling == "accepted" and verdict in ("kept", "kept_inconclusive") else 0
         if src.startswith("rule:"):
             r = src.split(":", 1)[1]
             per_rule.setdefault(r, {"hits": 0, **blank})
@@ -628,7 +640,7 @@ def update_ledger(workspace: str) -> dict[str, Any]:
     key = str(ws.resolve())
     ledger["runs"] = [r for r in ledger["runs"] if r.get("workspace") != key]
     ledger["runs"].append({"app": app, "workspace": key, "recorded_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
-                           "confidence": report.get("confidence"), "rules": per_rule})
+                           "confidence": report.get("confidence"), "rules": per_rule, "spec_relaxations": spec})
     ledger["candidate_rules"] = [c for c in ledger.get("candidate_rules", []) if c.get("app") != app] + candidates
     totals: dict[str, dict[str, int]] = {}
     for run in ledger["runs"]:
@@ -638,6 +650,7 @@ def update_ledger(workspace: str) -> dict[str, Any]:
                 t[k] += v.get(k, 0)
             t["apps"] += 1
     ledger["totals"] = totals
+    ledger["totals_spec_relaxations"] = {k: sum((run.get("spec_relaxations") or {}).get(k, 0) for run in ledger["runs"]) for k in SPEC_COUNTS}
     LEDGER.parent.mkdir(parents=True, exist_ok=True)
     LEDGER.write_text(json.dumps(ledger, indent=2, ensure_ascii=False), encoding="utf-8")
-    return {"status": "OK", "app": app, "rules": per_rule, "candidates": len(candidates), "ledger": str(LEDGER)}
+    return {"status": "OK", "app": app, "rules": per_rule, "spec_relaxations": spec, "candidates": len(candidates), "ledger": str(LEDGER)}
