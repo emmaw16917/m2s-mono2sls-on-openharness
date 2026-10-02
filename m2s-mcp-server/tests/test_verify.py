@@ -489,3 +489,77 @@ def test_coverage_counts_only_project_source(ws, tmp_path):
     assert all(not u["file"].startswith(("stripe", "urllib3")) for u in r["uncovered"])
     # without the source map the old behaviour stays (everything but node_modules)
     assert len(verify._summarize_coverage(final, Path("GetBook"))["files"]) == 5
+
+
+# -- contract testing (contract 2, PIPELINE_REDESIGN.md section 3.6) --------
+
+def _contract_ws(ws, contract=2, rulings=()):
+    meta = {"spec_resolutions": [{"issue_id": i, "decision": "d", "class": "implementation-trace"} for i in rulings]}
+    if contract:
+        meta["verification_contract"] = contract
+    (ws / "storage" / "blueprint.json").write_text(json.dumps(dict(BLUEPRINT, metadata=meta)), encoding="utf-8")
+    return verify.Model(ws)
+
+
+def test_contract2_sdk_calls_only_side_effects(ws):
+    m = _contract_ws(ws)
+    ok = _case(expect={"status": 200, "sdk_calls": {"includes": [{"op": "PutItem", "table": "Books", "count": 1}],
+                                                    "excludes": [{"op": "GetItem", "table": "Books"}]},
+                       "trace": {"reads": "GetItem x2"}})
+    assert verify.check_case(m, ok, with_template=True) == []
+    text = " | ".join(verify.check_case(m, _case(expect={"status": 200, "sdk_calls": {
+        "includes": [{"op": "GetItem", "table": "Books"}, {"table": "Books"}], "total": 3}}), with_template=True))
+    assert "total is not allowed" in text and "got GetItem" in text and "any op on Books" in text
+    # contract 1 (no switch) keeps the original rules
+    m1 = _contract_ws(ws, contract=None)
+    assert verify.check_case(m1, _case(expect={"status": 200, "sdk_calls": {"includes": [{"op": "GetItem"}], "total": 1}}),
+                             with_template=True) == []
+
+
+def test_contract2_positional_faults_need_an_item(ws):
+    m = _contract_ws(ws)
+    assert verify.check_case(m, _case(faults=[{"match": {"op": "GetItem", "table": "Books"}, "nth": 2, "kind": "error"}]),
+                             with_template=True)
+    for rule in ({"match": {"op": "GetItem", "table": "Books"}, "nth": "all", "kind": "error"},
+                 {"match": {"op": "GetItem", "item": {"id": "b1"}}, "nth": 2, "kind": "error"}):
+        assert verify.check_case(m, _case(faults=[rule]), with_template=True) == []
+    m1 = _contract_ws(ws, contract=None)
+    assert verify.check_case(m1, _case(faults=[{"match": {"op": "GetItem"}, "nth": 2, "kind": "error"}]), with_template=True) == []
+
+
+def test_alternatives(ws):
+    m = _contract_ws(ws, contract=None, rulings=["SI-1"])
+    alt = {"alternatives": [{"status": 400, "body": {"subset": {"type": "ValueError"}}}, {"status": 200}]}
+    case = _case(expect=alt, spec_refs=["blueprint:metadata.spec_resolutions[SI-1]"])
+    assert verify.check_case(m, case, with_template=True) == []
+    assert "only allowed in a case whose spec_refs cite" in " | ".join(verify.check_case(m, _case(expect=alt), with_template=True))
+    assert "at least two" in " | ".join(verify.check_case(m, _case(expect={"alternatives": [{"status": 200}]},
+                                                                   spec_refs=case["spec_refs"]), with_template=True))
+    assert verify.judge(m, case, {"result": {"statusCode": 200}}) == []
+    assert verify.judge(m, case, {"result": {"statusCode": 400, "body": json.dumps({"type": "ValueError"})}}) == []
+    out = verify.judge(m, case, {"result": {"statusCode": 500}})
+    assert len(out) == 1 and out[0].startswith("no alternative matched") and "[0]" in out[0] and "[1]" in out[0]
+
+
+def test_not_applicable_needs_an_implementation_trace_ruling(ws):
+    m = _contract_ws(ws, contract=None, rulings=["SI-1"])
+    fault = [{"match": {"op": "GetItem", "item": {"id": "b1"}}, "nth": 2, "kind": "error"}]
+    cited = _case(faults=fault, expect={"status": 400}, spec_refs=["blueprint:metadata.spec_resolutions[SI-1]"])
+    unfired = {"result": {"statusCode": 200}, "rules_fired": [0]}
+    assert "SI-1" in verify.not_applicable(m, cited, unfired)
+    assert verify.not_applicable(m, cited, {"result": {"statusCode": 200}, "rules_fired": [1]}) is None
+    assert verify.not_applicable(m, _case(faults=fault, expect={"status": 400}), unfired) is None
+    other = _contract_ws(ws, contract=None, rulings=[])
+    bp = json.loads((ws / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    bp["metadata"]["spec_resolutions"] = [{"issue_id": "SI-1", "decision": "d"}]  # a ruling, but not implementation-trace
+    (ws / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    assert verify.not_applicable(verify.Model(ws), cited, unfired) is None
+    assert other.trace_rulings == set()
+
+
+def test_fixtures_accept_time_relative_placeholders(ws, monkeypatch):
+    m = verify.Model(ws)
+    monkeypatch.setattr(verify.time, "time", lambda: 1_790_534_500.0)
+    case = _case(fixtures={"Books": [{"id": "b-{now_ms // 300000}", "ts": "{now_ms // 300000 * 300000}", "note": "{not an expr}"}]})
+    item = verify._prepare_runs(m, [case])[0]["fixtures"]["BooksTable"][0]
+    assert item == {"id": "b-5968448", "ts": 1790534400000, "note": "{not an expr}"}

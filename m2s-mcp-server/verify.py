@@ -46,6 +46,10 @@ REGION, ACCOUNT, STACK = "us-east-1", "000000000000", "m2sv"
 
 CASE_KINDS = ("happy", "error", "boundary", "whitebox")
 FAULT_KINDS = ("throttle", "error", "validation", "conditional", "network", "tx_conflict")
+# Contract testing (contract 2, PIPELINE_REDESIGN.md section 3.6): what a case
+# may assert about SDK calls -- side effects only, never how often or in what
+# order the implementation reads.
+WRITE_OPS = ("PutItem", "UpdateItem", "DeleteItem", "BatchWriteItem", "TransactWriteItems", "SendMessage", "SendMessageBatch")
 LOCAL_DISCLAIMER = ("运行时检查在本机 Node 中完成，未在 Lambda 运行时中验证"
                     "（依赖来自 sam build 产物，但 Windows/Node 小版本与 Lambda 不同）")
 LOCAL_DISCLAIMER_PY = ("运行时检查在本机 Python（{version}）中完成，未在 Lambda 运行时中验证"
@@ -89,6 +93,12 @@ class Model:
         self.bp_functions = {f.get("name"): f for f in self.blueprint.get("lambda_functions", []) or [] if isinstance(f, dict)}
         self.bp_tables = [t.get("logical_name") or t.get("name") for t in self.blueprint.get("dynamodb_tables", []) or [] if isinstance(t, dict)]
         self.bp_queues = [q.get("logical_name") or q.get("name") for q in self.blueprint.get("sqs_queues", []) or [] if isinstance(q, dict)]
+        meta = self.blueprint.get("metadata", {}) or {}
+        meta = meta if isinstance(meta, dict) else {}
+        # 1: original rules; 2: contract testing (PIPELINE_REDESIGN.md section 3.6).
+        self.contract = meta.get("verification_contract", 1)
+        self.trace_rulings = {r.get("issue_id") for r in meta.get("spec_resolutions") or []
+                              if isinstance(r, dict) and r.get("class") == "implementation-trace"}
         self.template: dict[str, Any] = {}
         self.tables: dict[str, dict[str, Any]] = {}
         self.queues: set[str] = set()
@@ -363,7 +373,16 @@ def check_case(model: Model, case: dict[str, Any], with_template: bool) -> list[
     if "faults" in case:
         errs += _check_rules(model, where, case["faults"], with_template)
     errs += _check_expect(model, where, case.get("expect"), trigger, with_template)
+    if isinstance(case.get("expect"), dict) and "alternatives" in case["expect"] and not _si_refs(case):
+        errs.append(f"{where}: expect.alternatives is only allowed in a case whose spec_refs cite a "
+                    "blueprint:metadata.spec_resolutions[SI-x] ruling that allows more than one outcome")
     return errs
+
+
+def _si_refs(case: dict[str, Any]) -> list[str]:
+    """Issue ids of the spec_resolutions a case cites."""
+    return [m.group(1) for r in case.get("spec_refs") or []
+            if (m := re.match(r"^blueprint:metadata\.spec_resolutions\[([^\]]+)\]", str(r)))]
 
 
 def _name_err(model: Model, where: str, ctx: str, name: str, what: str, with_template: bool) -> list[str]:
@@ -383,7 +402,21 @@ def _check_expect(model: Model, where: str, exp: Any, trigger: str | None, with_
     if not isinstance(exp, dict):
         return [f"{where}: expect must be an object"]
     errs = []
-    allowed = {"status", "body", "error", "batch_item_failures", "tables_after", "sdk_calls", "messages", "headers"}
+    if "alternatives" in exp:
+        # Any one complete expectation passes (an SI ruling allows several
+        # outcomes, e.g. for a failure only an implementation step can cause).
+        alts = exp["alternatives"]
+        if set(exp) - {"alternatives", "trace"}:
+            errs.append(f"{where}: expect with alternatives may only have alternatives / trace at the top level")
+        if not isinstance(alts, list) or len(alts) < 2:
+            return errs + [f"{where}: expect.alternatives must be a list of at least two expectations"]
+        for i, a in enumerate(alts):
+            if isinstance(a, dict) and "alternatives" in a:
+                errs.append(f"{where}: expect.alternatives[{i}] cannot nest alternatives")
+            else:
+                errs += _check_expect(model, f"{where}: alternatives[{i}]", a, trigger, with_template)
+        return errs
+    allowed = {"status", "body", "error", "batch_item_failures", "tables_after", "sdk_calls", "messages", "headers", "trace"}
     if set(exp) - allowed:
         errs.append(f"{where}: expect has unknown keys {sorted(set(exp) - allowed)} (allowed: {sorted(allowed)})")
     if not ({"status", "error", "batch_item_failures"} & set(exp)):
@@ -427,6 +460,17 @@ def _check_expect(model: Model, where: str, exp: Any, trigger: str | None, with_
                     errs.append(f"{where}: expect.sdk_calls items need 'op' and/or 'table' (plus optional 'count')")
                 elif c.get("table"):
                     errs += _name_err(model, where, "expect.sdk_calls", c["table"], "table", with_template)
+            if model.contract >= 2:
+                # Reads are how the implementation works, not what it does:
+                # assert the side effects; record anything else in expect.trace.
+                if "total" in calls:
+                    errs.append(f"{where}: expect.sdk_calls.total is not allowed under verification_contract 2 "
+                                "(a call count is implementation trace; put it in expect.trace)")
+                for c in calls.get("includes") or []:
+                    if isinstance(c, dict) and c.get("op") not in WRITE_OPS:
+                        errs.append(f"{where}: expect.sdk_calls.includes may only name write / message operations "
+                                    f"under verification_contract 2, got {c.get('op') or 'any op on ' + str(c.get('table'))} "
+                                    "(assert the effect in tables_after / messages, or record it in expect.trace)")
     for q, spec in (exp.get("messages") or {}).items():
         errs += _name_err(model, where, "expect.messages", q, "queue", with_template)
         if not isinstance(spec, dict) or set(spec) - {"count", "contains"}:
@@ -468,6 +512,9 @@ def _check_rules(model: Model, where: str, rules: Any, with_template: bool) -> l
         if not (nth == "all" or (isinstance(nth, int) and nth >= 1) or (isinstance(nth, list) and all(isinstance(x, int) for x in nth))):
             errs.append(f"{where}: rules[{i}].nth must be 'all', a positive integer or a list of them")
         m = r.get("match") or {}
+        if model.contract >= 2 and nth != "all" and isinstance(m, dict) and "item" not in m:
+            errs.append(f"{where}: rules[{i}] selects matching call(s) {nth} by position; under verification_contract 2 a rule "
+                        "with nth other than 'all' needs match.item (nth then counts operations on that item)")
         if not isinstance(m, dict) or set(m) - {"op", "table", "queue", "item"}:
             errs.append(f"{where}: rules[{i}].match may only have op / table / queue / item")
         elif "item" in m and (not isinstance(m["item"], dict) or not m["item"]):
@@ -736,12 +783,22 @@ def _run_controller(model: Model, build_dir: Path, runs: list[dict[str, Any]], c
     return raw
 
 
+def _fill_fixture(items: Any, now_ms: int) -> Any:
+    """Time-relative fixture data: "{now_ms // 300000 + 1}" and the like
+    (integer expressions over now_ms / now_s, the syntax of perf benchmark
+    templates), so cases that seed data around the current time -- time
+    buckets, TTLs -- stay valid whenever they run. Other braces stay as they are."""
+    import perf  # perf imports verify; a top-level import would be circular
+    return perf._fill(items, 0, now_ms)
+
+
 def _prepare_runs(model: Model, cases: list[dict[str, Any]], faults_for: dict[str, list[dict]] | None = None,
                   pinned: dict[str, list[dict]] | None = None) -> list[dict[str, Any]]:
     runs = []
+    now_ms = int(time.time() * 1000)
     for c in cases:
         event, gw = build_event(model, c)
-        fixtures = {model.table_id(t): items for t, items in (c.get("fixtures") or {}).items()}
+        fixtures = {model.table_id(t): _fill_fixture(items, now_ms) for t, items in (c.get("fixtures") or {}).items()}
         case_faults = [_resolve_rule(model, r) for r in c.get("faults") or []]
         run = {"id": c["id"], "run_key": c["id"], "function": c["function"], "event": event, "gateway_response": gw, "fixtures": fixtures,
                "faults": case_faults, "case_faults": case_faults}
@@ -839,6 +896,11 @@ def judge(model: Model, case: dict[str, Any], raw: dict[str, Any]) -> list[str]:
     exp = case.get("expect") or {}
     if raw.get("infra_error"):
         return [f"infra error (not a verdict on the code): {raw['infra_error'][:500]}"]
+    if "alternatives" in exp:
+        outs = [judge(model, {**case, "expect": alt}, raw) for alt in exp["alternatives"]]
+        if any(not o for o in outs):
+            return []
+        return ["no alternative matched: " + " | ".join(f"[{i}] " + "; ".join(o) for i, o in enumerate(outs))]
     mism: list[str] = []
     result, error = raw.get("result"), raw.get("error")
     if "error" in exp:
@@ -947,6 +1009,21 @@ def judge(model: Model, case: dict[str, Any], raw: dict[str, Any]) -> list[str]:
             if not any(_subset(it, b) for b in bodies):
                 mism.append(f"messages {alias}: expected a message matching {json.dumps(it)[:200]}; got {json.dumps(bodies)[:300]}")
     return mism
+
+
+def not_applicable(model: Model, case: dict[str, Any], raw: dict[str, Any]) -> str | None:
+    """A case whose fault rules never fired, because the operation they
+    target no longer exists, does not judge the code -- but only when the
+    case cites a spec ruling that classed that step as implementation trace
+    (otherwise deleting the step would be a way around the test)."""
+    fired = raw.get("rules_fired")
+    if not case.get("faults") or fired is None or any(fired) or raw.get("infra_error"):
+        return None
+    rulings = sorted(set(_si_refs(case)) & model.trace_rulings)
+    if not rulings:
+        return None
+    return (f"none of its fault rules fired (the targeted operation does not occur) and it cites "
+            f"implementation-trace ruling(s) {rulings}")
 
 
 def _triage_hint(raw: dict[str, Any]) -> str | None:
@@ -1096,10 +1173,15 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
     for c in selected:
         r = by_key.get(c["id"], {"infra_error": "case was not run"})
         mism = judge(model, c, r)
+        na = not_applicable(model, c, r) if mism else None
+        if na:
+            mism = []
         entry = {"id": c["id"], "function": c["function"], "kind": c.get("kind"), "passed": not mism, "mismatches": mism,
                  "status": (r.get("result") or {}).get("statusCode") if isinstance(r.get("result"), dict) else None,
                  "error": r.get("error"), "gateway": bool(r.get("gateway")),
                  "sdk_calls": [f"{x.get('op')}:{x.get('table') or x.get('queue') or ''}{'!' + x['fault'] if x.get('fault') else '!conflict' if x.get('conflict') else ''}" for x in r.get("calls") or []]}
+        if na:
+            entry["not_applicable"] = na
         if mism:
             entry["triage_hint"] = _triage_hint(r)
             fres = raw["functions"].get(c["function"], {})
@@ -1110,6 +1192,7 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
     summary = {"status": "PASS" if not failed else "FAIL", "mode": mode, "backend": raw.get("backend"), "total": len(results),
                "passed": len(results) - len(failed), "failed": len(failed), "failures": failed,
                "cases_with_conflicts": [r["id"] for r in results if any(x.endswith("!conflict") for x in r["sdk_calls"])],
+               "not_applicable": [{"id": r["id"], "reason": r["not_applicable"]} for r in results if r.get("not_applicable")],
                "disclaimer": "；".join(disclaimers), "run_dir": raw["out_dir"], "code_state": _code_state(ws, ref)}
     out = _vdir(ws) / "results"
     out.mkdir(parents=True, exist_ok=True)

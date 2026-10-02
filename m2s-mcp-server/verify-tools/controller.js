@@ -94,7 +94,14 @@ function identityOf(call) {
 function touchesItem(call, want) {
   const items = [call.key, call.item];
   for (const t of call.transact || []) items.push(t.key, t.item);
-  return items.some((it) => it && Object.entries(want).every(([k, v]) => stable(it[k]) === stable(v)));
+  if (items.some((it) => it && Object.entries(want).every(([k, v]) => stable(it[k]) === stable(v)))) return true;
+  // A Query has no Key: it targets the item collection whose key-condition
+  // values include every wanted value (attribute names are placeholders there).
+  if (call.key_condition && call.values) {
+    const vals = Object.values(call.values).map(stable);
+    return Object.values(want).every((v) => vals.includes(stable(v)));
+  }
+  return false;
 }
 
 function matchFault(call) {
@@ -112,6 +119,7 @@ function matchFault(call) {
     r.seen += 1;
     const nth = r.rule.nth === undefined ? 'all' : r.rule.nth;
     const hit = nth === 'all' || (Array.isArray(nth) ? nth.includes(r.seen) : nth === r.seen);
+    if (hit) r.fired += 1;
     if (hit && !kind) kind = r.rule.kind;
   }
   return kind;
@@ -582,7 +590,7 @@ async function convertCoverage(fn, covDir, reportDir) {
       try {
         await resetTables(be, c.fixtures);
         ctx = { calls: [], messages: [], seen: {}, inflight: 0, last: Date.now(), returned: false,
-                rules: (c.faults || []).map((rule) => ({ rule, seen: 0 })) };
+                rules: (c.faults || []).map((rule) => ({ rule, seen: 0, fired: 0 })) };
         if (c.gateway_response) {
           rec.gateway = true;
           rec.result = c.gateway_response;
@@ -602,6 +610,7 @@ async function convertCoverage(fn, covDir, reportDir) {
         }
         rec.calls = ctx.calls;
         rec.messages = ctx.messages;
+        rec.rules_fired = ctx.rules.map((r) => r.fired);
         ctx = null;
         rec.tables_after = await dumpTables(be);
       } catch (e) {
