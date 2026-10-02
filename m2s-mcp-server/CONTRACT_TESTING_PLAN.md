@@ -96,7 +96,7 @@
 | 2 派发 | 主 Agent | S5 结束后收集所有 `pending_spec` 请求，派给 architect 的时候只传 spec 语言：条目、理由、允许的结果、收益数据。不传代码 diff，也不传用例（沿用 K10） | — |
 | 3 裁定 | architect | 逐条决定接受或驳回。接受的，写一条 SI：`class: implementation-trace`，`origin: perf-request REQ-x`，附上被作废的那一臂和允许的结果集合；驳回的，写明理由 | `blueprint.json` 的 `metadata.spec_resolutions` |
 | 4 测试跟进 | verifier（V1 回炉） | 只改引用了被裁定条目的用例：按位置钉的故障改成按条目钉；被作废的那一臂撤下，或改写成 `alternatives`；新用例的 `spec_refs` 指向新的 SI；然后跑 `run_validate(dry_run)` | `verification/` 目录下的改动 |
-| 5 重建基线 | 主 Agent | v0 代码不变，用新用例在 v0 上跑全量 `run_validate`，加上 `run_equivalence(record)`；通过后执行 `tag -f v0`。没通过就进入失败分诊（§3.4 / K15–K18），不打 tag | 新的 v0 tag，`fault_baseline_v0.json` |
+| 5 重新验收 | 主 Agent | 用新用例在 v0 的代码上跑全量 `run_validate(ref="v0")`，通过后提交测试资产。**v0 的 tag 不动**（2026-10-02 airline 首例中曾执行 `tag -f v0`，把 S5 已保留的改动带进了 v0，已改正）。没通过就进入失败分诊（§3.4 / K15–K18） | 测试资产的提交 |
 | 6 重新判决 | perf-optimizer | 只处理被接受的请求，按普通请求的完整流程判决（等价性、验证、覆盖率、RIE），结果是 kept 或 reverted | 正常的 commit 和 verdict 文件 |
 | 7 记账 | 主 Agent | 最终报告里单列"本次 spec 放宽"：每条 SI、对应请求、判决结果；ledger 里记录申请数、接受数、保留数 | 最终报告，`ledger.json` |
 
