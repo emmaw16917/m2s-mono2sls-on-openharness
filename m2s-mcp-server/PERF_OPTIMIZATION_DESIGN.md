@@ -288,6 +288,8 @@ handler 代码
 | 数据模型改动（GSI、物化视图） | ❌ → advisory | architect 级别的改动 |
 | 异步机制改动（SQS 换 Streams） | ❌ → advisory | architect 级别的改动 |
 | 配置类改动（MemorySize、架构、SQS 参数） | ❌ | v1 保持原样（§5） |
+| 去掉 `implementation-trace` 条目对应的冗余读（contract 2 的应用） | ✅（2026-10-02 加） | 条目在 blueprint 里已标为 `implementation-trace`；仍要过 H1 (a)(b)(c)、覆盖率和判决。H1 (a) 本来就把读操作当集合比较 |
+| 冗余读被 spec 或测试规定成必经步骤（contract 1 的应用，或漏标的条目） | ❌ → 申请 | 写 `spec_relaxation` 申请，请求记为 `pending_spec`，本轮不改代码；流程见 `CONTRACT_TESTING_PLAN.md` §7 |
 
 不允许的改动如果被诊断出来，写进 `perf_report.json` 的 `advisories`，附上诊断数据。它们不参与判决。
 
@@ -401,9 +403,22 @@ v1 由 perf-optimizer **自己改代码**。"验"和"判"调用验证线的 MCP 
   "expected": {"depth": "30→1", "calls": "=", "warm_cpu": "≈"},
   "constraints": ["H1a", "H1b", "failure-granularity: per-message"],
   "semantic_class": "v1-allowed | semantic",
-  "owner_v2": "code-developer | sam-engineer | architect"
+  "owner_v2": "code-developer | sam-engineer | architect",
+  "spec_relaxation": {
+    "targets": ["<METHOD> <path>#responses[i]", "<METHOD> <path>#business_rules[j]"],
+    "why_trace": "为什么这是单体的实现轨迹，而不是业务需求",
+    "allowed_outcomes": "放宽后允许的外部结果（状态码 / 表状态 / 消息）",
+    "evidence": {"calls": "a -> b", "depth": "a -> b", "measured_by": "run_proxy_metrics on a throw-away edit"},
+    "blocking_tests": ["<case id>"]
+  }
 }
 ```
+
+`spec_relaxation` 是可选字段（2026-10-02 加），只在申请放宽 spec 时出现，带它的请求 `verdict` 记为 `pending_spec`。限制：
+- 只能针对 `implementation-trace` 性质的条目；涉及写入、消息内容、权限判定、单条消息失败粒度的条目不能申请，写进 advisories；
+- 必须先在临时改动上量出收益（量完撤回，不提交）；
+- 每轮 S5 最多一个申请批次；
+- `blocking_tests` 只给主 Agent 看，派给 architect 时要去掉（K10）。
 
 v1 里，perf-optimizer 生成请求后自己执行（`semantic_class` 必须是 `v1-allowed`）。到 v2 放开语义改动时，同一份请求可以由主 Agent 派发给 `owner_v2` 指定的 agent，由它带着自己的知识库和 gate 去修改。
 
@@ -480,7 +495,7 @@ L3 真实 A/B 的操作流程见 `PERF_OPTIMIZATION.md` §6.2。
 
 ## 12. v2 路标
 
-- 放开语义改动：修改请求派发给负责的 agent；触及语义的改动标记"需重跑完整验收"，交付前重跑验证线阶段 A；
+- 放开语义改动：修改请求派发给负责的 agent；触及语义的改动标记"需重跑完整验收"，交付前重跑验证线阶段 A；**其中"S5 申请放宽 spec → architect 裁定"这一条已落地（2026-10-02，`CONTRACT_TESTING_PLAN.md` §7）**；
 - 和单体做差分测试（本地运行单体 + 本地 DynamoDB）：判断故障行为是否符合单体；
 - MemorySize、Architectures 的档位选择：只能靠 L3 的 Power Tuning；
 - REST API → HTTP API：等 E3 分解出 E2E 延迟的构成后再评估；

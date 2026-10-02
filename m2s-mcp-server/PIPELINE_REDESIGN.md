@@ -157,7 +157,7 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 
 **测试设计**（第 1 次派发，只看规格）：
 - **输入**：只有 `blueprint.json` 和 `analysis_report.json`，不看实现代码。
-- **产出**：`verification/test_plan.json`，也就是黑盒测试计划。它按规格出题：逐个端点列出正常路径、异常和边界用例，每个用例都写明**预期结果**（状态码、关键字段、预期的 SDK 调用序列），并注明对应的规格出处。
+- **产出**：`verification/test_plan.json`，也就是黑盒测试计划。它按规格出题：逐个端点列出正常路径、异常和边界用例，每个用例都写明**预期结果**（状态码、关键字段、写操作和消息、最终表状态），并注明对应的规格出处。contract 2 起只断言外部契约，不断言读次数和调用顺序，见 §3.6。
 - **兼任 architect 的交叉检查**：写不出预期结果的，说明规格不自洽，或者漏了端点。把问题写进报告，退回 architect。
   - **不分 blocking 和 non_blocking，一律退回 architect 裁定**（K9）。
   - 裁定写进 `blueprint.json` 的 `metadata.spec_resolutions`，按 issue id 一一对应。V1 回炉后按裁定补用例，用例的出处写 `blueprint:metadata.spec_resolutions[SI-x]`。
@@ -166,7 +166,7 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 
 **测试实现**（第 1 次派发内完成，或者在第 2 次派发开始时完成）：
 - 测试事件：`verification/events/<function>/<case>.json`，每个事件都附带预期结果；
-- 故障注入配置：`verification/faults/`。场景包括：第 k 次调用失败、全部失败、限流、超时、部分失败并返回 `batchItemFailures`。
+- 故障注入配置：`verification/faults/`。场景包括：某个条目上的操作失败、全部失败、限流、超时、部分失败并返回 `batchItemFailures`。contract 2 起，只打一次的故障必须用 `match.item` 钉在条目上，不能按"第 k 次调用"钉（§3.6）。
 
 **执行和判定**（第 2 次派发）：
 1. **静态复核：实现和规格是否一致**。端点、字段、状态码要和 `analysis_report.json` 对得上。
@@ -222,6 +222,24 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 **以后的提速选项**：有 Docker 时，语义检查也在本机 Node 里跑（更快，不用启停容器），RIE 只用于性能判决，外加一次打包冒烟检查。
 启用之前，要先做一次对照实验，确认本机 Node 和 RIE 在语义检查上的结果一致。
 
+### 3.6 契约测试（contract 2，2026-10-02）
+
+**起因**：S5 第一次试做 v2 请求时，两条去掉冗余读的改动（airline 的 V2-01、shopping-cart 的 V2-03）被卡住了。不是因为外部效果变了，而是 spec 和测试把单体的实现轨迹（"装饰器读一次、service 再读一次"、"故障落在第 3 次 Query"）当成了契约。详见 `CONTRACT_TESTING_PLAN.md`。
+
+**判断标准**：一条断言或故障规则，如果在"代码少读一次 / 换一种顺序 / 把两步合成一步，但外部效果完全一样"的情况下会失败，它就是实现轨迹，不允许出现在测试里。
+
+**开关**：`blueprint.json` 的 `metadata.verification_contract: 2`。没有这个字段的旧工作区按原规则校验。
+
+| 层 | 规则 |
+|---|---|
+| 规格 | `business_rules` 每条带 `class`：`contract` 或 `implementation-trace`；`responses` 里只由实现轨迹触发的那一臂标 `trace_arm: true`，由 architect 作废或给出允许的结果集合 |
+| 断言 | `expect.sdk_calls` 的 `includes` 只能写写操作和消息，不能用 `total`；`excludes` 可以写读操作（例如"403 时不读 Payment"属于权限契约）；轨迹信息写进 `expect.trace`，只记录、不判定 |
+| 故障 | `nth` 不是 `all` 时必须带 `match.item`，`nth` 的含义是"这个条目上的第 N 次操作" |
+| 多结果 | `expect.alternatives`：满足其中任意一组完整预期就算通过；只能在引用了 SI 裁定的用例里使用 |
+| 不适用 | 故障规则一次都没被触发，且用例引用了 `class: implementation-trace` 的裁定时，判 `not_applicable`；没有这样的裁定时仍判失败 |
+
+**分工不变**：测试只管外部契约；"和 v0 一样"由 H1 保证；v0 是否等于单体，由 S4 对照 `contract` 条目做静态复核，长远靠和单体做差分测试。
+
 ---
 
 ## 4. 编排
@@ -233,6 +251,7 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 - **验证线自己修改测试资产的次数单独计算**：分诊结果是测量工具或事件本身的问题时，由验证线自己修。每次运行阶段 A，最多自己修 **2 轮**。
   这不占用实现线的回炉次数；超过 2 轮还没解决，就把问题标为"未定"，交给人。
 - 超过次数上限就停止流水线，把完整的报告交给用户。
+- **S5 → S1 的 spec 放宽申请**（2026-10-02，`CONTRACT_TESTING_PLAN.md` §7）：S5 报出 `pending_spec` 时，按 S1 裁定 → V1 定向回炉 → 用新用例在 v0 代码上全量验收并重打 v0 → S5 只重判这些请求的顺序走一遍。每个应用每轮 S5 最多一个申请批次，被驳回的本轮不能再申请。这条路径不占用实现线的回炉次数。
 - **S5（优化）例外**：v0 已经验收通过，所以 S5 报 `STAGE_BLOCKED` 不会让流水线失败。它只表示"性能优化没有收敛"，如实写进报告，交付的仍是最后一个通过验证的版本。
 
 ### 4.2 文件契约（新增或变化的部分）
