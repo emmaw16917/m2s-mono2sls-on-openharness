@@ -187,12 +187,14 @@ async function startDdbLocal() {
   ddbContainer = name;
   const firstLine = execFileSync(DOCKER, ['port', name, '8000']).toString().trim().split(String.fromCharCode(10))[0].trim();
   const port = Number(firstLine.split(':').pop());
-  for (let i = 0; i < 120; i++) {
+  // 90s: the localstack image's JVM sometimes takes > 30s to bind under load
+  // (two R5 rollout runs on 2026-10-03 failed at 30s).
+  for (let i = 0; i < 360; i++) {
     const ok = await new Promise((r) => http.get({ host: '127.0.0.1', port, path: '/' }, (res) => { res.resume(); r(true); }).on('error', () => r(false)));
     if (ok) return { port, close: () => { try { execFileSync(DOCKER, ['rm', '-f', name], { stdio: 'ignore' }); } catch (e) { /* ignore */ } } };
     await sleep(250);
   }
-  throw new Error('DynamoDB Local did not start within 30s (' + spec.image + ')');
+  throw new Error('DynamoDB Local did not start within 90s (' + spec.image + ')');
 }
 
 async function startBackends() {
