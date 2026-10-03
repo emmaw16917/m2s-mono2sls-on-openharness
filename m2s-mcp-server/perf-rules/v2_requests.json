@@ -266,7 +266,7 @@
       "prerequisites": [
         "blueprint D-9 revised"
       ],
-      "status": "partly kept 2026-10-03 on airline-booking-c2 via spec relaxation REQ-2 -> SI-18/SI-19: customers-list-bookings and loyalty-get-summary Query the existing GSIs (rru 40->0.5 / 18.5->0.5, warm CPU 18.0->1.7 / 11.6->1.4 ms; 38fff8d, bc63657); flights-search not done (no GSI); first-page-only kept. Caveat: run_equivalence said DIFFERENT (op-name Scan->Query + op-pinned read faults) and the perf-optimizer kept anyway -- tool gap to fix."
+      "status": "kept on airline-booking-c2 (2026-10-03, SI-18/19) and airline-booking-e0 (2026-10-04, SI-9, RIE 74.1->16.0 ms, rru 49.5->1.0); flights-search not done (no GSI)"
     },
     {
       "id": "V2-08",
@@ -298,7 +298,8 @@
       "owner_v2": "architect",
       "prerequisites": [
         "blueprint revision"
-      ]
+      ],
+      "status": "bestsellers-list kept on bookstore-v2 2026-10-04 (SI-1, new GSI BestsellersBySalesIndex + gsiPk backfill; rru 9.5->0.5, RIE 24.2->14.5 ms). Open: SI-1 pins tie order bookId desc, which a GSI does not guarantee. books-list/search-books not GSI-able."
     },
     {
       "id": "V2-09",
@@ -330,7 +331,8 @@
       "owner_v2": "architect",
       "prerequisites": [
         "blueprint revision"
-      ]
+      ],
+      "status": "delivery-list kept on ecommerce-e0 2026-10-04 (SI-13, new sparse GSI on existing isNew; rru 61.5->1.0, RIE 63.6->16.5 ms). products-list/packaging-requests-list are full listings, not GSI-able."
     },
     {
       "id": "V2-10",
@@ -361,7 +363,8 @@
       "prerequisites": [
         "blueprint revision",
         "shim should bill scanned rows, not returned rows"
-      ]
+      ],
+      "status": "kept on shopping-cart-e0 2026-10-04 (SI-14 round 7, new GSI ProductDetailsBySk on sk; rru 38->0.5). Note: single hot partition for all products."
     },
     {
       "id": "V2-11",
