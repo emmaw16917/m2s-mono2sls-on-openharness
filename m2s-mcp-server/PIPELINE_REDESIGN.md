@@ -237,6 +237,7 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | 故障 | `nth` 不是 `all` 时必须带 `match.item`，`nth` 的含义是"这个条目上的第 N 次操作" |
 | 多结果 | `expect.alternatives`：满足其中任意一组完整预期就算通过；只能在引用了 SI 裁定的用例里使用 |
 | 不适用 | 故障规则一次都没被触发，且用例引用了 `class: implementation-trace` 的裁定时，判 `not_applicable`；没有这样的裁定时仍判失败 |
+| 裁定分类 | contract 2 下每条 SI 都带 `class`，取值固定为 `contract` / `implementation-trace` / `migration-change` / `spec-gap`（gate CT4；2026-10-03 定，取代 airline-booking-c2 里 architect 自拟的 7 种写法） |
 
 **分工不变**：测试只管外部契约；"和 v0 一样"由 H1 保证；v0 是否等于单体，由 S4 对照 `contract` 条目做静态复核，长远靠和单体做差分测试。
 

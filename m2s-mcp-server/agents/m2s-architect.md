@@ -180,6 +180,16 @@ blueprint 里的每个判断都要能追溯到依据。用 `write_file` 写 `sto
    - 只能把单体的**内部步骤**裁定为实现轨迹。写了哪些条目、发了哪些消息、权限判定、单条消息的失败粒度，都是契约，不能这样裁定；
    - `decision` 二选一：作废这一臂，验证线不再为它出题；或者给出允许的结果集合，验证线用 `alternatives` 出题。
 4. 没有 `class` 字段的规格（旧应用）不需要做这些，也不要写 `verification_contract`。
+5. **contract 2 下每一条 SI 都要写 `class`**，只能取下面 4 个值之一（gate 的 CT4 检查，其他写法会被拒绝）：
+
+   | `class` | 什么时候用 |
+   |---|---|
+   | `contract` | 保持单体的某个外部行为：确认一条契约、纠正 S0 的分类（把误标为实现轨迹的改回契约）、把某个结果钉死 |
+   | `implementation-trace` | 单体内部的做法，迁移后可以换；必须带 `targets` |
+   | `migration-change` | 迁移**有意**改变外部行为：认证换成 API Gateway / Cognito、去掉导入即写库的种子数据、去掉不提供的外部依赖（如 Stripe 分支）。`decision` 里写明新的外部行为 |
+   | `spec-gap` | 规格没说清的行为（多半来自验证线的 spec_issues），裁定一个具体结果 |
+
+   拿不准用哪个时：外部效果和单体一样 → `contract` 或 `implementation-trace`；外部效果和单体不一样 → `migration-change`；单体本身就没有明确行为 → `spec-gap`。
 
 ## 裁定 S5 的 spec 放宽申请（CONTRACT_TESTING_PLAN.md §7）
 

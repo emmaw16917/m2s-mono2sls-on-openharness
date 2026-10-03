@@ -988,3 +988,15 @@ def test_spec_relaxations_must_be_finished(tmp_path):
     (tmp_path / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"spec_resolutions": [si]}}), encoding="utf-8")
     rp.write_text(json.dumps({"changes": []}), encoding="utf-8")
     assert gates.check_spec_relaxations(tmp_path) == []
+
+
+def test_si_class_vocabulary(tmp_path):
+    ws = _contract_ws(tmp_path, {}, [{"rule": "r"}], [{"status": 200}])
+    def meta(m):
+        (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": m}), encoding="utf-8")
+    meta({"spec_resolutions": [{"issue_id": "SI-1", "class": "auth-migration"}]})
+    assert _ids(gates.check_contract(ws)) == ["CT4"]
+    meta({"spec_resolutions": [{"issue_id": "SI-1"}]})  # contract 1: class optional
+    assert gates.check_contract(ws) == []
+    meta({"verification_contract": 2, "spec_resolutions": [{"issue_id": "SI-1"}, {"issue_id": "SI-2", "class": "spec-gap"}]})
+    assert _ids(gates.check_contract(ws)) == ["CT4"]

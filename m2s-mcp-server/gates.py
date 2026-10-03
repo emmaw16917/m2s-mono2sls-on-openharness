@@ -138,6 +138,15 @@ def check_spec_relaxations(workspace: Path) -> list[dict[str, Any]]:
     return findings
 
 
+# What a spec_resolutions entry rules on (PIPELINE_REDESIGN.md section 3.6).
+SI_CLASSES = {
+    "contract": "keep an externally observable behaviour of the monolith (confirm, correct a classification, pin a result)",
+    "implementation-trace": "a monolith-internal step the migration may change",
+    "migration-change": "the migration deliberately changes external behaviour (auth platform, seed data, external dependency); states the new behaviour",
+    "spec-gap": "behaviour the spec left open; the ruling fixes a concrete result",
+}
+
+
 def check_contract(workspace: Path) -> list[dict[str, Any]]:
     """Contract testing (PIPELINE_REDESIGN.md section 3.6). A spec whose
     business rules carry a class is a contract-2 spec: the blueprint must say
@@ -162,7 +171,16 @@ def check_contract(workspace: Path) -> list[dict[str, Any]]:
         findings.append(_finding("CT1", "ERROR", "metadata.verification_contract must be 1 or 2.", "blueprint.json"))
     targets: set[str] = set()
     for r in meta.get("spec_resolutions") or []:
-        if not isinstance(r, dict) or r.get("class") != "implementation-trace":
+        if not isinstance(r, dict):
+            continue
+        cls = r.get("class")
+        if cls is not None and cls not in SI_CLASSES:
+            findings.append(_finding("CT4", "ERROR", f"spec_resolutions[{r.get('issue_id')}].class {cls!r} is not one of "
+                                     f"{sorted(SI_CLASSES)}.", "blueprint.json"))
+        elif cls is None and meta.get("verification_contract") == 2:
+            findings.append(_finding("CT4", "ERROR", f"spec_resolutions[{r.get('issue_id')}] has no 'class'; under "
+                                     f"verification_contract 2 every ruling needs one of {sorted(SI_CLASSES)}.", "blueprint.json"))
+        if cls != "implementation-trace":
             continue
         t = r.get("targets")
         if not (isinstance(t, list) and t and all(isinstance(x, str) for x in t)):
