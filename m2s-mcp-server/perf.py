@@ -534,6 +534,86 @@ def _judge(ws: Path, model: Model, builds: dict[str, Path], b: dict[str, Any], b
     return result
 
 
+CONFIG_ONLY_KEYS = ("Architectures",)
+
+
+def _without_config(t: dict[str, Any]) -> dict[str, Any]:
+    """The template with the tier-A configuration keys removed from
+    Globals.Function and from every function's Properties."""
+    t = json.loads(json.dumps(t))
+    for k in CONFIG_ONLY_KEYS:
+        ((t.get("Globals") or {}).get("Function") or {}).pop(k, None)
+        for res in (t.get("Resources") or {}).values():
+            if isinstance(res, dict) and res.get("Type") == "AWS::Serverless::Function":
+                (res.get("Properties") or {}).pop(k, None)
+    return t
+
+
+def run_config_verdict(workspace: str, baseline: str = "HEAD") -> dict[str, Any]:
+    """Tier-A verdict (PERF_OPTIMIZATION_DESIGN.md section 3.7) for a change
+    that only sets Architectures in output/template.yaml. No code changed and
+    the local RIE runs x86_64 either way, so validation, equivalence and RIE
+    rounds cannot see any difference and are not run. Checked instead: only
+    the template changed, and only in Architectures; the template gate;
+    sam build of the candidate; compiled modules in any function's build
+    (pending_human: the local x86_64 run cannot tell whether they exist for
+    arm64). Cost: the duration price per architecture (prices.json)."""
+    ws = Path(workspace)
+    changed = working_tree_changed(ws, baseline)
+    if changed != ["output/template.yaml"]:
+        return {"status": "NOT_CONFIG_ONLY", "verdict": "revert",
+                "reason": f"tier A covers a template-only change; changed: {changed} -- use the tier-B checks and run_rie_verdict"}
+    base_t = verify.gates.load_template(export_ref(ws, baseline) / "output" / "template.yaml")
+    cand_t = verify.gates.load_template(ws / "output" / "template.yaml")
+    if _without_config(base_t) != _without_config(cand_t):
+        return {"status": "NOT_CONFIG_ONLY", "verdict": "revert",
+                "reason": f"template differs outside {CONFIG_ONLY_KEYS}; judge it as a code/template change"}
+    gate = verify.gates.run_gate("template", str(ws))
+    if gate.get("status") != "PASS":
+        return {"status": "OK", "verdict": "revert", "reason": "gate(template) failed", "gate": gate}
+    try:
+        build = sam_build(ws)
+    except VerifyError as exc:
+        return {"status": "OK", "verdict": "revert", "reason": f"sam build failed: {str(exc)[:500]}"}
+    model = Model(ws)
+    base_model = Model(export_ref(ws, baseline))
+    p = _prices()
+    archs, native = {}, {}
+    for name, fn in model.functions.items():
+        b, c = base_model.functions.get(name, {}).get("architecture", "x86_64"), fn.get("architecture", "x86_64")
+        archs[name] = {"base": b, "cand": c}
+        # A module tagged for the target architecture (sam build fetched the
+        # right wheel, e.g. *-aarch64-linux-gnu.so) is fine; flag the ones
+        # tagged for another architecture and the untagged ones (.node, abi3).
+        tag = "aarch64" if c == "arm64" else "x86_64"
+        found = [f for f in native_binaries(build, fn["logical"]) if tag not in f]
+        if found:
+            native[name] = found
+    price = {a: p["lambda_gb_second_arm64"] if a == "arm64" else p["lambda_gb_second"] for a in ("x86_64", "arm64")}
+    moved = {k: v for k, v in archs.items() if v["base"] != v["cand"]}
+    ratio = {k: round(price[v["cand"]] / price[v["base"]], 3) for k, v in moved.items()}
+    worse = [k for k, r in ratio.items() if r > 1]
+    if native:
+        verdict, why = "pending_human", f"compiled modules in {sorted(native)}; confirm they exist for the new architecture"
+    elif worse:
+        verdict, why = "revert", f"duration price goes up for {worse}"
+    elif moved:
+        verdict, why = "kept", "template-only architecture change; gate and build pass; duration price lower, latency not measurable locally"
+    else:
+        verdict, why = "revert", "no function changes architecture"
+    result = {"status": "OK", "tier": "A", "verdict": verdict, "reason": why, "changed_files": changed,
+              "baseline": f"{baseline} ({_git(ws, 'rev-parse', '--short', baseline)})",
+              "architectures": moved, "duration_price_ratio": ratio, "native_binaries": native,
+              "dimensions": {"latency": "not_measured_locally", "init": "not_measured_locally", "cost": "better" if moved and not worse else "no_diff"},
+              "evidence_for_speed": "real-AWS A/B, PERF_OPTIMIZATION_DESIGN.md appendix A.4 (arm64 as fast or faster)"}
+    out = ws / "perf" / "verdicts"
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / f"config-{time.strftime('%Y%m%d-%H%M%S')}.json"
+    path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+    result["saved_to"] = str(path.relative_to(ws)).replace("\\", "/")
+    return result
+
+
 def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", latencies: list[int] | None = None,
                     guard_benchmarks: list[str] | None = None) -> dict[str, Any]:
     """Judge the working tree against <baseline> on one benchmark (§3.2).

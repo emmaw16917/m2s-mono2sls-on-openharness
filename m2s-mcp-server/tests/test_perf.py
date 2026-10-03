@@ -221,3 +221,15 @@ def test_native_binaries(tmp_path):
     (tmp_path / "Fn" / "pkg" / "_speedups.cpython-312-x86_64-linux-gnu.so").write_bytes(b"")
     assert perf.native_binaries(tmp_path, "Fn") == ["pkg/_speedups.cpython-312-x86_64-linux-gnu.so"]
     assert perf.native_binaries(tmp_path, "Missing") == []
+
+
+def test_without_config_ignores_only_architectures():
+    t = {"Globals": {"Function": {"Runtime": "python3.12", "Architectures": ["arm64"]}},
+         "Resources": {"F": {"Type": "AWS::Serverless::Function", "Properties": {"Handler": "h", "Architectures": ["arm64"]}},
+                       "T": {"Type": "AWS::DynamoDB::Table", "Properties": {"TableName": "t"}}}}
+    base = {"Globals": {"Function": {"Runtime": "python3.12"}},
+            "Resources": {"F": {"Type": "AWS::Serverless::Function", "Properties": {"Handler": "h"}},
+                          "T": {"Type": "AWS::DynamoDB::Table", "Properties": {"TableName": "t"}}}}
+    assert perf._without_config(t) == perf._without_config(base)
+    t["Globals"]["Function"]["MemorySize"] = 1024
+    assert perf._without_config(t) != perf._without_config(base)

@@ -31,301 +31,6 @@
       }
     },
     {
-      "app": "bookstore",
-      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\bookstore-v2",
-      "recorded_at": "2026-09-27T23:24:47",
-      "confidence": "normal",
-      "rules": {
-        "R1": {
-          "hits": 1,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R2": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R3": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R4": {
-          "hits": 1,
-          "kept": 1,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        }
-      }
-    },
-    {
-      "app": "coffee",
-      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\coffee-e0",
-      "recorded_at": "2026-09-28T19:35:07",
-      "confidence": "normal",
-      "rules": {
-        "R1": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R2": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R3": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R4": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        }
-      }
-    },
-    {
-      "app": "shopping-cart",
-      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\shopping-cart-e0",
-      "recorded_at": "2026-09-29T16:50:03",
-      "confidence": "normal",
-      "rules": {
-        "R1": {
-          "hits": 1,
-          "kept": 1,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R2": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R3": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R4": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        }
-      }
-    },
-    {
-      "app": "ecommerce",
-      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\ecommerce-e0",
-      "recorded_at": "2026-09-30T11:07:38",
-      "confidence": "normal",
-      "rules": {
-        "R1": {
-          "hits": 3,
-          "kept": 3,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R2": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R3": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R4": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        }
-      }
-    },
-    {
-      "app": "airline-booking",
-      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\airline-booking-e0",
-      "recorded_at": "2026-10-02T23:12:54",
-      "confidence": "normal",
-      "rules": {
-        "R1": {
-          "hits": 3,
-          "kept": 1,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "pending_spec": 0,
-          "spec_rejected": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R2": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "pending_spec": 0,
-          "spec_rejected": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R3": {
-          "hits": 0,
-          "kept": 0,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "pending_spec": 0,
-          "spec_rejected": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        },
-        "R4": {
-          "hits": 1,
-          "kept": 1,
-          "kept_inconclusive": 0,
-          "reverted": 0,
-          "pending_human": 0,
-          "blocked_by_test": 0,
-          "blocked_by_coverage": 0,
-          "pending_spec": 0,
-          "spec_rejected": 0,
-          "kept_after_fix": 0,
-          "fix_attempted": 0,
-          "reviewed": 0
-        }
-      },
-      "spec_relaxations": {
-        "requested": 1,
-        "accepted": 1,
-        "rejected": 0,
-        "pending": 0,
-        "kept": 1
-      }
-    },
-    {
       "app": "airline-booking",
       "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\airline-booking-c2",
       "recorded_at": "2026-10-03T16:44:22",
@@ -409,24 +114,441 @@
         "pending": 0,
         "kept": 2
       }
+    },
+    {
+      "app": "airline-booking",
+      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\airline-booking-e0",
+      "recorded_at": "2026-10-03T18:06:51",
+      "confidence": "normal",
+      "rules": {
+        "R1": {
+          "hits": 3,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R2": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R3": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R4": {
+          "hits": 1,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R5": {
+          "hits": 1,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        }
+      },
+      "spec_relaxations": {
+        "requested": 1,
+        "accepted": 1,
+        "rejected": 0,
+        "pending": 0,
+        "kept": 1
+      }
+    },
+    {
+      "app": "ecommerce",
+      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\ecommerce-e0",
+      "recorded_at": "2026-10-03T18:06:52",
+      "confidence": "normal",
+      "rules": {
+        "R1": {
+          "hits": 3,
+          "kept": 3,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R2": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R3": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R4": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R5": {
+          "hits": 1,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        }
+      },
+      "spec_relaxations": {
+        "requested": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "pending": 0,
+        "kept": 0
+      }
+    },
+    {
+      "app": "shopping-cart",
+      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\shopping-cart-e0",
+      "recorded_at": "2026-10-03T18:06:53",
+      "confidence": "normal",
+      "rules": {
+        "R1": {
+          "hits": 1,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R2": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R3": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R4": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R5": {
+          "hits": 1,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        }
+      },
+      "spec_relaxations": {
+        "requested": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "pending": 0,
+        "kept": 0
+      }
+    },
+    {
+      "app": "coffee",
+      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\coffee-e0",
+      "recorded_at": "2026-10-03T18:07:51",
+      "confidence": "normal",
+      "rules": {
+        "R1": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R2": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R3": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R4": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R5": {
+          "hits": 1,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        }
+      },
+      "spec_relaxations": {
+        "requested": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "pending": 0,
+        "kept": 0
+      }
+    },
+    {
+      "app": "bookstore",
+      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\bookstore-v2",
+      "recorded_at": "2026-10-03T18:08:37",
+      "confidence": "normal",
+      "rules": {
+        "R1": {
+          "hits": 1,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R2": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R3": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R4": {
+          "hits": 1,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R5": {
+          "hits": 1,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        }
+      },
+      "spec_relaxations": {
+        "requested": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "pending": 0,
+        "kept": 0
+      }
     }
   ],
   "candidate_rules": [
     {
       "app": "airline-booking",
       "change": "C3",
-      "request": "REQ-2",
+      "request": "REQ-3",
       "functions": [
-        "customers-list-bookings"
-      ],
-      "note": "data-driven finding judged effective; promotion to a rule needs human review"
-    },
-    {
-      "app": "airline-booking",
-      "change": "C4",
-      "request": "REQ-2",
-      "functions": [
-        "loyalty-get-summary"
+        "bookings-cancel",
+        "bookings-confirm"
       ],
       "note": "data-driven finding judged effective; promotion to a rule needs human review"
     }
@@ -493,8 +615,8 @@
       "apps": 6
     },
     "R5": {
-      "hits": 1,
-      "kept": 1,
+      "hits": 6,
+      "kept": 6,
       "kept_inconclusive": 0,
       "reverted": 0,
       "pending_human": 0,
@@ -505,7 +627,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 1
+      "apps": 6
     }
   },
   "totals_spec_relaxations": {

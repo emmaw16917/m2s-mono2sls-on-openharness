@@ -45,7 +45,7 @@ model: inherit
 | **R2** | 同一个请求体被重复解析（例如 `JSON.parse(event.body)` 出现多次） | 只解析一次 |
 | **R3** | `package.json`（Python 是 `requirements.txt`）里声明了、但没有任何 `require()`/`import` 引用的依赖 | 删掉这个依赖 |
 | **R4** | 批处理（典型是 SQS 消费者的 `for (const record of records)`）逐条 `await` 每条消息的处理；不同消息的写入**可能**改到同一个条目（事务、条件写入）；失败按单条处理（try/catch 后继续，或记进 `batchItemFailures`） | 按条目键分波次并行，写法见下文"R4 的写法"。同一波里的消息读写的条目两两不同，每个条目上的执行顺序与原来一致 |
-| **R5** | `output/template.yaml` 的 `Globals.Function` 和各函数都没有 `Architectures: [arm64]`；运行时是 Python 或 Node.js | 在 `Globals.Function` 加一行 `Architectures: [arm64]`，**代码一行都不改**。判决：全量 `run_validate()`、`run_equivalence(mode="diff")`，再用**一个**有效基准跑 `run_rie_verdict`。本地 RIE 两边都是 x86_64，延迟应为 no_diff，成本按 arm64 单价算，正常结果是 `kept`。结果里 `native_binaries` 非空时工具会判 `pending_human`，不要自己改判。一个应用只做一次，作为单独的请求和提交 |
+| **R5** | `output/template.yaml` 的 `Globals.Function` 和各函数都没有 `Architectures: [arm64]`；运行时是 Python 或 Node.js | 在 `Globals.Function` 加一行 `Architectures: [arm64]`，**代码一行都不改**。判决只用 `run_config_verdict()`（设计文档 §3.7 的 A 档）：不跑验证、等价性和 RIE，本地 x86 跑不出架构差别。工具检查只改了这一项、gate(template)、sam build 和编译模块的架构标记，成本按单价算，正常结果是 `kept`；它判 `pending_human` 时不要自己改判。一个应用只做一次，作为单独的请求和提交 |
 
 R4 **不适用**的情况，命中了也不改，在报告的 `rule_scan` 里写明原因：
 - 循环体里有 `break`，或者失败后停止处理后面的消息；

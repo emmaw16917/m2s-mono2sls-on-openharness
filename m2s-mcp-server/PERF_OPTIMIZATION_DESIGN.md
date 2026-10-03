@@ -216,6 +216,17 @@ handler 代码
 
 ---
 
+### 3.7 按改动分档的检查量（2026-10-03 加）
+
+检查量跟着改动的风险走，不是每个改动都跑全链：
+
+| 档 | 改动 | 每个改动的检查 | 整轮结束时 |
+|---|---|---|---|
+| **A 只改配置** | 模板里只改 `Architectures`（R5） | `run_config_verdict`：只改了模板且只改这一项、gate(template)、sam build、编译模块的架构标记；成本按单价算。**不跑**验证、等价性、RIE（代码没变，本地 x86 跑不出差别） | 不需要额外回归 |
+| **B 只改代码** | R1–R4、去冗余读等，不改规格 | 只对改过的函数：`run_validate`、`run_equivalence`、改动行覆盖率；一个基准的 `run_rie_verdict` | 阶段 6：gate(final) + 全量 `run_validate()` 一次 |
+| **C 改规格、用现成资源** | spec 放宽申请，不带 `data_model_change` | architect + VS；v0 上只重验 SI `applies_to` 的函数（`run_validate(ref="v0", functions=...)`）；重判按 B 档 | gate(final) + 只对改过的函数 `run_validate` |
+| **D 改数据模型** | 带 `data_model_change`（新建 GSI） | 完整流程：SG + VS + v0 全量重验 + 重判 | gate(final) + 全量 `run_validate()` |
+
 ## 4. 成本口径
 
 单次调用成本（单价做成配置参数，不写死在规则里）：

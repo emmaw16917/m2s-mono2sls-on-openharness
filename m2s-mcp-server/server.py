@@ -281,6 +281,24 @@ def run_proxy_metrics(functions: list[str] | None = None, benchmarks: list[str] 
 
 
 @mcp.tool()
+def run_config_verdict(baseline: str = "HEAD") -> str:
+    """Tier-A verdict for a template-only Architectures change (rule R5):
+    checks that only output/template.yaml changed and only in Architectures,
+    gate(template), sam build, and compiled modules per function; cost from
+    the per-architecture duration price. Runs no validation, equivalence or
+    RIE rounds (the local x86_64 run cannot see an architecture change).
+    Takes about a minute.
+
+    Returns: JSON string {status, tier, verdict, reason, architectures,
+        duration_price_ratio, native_binaries, dimensions, saved_to}.
+    """
+    try:
+        return json.dumps(perf.run_config_verdict(str(_workspace()), baseline), ensure_ascii=False)
+    except verify.VerifyError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
 def run_rie_verdict(benchmark: str, baseline: str = "HEAD", latencies: list[int] | None = None,
                     guard_benchmarks: list[str] | None = None) -> str:
     """Judge the working tree against <baseline> (a git ref, default HEAD =
