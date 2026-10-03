@@ -17,8 +17,9 @@ waits out its latency. Every call is recorded with start/end times and
 estimated capacity units; SHIM_LOG=1 prints one "[m2s-shim] {json}" line per
 call on stderr, the format perf.py parses for both runtimes.
 
-Known simplifications (as the Node shim): no 1MB pagination, no
-FilterExpression, latency independent of payload size and operation, and no
+Known simplifications (as the Node shim): no 1MB pagination,
+FilterExpression only as an AND-list of comparisons / begins_with / BETWEEN
+(billing counts the rows read before the filter), latency independent of payload size and operation, and no
 connection-pool limit (botocore's default pool is 10 connections).
 """
 
@@ -117,15 +118,25 @@ def _name(n, names):
     return (names or {}).get(n, n) if n.startswith("#") else n
 
 
-def query_items(req):
-    t = table(req["TableName"])
-    attrs = (t.get("indexes") or {}).get(req["IndexName"]) if req.get("IndexName") else t["key"]
-    if not attrs:
-        raise RuntimeError(f"perf-shim: unknown index {req.get('IndexName')} on {req['TableName']}")
-    vals = unmarshall_item(req.get("ExpressionAttributeValues"))
-    names = req.get("ExpressionAttributeNames")
-    items = list(t["items"])
-    for c in re.split(r"\s+AND\s+(?![^()]*\))", str(req.get("KeyConditionExpression") or ""), flags=re.I):
+def _balanced(s):
+    depth = 0
+    for ch in s:
+        depth += 1 if ch == "(" else -1 if ch == ")" else 0
+        if depth < 0:
+            return False
+    return depth == 0
+
+
+def match_all(items, expr, vals, names):
+    """Items matching an AND-list of comparisons / begins_with / BETWEEN (the
+    subset KeyConditionExpression allows; also used for simple FilterExpressions)."""
+    if not expr:
+        return items
+    e = str(expr).strip()
+    # boto3 wraps combined conditions: "(#n0 = :v0 AND #n1 = :v1)"
+    while e.startswith("(") and e.endswith(")") and _balanced(e[1:-1]):
+        e = e[1:-1].strip()
+    for c in re.split(r"\s+AND\s+(?![^()]*\))", e, flags=re.I):
         m = re.match(r"^\s*\(?\s*([#\w]+)\s*(=|<=|>=|<|>)\s*(:\w+)\s*\)?\s*$", c)
         if m:
             a, op, v = _name(m.group(1), names), m.group(2), vals.get(m.group(3))
@@ -142,13 +153,32 @@ def query_items(req):
         if m:
             a = _name(m.group(1), names)
             items = [i for i in items if i.get(a) is not None and vals[m.group(2)] <= i[a] <= vals[m.group(3)]]
+    return items
+
+
+def query_items(req):
+    """(read, returned): DynamoDB bills what the key condition reads, before a
+    FilterExpression drops rows from the response."""
+    t = table(req["TableName"])
+    attrs = (t.get("indexes") or {}).get(req["IndexName"]) if req.get("IndexName") else t["key"]
+    if not attrs:
+        raise RuntimeError(f"perf-shim: unknown index {req.get('IndexName')} on {req['TableName']}")
+    vals = unmarshall_item(req.get("ExpressionAttributeValues"))
+    names = req.get("ExpressionAttributeNames")
+    items = match_all(list(t["items"]), req.get("KeyConditionExpression"), vals, names)
     if len(attrs) > 1:
         items.sort(key=lambda i: (i.get(attrs[1]) is None, i.get(attrs[1])))
     if req.get("ScanIndexForward") is False:
         items.reverse()
     if req.get("Limit"):
         items = items[: req["Limit"]]
-    return items
+    return items, match_all(items, req.get("FilterExpression"), vals, names)
+
+
+def scan_items(req):
+    items = table(req["TableName"])["items"]
+    return items, match_all(items, req.get("FilterExpression"), unmarshall_item(req.get("ExpressionAttributeValues")),
+                            req.get("ExpressionAttributeNames"))
 
 
 # -- Capacity units (on-demand request units) -----------------------------------
@@ -176,9 +206,9 @@ def respond(op, req):
             responses[tn] = [marshall_item(x) for x in found]
         body = {"Responses": responses, "UnprocessedKeys": {}}
     elif op in ("Query", "Scan"):
-        items = query_items(req) if op == "Query" else table(req["TableName"])["items"]
-        cu["rru"] = rru(sum(item_size(i) for i in items), req.get("ConsistentRead"))
-        body = {"Items": [marshall_item(i) for i in items], "Count": len(items), "ScannedCount": len(items)}
+        read, items = query_items(req) if op == "Query" else scan_items(req)
+        cu["rru"] = rru(sum(item_size(i) for i in read), req.get("ConsistentRead"))
+        body = {"Items": [marshall_item(i) for i in items], "Count": len(items), "ScannedCount": len(read)}
     elif op == "PutItem":
         cu["wru"] = wru(item_size(unmarshall_item(req["Item"])))
         body = {}

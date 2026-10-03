@@ -87,14 +87,14 @@ function findByKey(t, key) {
   return t.items.find((i) => keyOf(t, i) === want) || null;
 }
 function resolveName(n, names) { return n.startsWith('#') ? (names || {})[n] : n; }
-function queryItems(req) {
-  const t = table(req.TableName);
-  const keyAttrs = req.IndexName ? (t.indexes || {})[req.IndexName] : t.key;
-  if (!keyAttrs) throw new Error('perf-shim: unknown index ' + req.IndexName + ' on ' + req.TableName);
-  const vals = unmarshallItem(req.ExpressionAttributeValues);
-  const names = req.ExpressionAttributeNames;
-  const conds = String(req.KeyConditionExpression || '').split(/\s+AND\s+(?![^()]*\))/i);
-  let items = t.items.slice();
+// Items matching an AND-list of comparisons / begins_with / BETWEEN (the
+// subset KeyConditionExpression allows; also used for simple FilterExpressions).
+function matchAll(items, expr, vals, names) {
+  if (!expr) return items;
+  let e = String(expr).trim();
+  // boto3 wraps combined conditions: "(#n0 = :v0 AND #n1 = :v1)"
+  while (e.startsWith('(') && e.endsWith(')') && !/\)[^()]*\(/.test(e.slice(1, -1).replace(/\([^()]*\)/g, ''))) e = e.slice(1, -1).trim();
+  const conds = e.split(/\s+AND\s+(?![^()]*\))/i);
   for (const c of conds) {
     let m;
     if ((m = /^\s*\(?\s*([#\w]+)\s*(=|<=|>=|<|>)\s*(:\w+)\s*\)?\s*$/.exec(c))) {
@@ -108,11 +108,28 @@ function queryItems(req) {
       items = items.filter((i) => i[a] >= vals[m[2]] && i[a] <= vals[m[3]]);
     }
   }
+  return items;
+}
+
+// [read, returned]: DynamoDB bills what the key condition (or a Scan) reads,
+// before a FilterExpression drops rows from the response.
+function queryItems(req) {
+  const t = table(req.TableName);
+  const keyAttrs = req.IndexName ? (t.indexes || {})[req.IndexName] : t.key;
+  if (!keyAttrs) throw new Error('perf-shim: unknown index ' + req.IndexName + ' on ' + req.TableName);
+  const vals = unmarshallItem(req.ExpressionAttributeValues);
+  const names = req.ExpressionAttributeNames;
+  let items = matchAll(t.items.slice(), req.KeyConditionExpression, vals, names);
   const sk = keyAttrs[1];
   if (sk) items.sort((x, y) => (x[sk] < y[sk] ? -1 : x[sk] > y[sk] ? 1 : 0));
   if (req.ScanIndexForward === false) items.reverse();
   if (req.Limit) items = items.slice(0, req.Limit);
-  return items;
+  return [items, matchAll(items, req.FilterExpression, vals, names)];
+}
+
+function scanItems(req) {
+  const items = table(req.TableName).items;
+  return [items, matchAll(items, req.FilterExpression, unmarshallItem(req.ExpressionAttributeValues), req.ExpressionAttributeNames)];
 }
 
 // -- Capacity units (on-demand request units) ---------------------------------
@@ -139,15 +156,15 @@ function respond(op, req) {
       break;
     }
     case 'Query': {
-      const items = queryItems(req);
-      cu.rru = rru(items.reduce((n, i) => n + itemSize(i), 0), req.ConsistentRead);
-      body = { Items: items.map(marshallItem), Count: items.length, ScannedCount: items.length };
+      const [read, items] = queryItems(req);
+      cu.rru = rru(read.reduce((n, i) => n + itemSize(i), 0), req.ConsistentRead);
+      body = { Items: items.map(marshallItem), Count: items.length, ScannedCount: read.length };
       break;
     }
     case 'Scan': {
-      const items = table(req.TableName).items;
-      cu.rru = rru(items.reduce((n, i) => n + itemSize(i), 0), req.ConsistentRead);
-      body = { Items: items.map(marshallItem), Count: items.length, ScannedCount: items.length };
+      const [read, items] = scanItems(req);
+      cu.rru = rru(read.reduce((n, i) => n + itemSize(i), 0), req.ConsistentRead);
+      body = { Items: items.map(marshallItem), Count: items.length, ScannedCount: read.length };
       break;
     }
     case 'PutItem':
