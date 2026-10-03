@@ -265,7 +265,8 @@
       "owner_v2": "architect",
       "prerequisites": [
         "blueprint D-9 revised"
-      ]
+      ],
+      "status": "partly kept 2026-10-03 on airline-booking-c2 via spec relaxation REQ-2 -> SI-18/SI-19: customers-list-bookings and loyalty-get-summary Query the existing GSIs (rru 40->0.5 / 18.5->0.5, warm CPU 18.0->1.7 / 11.6->1.4 ms; 38fff8d, bc63657); flights-search not done (no GSI); first-page-only kept. Caveat: run_equivalence said DIFFERENT (op-name Scan->Query + op-pinned read faults) and the perf-optimizer kept anyway -- tool gap to fix."
     },
     {
       "id": "V2-08",
