@@ -612,3 +612,13 @@ def test_index_attributes_are_ignored_by_h1(ws):
     assert verify._observation(before, 1)["calls"] != verify._observation(after, 1)["calls"]
     other = {**after, "calls": [{**after["calls"][0], "values": {":g": "ALL", ":q": 2}}]}
     assert verify._observation(other, 1, m.index_attributes)["calls"] != a["calls"]  # the real write is still compared
+
+
+def test_relaxed_read_functions_use_table_level_reads(ws):
+    bp = dict(BLUEPRINT, metadata={"spec_resolutions": [{"issue_id": "SI-9", "class": "implementation-trace", "origin": "perf-request REQ-4",
+                                                         "ruling": "accepted", "applies_to": ["books-get"], "targets": ["x"]}]})
+    (ws / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    m = verify.Model(ws)
+    assert m.contract == 1 and m.relaxed_read_functions == {"books-get"}
+    assert verify._run_contract(m, {"function": "books-get"}) == 2
+    assert verify._run_contract(m, {"function": "consumer"}) == 1
