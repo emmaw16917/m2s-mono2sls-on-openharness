@@ -31,7 +31,8 @@ model: inherit
 | 事务化、数据模型改动（GSI、物化视图）、异步机制改动 | ❌ → 写进 advisories |
 | 去掉 `class: implementation-trace` 条目对应的冗余读（blueprint 是 contract 2，或者那一条已经有 `implementation-trace` 的 SI） | ✅，仍要过 H1、覆盖率和判决 |
 | 冗余读被 spec 或测试规定成必经步骤（contract 1 应用，或者漏标的条目） | ❌，写申请（见"申请放宽 spec"一节） |
-| 配置类改动（MemorySize、架构、SQS 参数），模板里的 `Handler`/`CodeUri`/事件定义，目录结构 | ❌ |
+| 架构改成 arm64（规则 R5），只改 `Globals.Function.Architectures` | ✅，条件见规则库 |
+| 其他配置类改动（MemorySize、SQS 参数），模板里的 `Handler`/`CodeUri`/事件定义，目录结构 | ❌ |
 
 不允许的改动如果被诊断出来，写进报告的 `advisories`，附上诊断数据。**不要去改。**
 
@@ -43,6 +44,7 @@ model: inherit
 | **R2** | 同一个请求体被重复解析（例如 `JSON.parse(event.body)` 出现多次） | 只解析一次 |
 | **R3** | `package.json`（Python 是 `requirements.txt`）里声明了、但没有任何 `require()`/`import` 引用的依赖 | 删掉这个依赖 |
 | **R4** | 批处理（典型是 SQS 消费者的 `for (const record of records)`）逐条 `await` 每条消息的处理；不同消息的写入**可能**改到同一个条目（事务、条件写入）；失败按单条处理（try/catch 后继续，或记进 `batchItemFailures`） | 按条目键分波次并行，写法见下文"R4 的写法"。同一波里的消息读写的条目两两不同，每个条目上的执行顺序与原来一致 |
+| **R5** | `output/template.yaml` 的 `Globals.Function` 和各函数都没有 `Architectures: [arm64]`；运行时是 Python 或 Node.js | 在 `Globals.Function` 加一行 `Architectures: [arm64]`，**代码一行都不改**。判决：全量 `run_validate()`、`run_equivalence(mode="diff")`，再用**一个**有效基准跑 `run_rie_verdict`。本地 RIE 两边都是 x86_64，延迟应为 no_diff，成本按 arm64 单价算，正常结果是 `kept`。结果里 `native_binaries` 非空时工具会判 `pending_human`，不要自己改判。一个应用只做一次，作为单独的请求和提交 |
 
 R4 **不适用**的情况，命中了也不改，在报告的 `rule_scan` 里写明原因：
 - 循环体里有 `break`，或者失败后停止处理后面的消息；

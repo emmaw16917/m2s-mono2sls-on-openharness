@@ -287,7 +287,8 @@ handler 代码
 | 事务化（`TransactWriteItems`） | ❌ → advisory | 改变原子性语义，写入容量消耗翻倍 |
 | 数据模型改动（GSI、物化视图） | ❌ → advisory | architect 级别的改动 |
 | 异步机制改动（SQS 换 Streams） | ❌ → advisory | architect 级别的改动 |
-| 配置类改动（MemorySize、架构、SQS 参数） | ❌ | v1 保持原样（§5） |
+| 架构改成 arm64（规则 R5） | ✅（2026-10-03 加） | 只改模板 `Globals.Function.Architectures`；全量验证和等价性通过；构建产物里没有编译模块（有的话判 `pending_human`）。本地测不出 arm64 的速度，成本按 arm64 单价计（§8.2 R5） |
+| 其他配置类改动（MemorySize、SQS 参数） | ❌ | v1 保持原样（§5）；MemorySize 要靠真实 AWS 的 Power Tuning |
 | 去掉 `implementation-trace` 条目对应的冗余读（contract 2 的应用） | ✅（2026-10-02 加） | 条目在 blueprint 里已标为 `implementation-trace`；仍要过 H1 (a)(b)(c)、覆盖率和判决。H1 (a) 本来就把读操作当集合比较 |
 | 冗余读被 spec 或测试规定成必经步骤（contract 1 的应用，或漏标的条目） | ❌ → 申请 | 写 `spec_relaxation` 申请，请求记为 `pending_spec`，本轮不改代码；流程见 `CONTRACT_TESTING_PLAN.md` §7 |
 
@@ -322,6 +323,7 @@ handler 代码
 | **R2** | 同一个请求体被重复解析 | 只解析一次 | `warm_cpu.js` + RIE |
 | **R3** | `package.json`（Python 是 `requirements.txt`）里声明了、但代码没有引用的依赖 | 删掉这个依赖 | RIE init。预计会测出"无效"：没被 `require()` 的依赖运行时根本不会加载，只影响部署包大小。可以用它检验台账机制本身能否正确记录"无效" |
 | **R4**（2026-09-27 加） | 批处理（典型是 SQS 消费者）逐条 `await` 每条消息的处理；每条消息的写入可能与别的消息改到同一个条目（事务、条件写入），失败按单条处理 | 按条目键分波次：先算出每条消息会读写的条目键（从构造写入的同一个函数里取，不另写一套），每条消息排在"与它共享条目的前面消息中最晚的那一波 + 1"；波与波之间顺序执行，同一波里用 `allSettled` 并行。消息体原地包成 `async (record) => {...}`，不挪位置、不改缩进，`continue` 改成 `return` | 顺序深度 + RIE；热点基准做守卫（`guard_benchmarks`），不得在任何维度变差、不得增加冲突 |
+| **R5**（2026-10-03 加） | 模板的 `Globals.Function`（以及各函数自己）没有 `Architectures: [arm64]`；运行时是 Python 或 Node.js | 在 `Globals.Function` 加 `Architectures: [arm64]`，代码不动 | 全量 `run_validate` + `run_equivalence`（行为不变）；`run_rie_verdict` 任选一个有效基准：RIE 两个版本都在本地 x86_64 上跑，所以延迟应为 no_diff，架构只通过时长单价进入成本维度（`lambda_gb_second_arm64`，便宜 20%）。速度依据是真实 AWS 的 A/B（附录 A.4：arm64 持平或略快）。构建产物里有编译模块（`.so`/`.pyd`/`.node`）时，工具判 `pending_human`，要人确认有 arm64 版本 |
 
 ### 8.3 规则台账
 

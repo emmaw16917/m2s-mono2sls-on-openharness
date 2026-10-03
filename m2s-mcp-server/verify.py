@@ -163,6 +163,8 @@ class Model:
                   "runtime": str(p.get("Runtime") or glob_fn.get("Runtime") or ""),
                   "layers": layers,
                   "memory": p.get("MemorySize") or glob_fn.get("MemorySize") or 128,
+                  # Lambda's default is x86_64; Architectures is a one-element list
+                  "architecture": str((p.get("Architectures") or glob_fn.get("Architectures") or ["x86_64"])[0]),
                   "env": {k: self._resolve(v) for k, v in env.items()}, "api": [], "sqs": []}
             for ev in (p.get("Events", {}) or {}).values():
                 if not isinstance(ev, dict):

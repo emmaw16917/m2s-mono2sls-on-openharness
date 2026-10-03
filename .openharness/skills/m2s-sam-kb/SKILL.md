@@ -24,6 +24,11 @@ Globals:
     Handler: index.handler
     Timeout: 30  # seconds
     MemorySize: 512  # MB
+    # Graviton: 20% lower GB-second price; as fast or faster in this project's
+    # real-AWS A/B (m2s-mcp-server PERF_OPTIMIZATION_DESIGN.md A.4). Keep
+    # x86_64 only when a dependency ships x86-only compiled modules.
+    Architectures:
+      - arm64
     
     # Environment Variables (Common)
     Environment:

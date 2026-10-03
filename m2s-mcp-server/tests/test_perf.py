@@ -195,3 +195,29 @@ def test_update_ledger_counts_spec_relaxations(ws, tmp_path, monkeypatch):
     assert r["spec_relaxations"] == {"requested": 3, "accepted": 1, "rejected": 1, "pending": 1, "kept": 1}
     led = json.loads((tmp_path / "ledger.json").read_text(encoding="utf-8"))
     assert led["totals_spec_relaxations"]["kept"] == 1
+
+
+def test_cost_prices_arm64_duration():
+    p = perf._prices()
+    x86 = perf.cost({}, 100.0, 512)
+    arm = perf.cost({}, 100.0, 512, "arm64")
+    assert arm["duration_usd"] == pytest.approx(0.1 * 0.5 * p["lambda_gb_second_arm64"])
+    assert arm["duration_usd"] < x86["duration_usd"] and arm["units_usd"] == x86["units_usd"]
+
+
+def test_model_reads_architecture(ws):
+    m = verify.Model(ws)
+    assert all(f["architecture"] == "x86_64" for f in m.functions.values())
+    t = (ws / "output" / "template.yaml").read_text(encoding="utf-8")
+    (ws / "output" / "template.yaml").write_text(t.replace("Globals:\n  Function:\n", "Globals:\n  Function:\n    Architectures: [arm64]\n", 1),
+                                                 encoding="utf-8")
+    assert all(f["architecture"] == "arm64" for f in verify.Model(ws).functions.values())
+
+
+def test_native_binaries(tmp_path):
+    (tmp_path / "Fn" / "pkg").mkdir(parents=True)
+    (tmp_path / "Fn" / "handler.py").write_text("", encoding="utf-8")
+    assert perf.native_binaries(tmp_path, "Fn") == []
+    (tmp_path / "Fn" / "pkg" / "_speedups.cpython-312-x86_64-linux-gnu.so").write_bytes(b"")
+    assert perf.native_binaries(tmp_path, "Fn") == ["pkg/_speedups.cpython-312-x86_64-linux-gnu.so"]
+    assert perf.native_binaries(tmp_path, "Missing") == []

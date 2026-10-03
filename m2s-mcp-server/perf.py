@@ -244,7 +244,7 @@ def run_proxy_metrics(workspace: str, functions: list[str] | None = None, benchm
         m = _harness(model, build, b, work)
         m["valid"] = _valid(m) is None
         m["invalid_reason"] = _valid(m)
-        m["cost_usd"] = cost(m, None, model.functions[b["function"]]["memory"])
+        m["cost_usd"] = cost(m, None, model.functions[b["function"]]["memory"], model.functions[b["function"]].get("architecture", "x86_64"))
         m["data_volume"] = b["data_volume"]
         res[b["id"]] = m
     return {"status": "OK", "version": ref or "working tree", "benchmarks": res,
@@ -261,13 +261,14 @@ def _prices() -> dict[str, Any]:
     return json.loads(PRICES.read_text(encoding="utf-8"))
 
 
-def cost(m: dict[str, Any], duration_ms: float | None, memory_mb: int) -> dict[str, Any]:
+def cost(m: dict[str, Any], duration_ms: float | None, memory_mb: int, arch: str = "x86_64") -> dict[str, Any]:
     p = _prices()
+    gb_second = p["lambda_gb_second_arm64"] if arch == "arm64" else p["lambda_gb_second"]
     units = (m.get("rru", 0) * p["dynamodb_read_request_unit"] + m.get("wru", 0) * p["dynamodb_write_request_unit"]
              + m.get("sqs_requests", 0) * p["sqs_request"])
     out = {"units_usd": units, "lambda_request_usd": p["lambda_request"]}
     if duration_ms is not None:
-        out["duration_usd"] = duration_ms / 1000.0 * memory_mb / 1024.0 * p["lambda_gb_second"]
+        out["duration_usd"] = duration_ms / 1000.0 * memory_mb / 1024.0 * gb_second
         out["total_usd"] = units + out["duration_usd"] + p["lambda_request"]
     return out
 
@@ -402,8 +403,16 @@ def _proxy_direction(base: dict, cand: dict) -> dict[str, str]:
     return d
 
 
+def native_binaries(build_dir: Path, logical: str) -> list[str]:
+    """Compiled extension modules in one function's build (Python .so/.pyd,
+    Node .node). Their presence means an architecture change needs wheels /
+    prebuilds for the new architecture -- the local x86_64 RIE cannot tell."""
+    root = build_dir / logical
+    return sorted(f.relative_to(root).as_posix() for f in root.rglob("*") if f.suffix in (".so", ".pyd", ".node"))[:20] if root.exists() else []
+
+
 def _judge(ws: Path, model: Model, builds: dict[str, Path], b: dict[str, Any], baseline: str, changed: list[str],
-           latencies: list[int] | None) -> dict[str, Any]:
+           latencies: list[int] | None, archs: dict[str, str] | None = None) -> dict[str, Any]:
     """One benchmark, base vs cand builds: proxies, conflict veto, RIE rounds
     and the §3.2 decision. `veto` names a hard reason (conflicts / rss)."""
     benchmark = b["id"]
@@ -411,6 +420,11 @@ def _judge(ws: Path, model: Model, builds: dict[str, Path], b: dict[str, Any], b
     work.mkdir(parents=True, exist_ok=True)
     fx = _fixture_file(model, b, work / "fixtures.json")
     mem = int(model.functions[b["function"]]["memory"])
+    # Architecture per version: the RIE rounds always run the local x86_64
+    # images, so an x86_64 -> arm64 change shows up only in the duration price
+    # (real-AWS A/B: arm64 as fast or faster, PERF_OPTIMIZATION_DESIGN.md A.4).
+    archs = archs or {"base": model.functions[b["function"]].get("architecture", "x86_64"),
+                      "cand": model.functions[b["function"]].get("architecture", "x86_64")}
 
     proxies = {v: _harness(model, builds[v], b, work / v) for v in builds}
     invalid = {v: _valid(m) for v, m in proxies.items() if _valid(m)}
@@ -467,8 +481,8 @@ def _judge(ws: Path, model: Model, builds: dict[str, Path], b: dict[str, Any], b
     init_dim = _direction(init_b, init_c)
     # Cost dimension: request units are deterministic; duration cost uses the
     # screen latency's warm round medians (a range per version).
-    cost_b = [cost(proxies["base"], d, mem)["total_usd"] for d in screen["base"]["warm_round_medians"]]
-    cost_c = [cost(proxies["cand"], d, mem)["total_usd"] for d in screen["cand"]["warm_round_medians"]]
+    cost_b = [cost(proxies["base"], d, mem, archs["base"])["total_usd"] for d in screen["base"]["warm_round_medians"]]
+    cost_c = [cost(proxies["cand"], d, mem, archs["cand"])["total_usd"] for d in screen["cand"]["warm_round_medians"]]
     cost_dim = _direction(cost_b, cost_c)
     # RSS guard (§3.1-4)
     rss = max(v["cand"]["max_rss_mb"] for v in rie.values())
@@ -510,6 +524,8 @@ def _judge(ws: Path, model: Model, builds: dict[str, Path], b: dict[str, Any], b
         "init_ms": {"base": init_b, "cand": init_c},
         "cost_usd_per_invocation": {"base": cost_b, "cand": cost_c},
         "rss_guard": {"candidate_max_rss_mb": rss, "memory_mb": mem, "veto": rss_veto},
+        "architecture": {**archs, **({"note": "RIE rounds ran x86_64 for both versions; the architecture enters only through the "
+                                              "duration price (lambda_gb_second vs lambda_gb_second_arm64)"} if archs["base"] != archs["cand"] else {})},
         "conflicts": {"proxy_10ms": {"base": proxies["base"].get("conflicts", 0), "cand": proxies["cand"].get("conflicts", 0)}, "rie": rie_conflicts},
         "method": {"rounds": ROUNDS, "warm_invokes_per_round": WARM_INVOKES, "cpus": screen["base"].get("cpus"),
                    "clearly_different": "ranges of per-round warm medians (or init samples, or cost) do not overlap",
@@ -535,8 +551,19 @@ def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", late
         return {"status": "FAIL", "error": f"working tree output/ is identical to {baseline}; nothing to judge"}
     if not verify.docker_available():
         return {"status": "NO_DOCKER", "error": "RIE verdict needs Docker; judge with run_proxy_metrics only and mark the change low-confidence (§3.5)"}
-    builds = {"base": sam_build(export_ref(ws, baseline)), "cand": sam_build(ws)}
-    result = _judge(ws, model, builds, b, baseline, changed, latencies)
+    base_root = export_ref(ws, baseline)
+    builds = {"base": sam_build(base_root), "cand": sam_build(ws)}
+    fn = b["function"]
+    archs = {"base": Model(base_root).functions.get(fn, {}).get("architecture", "x86_64"),
+             "cand": model.functions[fn].get("architecture", "x86_64")}
+    result = _judge(ws, model, builds, b, baseline, changed, latencies, archs)
+    if archs["base"] != archs["cand"] and result.get("status") == "OK":
+        native = native_binaries(builds["cand"], model.functions[fn]["logical"])
+        result["native_binaries"] = native
+        if native and result.get("verdict") in ("kept", "kept_inconclusive"):
+            result["verdict"], result["reason"] = "pending_human", (
+                f"architecture changed to {archs['cand']} but the build carries compiled modules {native[:5]}; "
+                "confirm they were built for that architecture (the local x86_64 RIE cannot)")
     # Guard benchmarks (e.g. the hot-key case of a concurrency change): the
     # change must not make them worse in any dimension, nor add conflicts.
     if guard_benchmarks and result.get("verdict") != "revert":
@@ -546,7 +573,7 @@ def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", late
             gerr = check_benchmark(model, g)
             if gerr:
                 return {"status": "FAIL", "schema_errors": gerr}
-            gr = _judge(ws, model, builds, g, baseline, changed, latencies)
+            gr = _judge(ws, model, builds, g, baseline, changed, latencies, archs)
             worse = [k for k, v in (gr.get("dimensions") or {}).items() if v in ("worse", "depends_on_rtt")]
             bad = gr.get("status") == "INVALID" or bool(gr.get("veto")) or bool(worse)
             guards[gid] = {"ok": not bad, "verdict": gr.get("verdict"), "reason": gr.get("reason"), "dimensions": gr.get("dimensions"),
