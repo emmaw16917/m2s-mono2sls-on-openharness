@@ -140,6 +140,7 @@ function summarize(op, req) {
   if (req.ConditionExpression) s.condition = req.ConditionExpression;
   if (req.KeyConditionExpression) s.key_condition = req.KeyConditionExpression;
   if (req.ExpressionAttributeValues) s.values = unmarshall(req.ExpressionAttributeValues);
+  if (req.ExpressionAttributeNames) s.names = req.ExpressionAttributeNames;
   if (req.RequestItems) s.request_items = Object.fromEntries(Object.entries(req.RequestItems).map(([t, v]) => [t, Array.isArray(v) ? v.length : (v.Keys || []).length]));
   if (req.TransactItems) {
     s.transact_items = req.TransactItems.length;
@@ -150,6 +151,7 @@ function summarize(op, req) {
       if (v.Item) it.item = unmarshall(v.Item);
       if (v.UpdateExpression) it.update = v.UpdateExpression;
       if (v.ExpressionAttributeValues) it.values = unmarshall(v.ExpressionAttributeValues);
+      if (v.ExpressionAttributeNames) it.names = v.ExpressionAttributeNames;
       return it;
     });
     s.tables = [...new Set(s.transact.map((t) => t.table))];

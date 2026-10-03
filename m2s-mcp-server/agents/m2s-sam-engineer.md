@@ -93,6 +93,15 @@ Outputs:
 
 **S3c 禁止事项**：不要去改 `template.part1.yaml`/`template.part2.yaml`（那是 S3a/S3b 的产物，修正只作用于合并后的 `template.yaml`）。
 
+### 如果 STAGE_ID = SG（给已交付的模板加一个 GSI）
+
+由 spec 放宽申请触发（`m2s-mcp-server/CONTRACT_TESTING_PLAN.md` §8）。spawn prompt 会给出 SI 编号。
+
+1. 读 `storage/blueprint.json` 里这条 SI 的 `data_model_change`，以及 `dynamodb_tables` 里对应表的定义。
+2. 只改 `output/template.yaml` 里这张表：在 `AttributeDefinitions` 里补上索引键属性（已有的不要重复），在 `GlobalSecondaryIndexes` 里加这个索引（`KeySchema`、`Projection` 按 SI 写）。**其他资源、其他字段一律不动。**
+3. `run_gate(phase="template")` 和 `validate_sam` 都要通过；没通过就修，最多 3 次。
+4. 写 `storage/stage_reports/SG.json`（格式同其他阶段），然后输出完成信号。
+
 ## 硬性工具说明（三个子阶段共用）
 
 - 文件读写：`read_file` / `write_file` / `glob` / `grep`；S3c 还需要 Bash（跑合并命令）。

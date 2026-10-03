@@ -270,6 +270,7 @@ spawn prompt 会列出 architect 新写的 SI 编号（`origin` 是 `perf-reques
    - 故障按位置钉（`nth: k` 没有 `match.item`），而 SI 放宽的正是这个位置：改成用 `match.item` 钉在具体条目上；被放宽的那次操作可能根本不存在，用例要引用这条 SI，工具才会判 `not_applicable` 而不是失败；
    - `expect.sdk_calls` 里断言了被放宽的那几次读：删掉这部分，必要时写进 `expect.trace`。
 3. **只改受影响的用例**。规格要求的其他断言一条都不能放宽；每处修改写进报告的 `asset_fixes`（原写法、新写法、依据的 SI）。
+   SI 带 `data_model_change` 且有 `new_attributes` 时：在**写入这张表的夹具**里给每一行补上新属性（按 SI 写的取值），模拟回填之后的数据；不要新增针对新属性本身的断言（等价性检查会忽略它）。
 4. `run_validate(dry_run=true)` 通过后，再用 `run_validate(ref="v0")` 在 v0 的代码上跑全量，必须全部通过。没通过的，按 V2 的分诊写报告，不要为了通过去改断言。
 5. 写 `storage/stage_reports/VS.json`，格式同 VR。
 

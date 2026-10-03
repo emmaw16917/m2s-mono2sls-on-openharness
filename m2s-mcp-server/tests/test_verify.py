@@ -594,3 +594,21 @@ def test_contract2_pins_read_faults_by_table():
     assert verify._pins(raw, 2) == [{"match": {"op": "@read", "table": "T"}, "nth": 2, "kind": "error"},
                                     {"match": {"op": "PutItem", "table": "U", "identity": "p"}, "nth": 1, "kind": "throttle"}]
     assert verify._pins(raw, 1)[0]["match"]["op"] == "Scan"
+
+
+def test_index_attributes_are_ignored_by_h1(ws):
+    bp = dict(BLUEPRINT, metadata={"spec_resolutions": [{"issue_id": "SI-1", "ruling": "accepted",
+                                                         "data_model_change": {"new_attributes": [{"name": "gsiPk", "backfill": "x"}]}}]})
+    (ws / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    m = verify.Model(ws)
+    assert m.index_attributes == {"gsiPk"}
+    before = {"calls": [{"op": "UpdateItem", "table": "T", "key": {"id": "1"}, "update": "ADD quantity :q", "values": {":q": 1}}],
+              "tables_after": {"T": [{"id": "1", "quantity": 1}]}}
+    after = {"calls": [{"op": "UpdateItem", "table": "T", "key": {"id": "1"}, "update": "SET #g = :g ADD quantity :q",
+                        "values": {":g": "ALL", ":q": 1}, "names": {"#g": "gsiPk"}}],
+             "tables_after": {"T": [{"id": "1", "quantity": 1, "gsiPk": "ALL"}]}}
+    a, b = verify._observation(before, 1, m.index_attributes), verify._observation(after, 1, m.index_attributes)
+    assert a["calls"] == b["calls"] and a["outcome"] == b["outcome"]
+    assert verify._observation(before, 1)["calls"] != verify._observation(after, 1)["calls"]
+    other = {**after, "calls": [{**after["calls"][0], "values": {":g": "ALL", ":q": 2}}]}
+    assert verify._observation(other, 1, m.index_attributes)["calls"] != a["calls"]  # the real write is still compared

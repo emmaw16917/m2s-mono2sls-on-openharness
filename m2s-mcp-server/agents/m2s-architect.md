@@ -199,6 +199,10 @@ spawn prompt 写明"裁定 perf 申请"时，主 Agent 会给你若干条申请�
 2. **接受**：写一条 SI，格式同"契约测试"一节的 `implementation-trace` SI，另外加两个字段：`"origin": "perf-request REQ-n"`、`"ruling": "accepted"`。`targets` 逐字列出被放宽的条目；`decision` 写具体，是作废这一臂，还是允许哪几种结果。
 3. **驳回**：同样写一条 SI，带 `"origin": "perf-request REQ-n"`、`"ruling": "rejected"`，`rationale` 写明这条为什么是契约。驳回的 SI 不要写 `class: implementation-trace`。
 4. 照常跑 `run_gate(phase="blueprint")`，工作报告的 `issues` 里逐条列出你的裁定。
+5. **申请带 `data_model_change`（新建 GSI）时**：
+   - 核对索引键：优先用已有属性；必须新增属性时，确认它只是索引键，不改变任何对外结果；
+   - 接受：SI 里原样写入（可以修改）`data_model_change`，gate 的 CT5 检查它的格式；同时用 `merge_blueprint_key(key="dynamodb_tables", mode="replace")` 把这个 GSI 加进对应表的定义，和 SI 一致；
+   - `backfill` 必须写成可执行的步骤，交付时会单列给人。
 
 ## 输出契约：逐字段调用 merge_blueprint_key 构建 blueprint.json
 

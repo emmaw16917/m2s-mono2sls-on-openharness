@@ -180,6 +180,14 @@ def check_contract(workspace: Path) -> list[dict[str, Any]]:
         elif cls is None and meta.get("verification_contract") == 2:
             findings.append(_finding("CT4", "ERROR", f"spec_resolutions[{r.get('issue_id')}] has no 'class'; under "
                                      f"verification_contract 2 every ruling needs one of {sorted(SI_CLASSES)}.", "blueprint.json"))
+        dmc = r.get("data_model_change")
+        if dmc is not None:
+            idx = (dmc or {}).get("index") if isinstance(dmc, dict) else None
+            bad = not isinstance(dmc, dict) or not dmc.get("table") or not isinstance(idx, dict) or not idx.get("name")                 or not isinstance(idx.get("keys"), list) or not idx["keys"]                 or any(not isinstance(a, dict) or not a.get("name") or not a.get("backfill") for a in dmc.get("new_attributes") or [])
+            if bad:
+                findings.append(_finding("CT5", "ERROR", f"spec_resolutions[{r.get('issue_id')}].data_model_change needs table, index "
+                                         "{name, keys: [{attribute, type: HASH|RANGE}], projection}, and for each new_attributes item "
+                                         "a name and a backfill note.", "blueprint.json"))
         if cls != "implementation-trace":
             continue
         t = r.get("targets")

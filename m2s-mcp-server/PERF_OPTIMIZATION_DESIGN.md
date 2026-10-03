@@ -285,7 +285,8 @@ handler 代码
 | 把多次 Put/Delete 合并成 `BatchWriteItem` | ❌（v1 删掉） | 要处理 `UnprocessedItems`，还要逐条报告失败，复杂度超过收益 |
 | 把 `UpdateItem` 合并成批量写 | ❌ | DynamoDB 不支持 |
 | 事务化（`TransactWriteItems`） | ❌ → advisory | 改变原子性语义，写入容量消耗翻倍 |
-| 数据模型改动（GSI、物化视图） | ❌ → advisory | architect 级别的改动 |
+| 新增 GSI（2026-10-03 加） | ❌ → 申请 | 走 spec 放宽申请，请求带 `data_model_change`；architect 裁定并改 blueprint，sam-engineer（SG 阶段）只改模板里这一个 GSI，VS 补夹具，perf-optimizer 改读写代码并重新判决（`CONTRACT_TESTING_PLAN.md` §8） |
+| 其他数据模型改动（换表结构、物化视图） | ❌ → advisory | architect 级别的改动 |
 | 异步机制改动（SQS 换 Streams） | ❌ → advisory | architect 级别的改动 |
 | 架构改成 arm64（规则 R5） | ✅（2026-10-03 加） | 只改模板 `Globals.Function.Architectures`；全量验证和等价性通过；构建产物里没有编译模块（有的话判 `pending_human`）。本地测不出 arm64 的速度，成本按 arm64 单价计（§8.2 R5） |
 | 其他配置类改动（MemorySize、SQS 参数） | ❌ | v1 保持原样（§5）；MemorySize 要靠真实 AWS 的 Power Tuning |

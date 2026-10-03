@@ -100,6 +100,13 @@ class Model:
         self.contract = meta.get("verification_contract", 1)
         self.trace_rulings = {r.get("issue_id") for r in meta.get("spec_resolutions") or []
                               if isinstance(r, dict) and r.get("class") == "implementation-trace"}
+        # Attributes an accepted data-model ruling adds only to feed a new
+        # index (e.g. a constant GSI partition key): H1 ignores them, everything
+        # else of the writes is still compared.
+        self.index_attributes = {a.get("name") for r in meta.get("spec_resolutions") or []
+                                 if isinstance(r, dict) and r.get("ruling", "accepted") == "accepted"
+                                 for a in ((r.get("data_model_change") or {}).get("new_attributes") or [])
+                                 if isinstance(a, dict) and a.get("name")}
         self.template: dict[str, Any] = {}
         self.tables: dict[str, dict[str, Any]] = {}
         self.queues: set[str] = set()
@@ -1082,7 +1089,41 @@ def normalize(v: Any, now_ms: float | None = None) -> Any:
     return v
 
 
-def _observation(raw: dict[str, Any], contract: int = 1) -> dict[str, Any]:
+def _strip_attrs(c: dict[str, Any], attrs: set[str]) -> dict[str, Any]:
+    """A call record without the given attributes: dropped from Item, and
+    from SET clauses of an UpdateExpression (with the values only they used)."""
+    c = dict(c)
+    if isinstance(c.get("item"), dict):
+        c["item"] = {k: v for k, v in c["item"].items() if k not in attrs}
+    upd = c.get("update")
+    if isinstance(upd, str):
+        names = c.get("names") or {}
+        dropped: set[str] = set()
+
+        def keep(clause: str) -> bool:
+            m = re.match(r"\s*([#\w.]+)\s*=\s*(.+?)\s*$", clause)
+            if not m:
+                return True
+            name = names.get(m.group(1), m.group(1))
+            if name in attrs:
+                dropped.update(re.findall(r":\w+", m.group(2)))
+                return False
+            return True
+
+        def rewrite(match: re.Match) -> str:
+            clauses = [x for x in re.split(r",(?![^()]*\))", match.group(2)) if keep(x)]
+            return f"{match.group(1)} {', '.join(x.strip() for x in clauses)} " if clauses else ""
+        new = re.sub(r"(SET)\s+(.*?)(?=\s+(?:ADD|REMOVE|DELETE)\b|$)", rewrite, upd, flags=re.I).strip()
+        c["update"] = re.sub(r"\s+", " ", new)
+        if isinstance(c.get("values"), dict):
+            used = set(re.findall(r":\w+", c["update"]))
+            c["values"] = {k: v for k, v in c["values"].items() if k not in dropped or k in used}
+    if isinstance(c.get("transact"), list):
+        c["transact"] = [_strip_attrs(t, attrs) for t in c["transact"]]
+    return c
+
+
+def _observation(raw: dict[str, Any], contract: int = 1, ignore_attrs: set[str] | None = None) -> dict[str, Any]:
     """What H1 compares: (a) the multiset of calls that took effect -- faulted
     attempts and calls the backend rejected changed nothing, so retries do
     not count twice; (b) the externally visible outcome. Under contract 2 a
@@ -1090,6 +1131,8 @@ def _observation(raw: dict[str, Any], contract: int = 1) -> dict[str, Any]:
     the index and the key condition are how the implementation reads, and
     what it read shows in the outcome (b)."""
     effective = [c for c in raw.get("calls") or [] if not c.get("fault") and not c.get("backend_error")]
+    if ignore_attrs:
+        effective = [_strip_attrs(c, ignore_attrs) for c in effective]
 
     def enc(c: dict) -> str:
         if contract >= 2 and c.get("op") in READ_OPS:
@@ -1100,12 +1143,13 @@ def _observation(raw: dict[str, Any], contract: int = 1) -> dict[str, Any]:
     # a Delete) changes nothing, so those compare as a set; UpdateItem (ADD),
     # messages and multi-item writes keep every occurrence.
     idem = sorted({e for op, e in encoded if op in IDEMPOTENT_OPS or op == "@read"})
-    other = sorted(e for op, e in encoded if op not in IDEMPOTENT_OPS)
+    other = sorted(e for op, e in encoded if op not in IDEMPOTENT_OPS and op != "@read")
     calls = sorted(idem + other)
     result = raw.get("result")
     outcome = {"error": (raw.get("error") or {}).get("type"), "result": normalize(result),
                "messages": sorted(json.dumps(normalize(m), sort_keys=True) for m in raw.get("messages") or []),
-               "tables_after": {t: sorted((normalize(i) for i in items), key=lambda x: json.dumps(x, sort_keys=True))
+               "tables_after": {t: sorted((normalize({k: v for k, v in i.items() if not ignore_attrs or k not in ignore_attrs})
+                                           for i in items), key=lambda x: json.dumps(x, sort_keys=True))
                                 for t, items in sorted((raw.get("tables_after") or {}).items())}}
     return {"calls": [json.loads(c) for c in calls], "outcome": outcome,
             "attempts": len(raw.get("calls") or []), "calls_after_return": sum(1 for c in raw.get("calls") or [] if c.get("after_return")),
@@ -1511,7 +1555,7 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
             return {"status": "FAIL", "error": f"{path.name} was recorded with runtime {old.get('runtime')!r}; a functions-filtered "
                     f"record with runtime {runtime!r} cannot be merged into it -- record all functions instead"}
         raws, infra = run_version(model, ws, None, "record")
-        obs = {k: _observation(r, model.contract) for k, r in raws.items()}
+        obs = {k: _observation(r, model.contract, model.index_attributes) for k, r in raws.items()}
         scenarios = {k: {"description": v.get("description", ""), "function": v["function"], "cases": v["cases"], "rules": v["rules"]} for k, v in scen.items()}
         now = time.strftime("%Y-%m-%dT%H:%M:%S")
         doc = {"label": label, "runtime": runtime, "recorded_at": now, "scenarios": scenarios, "observations": obs, "infra_errors": infra,
@@ -1538,13 +1582,13 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
         base_root = export_ref(ws, baseline_ref)
         base_model = Model(base_root)
         base_raws, base_infra = run_version(base_model, base_root, None, "base")
-        base = {k: _observation(r, model.contract) for k, r in base_raws.items()}
+        base = {k: _observation(r, model.contract, model.index_attributes) for k, r in base_raws.items()}
         pinned = {k: v["faults_applied"] for k, v in base.items()}
         # Stability check: the baseline run again with the same pinned faults;
         # runs whose two baseline observations differ are measurement noise,
         # not evidence against the change.
         again_raws, again_infra = run_version(base_model, base_root, pinned, "base2")
-        again = {k: _observation(r, model.contract) for k, r in again_raws.items()}
+        again = {k: _observation(r, model.contract, model.index_attributes) for k, r in again_raws.items()}
         unstable = sorted(k for k in base if k in again and (base[k]["calls"] != again[k]["calls"] or base[k]["outcome"] != again[k]["outcome"]))
         base_infra = {**base_infra, **{f"rerun:{k}": v for k, v in again_infra.items()}}
         now_raws, infra = run_version(model, ws, pinned, "cand")
@@ -1557,7 +1601,7 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
         base = _read_json(path)["observations"]
         now_raws, infra = run_version(model, ws, None, "cand")
         baseline_desc = f"{path.relative_to(ws)} (stored; n-th-call fault rules, order-sensitive)"
-    obs = {k: _observation(r, model.contract) for k, r in now_raws.items()}
+    obs = {k: _observation(r, model.contract, model.index_attributes) for k, r in now_raws.items()}
     diffs = []
     for key, now in obs.items():
         before = base.get(key)

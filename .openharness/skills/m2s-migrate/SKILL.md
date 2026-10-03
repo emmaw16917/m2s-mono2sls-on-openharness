@@ -266,12 +266,13 @@ git log --oneline -1 && git tag   # 确认 tag 存在
 1. spawn `m2s-architect`，prompt 写"裁定 perf 申请"，逐条附上每个 `pending_spec` 请求的 `spec_relaxation`：`targets`、`why_trace`、`allowed_outcomes`、`evidence`。**`blocking_tests` 不要转给 architect**（K10）。你自己不做裁定。
 2. architect 完成后，亲自跑 `run_gate(phase="blueprint")`，必须 `PASS`。读出 `origin` 是这些 REQ 的 SI，分成接受和驳回两类。
 3. 有接受的 SI 时：
+   - 其中带 `data_model_change` 的（新建 GSI，`CONTRACT_TESTING_PLAN.md` §8）：先 spawn `m2s-sam-engineer`（STAGE_ID=SG），prompt 写 WS 和 SI 编号；完成后你亲自 `run_gate(phase="template")` 和 `validate_sam`，都通过再继续；
    - spawn `m2s-verifier`（STAGE_ID=VS），prompt 里写 WS 和这些 SI 的编号；
    - VS 完成后，亲自 `run_validate(ref="v0")`，必须全部通过（`not_applicable` 不算失败，但要在最终回复里列出）；
    - 然后提交测试资产：`git -C "WS" add verification storage && git -C "WS" commit -m "verification: spec relaxation (VS)"`。**v0 的 tag 不动**：此时 HEAD 已经含有 S5 之前保留的改动，把 v0 移过去会把它们算进 v0。新用例已经由上一步的 `run_validate(ref="v0")` 在 v0 的代码上验收过了，这次提交本身就是"测试已在 v0 上重新验收"的记录。不需要重录 `fault_baseline_v0.json`：工作区有自己的仓库时，`run_equivalence(diff)` 会现场重建基线版本；
    - 没通过：不移 tag，这些 REQ 在 `perf_report.json` 里改成 `spec_rejected`，原因写"测试调整后 v0 未通过"。
 4. spawn `m2s-perf-optimizer`（STAGE_ID=S5），prompt 写"重新判决模式"，列出被接受的 REQ 和对应的 SI 编号，以及被驳回的 REQ（这些只需要把 `verdict` 改成 `spec_rejected`）。
-5. 最终回复里单独列出"本次 spec 放宽"：每条 SI、对应的 REQ、判决结果。这些都属于"需人复核"。
+5. 最终回复里单独列出"本次 spec 放宽"：每条 SI、对应的 REQ、判决结果。这些都属于"需人复核"。有 `new_attributes` 的，把 `backfill` 步骤原样列出，标为"部署前必须执行"。
 
 **阶段 6（最终检验）**，你亲自做：
 1. `run_gate(phase="final")` 必须 `PASS`；

@@ -28,7 +28,8 @@ model: inherit
 | 按条目键分波次并行（R4） | ✅，条件见规则库 |
 | 跨消息按 key 聚合写入（失败粒度变粗） | ❌ |
 | 多次 Put/Delete 合并成 `BatchWriteItem`；把 `UpdateItem` 合并成批量写 | ❌ |
-| 事务化、数据模型改动（GSI、物化视图）、异步机制改动 | ❌ → 写进 advisories |
+| 新增 GSI | ❌，写申请（"申请放宽 spec"一节，请求带 `data_model_change`） |
+| 事务化、其他数据模型改动（换表结构、物化视图）、异步机制改动 | ❌ → 写进 advisories |
 | 去掉 `class: implementation-trace` 条目对应的冗余读（blueprint 是 contract 2，或者那一条已经有 `implementation-trace` 的 SI） | ✅，仍要过 H1、覆盖率和判决 |
 | 冗余读被 spec 或测试规定成必经步骤（contract 1 应用，或者漏标的条目） | ❌，写申请（见"申请放宽 spec"一节） |
 | 架构改成 arm64（规则 R5），只改 `Globals.Function.Architectures` | ✅，条件见规则库 |
@@ -402,6 +403,23 @@ REQ 来自 spec 放宽申请时（prompt 会写明，并给出 architect 的 SI 
    - architect 驳回了：`verdict` 改成 `spec_rejected`，`spec_relaxation.ruling` 写 `rejected`，原因引用 SI。本轮不要再为同一处申请。
 
 `gate(final)` 会拒绝还留着 `pending_spec` 的报告（SR1），也会拒绝被接受了却没有重判的申请（SR2）。
+
+**需要新建 GSI 时**（`CONTRACT_TESTING_PLAN.md` §8）：请求里再加 `data_model_change`：
+
+```json
+"data_model_change": {
+  "table": "<blueprint 表的 logical_name>",
+  "index": {"name": "<GSI 名>", "keys": [{"attribute": "isNew", "type": "HASH"}, {"attribute": "createdDate", "type": "RANGE"}],
+            "projection": "ALL | KEYS_ONLY | INCLUDE:<a,b>"},
+  "new_attributes": [{"name": "gsiPk", "value": "常量 'ALL' / 由哪个字段推出", "writers": ["写这张表的函数"],
+                      "backfill": "已有数据怎么补：例如部署前对每行 SET gsiPk='ALL'"}],
+  "readers": ["改为 Query 这个 GSI 的函数"]
+}
+```
+
+- 优先用表里已有的属性做索引键（例如稀疏索引用一个只在某些行上存在的属性）；只有确实没有可用属性时才提新属性，并写清回填方法；
+- 量收益时，模板和代码都只做临时改动，量完 `git checkout -- output` 撤回；
+- 重新判决时，模板里的 GSI 已经由 sam-engineer 加好，你只改读写代码；有新属性时，所有写这张表的函数都要写上它。
 
 ## 报告的写法
 

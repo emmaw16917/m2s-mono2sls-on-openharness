@@ -324,16 +324,109 @@
         "pending": 0,
         "kept": 1
       }
+    },
+    {
+      "app": "airline-booking",
+      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\airline-booking-c2",
+      "recorded_at": "2026-10-03T16:44:22",
+      "confidence": "normal",
+      "rules": {
+        "R1": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R2": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R3": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R4": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R5": {
+          "hits": 1,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        }
+      },
+      "spec_relaxations": {
+        "requested": 2,
+        "accepted": 2,
+        "rejected": 0,
+        "pending": 0,
+        "kept": 2
+      }
     }
   ],
   "candidate_rules": [
     {
       "app": "airline-booking",
       "change": "C3",
-      "request": "REQ-3",
+      "request": "REQ-2",
       "functions": [
-        "bookings-cancel",
-        "bookings-confirm"
+        "customers-list-bookings"
+      ],
+      "note": "data-driven finding judged effective; promotion to a rule needs human review"
+    },
+    {
+      "app": "airline-booking",
+      "change": "C4",
+      "request": "REQ-2",
+      "functions": [
+        "loyalty-get-summary"
       ],
       "note": "data-driven finding judged effective; promotion to a rule needs human review"
     }
@@ -352,7 +445,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 6
+      "apps": 7
     },
     "R2": {
       "hits": 0,
@@ -367,7 +460,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 6
+      "apps": 7
     },
     "R3": {
       "hits": 0,
@@ -382,7 +475,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 6
+      "apps": 7
     },
     "R4": {
       "hits": 2,
@@ -397,14 +490,29 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 5
+      "apps": 6
+    },
+    "R5": {
+      "hits": 1,
+      "kept": 1,
+      "kept_inconclusive": 0,
+      "reverted": 0,
+      "pending_human": 0,
+      "blocked_by_test": 0,
+      "blocked_by_coverage": 0,
+      "pending_spec": 0,
+      "spec_rejected": 0,
+      "kept_after_fix": 0,
+      "fix_attempted": 0,
+      "reviewed": 0,
+      "apps": 1
     }
   },
   "totals_spec_relaxations": {
-    "requested": 1,
-    "accepted": 1,
+    "requested": 3,
+    "accepted": 3,
     "rejected": 0,
     "pending": 0,
-    "kept": 1
+    "kept": 3
   }
 }

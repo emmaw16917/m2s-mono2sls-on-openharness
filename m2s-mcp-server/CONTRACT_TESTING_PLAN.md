@@ -134,6 +134,8 @@
 | `agents/m2s-verifier.md` | 针对 SI 的定向回炉（只改受影响的用例） |
 | `.openharness/skills/m2s-migrate/SKILL.md` | 编排：S5 之后，如果有 `pending_spec`，就走 7.1 的第 2–6 步 |
 
+### 7.6 扩展：新增 GSI 的申请（2026-10-03，见 §8）
+
 ### 7.5 第一个案例：airline 的 V2-01
 
 在 contract 1 的 airline 工作区上手动走一遍 7.1：
@@ -144,3 +146,33 @@
 - 重新判决 V2-01。
 
 预期结果：调用 7→5、深度 7→5，按 10ms 延迟模型约省 20ms。不管裁定接受还是驳回，都把结果写回 `v2_requests.json`。
+
+## 8. 扩展：新增 GSI（数据模型改动）的申请（2026-10-03）
+
+§7 的流程只允许 perf-optimizer 改代码。读路径能用**现成** GSI 时（airline 的两个函数）够用；要**新建** GSI 时，还要改模板，有时还要给已有数据补一个属性。扩展如下：
+
+| 步 | 谁 | 做什么 |
+|---|---|---|
+| 1 申请 | perf-optimizer | 请求在 `spec_relaxation` 之外带 `data_model_change`（格式见下）。收益在临时改动上量：临时改模板加 GSI、临时改读代码，`run_proxy_metrics` 量完全部撤回 |
+| 2 裁定 | architect | 接受时：SI 里写 `data_model_change`（gate CT5 检查格式），并用 `merge_blueprint_key` 把 GSI 加进 blueprint 的 `dynamodb_tables`。优先用表里**已有**的属性做索引键；必须新增属性时，写清它的取值、由哪些函数写、已有数据怎么回填 |
+| 3 改模板 | sam-engineer（STAGE_ID=SG） | 只把 blueprint 里这一个 GSI 写进 `output/template.yaml`（AttributeDefinitions + GlobalSecondaryIndexes），别的不动；`run_gate(phase="template")` + `validate_sam` |
+| 4 改用例 | verifier（VS） | 同 §7；另外，如果有新属性，在相关用例的夹具里给已有行补上这个属性（模拟回填后的数据）。不新增对新属性本身的断言 |
+| 5 重新验收 | 主 Agent | 同 §7：`run_validate(ref="v0")` 全量，提交测试资产，v0 tag 不动 |
+| 6 重新判决 | perf-optimizer | 改读代码（Query 新 GSI），有新属性时也改写入代码；照常走等价性、验证、覆盖率、RIE |
+
+**等价性怎么判**：已接受的 SI 里 `data_model_change.new_attributes` 声明的属性，`run_equivalence` 比较时会忽略（写入的 Item、UpdateExpression 里给它赋值的 SET 子句、表的最终状态），其余写入照常严格比较。这样"多写一个索引键"不会被判成不等价，但任何别的写入差异仍然会。
+
+**部署注意**：新属性的回填（`backfill`）不在本地验证范围内，交付报告里要单列，部署前执行。新 GSI 本身由 DynamoDB 自动回填已有数据，但只覆盖带有索引键属性的行。
+
+`data_model_change` 格式：
+
+```json
+"data_model_change": {
+  "table": "<blueprint 表的 logical_name>",
+  "index": {"name": "<GSI 名>", "keys": [{"attribute": "isNew", "type": "HASH"}, {"attribute": "createdDate", "type": "RANGE"}],
+            "projection": "ALL | KEYS_ONLY | INCLUDE:<a,b>"},
+  "new_attributes": [{"name": "gsiPk", "value": "常量 'ALL' / 由哪个字段推出", "writers": ["写这张表的函数"],
+                      "backfill": "已有数据怎么补：例如部署前对每行 SET gsiPk='ALL'"}],
+  "readers": ["改为 Query 这个 GSI 的函数"]
+}
+```

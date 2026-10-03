@@ -1000,3 +1000,15 @@ def test_si_class_vocabulary(tmp_path):
     assert gates.check_contract(ws) == []
     meta({"verification_contract": 2, "spec_resolutions": [{"issue_id": "SI-1"}, {"issue_id": "SI-2", "class": "spec-gap"}]})
     assert _ids(gates.check_contract(ws)) == ["CT4"]
+
+
+def test_data_model_change_shape(tmp_path):
+    ws = _contract_ws(tmp_path, {}, [{"rule": "r"}], [{"status": 200}])
+    si = {"issue_id": "SI-1", "class": "implementation-trace", "targets": ["POST /x#responses[0]"],
+          "data_model_change": {"table": "Books", "index": {"name": "all-by-sales"}}}
+    (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"spec_resolutions": [si]}}), encoding="utf-8")
+    assert _ids(gates.check_contract(ws)) == ["CT5"]
+    si["data_model_change"] = {"table": "Books", "index": {"name": "all-by-sales", "keys": [{"attribute": "gsiPk", "type": "HASH"}]},
+                               "new_attributes": [{"name": "gsiPk", "value": "ALL", "backfill": "set gsiPk='ALL' on every existing row"}]}
+    (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"spec_resolutions": [si]}}), encoding="utf-8")
+    assert gates.check_contract(ws) == []
