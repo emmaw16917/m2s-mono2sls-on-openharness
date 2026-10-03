@@ -337,6 +337,8 @@ v0 是验收过的版本，所以用"和 v0 等不等价"来区分是代码的�
 | PASS | `EQUIVALENT` | PASS | 有没覆盖的改动行 | 缺测试 | `blocked_by_coverage` |
 | PASS | `INFRA_ERROR` | — | — | 工具问题 | 重跑一次；仍然出错就回滚，原因写 `infra` |
 
+**`DIFFERENT` 时不许自己改判**（2026-10-03 加）：即使你认为差异来自工具的局限（例如操作名不同、故障钉的方式不对），也**不能**判 `kept`。可以在报告的 `issues` 里写明你的分析，然后把这个改动判成 `pending_human`，交给人确认，同时报告工具问题。判 `kept` 的前提永远是 `run_equivalence` 给出 `EQUIVALENT`。
+
 **代码问题**：
 - `fix_attempts == 0` 时，允许修一次：
   - 根据 `differences`、`mismatches`、`logs_tail` 找出错的地方，只改请求里的目标文件；

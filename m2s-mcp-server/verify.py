@@ -49,6 +49,7 @@ FAULT_KINDS = ("throttle", "error", "validation", "conditional", "network", "tx_
 # Contract testing (contract 2, PIPELINE_REDESIGN.md section 3.6): what a case
 # may assert about SDK calls -- side effects only, never how often or in what
 # order the implementation reads.
+READ_OPS = ("GetItem", "BatchGetItem", "Query", "Scan")
 WRITE_OPS = ("PutItem", "UpdateItem", "DeleteItem", "BatchWriteItem", "TransactWriteItems", "SendMessage", "SendMessageBatch")
 LOCAL_DISCLAIMER = ("运行时检查在本机 Node 中完成，未在 Lambda 运行时中验证"
                     "（依赖来自 sam build 产物，但 Windows/Node 小版本与 Lambda 不同）")
@@ -514,6 +515,10 @@ def _check_rules(model: Model, where: str, rules: Any, with_template: bool) -> l
         if not (nth == "all" or (isinstance(nth, int) and nth >= 1) or (isinstance(nth, list) and all(isinstance(x, int) for x in nth))):
             errs.append(f"{where}: rules[{i}].nth must be 'all', a positive integer or a list of them")
         m = r.get("match") or {}
+        if model.contract >= 2 and isinstance(m, dict) and m.get("op") in READ_OPS:
+            errs.append(f"{where}: rules[{i}].match.op {m['op']!r} names a read operation; under verification_contract 2 a read "
+                        "fault targets the read of a table, not the operation the implementation happens to use: "
+                        "match by table / item (op omitted, or \"@read\")")
         if model.contract >= 2 and nth != "all" and isinstance(m, dict) and "item" not in m:
             errs.append(f"{where}: rules[{i}] selects matching call(s) {nth} by position; under verification_contract 2 a rule "
                         "with nth other than 'all' needs match.item (nth then counts operations on that item)")
@@ -1077,17 +1082,24 @@ def normalize(v: Any, now_ms: float | None = None) -> Any:
     return v
 
 
-def _observation(raw: dict[str, Any]) -> dict[str, Any]:
+def _observation(raw: dict[str, Any], contract: int = 1) -> dict[str, Any]:
     """What H1 compares: (a) the multiset of calls that took effect -- faulted
     attempts and calls the backend rejected changed nothing, so retries do
-    not count twice; (b) the externally visible outcome."""
+    not count twice; (b) the externally visible outcome. Under contract 2 a
+    read is compared only as "table T was read": Scan vs Query vs GetItem,
+    the index and the key condition are how the implementation reads, and
+    what it read shows in the outcome (b)."""
     effective = [c for c in raw.get("calls") or [] if not c.get("fault") and not c.get("backend_error")]
-    encoded = [(c.get("op"), json.dumps(normalize({k: c.get(k) for k in ("op", "table", "queue", "index", "key", "item", "update", "values", "transact")}), sort_keys=True))
-               for c in effective]
+
+    def enc(c: dict) -> str:
+        if contract >= 2 and c.get("op") in READ_OPS:
+            return json.dumps({"op": "@read", "table": c.get("table")}, sort_keys=True)
+        return json.dumps(normalize({k: c.get(k) for k in ("op", "table", "queue", "index", "key", "item", "update", "values", "transact")}), sort_keys=True)
+    encoded = [("@read" if contract >= 2 and c.get("op") in READ_OPS else c.get("op"), enc(c)) for c in effective]
     # "操作集合": repeating an idempotent operation (a read, the same Put,
     # a Delete) changes nothing, so those compare as a set; UpdateItem (ADD),
     # messages and multi-item writes keep every occurrence.
-    idem = sorted({e for op, e in encoded if op in IDEMPOTENT_OPS})
+    idem = sorted({e for op, e in encoded if op in IDEMPOTENT_OPS or op == "@read"})
     other = sorted(e for op, e in encoded if op not in IDEMPOTENT_OPS)
     calls = sorted(idem + other)
     result = raw.get("result")
@@ -1098,17 +1110,27 @@ def _observation(raw: dict[str, Any]) -> dict[str, Any]:
     return {"calls": [json.loads(c) for c in calls], "outcome": outcome,
             "attempts": len(raw.get("calls") or []), "calls_after_return": sum(1 for c in raw.get("calls") or [] if c.get("after_return")),
             "conflicts": sum(1 for c in raw.get("calls") or [] if c.get("conflict")),
-            "faults_applied": _pins(raw)}
+            "faults_applied": _pins(raw, contract)}
 
 
-def _pins(raw: dict[str, Any]) -> list[dict[str, Any]]:
+def _pins(raw: dict[str, Any], contract: int = 1) -> list[dict[str, Any]]:
     """The faults a run actually applied, as rules pinned to the concrete
     operation (op, table, identity, n-th attempt on it) instead of "the n-th
     matching call" -- so the same operations fail in a version whose call
-    order differs."""
-    return [{"match": {"op": c["op"], "table": c.get("table") or c.get("queue"), "identity": c.get("identity", "")},
-             "nth": c.get("occurrence", 1), "kind": c["fault"]}
-            for c in raw.get("calls") or [] if c.get("fault")]
+    order differs. Under contract 2 a faulted read is pinned to "the n-th
+    read of that table", so it still fires when the other version reads the
+    table with another operation (Scan -> Query on an index)."""
+    pins, reads = [], {}
+    for c in raw.get("calls") or []:
+        table = c.get("table") or c.get("queue")
+        if contract >= 2 and c.get("op") in READ_OPS:
+            reads[table] = reads.get(table, 0) + 1
+            if c.get("fault"):
+                pins.append({"match": {"op": "@read", "table": table}, "nth": reads[table], "kind": c["fault"]})
+        elif c.get("fault"):
+            pins.append({"match": {"op": c["op"], "table": table, "identity": c.get("identity", "")},
+                         "nth": c.get("occurrence", 1), "kind": c["fault"]})
+    return pins
 
 
 # ---------------------------------------------------------------------------
@@ -1489,7 +1511,7 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
             return {"status": "FAIL", "error": f"{path.name} was recorded with runtime {old.get('runtime')!r}; a functions-filtered "
                     f"record with runtime {runtime!r} cannot be merged into it -- record all functions instead"}
         raws, infra = run_version(model, ws, None, "record")
-        obs = {k: _observation(r) for k, r in raws.items()}
+        obs = {k: _observation(r, model.contract) for k, r in raws.items()}
         scenarios = {k: {"description": v.get("description", ""), "function": v["function"], "cases": v["cases"], "rules": v["rules"]} for k, v in scen.items()}
         now = time.strftime("%Y-%m-%dT%H:%M:%S")
         doc = {"label": label, "runtime": runtime, "recorded_at": now, "scenarios": scenarios, "observations": obs, "infra_errors": infra,
@@ -1516,13 +1538,13 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
         base_root = export_ref(ws, baseline_ref)
         base_model = Model(base_root)
         base_raws, base_infra = run_version(base_model, base_root, None, "base")
-        base = {k: _observation(r) for k, r in base_raws.items()}
+        base = {k: _observation(r, model.contract) for k, r in base_raws.items()}
         pinned = {k: v["faults_applied"] for k, v in base.items()}
         # Stability check: the baseline run again with the same pinned faults;
         # runs whose two baseline observations differ are measurement noise,
         # not evidence against the change.
         again_raws, again_infra = run_version(base_model, base_root, pinned, "base2")
-        again = {k: _observation(r) for k, r in again_raws.items()}
+        again = {k: _observation(r, model.contract) for k, r in again_raws.items()}
         unstable = sorted(k for k in base if k in again and (base[k]["calls"] != again[k]["calls"] or base[k]["outcome"] != again[k]["outcome"]))
         base_infra = {**base_infra, **{f"rerun:{k}": v for k, v in again_infra.items()}}
         now_raws, infra = run_version(model, ws, pinned, "cand")
@@ -1535,7 +1557,7 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
         base = _read_json(path)["observations"]
         now_raws, infra = run_version(model, ws, None, "cand")
         baseline_desc = f"{path.relative_to(ws)} (stored; n-th-call fault rules, order-sensitive)"
-    obs = {k: _observation(r) for k, r in now_raws.items()}
+    obs = {k: _observation(r, model.contract) for k, r in now_raws.items()}
     diffs = []
     for key, now in obs.items():
         before = base.get(key)

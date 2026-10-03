@@ -104,12 +104,16 @@ function touchesItem(call, want) {
   return false;
 }
 
+const READ_OPS = new Set(['GetItem', 'BatchGetItem', 'Query', 'Scan']);
+
 function matchFault(call) {
   if (!ctx) return null;
   let kind = null;
   for (const r of ctx.rules) {
     const m = r.rule.match || {};
-    if (m.op && m.op !== call.op) continue;
+    // "@read": any read operation -- a fault on "the read of this table",
+    // whichever operation the implementation uses (contract 2).
+    if (m.op === '@read' ? !READ_OPS.has(call.op) : m.op && m.op !== call.op) continue;
     if (m.table && m.table !== call.table && m.table !== call.queue && !(call.tables || []).includes(m.table)) continue;
     if (m.item && !touchesItem(call, m.item)) continue;
     if (m.identity !== undefined && m.identity !== call.identity) continue;

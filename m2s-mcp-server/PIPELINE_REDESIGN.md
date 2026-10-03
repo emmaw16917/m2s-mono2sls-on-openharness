@@ -234,7 +234,8 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 |---|---|
 | 规格 | `business_rules` 每条带 `class`：`contract` 或 `implementation-trace`；`responses` 里只由实现轨迹触发的那一臂标 `trace_arm: true`，由 architect 作废或给出允许的结果集合 |
 | 断言 | `expect.sdk_calls` 的 `includes` 只能写写操作和消息，不能用 `total`；`excludes` 可以写读操作（例如"403 时不读 Payment"属于权限契约）；轨迹信息写进 `expect.trace`，只记录、不判定 |
-| 故障 | `nth` 不是 `all` 时必须带 `match.item`，`nth` 的含义是"这个条目上的第 N 次操作" |
+| 故障 | `nth` 不是 `all` 时必须带 `match.item`，`nth` 的含义是"这个条目上的第 N 次操作"；读故障不许写死操作名（GetItem / Query / Scan / BatchGetItem），只能按表或条目匹配，`op` 省略或写 `"@read"`（2026-10-03 加） |
+| 等价性 | `run_equivalence` 的 H1(a) 对读操作只比较"读了哪张表"，不比较操作名、索引和键条件；基线里注入的读故障按"这张表的第 N 次读"钉住，换了读法也照样触发（2026-10-03 加） |
 | 多结果 | `expect.alternatives`：满足其中任意一组完整预期就算通过；只能在引用了 SI 裁定的用例里使用 |
 | 不适用 | 故障规则一次都没被触发，且用例引用了 `class: implementation-trace` 的裁定时，判 `not_applicable`；没有这样的裁定时仍判失败 |
 | 裁定分类 | contract 2 下每条 SI 都带 `class`，取值固定为 `contract` / `implementation-trace` / `migration-change` / `spec-gap`（gate CT4；2026-10-03 定，取代 airline-booking-c2 里 architect 自拟的 7 种写法） |

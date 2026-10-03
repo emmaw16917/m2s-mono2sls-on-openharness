@@ -520,8 +520,9 @@ def test_contract2_positional_faults_need_an_item(ws):
     m = _contract_ws(ws)
     assert verify.check_case(m, _case(faults=[{"match": {"op": "GetItem", "table": "Books"}, "nth": 2, "kind": "error"}]),
                              with_template=True)
-    for rule in ({"match": {"op": "GetItem", "table": "Books"}, "nth": "all", "kind": "error"},
-                 {"match": {"op": "GetItem", "item": {"id": "b1"}}, "nth": 2, "kind": "error"}):
+    for rule in ({"match": {"op": "PutItem", "table": "Books"}, "nth": "all", "kind": "error"},
+                 {"match": {"op": "PutItem", "item": {"id": "b1"}}, "nth": 2, "kind": "error"},
+                 {"match": {"item": {"id": "b1"}}, "nth": 2, "kind": "error"}):
         assert verify.check_case(m, _case(faults=[rule]), with_template=True) == []
     m1 = _contract_ws(ws, contract=None)
     assert verify.check_case(m1, _case(faults=[{"match": {"op": "GetItem"}, "nth": 2, "kind": "error"}]), with_template=True) == []
@@ -563,3 +564,33 @@ def test_fixtures_accept_time_relative_placeholders(ws, monkeypatch):
     case = _case(fixtures={"Books": [{"id": "b-{now_ms // 300000}", "ts": "{now_ms // 300000 * 300000}", "note": "{not an expr}"}]})
     item = verify._prepare_runs(m, [case])[0]["fixtures"]["BooksTable"][0]
     assert item == {"id": "b-5968448", "ts": 1790534400000, "note": "{not an expr}"}
+
+
+def test_contract2_read_faults_name_no_operation(ws):
+    m = _contract_ws(ws)
+    errs = " | ".join(verify.check_case(m, _case(faults=[{"match": {"op": "Scan", "table": "Books"}, "nth": "all", "kind": "error"}]),
+                                        with_template=True))
+    assert "names a read operation" in errs
+    for rule in ({"match": {"table": "Books"}, "nth": "all", "kind": "error"},
+                 {"match": {"op": "@read", "table": "Books"}, "nth": "all", "kind": "error"},
+                 {"match": {"op": "PutItem", "table": "Books"}, "nth": "all", "kind": "error"}):
+        assert verify.check_case(m, _case(faults=[rule]), with_template=True) == []
+    m1 = _contract_ws(ws, contract=None)
+    assert verify.check_case(m1, _case(faults=[{"match": {"op": "Scan"}, "nth": "all", "kind": "error"}]), with_template=True) == []
+
+
+def test_contract2_observation_compares_reads_by_table():
+    scan = {"calls": [{"op": "Scan", "table": "T", "values": {":c": "a"}}, {"op": "PutItem", "table": "U", "item": {"id": "1"}}],
+            "result": {"statusCode": 200}}
+    query = {"calls": [{"op": "Query", "table": "T", "index": "by-c", "key_condition": "#c = :c", "values": {":c": "a"}},
+                       {"op": "PutItem", "table": "U", "item": {"id": "1"}}], "result": {"statusCode": 200}}
+    assert verify._observation(scan, 2)["calls"] == verify._observation(query, 2)["calls"]
+    assert verify._observation(scan, 1)["calls"] != verify._observation(query, 1)["calls"]
+
+
+def test_contract2_pins_read_faults_by_table():
+    raw = {"calls": [{"op": "GetItem", "table": "T", "identity": "k1"}, {"op": "Scan", "table": "T", "fault": "error", "identity": "s"},
+                     {"op": "PutItem", "table": "U", "fault": "throttle", "identity": "p", "occurrence": 1}]}
+    assert verify._pins(raw, 2) == [{"match": {"op": "@read", "table": "T"}, "nth": 2, "kind": "error"},
+                                    {"match": {"op": "PutItem", "table": "U", "identity": "p"}, "nth": 1, "kind": "throttle"}]
+    assert verify._pins(raw, 1)[0]["match"]["op"] == "Scan"
