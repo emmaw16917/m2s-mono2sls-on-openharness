@@ -1012,3 +1012,16 @@ def test_data_model_change_shape(tmp_path):
                                "new_attributes": [{"name": "gsiPk", "value": "ALL", "backfill": "set gsiPk='ALL' on every existing row"}]}
     (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"spec_resolutions": [si]}}), encoding="utf-8")
     assert gates.check_contract(ws) == []
+
+
+def test_result_order_values(tmp_path):
+    ws = _contract_ws(tmp_path, {}, [{"rule": "r"}], [{"status": 200}])
+    def si(**kw):
+        (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"spec_resolutions": [{"issue_id": "SI-1", **kw}]}}),
+                                                       encoding="utf-8")
+    si(result_order="any")
+    assert _ids(gates.check_contract(ws)) == ["CT6"]
+    si(result_order="unspecified")
+    assert _ids(gates.check_contract(ws)) == ["CT6"]
+    si(result_order="unspecified", applies_to=["f"])
+    assert gates.check_contract(ws) == []

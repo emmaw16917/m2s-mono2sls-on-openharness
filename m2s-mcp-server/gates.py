@@ -180,6 +180,12 @@ def check_contract(workspace: Path) -> list[dict[str, Any]]:
         elif cls is None and meta.get("verification_contract") == 2:
             findings.append(_finding("CT4", "ERROR", f"spec_resolutions[{r.get('issue_id')}] has no 'class'; under "
                                      f"verification_contract 2 every ruling needs one of {sorted(SI_CLASSES)}.", "blueprint.json"))
+        if r.get("result_order") not in (None, "unspecified"):
+            findings.append(_finding("CT6", "ERROR", f"spec_resolutions[{r.get('issue_id')}].result_order must be \"unspecified\" "
+                                     "(or absent: the order stays part of the contract).", "blueprint.json"))
+        elif r.get("result_order") == "unspecified" and not r.get("applies_to"):
+            findings.append(_finding("CT6", "ERROR", f"spec_resolutions[{r.get('issue_id')}] sets result_order but names no "
+                                     "applies_to functions.", "blueprint.json"))
         dmc = r.get("data_model_change")
         if dmc is not None:
             idx = (dmc or {}).get("index") if isinstance(dmc, dict) else None

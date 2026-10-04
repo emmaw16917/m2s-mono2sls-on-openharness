@@ -203,6 +203,7 @@ spawn prompt 写明"裁定 perf 申请"时，主 Agent 会给你若干条申请�
    - 核对索引键：优先用已有属性；必须新增属性时，确认它只是索引键，不改变任何对外结果；
    - 接受：SI 里原样写入（可以修改）`data_model_change`，gate 的 CT5 检查它的格式；同时用 `merge_blueprint_key(key="dynamodb_tables", mode="replace")` 把这个 GSI 加进对应表的定义，和 SI 一致；
    - `backfill` 必须写成可执行的步骤，交付时会单列给人。
+6. **裁定作废了"返回顺序"时**（例如换读法后，列表的顺序不再和单体一致）：在这条 SI 里加 `"result_order": "unspecified"`，`applies_to` 写清是哪些函数。等价性检查只对这些函数把返回体里的数组当成无序集合来比；不写这个字段，顺序仍然是契约，会被严格比较（gate 的 CT6 检查取值）。
 
 ## 输出契约：逐字段调用 merge_blueprint_key 构建 blueprint.json
 

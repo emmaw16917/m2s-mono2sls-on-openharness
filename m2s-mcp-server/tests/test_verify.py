@@ -622,3 +622,17 @@ def test_relaxed_read_functions_use_table_level_reads(ws):
     assert m.contract == 1 and m.relaxed_read_functions == {"books-get"}
     assert verify._run_contract(m, {"function": "books-get"}) == 2
     assert verify._run_contract(m, {"function": "consumer"}) == 1
+
+
+def test_unordered_result_compares_arrays_as_multisets(ws):
+    bp = dict(BLUEPRINT, metadata={"spec_resolutions": [{"issue_id": "SI-2", "ruling": "accepted", "result_order": "unspecified",
+                                                         "applies_to": ["books-get"]}]})
+    (ws / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    m = verify.Model(ws)
+    assert m.unordered_functions == {"books-get"}
+    a = {"result": {"statusCode": 200, "body": json.dumps({"products": [{"id": "p1"}, {"id": "p2"}]})}}
+    b = {"result": {"statusCode": 200, "body": json.dumps({"products": [{"id": "p2"}, {"id": "p1"}]})}}
+    c = {"result": {"statusCode": 200, "body": json.dumps({"products": [{"id": "p2"}, {"id": "p3"}]})}}
+    assert verify._observation(a, unordered=True)["outcome"] == verify._observation(b, unordered=True)["outcome"]
+    assert verify._observation(a, unordered=True)["outcome"] != verify._observation(c, unordered=True)["outcome"]
+    assert verify._observation(a)["outcome"] != verify._observation(b)["outcome"]  # default: order is part of the contract
