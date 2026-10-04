@@ -156,6 +156,31 @@ def annotate_entry_point(method: str, path: str, field: str, value_json: str) ->
 
 
 @mcp.tool()
+def annotate_global_middleware(index: int, headers_json: str, note: str = "", source_json: str = "") -> str:
+    """Set the response headers of one app-wide middleware item
+    (analysis_report.global_middleware[index], found by P0: CORS(app),
+    app.use(cors({...})), helmet, after_request hooks ...). P0 fills the
+    headers only for library defaults; a configured call has headers null
+    until you read its options and record what EVERY response gets.
+
+    Args:
+        index: position in global_middleware.
+        headers_json: {"Header-Name": "value"}; where the value depends on the
+            request, describe it, e.g. "<request Origin when in CORS_ORIGINS>".
+        note: why (what the options mean).
+        source_json: optional extra [{file, line, symbol}] citations (e.g. the
+            config value the options read).
+
+    Returns: JSON {ok, index, headers} or {ok: false, errors}.
+    """
+    try:
+        result = provenance.annotate_global_middleware(str(_workspace()), index, headers_json, note, source_json)
+    except provenance.SpecError as exc:
+        return json.dumps({"ok": False, "errors": [str(exc)]}, ensure_ascii=False)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
 def check_provenance() -> str:
     """Stage-1 gate for the spec fields in storage/analysis_report.json.
 

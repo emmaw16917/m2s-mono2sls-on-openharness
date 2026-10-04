@@ -103,6 +103,7 @@ model: inherit
   - blueprint 的 `metadata.verification_contract` 是 2 时，工具强制要求：`includes` 只能写写操作和发消息（PutItem / UpdateItem / DeleteItem / BatchWriteItem / TransactWriteItems / SendMessage(Batch)），不能用 `total`。读了几次这类信息，想留给人看的话，写进 `expect.trace`（内容随意，只记录、不判定）。
   - `excludes` 仍然可以写读操作：它断言的是"不该访问"，属于权限或数据范围契约。
 - 响应体只断言规格里写明的字段和值。规格里标 `unknown` 的项不要断言。
+- **全局响应头必须断言**：`analysis_report.json` 的 `global_middleware` 里每一项的 `headers`，是单体给**每个**响应加的头（例如 `CORS(app)` 的 `Access-Control-Allow-Origin: *`）。每个 API 函数至少有一个用例用 `expect.headers` 断言它们；值依赖请求的（例如回显 Origin），在请求里带上对应的头再断言。`run_validate(dry_run)` 的 GM3 会检查每个 API 函数都有。
 - 响应头同理，只断言规格明确要求的头（CORS 头、`Set-Cookie`、规格指定的 `Content-Type` 等），值里依赖部署参数的部分按规格写明的默认值断言。cookie 只断言规格规定的部分（例如 `contains: {"Set-Cookie": ["cartId=", "HttpOnly"]}`，名字和规格规定的属性写在同一个列表里），不要断言随机生成的值。规格要求某个头只有一个时，用 `count`。预检请求（`OPTIONS`）由 API Gateway 按模板 `Cors` 直接应答、不调用函数，工具不模拟，所以不要写成用例；规格对预检有要求时，留给 S4 的静态复核。
 - 500 这类未处理异常：只断言 `status`，不断言错误消息的内容（单体的错误中间件会带 `stack`，迁移后不会）。
 - blueprint 明确改变了单体行为的地方（例如用户 id 从 `req.customerId` 改为 Cognito `sub`、认证端点被删除），以 blueprint 为准，`spec_refs` 写 `"blueprint:..."`。

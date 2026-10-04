@@ -26,7 +26,8 @@ if str(M2S_SRC) not in sys.path:
 
 from preprocessor.static_analyzer import run_static_analysis  # noqa: E402
 
-import spec_extract  # noqa: E402
+import spec_extract
+import global_middleware  # noqa: E402
 
 
 def analyze(monolith_root: str, workspace: str) -> dict[str, Any]:
@@ -45,6 +46,9 @@ def analyze(monolith_root: str, workspace: str) -> dict[str, Any]:
 
     report = run_static_analysis(monolith_path)
     spec_summary = spec_extract.enrich_report(report, monolith_path)
+    # app-wide middleware that changes every response (CORS, security headers,
+    # header hooks): outside every route, so route-level extraction misses it
+    report["global_middleware"] = global_middleware.detect(monolith_path)
 
     # Mirror static_analyzer.main(): pop symbol_table, write it separately.
     # Nested under storage/ to match M2S's own storage/-output/ convention,

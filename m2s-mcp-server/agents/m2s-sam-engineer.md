@@ -47,6 +47,8 @@ model: inherit
 
 **S3a 禁止事项**：禁止读 `output/lambdas/` 或 `output/` 下任何 handler 代码——这一步纯粹基于 `blueprint.json` 设计共享基础设施，不需要看代码。禁止调用 `mcp__m2s-server__validate_sam`（`template.part1.yaml` 本身不是合法完整模板，验证会失败且没有意义）。
 
+**全局响应头**（S3a 写 Api 资源时）：`analysis_report.json` 的 `global_middleware` 里有 `headers` 时，除了 `Cors` 块（它只负责预检），还要在 `Globals.Api.GatewayResponses`（或 Api 资源的 `GatewayResponses`）里为 `DEFAULT_4XX` 和 `DEFAULT_5XX` 配上同样的头，值用单引号包起来，例如 `Access-Control-Allow-Origin: "'*'"`。授权器拒绝、限流这些由 API Gateway 自己返回的响应，单体也会带这些头。gate(template) 的 GM2 检查这一项。
+
 ### 如果 STAGE_ID = S3b（函数资源阶段）
 
 只生成 `<WS>/output/template.part2.yaml`，内容是：每个 Lambda 的 `AWS::Serverless::Function` 资源块（`CodeUri`、`Handler`、`Policies`、`Environment.Variables`、`Events`），紧跟着一段函数元数据注释块，再跟 `Outputs:` 段。格式仿照：

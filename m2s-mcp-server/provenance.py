@@ -291,6 +291,65 @@ def _find_ep(report: dict[str, Any], method: str, path: str) -> dict[str, Any]:
 # Public API
 # ---------------------------------------------------------------------------
 
+GM_KINDS = ("cors", "security_headers", "response_header_hook")
+
+
+def _validate_global_middleware(files: Any, items: Any, errors: list[str], incomplete: list[str]) -> None:
+    """report.global_middleware (P0 + S0): app-wide middleware that changes
+    every response. headers null means S0 has not determined them yet."""
+    if items is None:
+        return
+    if not isinstance(items, list):
+        errors.append("global_middleware: must be a list")
+        return
+    for i, it in enumerate(items):
+        where = f"global_middleware[{i}]"
+        if not isinstance(it, dict):
+            errors.append(f"{where}: must be an object")
+            continue
+        if it.get("kind") not in GM_KINDS:
+            errors.append(f"{where}: kind must be one of {GM_KINDS}")
+        h = it.get("headers")
+        if h is None:
+            incomplete.append(f"{where} ({it.get('call')}): headers not determined -- read the middleware's options and "
+                              "fill the headers every response gets (annotate_global_middleware)")
+        elif not isinstance(h, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in h.items()):
+            errors.append(f"{where}: headers must map header names to string values (use a description such as "
+                          "\"<request Origin if in CORS_ORIGINS>\" when the value depends on the request)")
+        _origin_ok(it, where, errors)
+        _check_sources(files, it.get("source"), where, errors)
+
+
+def annotate_global_middleware(workspace: str | Path, index: int, headers_json: str, note: str = "",
+                               source_json: str = "") -> dict[str, Any]:
+    """S0: set the headers one app-wide middleware item adds to every response."""
+    try:
+        headers = json.loads(headers_json)
+        extra_sources = json.loads(source_json) if source_json else []
+    except json.JSONDecodeError as exc:
+        raise SpecError(f"headers_json / source_json is not valid JSON: {exc}") from exc
+    report, files = _load(workspace)
+    items = report.get("global_middleware") or []
+    if not isinstance(index, int) or not 0 <= index < len(items):
+        raise SpecError(f"index must be 0..{len(items) - 1}")
+    item = dict(items[index])
+    item["headers"] = headers
+    item["origin"] = "llm"
+    if note:
+        item["note"] = note
+    if extra_sources:
+        item["source"] = list(item.get("source") or []) + list(extra_sources)
+    errors: list[str] = []
+    _validate_global_middleware(files, [item], errors, [])
+    errors = [e.replace("global_middleware[0]", f"global_middleware[{index}]") for e in errors]
+    if errors:
+        return {"ok": False, "errors": errors}
+    items[index] = item
+    report["global_middleware"] = items
+    _save(workspace, report)
+    return {"ok": True, "index": index, "headers": headers}
+
+
 def annotate_entry_point(workspace: str | Path, method: str, path: str, field: str, value_json: str) -> dict[str, Any]:
     if field not in SPEC_FIELDS:
         raise SpecError(f"field must be one of {SPEC_FIELDS}, got {field!r}")
@@ -362,6 +421,8 @@ def check_provenance(workspace: str | Path) -> dict[str, Any]:
             for j, r in enumerate(ep.get("business_rules") or []):
                 if isinstance(r, dict) and "class" not in r:
                     incomplete.append(f"{ep.get('method')} {ep.get('path')}.business_rules[{j}]: no 'class' (contract / implementation-trace)")
+
+    _validate_global_middleware(files, report.get("global_middleware"), errors, incomplete)
 
     for i, t in enumerate((report.get("dynamodb_info") or {}).get("table_schemas", []) or []):
         where = f"dynamodb_info.table_schemas[{i}]"

@@ -160,6 +160,17 @@ blueprint 里的每个判断都要能追溯到依据。用 `write_file` 写 `sto
    - 以前回炉写过的裁定要保留，不要删。
 4. 照常跑 `run_gate(phase="blueprint")` 自查，再写工作报告，在 `issues` 里逐条列出你的裁定。
 
+## 全局响应头（`analysis_report.global_middleware`）
+
+单体里作用于所有响应的中间件（CORS、安全头、统一的响应头 hook）在 `global_middleware` 里，每项的 `headers` 是**每个响应**都会带的头。迁到 API Gateway + Lambda 代理集成后，没有"全局中间件"这一层了：
+
+- **模板的 `Cors` 块只生成预检（`OPTIONS`）方法**，不会给 GET/POST 的真实响应加任何头。真实响应原样来自 Lambda，所以 CORS 头必须由每个函数的返回值自己带上；
+- API Gateway 自己生成的响应（授权器的 401/403、限流 429、集成错误 5xx）要用 `GatewayResponses`（`DEFAULT_4XX`、`DEFAULT_5XX`）加上同样的头。
+
+因此对每一项全局中间件，在 blueprint 里写清楚：哪些头由函数返回（写进 `api_gateway` 的说明和每个 API 函数的 `notes`），GatewayResponses 怎么配，并记进 `DECISIONS.md`。只写一个 `api_gateway.cors` 是不够的（2026-10-04 airline 的 E2E 测试 ROB-01b 就是这样漏掉的）。
+
+确实要去掉某个头（例如目标系统不再允许跨域）属于 `migration-change`：写一条 SI，`targets` 写 `global_middleware[i]`，说明新的行为。gate 的 GM1/GM2 只对没有被这样裁定的头做检查。
+
 ## 契约测试（contract 2）
 
 `analysis_report.json` 的 `business_rules` 带 `class` 字段时，说明这是一份 contract 2 的规格（`PIPELINE_REDESIGN.md` §3.6）。这时：

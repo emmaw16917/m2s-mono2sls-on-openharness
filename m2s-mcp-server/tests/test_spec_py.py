@@ -37,7 +37,7 @@ def test_every_flask_endpoint_is_extracted_with_valid_citations(reports):
         result = provenance.check_provenance(str(ws))
         assert result["errors"] == [], (app, result["errors"][:3])
         # what is left for the annotator: business rules (and unknown items)
-        assert all("business_rules" in m or "no success response" in m for m in result["incomplete"])
+        assert all("business_rules" in m or "no success response" in m or m.startswith("global_middleware[") for m in result["incomplete"])
 
 
 def test_request_fields_and_required_from_4xx_guards(reports):

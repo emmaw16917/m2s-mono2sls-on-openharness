@@ -206,6 +206,27 @@ MyApi:
     TracingEnabled: true
 ```
 
+### CORS on real responses (read this before relying on `Cors`)
+⚠️ With Lambda **proxy** integration, the `Cors` property only creates the preflight `OPTIONS`
+methods. API Gateway adds **nothing** to the GET/POST responses your function returns, so:
+- every function must return `Access-Control-Allow-Origin` (and any other header the monolith's
+  global middleware added) in its own response headers;
+- the responses API Gateway generates itself (authorizer 401/403, throttling 429, 5xx) need
+  `GatewayResponses`:
+```yaml
+Globals:
+  Api:
+    GatewayResponses:
+      DEFAULT_4XX:
+        ResponseParameters:
+          Headers:
+            Access-Control-Allow-Origin: "'*'"
+      DEFAULT_5XX:
+        ResponseParameters:
+          Headers:
+            Access-Control-Allow-Origin: "'*'"
+```
+
 ### CORS Configuration Best Practice
 ⚠️ **IMPORTANT**: Define CORS properties as simple strings.
 ❌ **DO NOT** use `!Sub` with a list or object structure for the Cors property.

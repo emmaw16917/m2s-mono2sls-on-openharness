@@ -83,8 +83,9 @@ def test_script_sources_all_pass_but_rules_missing(ws):
     result = provenance.check_provenance(ws)
     assert result["errors"] == []
     assert result["checked_sources"] > 100
-    assert len(result["incomplete"]) == 15  # business_rules not yet annotated
-    assert all("business_rules" in msg for msg in result["incomplete"])
+    # business_rules not yet annotated, plus bookstore's configured cors({...}) whose headers S0 must determine
+    assert len(result["incomplete"]) == 16
+    assert all("business_rules" in msg or msg.startswith("global_middleware[0]") for msg in result["incomplete"])
 
 
 def test_annotate_rejects_fabricated_source(ws):
@@ -117,6 +118,9 @@ def test_annotate_accepts_and_completes(tmp_path):
                   "source": [{"file": h["file"], "line": h["start_line"], "symbol": "req"}]}]
         result = provenance.annotate_entry_point(tmp_path, ep["method"], ep["path"], "business_rules", json.dumps(rules))
         assert result["ok"], result
+    gm = provenance.annotate_global_middleware(tmp_path, 0, json.dumps({"Access-Control-Allow-Origin": "*"}),
+                                               "cors({origin: '*'})")
+    assert gm["ok"], gm
     final = provenance.check_provenance(tmp_path)
     assert final["status"] == "PASS", final
     assert _ep(_report(tmp_path), "GET", "/api/cart")["spec_status"]["annotated_fields"] == ["business_rules"]
@@ -133,3 +137,10 @@ def test_business_rule_class_and_trace_arm():
     provenance._validate_field({}, "business_rules", [{"rule": "r", "kind": "other", "source": [], "origin": "llm", "class": "maybe"}],
                                "ep.business_rules", errors)
     assert any("'class' must be one of" in e for e in errors)
+
+
+def test_global_middleware_detected_and_annotated(ws):
+    gm = _report(ws)["global_middleware"]
+    assert [(g["kind"], g["framework"], g["options"], g["headers"]) for g in gm] == [("cors", "express-cors", True, None)]
+    bad = provenance.annotate_global_middleware(ws, 0, json.dumps({"Access-Control-Allow-Origin": 1}))
+    assert bad["ok"] is False and "string values" in bad["errors"][0]

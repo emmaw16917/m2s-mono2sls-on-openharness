@@ -211,6 +211,87 @@ def check_contract(workspace: Path) -> list[dict[str, Any]]:
     return findings
 
 
+def _contract_headers(workspace: Path) -> dict[str, list[str]]:
+    """Headers the monolith adds to every response through app-wide middleware
+    (analysis_report.global_middleware, P0 + S0), minus those an architect
+    ruling drops (class migration-change targeting global_middleware[i]).
+    {header name: [source "file:line", ...]}."""
+    try:
+        report = json.loads((workspace / "storage" / "analysis_report.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    try:
+        meta = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8")).get("metadata") or {}
+    except (OSError, json.JSONDecodeError, AttributeError):
+        meta = {}
+    dropped = {t for r in (meta.get("spec_resolutions") or []) if isinstance(r, dict) and r.get("class") == "migration-change"
+               for t in (r.get("targets") or [])}
+    out: dict[str, list[str]] = {}
+    for i, item in enumerate(report.get("global_middleware") or []):
+        if not isinstance(item, dict) or f"global_middleware[{i}]" in dropped:
+            continue
+        src = ",".join(f"{s.get('file')}:{s.get('line')}" for s in item.get("source") or [])
+        for name in (item.get("headers") or {}):
+            out.setdefault(name, []).append(src)
+    return out
+
+
+def check_gm_code(workspace: Path) -> list[dict[str, Any]]:
+    """GM1: every API function must set each app-wide response header itself
+    (Lambda proxy integration: API Gateway adds nothing to the function's
+    response; a template Cors block only answers preflight OPTIONS)."""
+    headers = _contract_headers(workspace)
+    if not headers:
+        return []
+    try:
+        blueprint = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    api_fns = {f.get("name") for f in blueprint.get("lambda_functions", []) if isinstance(f, dict) and f.get("trigger_type") == "api"}
+    layer_text = ""
+    layers = workspace / "output" / "layers"
+    if layers.exists():
+        layer_text = "\n".join(p.read_text(encoding="utf-8", errors="replace").lower() for p in layers.rglob("*")
+                               if p.is_file() and p.suffix in (".py", ".js", ".mjs", ".cjs", ".ts") and "node_modules" not in p.parts)
+    findings = []
+    for d in _iter_lambda_dirs(workspace / "output" / "lambdas"):
+        if d.name not in api_fns:
+            continue
+        text = "\n".join(p.read_text(encoding="utf-8", errors="replace").lower() for p in d.rglob("*")
+                         if p.is_file() and p.suffix in (".py", ".js", ".mjs", ".cjs", ".ts") and "node_modules" not in p.parts)
+        missing = [h for h in headers if h.lower() not in text and h.lower() not in layer_text]
+        if missing:
+            findings.append(_finding("GM1", "ERROR", f"{d.name} does not set app-wide response header(s) {missing} that the monolith adds "
+                                     f"to every response ({'; '.join(headers[h][0] for h in missing)}). With Lambda proxy integration "
+                                     "the function's own response must carry them.", d.name))
+    return findings
+
+
+def check_gm_template(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
+    """GM2: responses API Gateway produces itself (authorizer 401/403,
+    throttling 429, integration 5xx) must carry the app-wide headers too --
+    the monolith added them to its error responses as well."""
+    headers = _contract_headers(workspace)
+    if not headers:
+        return []
+    resources = template.get("Resources", {}) or {}
+    sources = [((template.get("Globals", {}) or {}).get("Api", {}) or {}).get("GatewayResponses") or {}]
+    sources += [((r.get("Properties") or {}).get("GatewayResponses") or {}) for r in resources.values()
+                if isinstance(r, dict) and r.get("Type") == "AWS::Serverless::Api"]
+    covered: dict[str, set[str]] = {}
+    for gr in sources:
+        for rtype, cfg in gr.items():
+            hdrs = (((cfg or {}).get("ResponseParameters") or {}).get("Headers") or {})
+            covered.setdefault(rtype, set()).update(k.lower() for k in hdrs)
+    findings = []
+    for rtype in ("DEFAULT_4XX", "DEFAULT_5XX"):
+        missing = [h for h in headers if h.lower() not in covered.get(rtype, set())]
+        if missing:
+            findings.append(_finding("GM2", "ERROR", f"GatewayResponses {rtype} does not set {missing}: the gateway's own error responses "
+                                     "would lack headers the monolith sends on every response.", "template.yaml"))
+    return findings
+
+
 def check_b0(workspace: Path) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
     storage_dir = workspace / "storage"
@@ -1185,13 +1266,13 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
         # S3 ever produces a template, so gate(phase="code") would otherwise
         # never be able to catch a C10 problem at the point it's most
         # useful (before the code-developer's own self-check loop exits).
-        checks = check_c1_code(ws) + check_c10(ws)
+        checks = check_c1_code(ws) + check_c10(ws) + check_gm_code(ws)
         if template_error is None and template:
             checks += check_c3(ws, template)
             checks += check_c11(ws, template)
             checks += check_c12(ws, template)
         c1_code_failed = any(f["check_id"] == "C1" for f in checks)
-        severe = c1_code_failed
+        severe = c1_code_failed or any(f["check_id"] == "GM1" for f in checks)
 
     elif phase == "template":
         if template_error is not None:
@@ -1214,6 +1295,8 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c11(ws, template)
                 + check_c12(ws, template)
                 + check_c13(ws, template)
+                + check_gm_code(ws)
+                + check_gm_template(ws, template)
             )
             suspects = {
                 "C4": suspects_c4_env(ws, template),
@@ -1241,6 +1324,8 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c11(ws, template)
                 + check_c12(ws, template)
                 + check_c13(ws, template)
+                + check_gm_code(ws)
+                + check_gm_template(ws, template)
             )
         checks += check_tools_unmodified() + check_spec_relaxations(ws)
         report_path = ws / "output" / "consistency_report.json"

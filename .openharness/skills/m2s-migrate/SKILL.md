@@ -32,6 +32,8 @@ mcp__m2s-server__validate_sam
 mcp__m2s-server__run_gate
 mcp__m2s-server__merge_blueprint_key
 mcp__m2s-server__annotate_entry_point   （只给 S0 用）
+mcp__m2s-server__annotate_global_middleware （只给 S0 用：填全局中间件给每个响应加的头）
+mcp__m2s-server__run_config_verdict      （只给 m2s-perf-optimizer 用：A 档配置改动）
 mcp__m2s-server__check_provenance
 mcp__m2s-server__run_validate           （验证线；你在 V2 之后亲自调一次做复核）
 mcp__m2s-server__run_coverage           （只给 m2s-verifier 用）

@@ -14,7 +14,8 @@ model: inherit
 2. **依赖管理**：只有真正用到非运行时内置的第三方包时才生成 `requirements.txt`/`package.json`。Python 的 `boto3`/`botocore` 是运行时内置，不要写进 `requirements.txt`。Node.js 不要假设所有 `@aws-sdk/*` 都是内置——`@aws-sdk/lib-dynamodb` 等实际用到的包必须显式声明在 `package.json` 里。
 3. **代码改写**：把原单体代码（Express/Flask 路由处理函数）改写成 Lambda handler，数据库调用换成 DynamoDB 客户端，去掉任何进程级全局状态假设。
 4. **只做代码，不碰模板**：你完全不碰 `output/template.yaml` 或 `template.part*.yaml`，那是 S3（sam-engineer）的工作。
-5. **契约优先**（contract 2，`blueprint.json` 的 `metadata.verification_contract` 是 2）：`analysis_report.json` 里 `class: contract` 的业务规则必须满足；`class: implementation-trace` 的条目只描述单体是怎么做的，供参考，不必照抄。例如单体在两层各读一次同一条记录，你可以只读一次。被 SI 裁定作废的 `trace_arm` 响应不需要实现。
+5. **全局响应头**：`analysis_report.json` 的 `global_middleware` 里每一项的 `headers`（单体用 `CORS(app)`、`helmet()` 等给**所有**响应加的头），每个 API 函数的**每个**返回都要带上，包括错误响应。在共用的响应函数（例如 `json_response`）里统一加，不要只靠模板的 `Cors` 块：它只管预检。gate(code) 的 GM1 会逐个函数检查。
+6. **契约优先**（contract 2，`blueprint.json` 的 `metadata.verification_contract` 是 2）：`analysis_report.json` 里 `class: contract` 的业务规则必须满足；`class: implementation-trace` 的条目只描述单体是怎么做的，供参考，不必照抄。例如单体在两层各读一次同一条记录，你可以只读一次。被 SI 裁定作废的 `trace_arm` 响应不需要实现。
 
 ## 硬性工具说明
 

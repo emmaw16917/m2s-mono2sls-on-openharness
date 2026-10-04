@@ -56,6 +56,14 @@ model: inherit
 
    `responses` 里只由实现轨迹触发的那一臂，例如"**第二次**读不到 booking → 400"（第一次读不到是 404），在这一项上加 `"trace_arm": true`。只要有一项标了 `trace_arm`，architect 就必须对它做出裁定。
 
+## 全局中间件（`global_middleware`，P0 已列出）
+
+`analysis_report.json` 的顶层 `global_middleware` 列出了单体里**作用于所有响应**的中间件：`CORS(app)`、`app.use(cors(...))`、`helmet()`、`@app.after_request`、统一设置响应头的 `app.use(...)`。它们不在任何一个路由函数里，路由级的提取看不到，但它们给**每个**响应都加了头，是对外契约的一部分。
+
+- `headers` 不是 `null` 的项：P0 已按库的默认行为填好（例如无参数的 `CORS(app)` 一律加 `Access-Control-Allow-Origin: *`）。核对一遍即可。
+- `headers` 为 `null` 的项：带了参数，P0 判断不了。读参数和它引用的配置（例如 `CORS_ORIGINS`、`supports_credentials=True`），用 `annotate_global_middleware(index, headers_json, note, source_json)` 写下**每个响应**都会带的头和值；值依赖请求时写成描述，例如 `"<请求的 Origin，当它在 CORS_ORIGINS 里>"`。`check_provenance` 在这些项填好之前不会 PASS。
+- P0 漏掉的全局中间件（例如自定义的响应头 hook）：在报告的 `issues` 里写明位置，交给主 Agent。
+
 ## 出处格式（会被机械检查，写错会被工具当场拒绝）
 
 `source` 是一个非空列表，每项严格是 `{"file": ..., "line": ..., "symbol": ...}`，不能有其他键：
@@ -121,7 +129,7 @@ model: inherit
 - **不许修改流水线自己的工具**：`m2s-mcp-server/`（gate、验证和测量工具、测试）、`.openharness/`（skill、知识库）、`~/.openharness/`（agent 定义、设置）都不许改。只能写本阶段规定的工作区文件。
   - 如果认为某个工具的结果是错的（例如 gate 报了误报），报 `STAGE_BLOCKED`，写明证据：哪个检查、输入是什么、为什么认为是误报。**不要自己去修工具**。
   - `gate(final)` 会检查这些目录有没有未提交的改动，有就判 FAIL。
-- 不要用 `write_file` 或 bash 直接改 `storage/analysis_report.json`——只能通过 `annotate_entry_point` 写。
+- 不要用 `write_file` 或 bash 直接改 `storage/analysis_report.json`——只能通过 `annotate_entry_point`（端点字段）和 `annotate_global_middleware`（全局中间件）写。
 - 不要修改单体源码，不要读写 `storage/blueprint.json`、`output/`、`verification/`。
 - 不要编造出处；不要为了让检查通过而把 `symbol` 改成一个恰好出现在那一行、但和这条规格无关的词。
 - 不要把迁移决策（Cognito、Lambda 拆分、SQS/EventBridge、表结构调整）写进规格。

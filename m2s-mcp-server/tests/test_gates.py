@@ -1025,3 +1025,41 @@ def test_result_order_values(tmp_path):
     assert _ids(gates.check_contract(ws)) == ["CT6"]
     si(result_order="unspecified", applies_to=["f"])
     assert gates.check_contract(ws) == []
+
+
+# -- app-wide response headers (global middleware) ---------------------------
+
+def _gm_ws(tmp_path, handler_src, gateway_headers=None, dropped=False):
+    (tmp_path / "storage").mkdir()
+    report = {"entry_points": [], "global_middleware": [
+        {"kind": "cors", "framework": "flask-cors", "headers": {"Access-Control-Allow-Origin": "*"}, "source": [{"file": "a/app.py", "line": 24}]}]}
+    (tmp_path / "storage" / "analysis_report.json").write_text(json.dumps(report), encoding="utf-8")
+    meta = {"spec_resolutions": [{"issue_id": "SI-1", "class": "migration-change", "targets": ["global_middleware[0]"]}]} if dropped else {}
+    bp = {"metadata": meta, "lambda_functions": [{"name": "flights-search", "trigger_type": "api"}, {"name": "consumer", "trigger_type": "sqs"}]}
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    for name, src in (("flights-search", handler_src), ("consumer", "def lambda_handler(e, c): return {}")):
+        d = tmp_path / "output" / "lambdas" / "flights" / name
+        d.mkdir(parents=True)
+        (d / "handler.py").write_text(src, encoding="utf-8")
+    template = {"Globals": {"Api": {"Cors": {"AllowOrigin": "'*'"}}}, "Resources": {}}
+    if gateway_headers:
+        template["Globals"]["Api"]["GatewayResponses"] = {r: {"ResponseParameters": {"Headers": gateway_headers}} for r in ("DEFAULT_4XX", "DEFAULT_5XX")}
+    return tmp_path, template
+
+
+def test_gm_flags_the_airline_gap(tmp_path):
+    # airline: a Cors block (preflight only) and handlers returning only Content-Type
+    ws, template = _gm_ws(tmp_path, 'def json_response(s, p): return {"headers": {"Content-Type": "application/json"}}')
+    assert _ids(gates.check_gm_code(ws)) == ["GM1"]
+    assert _ids(gates.check_gm_template(ws, template)) == ["GM2", "GM2"]
+
+
+def test_gm_passes_when_lambda_and_gateway_set_the_header(tmp_path):
+    ws, template = _gm_ws(tmp_path, 'H = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}',
+                          gateway_headers={"Access-Control-Allow-Origin": "'*'"})
+    assert gates.check_gm_code(ws) == [] and gates.check_gm_template(ws, template) == []
+
+
+def test_gm_respects_a_migration_change_ruling(tmp_path):
+    ws, template = _gm_ws(tmp_path, "def f(): pass", dropped=True)
+    assert gates.check_gm_code(ws) == [] and gates.check_gm_template(ws, template) == []

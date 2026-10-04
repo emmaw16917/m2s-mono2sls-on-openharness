@@ -103,6 +103,12 @@ exports.handler = async (event) => {
 API Gateway requires a specific response format. Returning anything else causes a
 `502 Bad Gateway` error.
 
+**Headers the monolith added globally must be in every response.** With proxy integration API
+Gateway adds no headers to a function's response (the template's `Cors` block only answers
+preflight `OPTIONS`). If the monolith ran `CORS(app)`, `app.use(cors())`, `helmet()` or an
+after-request hook (see `global_middleware` in analysis_report.json), put those headers in the
+shared response helper below so success AND error responses carry them.
+
 ### Python
 ```python
 import json

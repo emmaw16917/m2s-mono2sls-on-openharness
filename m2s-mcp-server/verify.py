@@ -1266,6 +1266,22 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
     faults = load_faults(ws)
     for f in faults:
         schema_errors += check_fault(model, f, set(ids), with_template=not dry_run)
+    # GM3: headers the monolith adds to every response (app-wide middleware,
+    # analysis_report.global_middleware) must be asserted on every API function
+    contract_headers = gates._contract_headers(ws)
+    if contract_headers:
+        asserted: dict[str, set[str]] = {}
+        for c in all_cases:
+            h = ((c.get("expect") or {}).get("headers") or {}) if isinstance(c.get("expect"), dict) else {}
+            names = {n.lower() for part in ("equals", "contains", "count") for n in (h.get(part) or {})}
+            asserted.setdefault(c.get("function"), set()).update(names)
+        for name, fn in model.bp_functions.items():
+            if fn.get("trigger_type") != "api":
+                continue
+            missing = [h for h in contract_headers if h.lower() not in asserted.get(name, set())]
+            if missing:
+                schema_errors.append(f"GM3: no case of {name} asserts app-wide response header(s) {missing} (the monolith adds them "
+                                     "to every response via global middleware) -- add expect.headers to at least one case")
     selected = _select(all_cases, functions, cases)
     if dry_run or schema_errors:
         uncovered_fns = sorted(set(model.bp_functions) - {c.get("function") for c in all_cases})
