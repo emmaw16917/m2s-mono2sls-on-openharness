@@ -1,0 +1,46 @@
+1791115249169	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	INIT_START Runtime Version: nodejs:22.mainline.v122	Runtime Version ARN: arn:aws:lambda:us-east-1::runtime:775dab0d220a0b97f3ec34fe1692d7a07b5d13049153b00f03204c9543bd69e4
+1791115249500	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	START RequestId: 4ed1d27d-577b-532a-a93b-b141155db0eb Version: $LATEST
+1791115249757	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	2026-10-04T12:00:49.757Z	4ed1d27d-577b-532a-a93b-b141155db0eb	INFO	Updated bestsellers for order 276d85a6-717a-4dd3-803f-5208525304df: 1 unique bookId(s) from 1 book entry/entries in 1 transaction batch(es)
+1791115249773	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	END RequestId: 4ed1d27d-577b-532a-a93b-b141155db0eb
+1791115249773	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	REPORT RequestId: 4ed1d27d-577b-532a-a93b-b141155db0eb	Duration: 272.38 ms	Billed Duration: 600 ms	Memory Size: 512 MB	Max Memory Used: 100 MB	Init Duration: 327.14 ms	
+XRAY TraceId: 1-6ac23ff0-d31f4158ad3ed996f599f60c	SegmentId: 14264281d27ad6e4	Sampled: true
+1791115313367	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	START RequestId: b9dee531-3a3d-5ebc-8c0b-860d785fc04c Version: $LATEST
+1791115313433	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	2026-10-04T12:01:53.433Z	b9dee531-3a3d-5ebc-8c0b-860d785fc04c	INFO	Updated bestsellers for order 6f4be48d-4d24-4edc-9cae-187ac45ba3f8: 2 unique bookId(s) from 2 book entry/entries in 1 transaction batch(es)
+1791115313453	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	END RequestId: b9dee531-3a3d-5ebc-8c0b-860d785fc04c
+1791115313453	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	REPORT RequestId: b9dee531-3a3d-5ebc-8c0b-860d785fc04c	Duration: 86.00 ms	Billed Duration: 86 ms	Memory Size: 512 MB	Max Memory Used: 100 MB	
+XRAY TraceId: 1-6ac24031-5276fba6e83a448d013fb9b8	SegmentId: f3dc58c82dd8b26e	Sampled: true
+1791115360816	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	START RequestId: 2105fbfe-a10e-520f-a51e-98c2e39096cb Version: $LATEST
+1791115360845	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	2026-10-04T12:02:40.845Z	2105fbfe-a10e-520f-a51e-98c2e39096cb	INFO	Updated bestsellers for order 062dd37c-d7ad-49b7-8e6a-d6de5c65d56b: 1 unique bookId(s) from 1 book entry/entries in 1 transaction batch(es)
+1791115360849	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	END RequestId: 2105fbfe-a10e-520f-a51e-98c2e39096cb
+1791115360849	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	REPORT RequestId: 2105fbfe-a10e-520f-a51e-98c2e39096cb	Duration: 30.37 ms	Billed Duration: 31 ms	Memory Size: 512 MB	Max Memory Used: 100 MB	
+XRAY TraceId: 1-6ac24060-4fe298f9ef09bd1f19b726e2	SegmentId: 1b9db9848805e32d	Sampled: true
+1791115451627	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	START RequestId: 14bac0ce-9c9c-54a5-bea4-a3f2de75ed79 Version: $LATEST
+1791115451698	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	2026-10-04T12:04:11.698Z	14bac0ce-9c9c-54a5-bea4-a3f2de75ed79	INFO	Updated bestsellers for order f424c951-7e25-4daa-b026-67f3652e2009: 2 unique bookId(s) from 2 book entry/entries in 1 transaction batch(es)
+1791115451714	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	END RequestId: 14bac0ce-9c9c-54a5-bea4-a3f2de75ed79
+1791115451714	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	REPORT RequestId: 14bac0ce-9c9c-54a5-bea4-a3f2de75ed79	Duration: 86.89 ms	Billed Duration: 87 ms	Memory Size: 512 MB	Max Memory Used: 100 MB	
+XRAY TraceId: 1-6ac240bb-8f16cbed7da584b81cffedfc	SegmentId: 26e33c1e26a28769	Sampled: true
+1791115472156	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	START RequestId: 397dc4fd-3cb8-52d4-a925-a7c17fb7db08 Version: $LATEST
+1791115472185	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	2026-10-04T12:04:32.185Z	397dc4fd-3cb8-52d4-a925-a7c17fb7db08	INFO	Updated bestsellers for order 9aafc41c-0088-4879-b831-84dbb3a26d58: 2 unique bookId(s) from 2 book entry/entries in 1 transaction batch(es)
+1791115472187	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	END RequestId: 397dc4fd-3cb8-52d4-a925-a7c17fb7db08
+1791115472187	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	REPORT RequestId: 397dc4fd-3cb8-52d4-a925-a7c17fb7db08	Duration: 30.60 ms	Billed Duration: 31 ms	Memory Size: 512 MB	Max Memory Used: 100 MB	
+XRAY TraceId: 1-6ac240d0-2b8501565c7dd79fe1b87825	SegmentId: e7e253da5ef65e14	Sampled: true
+1791115473436	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	START RequestId: c6d5d614-fef4-5ff6-a32b-b528bdf1bc23 Version: $LATEST
+1791115473463	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	2026-10-04T12:04:33.463Z	c6d5d614-fef4-5ff6-a32b-b528bdf1bc23	INFO	Updated bestsellers for order 601030f1-747f-4a2c-83e0-a5213210ab71: 2 unique bookId(s) from 2 book entry/entries in 1 transaction batch(es)
+1791115473465	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	END RequestId: c6d5d614-fef4-5ff6-a32b-b528bdf1bc23
+1791115473465	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	REPORT RequestId: c6d5d614-fef4-5ff6-a32b-b528bdf1bc23	Duration: 28.00 ms	Billed Duration: 28 ms	Memory Size: 512 MB	Max Memory Used: 100 MB	
+XRAY TraceId: 1-6ac240d1-a05fc236f487e6d5ac4635b4	SegmentId: 12de1ca7556d9524	Sampled: true
+1791115474860	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	START RequestId: 5cc74b70-0788-5d5f-80f3-284c448a9122 Version: $LATEST
+1791115474884	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	2026-10-04T12:04:34.884Z	5cc74b70-0788-5d5f-80f3-284c448a9122	INFO	Updated bestsellers for order 731fa327-2e47-4622-b352-3fe53c8b9dd7: 2 unique bookId(s) from 2 book entry/entries in 1 transaction batch(es)
+1791115474886	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	END RequestId: 5cc74b70-0788-5d5f-80f3-284c448a9122
+1791115474886	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	REPORT RequestId: 5cc74b70-0788-5d5f-80f3-284c448a9122	Duration: 25.58 ms	Billed Duration: 26 ms	Memory Size: 512 MB	Max Memory Used: 100 MB	
+XRAY TraceId: 1-6ac240d2-4dd8297d093fad606eae7128	SegmentId: 849e88f6dc3c8afd	Sampled: true
+1791115476103	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	START RequestId: 43981664-af05-52f5-82ff-7558ec0a5c88 Version: $LATEST
+1791115476128	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	2026-10-04T12:04:36.128Z	43981664-af05-52f5-82ff-7558ec0a5c88	INFO	Updated bestsellers for order 402c5d03-7ae1-4723-b4cb-77f0f51fddad: 2 unique bookId(s) from 2 book entry/entries in 1 transaction batch(es)
+1791115476130	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	END RequestId: 43981664-af05-52f5-82ff-7558ec0a5c88
+1791115476130	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	REPORT RequestId: 43981664-af05-52f5-82ff-7558ec0a5c88	Duration: 26.09 ms	Billed Duration: 27 ms	Memory Size: 512 MB	Max Memory Used: 100 MB	
+XRAY TraceId: 1-6ac240d4-f332606174f9d29821431345	SegmentId: f56a96097b9ba71b	Sampled: true
+1791115477338	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	START RequestId: ea004e8d-f0f9-53f8-b575-2db1b3fbf228 Version: $LATEST
+1791115477370	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	2026-10-04T12:04:37.370Z	ea004e8d-f0f9-53f8-b575-2db1b3fbf228	INFO	Updated bestsellers for order 0792f881-1f34-4afe-933e-65dd4291f751: 2 unique bookId(s) from 2 book entry/entries in 1 transaction batch(es)
+1791115477374	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	END RequestId: ea004e8d-f0f9-53f8-b575-2db1b3fbf228
+1791115477374	2026/10/04/[$LATEST]bd9db63c75364f2fb198589661289de9	REPORT RequestId: ea004e8d-f0f9-53f8-b575-2db1b3fbf228	Duration: 35.74 ms	Billed Duration: 36 ms	Memory Size: 512 MB	Max Memory Used: 100 MB	
+XRAY TraceId: 1-6ac240d5-4cb22c676c7dd3678d7137ba	SegmentId: ce84a15f963b9b27	Sampled: true

@@ -1,0 +1,207 @@
+{
+  "stack": "m2s-e2e-bookstore-opt",
+  "outputs": {
+    "BookstoreApiUrl": "https://f3zxpazbo0.execute-api.us-east-1.amazonaws.com/staging/",
+    "CognitoUserPoolClientId": "2csebi3a8vl71cm12cns5vfcfh",
+    "CognitoUserPoolId": "us-east-1_X74AGkl6L",
+    "BestsellerUpdateQueueUrl": "https://sqs.us-east-1.amazonaws.com/882112174488/m2s-e2e-bookstore-opt-bestseller-update"
+  },
+  "resources": {
+    "ApiLogGroup": {
+      "type": "AWS::Logs::LogGroup",
+      "physical": "/aws/apigateway/f3zxpazbo0"
+    },
+    "BestsellerUpdateQueue": {
+      "type": "AWS::SQS::Queue",
+      "physical": "https://sqs.us-east-1.amazonaws.com/882112174488/m2s-e2e-bookstore-opt-bestseller-update"
+    },
+    "BestsellerUpdateQueueDLQ": {
+      "type": "AWS::SQS::Queue",
+      "physical": "https://sqs.us-east-1.amazonaws.com/882112174488/m2s-e2e-bookstore-opt-bestseller-update-dlq"
+    },
+    "BestsellersListFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-opt-BestsellersListFunction-aHhqTzYveeb6"
+    },
+    "BestsellersListFunctionListBestsellersPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-opt-BestsellersListFunctionListBestsellersPermissionStage-R4uZhJbQfQfA"
+    },
+    "BestsellersListFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-opt-BestsellersListFunctionRole-HwhPWscvNhxs"
+    },
+    "BestsellersTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "staging-bestsellers"
+    },
+    "BestsellersUpdateFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-opt-BestsellersUpdateFunction-Af2ryjFGvBOm"
+    },
+    "BestsellersUpdateFunctionBestsellerUpdateSQSEvent": {
+      "type": "AWS::Lambda::EventSourceMapping",
+      "physical": "a005a638-2df2-40d0-8ccf-f7ee250eda9b"
+    },
+    "BestsellersUpdateFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-opt-BestsellersUpdateFunctionRole-M1An8Qh24Mj9"
+    },
+    "BooksGetItemFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-opt-BooksGetItemFunction-Cyq3Pjl2NbMt"
+    },
+    "BooksGetItemFunctionGetBookPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-opt-BooksGetItemFunctionGetBookPermissionStage-G7hYVCwYHM3d"
+    },
+    "BooksGetItemFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-opt-BooksGetItemFunctionRole-NNUHR4LXJys6"
+    },
+    "BooksListFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-opt-BooksListFunction-SRXQSy3DFrzH"
+    },
+    "BooksListFunctionListBooksPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-opt-BooksListFunctionListBooksPermissionStage-RUJcOlBbFz0G"
+    },
+    "BooksListFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-opt-BooksListFunctionRole-HJc8gX2VXPhf"
+    },
+    "BooksTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "staging-books"
+    },
+    "BookstoreApi": {
+      "type": "AWS::ApiGateway::RestApi",
+      "physical": "f3zxpazbo0"
+    },
+    "BookstoreApiDeploymenta671bb005a": {
+      "type": "AWS::ApiGateway::Deployment",
+      "physical": "ueam4j"
+    },
+    "BookstoreApiStage": {
+      "type": "AWS::ApiGateway::Stage",
+      "physical": "staging"
+    },
+    "CartAddFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-opt-CartAddFunction-Bn3nfT2X0bDx"
+    },
+    "CartAddFunctionAddCartItemPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-opt-CartAddFunctionAddCartItemPermissionStage-RNEsL2Oga1Kd"
+    },
+    "CartAddFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-opt-CartAddFunctionRole-QjwcJSRGsvsZ"
+    },
+    "CartGetFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-opt-CartGetFunction-wkag80cgNSCP"
+    },
+    "CartGetFunctionGetCartPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-opt-CartGetFunctionGetCartPermissionStage-GkVH40LcL64T"
+    },
+    "CartGetFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-opt-CartGetFunctionRole-sl1NPfc5MTlB"
+    },
+    "CartGetItemFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-opt-CartGetItemFunction-pp3EYPLf5Rou"
+    },
+    "CartGetItemFunctionGetCartItemPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-opt-CartGetItemFunctionGetCartItemPermissionStage-AHuKnZmwgABC"
+    },
+    "CartGetItemFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-opt-CartGetItemFunctionRole-1zOIDHbMw1Ly"
+    },
+    "CartRemoveFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-opt-CartRemoveFunction-yxm599DkuKKT"
+    },
+    "CartRemoveFunctionRemoveCartItemPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-opt-CartRemoveFunctionRemoveCartItemPermissionStage-OZrxdWoEvhmI"
+    },
+    "CartRemoveFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-opt-CartRemoveFunctionRole-aQVzrhdCsRBv"
+    },
+    "CartTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "staging-cart"
+    },
+    "CartUpdateFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-opt-CartUpdateFunction-9ivNXBsD5qYv"
+    },
+    "CartUpdateFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-opt-CartUpdateFunctionRole-4tbaoORwDigO"
+    },
+    "CartUpdateFunctionUpdateCartItemPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-opt-CartUpdateFunctionUpdateCartItemPermissionStage-5QOlmyYbJtFR"
+    },
+    "CognitoUserPool": {
+      "type": "AWS::Cognito::UserPool",
+      "physical": "us-east-1_X74AGkl6L"
+    },
+    "CognitoUserPoolClient": {
+      "type": "AWS::Cognito::UserPoolClient",
+      "physical": "2csebi3a8vl71cm12cns5vfcfh"
+    },
+    "IdempotencyTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "m2s-e2e-bookstore-opt-IdempotencyTable-BXJCYTR08BY7"
+    },
+    "OrdersCreateFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-opt-OrdersCreateFunction-bmhUEGtKW554"
+    },
+    "OrdersCreateFunctionCreateOrderPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-opt-OrdersCreateFunctionCreateOrderPermissionStage-RJjmmBvIrkCs"
+    },
+    "OrdersCreateFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-opt-OrdersCreateFunctionRole-ArYsSHeYLtjB"
+    },
+    "OrdersListFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-opt-OrdersListFunction-BXw30Iel9NR9"
+    },
+    "OrdersListFunctionListOrdersPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-opt-OrdersListFunctionListOrdersPermissionStage-6brgh5fbLl9t"
+    },
+    "OrdersListFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-opt-OrdersListFunctionRole-0NbxVPKx75uC"
+    },
+    "OrdersTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "staging-orders"
+    },
+    "SearchBooksFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-opt-SearchBooksFunction-zftdNBtFZtZS"
+    },
+    "SearchBooksFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-opt-SearchBooksFunctionRole-rcHpRAGdmyzn"
+    },
+    "SearchBooksFunctionSearchBooksPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-opt-SearchBooksFunctionSearchBooksPermissionStage-SpgtJJzjyGh0"
+    }
+  }
+}

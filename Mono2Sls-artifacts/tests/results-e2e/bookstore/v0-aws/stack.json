@@ -1,0 +1,207 @@
+{
+  "stack": "m2s-e2e-bookstore-v0",
+  "outputs": {
+    "BookstoreApiUrl": "https://nmusb581wj.execute-api.us-east-1.amazonaws.com/dev/",
+    "CognitoUserPoolClientId": "552vp24gpbmdafdprhpffig0br",
+    "CognitoUserPoolId": "us-east-1_qmjtFPhKk",
+    "BestsellerUpdateQueueUrl": "https://sqs.us-east-1.amazonaws.com/882112174488/m2s-e2e-bookstore-v0-bestseller-update"
+  },
+  "resources": {
+    "ApiLogGroup": {
+      "type": "AWS::Logs::LogGroup",
+      "physical": "/aws/apigateway/nmusb581wj"
+    },
+    "BestsellerUpdateQueue": {
+      "type": "AWS::SQS::Queue",
+      "physical": "https://sqs.us-east-1.amazonaws.com/882112174488/m2s-e2e-bookstore-v0-bestseller-update"
+    },
+    "BestsellerUpdateQueueDLQ": {
+      "type": "AWS::SQS::Queue",
+      "physical": "https://sqs.us-east-1.amazonaws.com/882112174488/m2s-e2e-bookstore-v0-bestseller-update-dlq"
+    },
+    "BestsellersListFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-v0-BestsellersListFunction-HzaxvKRgpqs1"
+    },
+    "BestsellersListFunctionListBestsellersPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-v0-BestsellersListFunctionListBestsellersPermissionStage-q9b5N9bvFWeE"
+    },
+    "BestsellersListFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-v0-BestsellersListFunctionRole-L9E3ZSFycEaO"
+    },
+    "BestsellersTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-bestsellers"
+    },
+    "BestsellersUpdateFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-v0-BestsellersUpdateFunction-U9qokBo8Mg50"
+    },
+    "BestsellersUpdateFunctionBestsellerUpdateSQSEvent": {
+      "type": "AWS::Lambda::EventSourceMapping",
+      "physical": "56b2f5d1-d815-45e6-b150-f530cbeef074"
+    },
+    "BestsellersUpdateFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-v0-BestsellersUpdateFunctionRole-TjOx1KCJAnDM"
+    },
+    "BooksGetItemFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-v0-BooksGetItemFunction-jxv9bycFycLq"
+    },
+    "BooksGetItemFunctionGetBookPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-v0-BooksGetItemFunctionGetBookPermissionStage-Qux6ZSWtSBtV"
+    },
+    "BooksGetItemFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-v0-BooksGetItemFunctionRole-Way766ChxhTN"
+    },
+    "BooksListFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-v0-BooksListFunction-sdO4iboXE0Pu"
+    },
+    "BooksListFunctionListBooksPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-v0-BooksListFunctionListBooksPermissionStage-CT9W5jnfeQzj"
+    },
+    "BooksListFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-v0-BooksListFunctionRole-pWlvnM5cjJcX"
+    },
+    "BooksTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-books"
+    },
+    "BookstoreApi": {
+      "type": "AWS::ApiGateway::RestApi",
+      "physical": "nmusb581wj"
+    },
+    "BookstoreApiDeploymenta671bb005a": {
+      "type": "AWS::ApiGateway::Deployment",
+      "physical": "ebitsa"
+    },
+    "BookstoreApiStage": {
+      "type": "AWS::ApiGateway::Stage",
+      "physical": "dev"
+    },
+    "CartAddFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-v0-CartAddFunction-rzltPXTUqtJK"
+    },
+    "CartAddFunctionAddCartItemPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-v0-CartAddFunctionAddCartItemPermissionStage-ZQS5HjMOsvCT"
+    },
+    "CartAddFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-v0-CartAddFunctionRole-f2zvOItem3ug"
+    },
+    "CartGetFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-v0-CartGetFunction-ukIuv8K3Txkg"
+    },
+    "CartGetFunctionGetCartPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-v0-CartGetFunctionGetCartPermissionStage-VWRVJ5aVEdO0"
+    },
+    "CartGetFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-v0-CartGetFunctionRole-VwRf2DNEqs4O"
+    },
+    "CartGetItemFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-v0-CartGetItemFunction-xgEsfCmuQmqF"
+    },
+    "CartGetItemFunctionGetCartItemPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-v0-CartGetItemFunctionGetCartItemPermissionStage-G7Hajv77YuHM"
+    },
+    "CartGetItemFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-v0-CartGetItemFunctionRole-MdPArY2cWubq"
+    },
+    "CartRemoveFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-v0-CartRemoveFunction-NQfgdRKmd6My"
+    },
+    "CartRemoveFunctionRemoveCartItemPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-v0-CartRemoveFunctionRemoveCartItemPermissionStage-6LbWff3YTMdK"
+    },
+    "CartRemoveFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-v0-CartRemoveFunctionRole-H2OUlsNYrzHk"
+    },
+    "CartTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-cart"
+    },
+    "CartUpdateFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-v0-CartUpdateFunction-qSI0JUqQj494"
+    },
+    "CartUpdateFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-v0-CartUpdateFunctionRole-bDovtDtC61Lz"
+    },
+    "CartUpdateFunctionUpdateCartItemPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-v0-CartUpdateFunctionUpdateCartItemPermissionStage-bydYlkHDs3ax"
+    },
+    "CognitoUserPool": {
+      "type": "AWS::Cognito::UserPool",
+      "physical": "us-east-1_qmjtFPhKk"
+    },
+    "CognitoUserPoolClient": {
+      "type": "AWS::Cognito::UserPoolClient",
+      "physical": "552vp24gpbmdafdprhpffig0br"
+    },
+    "IdempotencyTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "m2s-e2e-bookstore-v0-IdempotencyTable-17QNWYO5GXS6A"
+    },
+    "OrdersCreateFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-v0-OrdersCreateFunction-iDsV28gdt6JK"
+    },
+    "OrdersCreateFunctionCreateOrderPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-v0-OrdersCreateFunctionCreateOrderPermissionStage-24tHwSeuC8vC"
+    },
+    "OrdersCreateFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-v0-OrdersCreateFunctionRole-82xkPR5iZ1Nk"
+    },
+    "OrdersListFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-v0-OrdersListFunction-4pEmnmU7m2MY"
+    },
+    "OrdersListFunctionListOrdersPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-v0-OrdersListFunctionListOrdersPermissionStage-xGXKjqxKXZfp"
+    },
+    "OrdersListFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-v0-OrdersListFunctionRole-oScRx8z8stRJ"
+    },
+    "OrdersTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-orders"
+    },
+    "SearchBooksFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-bookstore-v0-SearchBooksFunction-NmvBPSxK1Isp"
+    },
+    "SearchBooksFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-bookstore-v0-SearchBooksFunctionRole-lIMjU7aHLVEz"
+    },
+    "SearchBooksFunctionSearchBooksPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-bookstore-v0-SearchBooksFunctionSearchBooksPermissionStage-07kdjY4byuZv"
+    }
+  }
+}

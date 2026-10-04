@@ -1,0 +1,276 @@
+{
+  "target": "e2e_bookstore_opt",
+  "timestamp": "2026-10-04T11:16:23.743Z",
+  "totalTests": 21,
+  "passed": 0,
+  "failed": 21,
+  "pending": 0,
+  "applicable": 21,
+  "passRate": "0.0",
+  "core": {
+    "total": 12,
+    "applicable": 12,
+    "passed": 0,
+    "failed": 12,
+    "pending": 0,
+    "passRate": "0.0"
+  },
+  "authCompatibility": {
+    "total": 4,
+    "applicable": 4,
+    "passed": 0,
+    "failed": 4,
+    "pending": 0,
+    "passRate": "0.0"
+  },
+  "asyncSemantics": {
+    "total": 1,
+    "applicable": 1,
+    "passed": 0,
+    "failed": 1,
+    "pending": 0,
+    "passRate": "0.0"
+  },
+  "robustness": {
+    "total": 4,
+    "applicable": 4,
+    "passed": 0,
+    "failed": 4,
+    "pending": 0,
+    "passRate": "0.0"
+  },
+  "duration": 8580,
+  "tests": [
+    {
+      "suite": "Async Bestsellers Semantics",
+      "name": "ASYNC-01 / TC-10: should eventually expose ordered books in bestsellers",
+      "tcId": "ASYNC-01",
+      "category": "async",
+      "status": "failed",
+      "duration": 1,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Cart And Orders Contract",
+      "name": "TC-07: should support cart CRUD flow",
+      "tcId": "TC-07",
+      "category": "core",
+      "status": "failed",
+      "duration": 1,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Cart And Orders Contract",
+      "name": "TC-08: should create an order from cart items",
+      "tcId": "TC-08",
+      "category": "core",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Cart And Orders Contract",
+      "name": "TC-09: should expose order history and clear purchased cart items",
+      "tcId": "TC-09",
+      "category": "core",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Cart Negative Cases",
+      "name": "TC-NEG-01: should return 404 for getting a non-existent cart item",
+      "tcId": null,
+      "category": "core",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Cart Negative Cases",
+      "name": "TC-NEG-02: should handle update of a non-existent cart item",
+      "tcId": null,
+      "category": "core",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Cart Negative Cases",
+      "name": "TC-NEG-03: should handle delete of a non-existent cart item",
+      "tcId": null,
+      "category": "core",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Robustness",
+      "name": "ROB-01: catalog responses should return valid JSON with correct Content-Type",
+      "tcId": "ROB-01",
+      "category": "robustness",
+      "status": "failed",
+      "duration": 1,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Robustness",
+      "name": "ROB-02: should handle concurrent book detail requests",
+      "tcId": "ROB-02",
+      "category": "robustness",
+      "status": "failed",
+      "duration": 1,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Robustness",
+      "name": "ROB-03: list and get should return consistent data for the same book",
+      "tcId": "ROB-03",
+      "category": "robustness",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Robustness",
+      "name": "ROB-04: search should handle special characters gracefully",
+      "tcId": "ROB-04",
+      "category": "robustness",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Catalog Contract",
+      "name": "TC-01: should list seeded books",
+      "tcId": "TC-01",
+      "category": "core",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Catalog Contract",
+      "name": "TC-02: should filter books by category",
+      "tcId": "TC-02",
+      "category": "core",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Catalog Contract",
+      "name": "TC-03: should fetch a known book by id",
+      "tcId": "TC-03",
+      "category": "core",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Catalog Contract",
+      "name": "TC-04: should reject unknown book ids",
+      "tcId": "TC-04",
+      "category": "core",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Catalog Contract",
+      "name": "TC-05: should search books by keyword",
+      "tcId": "TC-05",
+      "category": "core",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Catalog Contract",
+      "name": "TC-06: should reject search without q",
+      "tcId": "TC-06",
+      "category": "core",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Auth Enforcement",
+      "name": "AUTH-01: GET /cart without auth should be rejected",
+      "tcId": "AUTH-01",
+      "category": "auth",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Auth Enforcement",
+      "name": "AUTH-02: POST /cart without auth should be rejected",
+      "tcId": "AUTH-02",
+      "category": "auth",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Auth Enforcement",
+      "name": "AUTH-03: POST /orders without auth should be rejected",
+      "tcId": "AUTH-03",
+      "category": "auth",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    },
+    {
+      "suite": "Auth Enforcement",
+      "name": "AUTH-04: GET /orders without auth should be rejected",
+      "tcId": "AUTH-04",
+      "category": "auth",
+      "status": "failed",
+      "duration": 0,
+      "failureMessages": [
+        "Error: Command failed: node seed-catalog.js e2e_bookstore_opt\n    at genericNodeError (node:internal/errors:983:15)\n    at wrappedFn (node:internal/errors:537:14)\n    at checkExecSyncError (node:child_process:916:11)\n    at execFileSync (node:child_process:952:15)\n    at execFileSync (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\setup.js:45:7)"
+      ]
+    }
+  ]
+}

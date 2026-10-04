@@ -1,0 +1,257 @@
+{
+  "stack": "m2s-e2e-airline-v0",
+  "outputs": {
+    "BookingTableName": "dev-booking",
+    "LoyaltyAccruePointsFunctionArn": "arn:aws:lambda:us-east-1:882112174488:function:m2s-e2e-airline-v0-LoyaltyAccruePointsFunction-lGldP55VcdbQ",
+    "LoyaltyPointsQueueArn": "arn:aws:sqs:us-east-1:882112174488:m2s-e2e-airline-v0-loyalty-points",
+    "IdempotencyTableName": "m2s-e2e-airline-v0-IdempotencyTable-37VXW3PL5J8K",
+    "LoyaltyPointsQueueDLQUrl": "https://sqs.us-east-1.amazonaws.com/882112174488/m2s-e2e-airline-v0-loyalty-points-dlq",
+    "LoyaltyTableName": "dev-loyalty",
+    "UserPoolClientId": "msr2k7d9psse54ekodd8ecq4c",
+    "PaymentTableName": "dev-payment",
+    "ApiUrl": "https://wpxw5yavm6.execute-api.us-east-1.amazonaws.com/dev",
+    "UserPoolId": "us-east-1_K77DFcNH8",
+    "AdminGroupName": "Admin",
+    "LoyaltyPointsQueueUrl": "https://sqs.us-east-1.amazonaws.com/882112174488/m2s-e2e-airline-v0-loyalty-points",
+    "FlightTableName": "dev-flight",
+    "ApiStage": "dev"
+  },
+  "resources": {
+    "AirlineBookingApi": {
+      "type": "AWS::ApiGateway::RestApi",
+      "physical": "wpxw5yavm6"
+    },
+    "AirlineBookingApiDeployment0bbe40f9ec": {
+      "type": "AWS::ApiGateway::Deployment",
+      "physical": "oyrvav"
+    },
+    "AirlineBookingApiStage": {
+      "type": "AWS::ApiGateway::Stage",
+      "physical": "dev"
+    },
+    "ApiLogGroup": {
+      "type": "AWS::Logs::LogGroup",
+      "physical": "/aws/apigateway/wpxw5yavm6"
+    },
+    "BookingTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-booking"
+    },
+    "BookingsCancelFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-BookingsCancelFunction-TbXeQKt1QbNr"
+    },
+    "BookingsCancelFunctionCancelBookingApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-BookingsCancelFunctionCancelBookingApiPermissionStage-xe2v37lwtEH2"
+    },
+    "BookingsCancelFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-BookingsCancelFunctionRole-zTlQojtuupft"
+    },
+    "BookingsConfirmFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-BookingsConfirmFunction-PQ4VvkAk2AdL"
+    },
+    "BookingsConfirmFunctionConfirmBookingApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-BookingsConfirmFunctionConfirmBookingApiPermissionStage-SwZ6E2zrqMdN"
+    },
+    "BookingsConfirmFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-BookingsConfirmFunctionRole-XK3FieKwLzNb"
+    },
+    "BookingsCreateFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-BookingsCreateFunction-hnaWI9VL51a4"
+    },
+    "BookingsCreateFunctionCreateBookingApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-BookingsCreateFunctionCreateBookingApiPermissionStage-zRg3MMlyvr6d"
+    },
+    "BookingsCreateFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-BookingsCreateFunctionRole-NCCgBpWwPsgA"
+    },
+    "BookingsGetDetailFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-BookingsGetDetailFunction-BvTWx00zis5h"
+    },
+    "BookingsGetDetailFunctionGetBookingApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-BookingsGetDetailFunctionGetBookingApiPermissionStage-M8Dumh3FjXW0"
+    },
+    "BookingsGetDetailFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-BookingsGetDetailFunctionRole-LTRITmwo5p0C"
+    },
+    "CognitoAdminGroup": {
+      "type": "AWS::Cognito::UserPoolGroup",
+      "physical": "Admin"
+    },
+    "CognitoUserPool": {
+      "type": "AWS::Cognito::UserPool",
+      "physical": "us-east-1_K77DFcNH8"
+    },
+    "CognitoUserPoolClient": {
+      "type": "AWS::Cognito::UserPoolClient",
+      "physical": "msr2k7d9psse54ekodd8ecq4c"
+    },
+    "CustomersListBookingsFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-CustomersListBookingsFunction-lQJ3XpKMsqZg"
+    },
+    "CustomersListBookingsFunctionListCustomerBookingsApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-CustomersListBookingsFunctionListCustomerBookingsApiPermissionStage-EWgMSuNpOgN9"
+    },
+    "CustomersListBookingsFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-CustomersListBookingsFunctionRol-0nMnFq5qp3ke"
+    },
+    "FlightTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-flight"
+    },
+    "FlightsGetDetailFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-FlightsGetDetailFunction-DMO87PQHoNd9"
+    },
+    "FlightsGetDetailFunctionGetFlightApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-FlightsGetDetailFunctionGetFlightApiPermissionStage-iICibv6h6hmZ"
+    },
+    "FlightsGetDetailFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-FlightsGetDetailFunctionRole-iFSZFXqHskCw"
+    },
+    "FlightsReleaseSeatFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-FlightsReleaseSeatFunction-JUiLYaOy3H2N"
+    },
+    "FlightsReleaseSeatFunctionReleaseSeatApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-FlightsReleaseSeatFunctionReleaseSeatApiPermissionStage-Hsvlmn3ykGVA"
+    },
+    "FlightsReleaseSeatFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-FlightsReleaseSeatFunctionRole-di5BA7aKpvyQ"
+    },
+    "FlightsReserveSeatFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-FlightsReserveSeatFunction-E3q9IBw5Ygka"
+    },
+    "FlightsReserveSeatFunctionReserveSeatApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-FlightsReserveSeatFunctionReserveSeatApiPermissionStage-X7qmxgkJKn6W"
+    },
+    "FlightsReserveSeatFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-FlightsReserveSeatFunctionRole-NnDPUUrHon9y"
+    },
+    "FlightsSearchFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-FlightsSearchFunction-1nN9vjqDIPRG"
+    },
+    "FlightsSearchFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-FlightsSearchFunctionRole-6pI4BE6U84an"
+    },
+    "FlightsSearchFunctionSearchFlightsApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-FlightsSearchFunctionSearchFlightsApiPermissionStage-1Y9Tq0nNQeIX"
+    },
+    "IdempotencyTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "m2s-e2e-airline-v0-IdempotencyTable-37VXW3PL5J8K"
+    },
+    "LoyaltyAccruePointsFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-LoyaltyAccruePointsFunction-lGldP55VcdbQ"
+    },
+    "LoyaltyAccruePointsFunctionLoyaltyPointsQueueEvent": {
+      "type": "AWS::Lambda::EventSourceMapping",
+      "physical": "89a68f55-7712-4017-bbe1-93b3231825b8"
+    },
+    "LoyaltyAccruePointsFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-LoyaltyAccruePointsFunctionRole-zj98KuIeAQTA"
+    },
+    "LoyaltyAddPointsFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-LoyaltyAddPointsFunction-DeoYQ5iCxeu1"
+    },
+    "LoyaltyAddPointsFunctionAddLoyaltyPointsApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-LoyaltyAddPointsFunctionAddLoyaltyPointsApiPermissionStage-vJA1aiK8q20R"
+    },
+    "LoyaltyAddPointsFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-LoyaltyAddPointsFunctionRole-rZXOxMMK008W"
+    },
+    "LoyaltyGetSummaryFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-LoyaltyGetSummaryFunction-oYjRTqdoZg9e"
+    },
+    "LoyaltyGetSummaryFunctionGetLoyaltySummaryApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-LoyaltyGetSummaryFunctionGetLoyaltySummaryApiPermissionStage-lE9acVCVlQvO"
+    },
+    "LoyaltyGetSummaryFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-LoyaltyGetSummaryFunctionRole-FIIGsQKm5yQ6"
+    },
+    "LoyaltyPointsQueue": {
+      "type": "AWS::SQS::Queue",
+      "physical": "https://sqs.us-east-1.amazonaws.com/882112174488/m2s-e2e-airline-v0-loyalty-points"
+    },
+    "LoyaltyPointsQueueDLQ": {
+      "type": "AWS::SQS::Queue",
+      "physical": "https://sqs.us-east-1.amazonaws.com/882112174488/m2s-e2e-airline-v0-loyalty-points-dlq"
+    },
+    "LoyaltyTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-loyalty"
+    },
+    "PaymentTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-payment"
+    },
+    "PaymentsCollectFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-PaymentsCollectFunction-u9IVsaOc2YIv"
+    },
+    "PaymentsCollectFunctionCollectPaymentApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-PaymentsCollectFunctionCollectPaymentApiPermissionStage-0d0q0fZqrDMf"
+    },
+    "PaymentsCollectFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-PaymentsCollectFunctionRole-a30PmX3O91XX"
+    },
+    "PaymentsGetDetailFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-PaymentsGetDetailFunction-yhbqmxN2BQ3X"
+    },
+    "PaymentsGetDetailFunctionGetPaymentApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-PaymentsGetDetailFunctionGetPaymentApiPermissionStage-i3C3fVByEuoa"
+    },
+    "PaymentsGetDetailFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-PaymentsGetDetailFunctionRole-hUTiatnZXCKS"
+    },
+    "PaymentsRefundFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "m2s-e2e-airline-v0-PaymentsRefundFunction-kg3mPAXLLRKA"
+    },
+    "PaymentsRefundFunctionRefundPaymentApiPermissionStage": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-airline-v0-PaymentsRefundFunctionRefundPaymentApiPermissionStage-spcs2hoGIoXV"
+    },
+    "PaymentsRefundFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-airline-v0-PaymentsRefundFunctionRole-MFwRPDbZa8BH"
+    }
+  }
+}

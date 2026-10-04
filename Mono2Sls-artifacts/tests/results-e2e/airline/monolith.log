@@ -1,0 +1,308 @@
+============================================================
+Airline Booking - DynamoDB Table Management
+============================================================
+Region: us-east-1
+Stage: dev
+Existing tables: []
+
+Creating 4 table(s)...
+
+Creating table: Airline-Flight-dev
+✓ Table Airline-Flight-dev created successfully
+  Status: ACTIVE
+
+Creating table: Airline-Booking-dev
+✓ Table Airline-Booking-dev created successfully
+  Status: ACTIVE
+
+Creating table: Airline-Loyalty-dev
+✓ Table Airline-Loyalty-dev created successfully
+  Status: ACTIVE
+
+Creating table: Airline-Users-dev
+✓ Table Airline-Users-dev created successfully
+  Status: ACTIVE
+
+============================================================
+Table creation initiated!
+============================================================
+
+Note: Tables are being created in the background.
+It may take a few moments for them to become ACTIVE.
+
+You can check the status with:
+  aws dynamodb describe-table --table-name <table-name> --region us-east-1
+
+Environment variables to set:
+  export AWS_REGION=us-east-1
+  export STAGE=dev
+  export FLIGHT_TABLE_NAME=Airline-Flight-dev
+  export BOOKING_TABLE_NAME=Airline-Booking-dev
+  export LOYALTY_TABLE_NAME=Airline-Loyalty-dev
+  export USERS_TABLE_NAME=Airline-Users-dev
+
+$ D:\tmp\m2s-e2e\venv-airline\Scripts\python.exe init_dynamodb_tables.py
+ * Serving Flask app 'app'
+ * Debug mode: off
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on http://127.0.0.1:5301
+Press CTRL+C to quit
+127.0.0.1 - - [04/Oct/2026 18:42:49] "POST /bookings HTTP/1.1" 401 -
+127.0.0.1 - - [04/Oct/2026 18:42:49] "POST /auth/register HTTP/1.1" 201 -
+127.0.0.1 - - [04/Oct/2026 18:42:49] "POST /auth/login HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:49] "POST /bookings HTTP/1.1" 201 -
+127.0.0.1 - - [04/Oct/2026 18:42:49] "GET /bookings/610af170-f8f1-4f5f-bd83-4a7069def5ae HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:49] "GET /customers/e2e-booking-contract-1791110569763-r3vjfa/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:49] "POST /bookings/610af170-f8f1-4f5f-bd83-4a7069def5ae/cancel HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:49] "GET /bookings/610af170-f8f1-4f5f-bd83-4a7069def5ae HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:49] "POST /bookings HTTP/1.1" 400 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "POST /auth/register HTTP/1.1" 201 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "POST /auth/login HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "GET /loyalty/e2e-async-1791110570039-el5w61 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "POST /bookings HTTP/1.1" 201 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "GET /loyalty/e2e-async-1791110570039-el5w61 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "POST /bookings/44de5a88-b36a-46a1-9166-70d2126baff7/cancel HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "GET /flights/search?departureCode=LAX&arrivalCode=SFO HTTP/1.1" 400 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "GET /flights/NO_SUCH_FLIGHT_12345 HTTP/1.1" 400 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "POST /flights/FL001/PASS tests/flights.contract.test.js
+  Flights Contract
+    √ TC-01a: should search flights from the source-monolith fixture schedule without authentication (17 ms)
+    √ TC-02a: should reject flight search with missing required query parameters (2 ms)
+127.0.0.1 - - [04/Oct/2026 18:42:50] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "GET /flights/search?departureCode=LAX&arrivalCodPASS tests/robustness.test.js
+  Robustness
+    √ ROB-01a: key endpoints should return JSON responses (15 ms)
+    √ ROB-01b: key endpoints should expose CORS headers (10 ms)
+    √ ROB-03a: repeated unauthenticated protected requests should stay rejected (6 ms)
+    √ ROB-04a: flight search should be deterministic for the fixture query (16 ms)
+    Authenticated robustness
+      √ ROB-02a: booking should tolerate special characters in the optional name field (25 ms)
+
+PASS tests/payments.contract.test.js
+  Payments Contract
+    √ TC-16a: should collect payment with a valid charge id without authentication (5 ms)
+    √ TC-17a: should refund payment with a valid charge id without authentication (2 ms)
+    √ TC-18a: should expose payment lookup semantics for a collected charge id (3 ms)
+    √ TC-19a: should reject payment requests missing chargeId (3 ms)
+
+PASS tests/isolation.contract.test.js
+  Isolation Contract
+    √ TC-13a: user B should not fetch user A booking by id (10 ms)
+    √ TC-14a: user B should not list bookings for user A (6 ms)
+    √ TC-15a: user B should not read user A loyalty state (5 ms)
+
+Results written to: D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-airline-booking\results\e2e_airline_monolith_2026-10-04T10-42-50-889Z.json
+Test Suites: 1 skipped, 6 passed, 6 of 7 total
+Tests:       7 skipped, 25 passed, 32 total
+Snapshots:   0 total
+Time:        7.918 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+- [04/Oct/2026 18:42:50] "POST /auth/login HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "POST /bookings HTTP/1.1" 201 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "GET /bookings/0212a1e4-43cd-4e9a-a010-84b30f6f89d6 HTTP/1.1" 403 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "GET /customers/e2e-isolation-a-1791110570772-n43vi9/bookings HTTP/1.1" 403 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "GET /loyalty/e2e-isolation-a-1791110570772-n43vi9 HTTP/1.1" 403 -
+127.0.0.1 - - [04/Oct/2026 18:42:50] "POST /bookings/0212a1e4-43cd-4e9a-a010-84b30f6f89d6/cancel HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:52] "POST /bookings HTTP/1.PASS tests/booking.contract.test.js
+  Booking Contract
+    √ TC-06a: should reject booking creation without authentication (19 ms)
+    Authenticated booking flow
+      √ TC-07a: should create a booking for an authenticated user (28 ms)
+      √ TC-08a: should fetch the owner booking details (14 ms)
+      √ TC-09a: should list the owner bookings (12 ms)
+      √ TC-10a: should cancel the owner booking (24 ms)
+      √ TC-11a: should persist cancelled booking state (15 ms)
+      √ TC-12a: should reject invalid booking payloads (21 ms)
+
+PASS tests/async.semantics.test.js
+  Async Semantics
+    Booking -> Loyalty eventual consistency
+      √ ASYNC-01a: successful booking should eventually increase loyalty points (83 ms)
+    Cancel -> Seat restoration eventual consistency
+      ○ skipped ASYNC-02a: cancelling a booking should eventually restore seat capacity
+
+PASS tests/robustness.test.js
+  Robustness
+    √ ROB-01a: key endpoints should return JSON responses (12 ms)
+    √ ROB-01b: key endpoints should expose CORS headers (8 ms)
+    √ ROB-03a: repeated unauthenticated protected requests should stay rejected (6 ms)
+    √ ROB-04a: flight search should be deterministic for the fixture query (13 ms)
+    Authenticated robustness
+      √ ROB-02a: booking should tolerate special characters in the optional name field (20 ms)
+
+PASS tests/isolation.contract.test.js
+  Isolation Contract
+    √ TC-13a: user B should not fetch user A booking by id (9 ms)
+    √ TC-14a: user B should not list bookings for user A (8 ms)
+    √ TC-15a: user B should not read user A loyalty state (6 ms)
+
+PASS tests/flights.contract.test.js
+  Flights Contract
+    √ TC-01a: should search flights from the source-monolith fixture schedule without authentication (11 ms)
+    √ TC-02a: should reject flight search with missing required query parameters (3 ms)
+    √ TC-03a: should fetch a known flight by id without authentication (8 ms)
+    √ TC-04a: should reject unknown flight ids (6 ms)
+    √ TC-05a: reserve and release should change observable seat capacity (35 ms)
+
+PASS tests/payments.contract.test.js
+  Payments Contract
+    √ TC-16a: should collect payment with a valid charge id without authentication (10 ms)
+    √ TC-17a: should refund payment with a valid charge id without authentication (3 ms)
+    √ TC-18a: should expose payment lookup semantics for a collected charge id (4 ms)
+    √ TC-19a: should reject payment requests missing chargeId (4 ms)
+
+Results written to: D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-airline-booking\results\e2e_airline_monolith_2026-10-04T10-42-53-503Z.json
+Test Suites: 1 skipped, 6 passed, 6 of 7 total
+Tests:       7 skipped, 25 passed, 32 total
+Snapshots:   0 total
+Time:        1.579 s, estimated 8 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+.0.0.1 - - [04/Oct/2026 18:42:53] "GET /loyalty/e2e-isolation-a-1791110573139-mmjjxy HTTP/1.1" 403 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /bookings/27745592-f3cb-495a-a54c-5779ce35d35d/cancel HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "GET /flights/search?departureCode=LAX&arrivalCode=SFO HTTP/1.1" 400 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "GET /flights/NO_SUCH_FLIGHT_12345 HTTP/1.1" 400 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /flights/FL001/reserve HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /flights/FL001/release HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /payments/collect HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /payments/refund HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /payments/collect HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "GET /payments/ch_test_payment_get HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /payments/collect HTTP/1.1" 400 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /payments/refund HTTP/1.1" 400 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /auth/register HTTP/1.1" 201 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /auth/login HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /bookings HTTP/1.1" 201 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /bookings HTTP/1.1" 201 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /bookings HTTP/1.1" 201 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /bookings HTTP/1.1" 201 -
+127.0.0.1 - - [04/Oct/2026 18:42:53] "POST /bookings HTTP/1.1" 201 -
+127.0.0.1 - - [04/Oct/2026 18:43:13] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:13] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:13] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:13] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:14] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:15] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:16] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:17] "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:17] "GET /flights/FL001 HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:17] "GET /customers/perf-1791110573/bookings HTTP/1.1" 200 -
+127.0.0.1 - - [04/Oct/2026 18:43:17] "GET /loyalty/perf-1791110573 HTTP/1.1" 200 -

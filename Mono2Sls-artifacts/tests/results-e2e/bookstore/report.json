@@ -1,0 +1,481 @@
+{
+  "app": "bookstore",
+  "generated_at": "2026-10-04 20:12",
+  "variants": {
+    "monolith": {
+      "ref": null,
+      "commit": null,
+      "architecture": null,
+      "summary": {
+        "totalTests": 21,
+        "passed": 9,
+        "failed": 12,
+        "flaky": 0,
+        "runs": [
+          {
+            "totalTests": 21,
+            "passed": 9,
+            "failed": 12,
+            "pending": 0,
+            "passRate": "42.9"
+          },
+          {
+            "totalTests": 21,
+            "passed": 9,
+            "failed": 12,
+            "pending": 0,
+            "passRate": "42.9"
+          }
+        ]
+      },
+      "metrics": null,
+      "cost_usd": null
+    },
+    "v0": {
+      "ref": "v0",
+      "commit": "e098e0f",
+      "architecture": "x86_64",
+      "summary": {
+        "totalTests": 21,
+        "passed": 9,
+        "failed": 12,
+        "flaky": 0,
+        "runs": [
+          {
+            "totalTests": 21,
+            "passed": 9,
+            "failed": 12,
+            "pending": 0,
+            "passRate": "42.9"
+          },
+          {
+            "totalTests": 21,
+            "passed": 9,
+            "failed": 12,
+            "pending": 0,
+            "passRate": "42.9"
+          }
+        ]
+      },
+      "metrics": {
+        "functions": {
+          "BestsellersListFunction": {
+            "invocations": 30,
+            "cold": 1,
+            "warm_p50_ms": 9.8,
+            "warm_p90_ms": 15.6,
+            "init_p50_ms": 299.6,
+            "max_memory_mb": 103
+          },
+          "BestsellersUpdateFunction": {
+            "invocations": 9,
+            "cold": 1,
+            "warm_p50_ms": 24.6,
+            "warm_p90_ms": 123.3,
+            "init_p50_ms": 310.0,
+            "max_memory_mb": 99
+          },
+          "BooksGetItemFunction": {
+            "invocations": 30,
+            "cold": 1,
+            "warm_p50_ms": 5.5,
+            "warm_p90_ms": 9.2,
+            "init_p50_ms": 291.5,
+            "max_memory_mb": 99
+          },
+          "BooksListFunction": {
+            "invocations": 30,
+            "cold": 1,
+            "warm_p50_ms": 10.7,
+            "warm_p90_ms": 14.9,
+            "init_p50_ms": 306.8,
+            "max_memory_mb": 100
+          },
+          "CartAddFunction": {
+            "invocations": 8,
+            "cold": 1,
+            "warm_p50_ms": 8.8,
+            "warm_p90_ms": 103.5,
+            "init_p50_ms": 303.9,
+            "max_memory_mb": 100
+          },
+          "CartGetFunction": {
+            "invocations": 36,
+            "cold": 1,
+            "warm_p50_ms": 6.1,
+            "warm_p90_ms": 10.4,
+            "init_p50_ms": 249.0,
+            "max_memory_mb": 99
+          },
+          "CartGetItemFunction": {
+            "invocations": 4,
+            "cold": 1,
+            "warm_p50_ms": 53.6,
+            "warm_p90_ms": 53.6,
+            "init_p50_ms": 235.9,
+            "max_memory_mb": 99
+          },
+          "CartRemoveFunction": {
+            "invocations": 4,
+            "cold": 1,
+            "warm_p50_ms": 86.8,
+            "warm_p90_ms": 86.8,
+            "init_p50_ms": 265.2,
+            "max_memory_mb": 99
+          },
+          "CartUpdateFunction": {
+            "invocations": 4,
+            "cold": 1,
+            "warm_p50_ms": 84.0,
+            "warm_p90_ms": 84.0,
+            "init_p50_ms": 358.1,
+            "max_memory_mb": 99
+          },
+          "OrdersCreateFunction": {
+            "invocations": 9,
+            "cold": 1,
+            "warm_p50_ms": 27.1,
+            "warm_p90_ms": 164.6,
+            "init_p50_ms": 306.5,
+            "max_memory_mb": 101
+          },
+          "OrdersListFunction": {
+            "invocations": 32,
+            "cold": 1,
+            "warm_p50_ms": 6.5,
+            "warm_p90_ms": 11.7,
+            "init_p50_ms": 295.9,
+            "max_memory_mb": 104
+          },
+          "SearchBooksFunction": {
+            "invocations": 30,
+            "cold": 1,
+            "warm_p50_ms": 9.9,
+            "warm_p90_ms": 20.9,
+            "init_p50_ms": 303.7,
+            "max_memory_mb": 99
+          }
+        },
+        "invocations": 226,
+        "lambda_gb_seconds": 4.936,
+        "rru": 303.0,
+        "wru": 161.0
+      },
+      "cost_usd": {
+        "lambda_duration": 8.227e-05,
+        "lambda_requests": 4.52e-05,
+        "dynamodb": 0.0001385,
+        "api_gateway": 0.000791,
+        "total": 0.00105697
+      }
+    },
+    "opt": {
+      "ref": "HEAD",
+      "commit": "078b6fd",
+      "architecture": "arm64",
+      "summary": {
+        "totalTests": 21,
+        "passed": 9,
+        "failed": 12,
+        "flaky": 0,
+        "runs": [
+          {
+            "totalTests": 21,
+            "passed": 9,
+            "failed": 12,
+            "pending": 0,
+            "passRate": "42.9"
+          },
+          {
+            "totalTests": 21,
+            "passed": 9,
+            "failed": 12,
+            "pending": 0,
+            "passRate": "42.9"
+          }
+        ]
+      },
+      "metrics": {
+        "functions": {
+          "BestsellersListFunction": {
+            "invocations": 30,
+            "cold": 1,
+            "warm_p50_ms": 6.6,
+            "warm_p90_ms": 20.7,
+            "init_p50_ms": 270.0,
+            "max_memory_mb": 102
+          },
+          "BestsellersUpdateFunction": {
+            "invocations": 9,
+            "cold": 1,
+            "warm_p50_ms": 30.5,
+            "warm_p90_ms": 86.0,
+            "init_p50_ms": 327.1,
+            "max_memory_mb": 100
+          },
+          "BooksGetItemFunction": {
+            "invocations": 30,
+            "cold": 1,
+            "warm_p50_ms": 6.1,
+            "warm_p90_ms": 9.5,
+            "init_p50_ms": 244.7,
+            "max_memory_mb": 104
+          },
+          "BooksListFunction": {
+            "invocations": 30,
+            "cold": 1,
+            "warm_p50_ms": 9.6,
+            "warm_p90_ms": 19.6,
+            "init_p50_ms": 300.8,
+            "max_memory_mb": 100
+          },
+          "CartAddFunction": {
+            "invocations": 8,
+            "cold": 1,
+            "warm_p50_ms": 9.4,
+            "warm_p90_ms": 82.3,
+            "init_p50_ms": 244.6,
+            "max_memory_mb": 100
+          },
+          "CartGetFunction": {
+            "invocations": 36,
+            "cold": 1,
+            "warm_p50_ms": 5.6,
+            "warm_p90_ms": 15.2,
+            "init_p50_ms": 241.0,
+            "max_memory_mb": 100
+          },
+          "CartGetItemFunction": {
+            "invocations": 4,
+            "cold": 1,
+            "warm_p50_ms": 10.8,
+            "warm_p90_ms": 10.8,
+            "init_p50_ms": 261.1,
+            "max_memory_mb": 102
+          },
+          "CartRemoveFunction": {
+            "invocations": 4,
+            "cold": 1,
+            "warm_p50_ms": 92.7,
+            "warm_p90_ms": 92.7,
+            "init_p50_ms": 322.7,
+            "max_memory_mb": 100
+          },
+          "CartUpdateFunction": {
+            "invocations": 4,
+            "cold": 1,
+            "warm_p50_ms": 91.2,
+            "warm_p90_ms": 91.2,
+            "init_p50_ms": 302.7,
+            "max_memory_mb": 100
+          },
+          "OrdersCreateFunction": {
+            "invocations": 9,
+            "cold": 1,
+            "warm_p50_ms": 37.5,
+            "warm_p90_ms": 146.0,
+            "init_p50_ms": 340.7,
+            "max_memory_mb": 102
+          },
+          "OrdersListFunction": {
+            "invocations": 32,
+            "cold": 1,
+            "warm_p50_ms": 6.5,
+            "warm_p90_ms": 17.1,
+            "init_p50_ms": 318.6,
+            "max_memory_mb": 103
+          },
+          "SearchBooksFunction": {
+            "invocations": 30,
+            "cold": 1,
+            "warm_p50_ms": 11.1,
+            "warm_p90_ms": 18.7,
+            "init_p50_ms": 321.4,
+            "max_memory_mb": 102
+          }
+        },
+        "invocations": 226,
+        "lambda_gb_seconds": 5.314,
+        "rru": 243.0,
+        "wru": 161.0
+      },
+      "cost_usd": {
+        "lambda_duration": 7.085e-05,
+        "lambda_requests": 4.52e-05,
+        "dynamodb": 0.000131,
+        "api_gateway": 0.000791,
+        "total": 0.00103805
+      }
+    }
+  },
+  "tests": [
+    {
+      "test": "Async Bestsellers Semantics > ASYNC-01 / TC-10: should eventually expose ordered books in bestsellers",
+      "monolith": "failed",
+      "v0": "failed",
+      "opt": "failed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Auth Enforcement > AUTH-01: GET /cart without auth should be rejected",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Auth Enforcement > AUTH-02: POST /cart without auth should be rejected",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Auth Enforcement > AUTH-03: POST /orders without auth should be rejected",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Auth Enforcement > AUTH-04: GET /orders without auth should be rejected",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Cart And Orders Contract > TC-07: should support cart CRUD flow",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Cart And Orders Contract > TC-08: should create an order from cart items",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Cart And Orders Contract > TC-09: should expose order history and clear purchased cart items",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Cart Negative Cases > TC-NEG-01: should return 404 for getting a non-existent cart item",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Cart Negative Cases > TC-NEG-02: should handle update of a non-existent cart item",
+      "monolith": "failed",
+      "v0": "failed",
+      "opt": "failed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Cart Negative Cases > TC-NEG-03: should handle delete of a non-existent cart item",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Catalog Contract > TC-01: should list seeded books",
+      "monolith": "failed",
+      "v0": "failed",
+      "opt": "failed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Catalog Contract > TC-02: should filter books by category",
+      "monolith": "failed",
+      "v0": "failed",
+      "opt": "failed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Catalog Contract > TC-03: should fetch a known book by id",
+      "monolith": "failed",
+      "v0": "failed",
+      "opt": "failed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Catalog Contract > TC-04: should reject unknown book ids",
+      "monolith": "failed",
+      "v0": "failed",
+      "opt": "failed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Catalog Contract > TC-05: should search books by keyword",
+      "monolith": "failed",
+      "v0": "failed",
+      "opt": "failed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Catalog Contract > TC-06: should reject search without q",
+      "monolith": "failed",
+      "v0": "failed",
+      "opt": "failed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Robustness > ROB-01: catalog responses should return valid JSON with correct Content-Type",
+      "monolith": "failed",
+      "v0": "failed",
+      "opt": "failed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Robustness > ROB-02: should handle concurrent book detail requests",
+      "monolith": "failed",
+      "v0": "failed",
+      "opt": "failed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Robustness > ROB-03: list and get should return consistent data for the same book",
+      "monolith": "failed",
+      "v0": "failed",
+      "opt": "failed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Robustness > ROB-04: search should handle special characters gracefully",
+      "monolith": "failed",
+      "v0": "failed",
+      "opt": "failed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    }
+  ]
+}

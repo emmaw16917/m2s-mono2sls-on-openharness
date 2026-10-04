@@ -1,0 +1,258 @@
+{
+  "target": "e2e_bookstore_opt",
+  "timestamp": "2026-10-04T12:04:26.545Z",
+  "totalTests": 21,
+  "passed": 9,
+  "failed": 12,
+  "pending": 0,
+  "applicable": 21,
+  "passRate": "42.9",
+  "core": {
+    "total": 12,
+    "applicable": 12,
+    "passed": 5,
+    "failed": 7,
+    "pending": 0,
+    "passRate": "41.7"
+  },
+  "authCompatibility": {
+    "total": 4,
+    "applicable": 4,
+    "passed": 4,
+    "failed": 0,
+    "pending": 0,
+    "passRate": "100.0"
+  },
+  "asyncSemantics": {
+    "total": 1,
+    "applicable": 1,
+    "passed": 0,
+    "failed": 1,
+    "pending": 0,
+    "passRate": "0.0"
+  },
+  "robustness": {
+    "total": 4,
+    "applicable": 4,
+    "passed": 0,
+    "failed": 4,
+    "pending": 0,
+    "passRate": "0.0"
+  },
+  "duration": 121809,
+  "tests": [
+    {
+      "suite": "Async Bestsellers Semantics",
+      "name": "ASYNC-01 / TC-10: should eventually expose ordered books in bestsellers",
+      "tcId": "ASYNC-01",
+      "category": "async",
+      "status": "failed",
+      "duration": 35542,
+      "failureMessages": [
+        "Error: Condition not satisfied within 30000ms. Last value: {\"status\":401,\"data\":{\"message\":\"Unauthorized\"}}\n    at pollUntil (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\helpers.js:202:9)\n    at Object.<anonymous> (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\bestsellers.async.test.js:41:22)"
+      ]
+    },
+    {
+      "suite": "Cart Negative Cases",
+      "name": "TC-NEG-01: should return 404 for getting a non-existent cart item",
+      "tcId": null,
+      "category": "core",
+      "status": "passed",
+      "duration": 960,
+      "failureMessages": []
+    },
+    {
+      "suite": "Cart Negative Cases",
+      "name": "TC-NEG-02: should handle update of a non-existent cart item",
+      "tcId": null,
+      "category": "core",
+      "status": "failed",
+      "duration": 972,
+      "failureMessages": [
+        "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 200\nReceived array: [400, 404]\n    at Object.toContain (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\cart-negative.test.js:36:24)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)"
+      ]
+    },
+    {
+      "suite": "Cart Negative Cases",
+      "name": "TC-NEG-03: should handle delete of a non-existent cart item",
+      "tcId": null,
+      "category": "core",
+      "status": "passed",
+      "duration": 934,
+      "failureMessages": []
+    },
+    {
+      "suite": "Robustness",
+      "name": "ROB-01: catalog responses should return valid JSON with correct Content-Type",
+      "tcId": "ROB-01",
+      "category": "robustness",
+      "status": "failed",
+      "duration": 824,
+      "failureMessages": [
+        "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 401\nReceived array: [200]\n    at toContain (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\helpers.js:69:24)\n    at Object.expectStatus (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\robustness.test.js:23:5)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)"
+      ]
+    },
+    {
+      "suite": "Robustness",
+      "name": "ROB-02: should handle concurrent book detail requests",
+      "tcId": "ROB-02",
+      "category": "robustness",
+      "status": "failed",
+      "duration": 3359,
+      "failureMessages": [
+        "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 401\nReceived array: [200]\n    at toContain (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\helpers.js:69:24)\n    at Object.expectStatus (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\robustness.test.js:36:7)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)"
+      ]
+    },
+    {
+      "suite": "Robustness",
+      "name": "ROB-03: list and get should return consistent data for the same book",
+      "tcId": "ROB-03",
+      "category": "robustness",
+      "status": "failed",
+      "duration": 426,
+      "failureMessages": [
+        "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 401\nReceived array: [200]\n    at toContain (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\helpers.js:69:24)\n    at Object.expectStatus (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\robustness.test.js:47:5)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)"
+      ]
+    },
+    {
+      "suite": "Robustness",
+      "name": "ROB-04: search should handle special characters gracefully",
+      "tcId": "ROB-04",
+      "category": "robustness",
+      "status": "failed",
+      "duration": 424,
+      "failureMessages": [
+        "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 401\nReceived array: [200, 400]\n    at Object.toContain (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\robustness.test.js:63:24)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)"
+      ]
+    },
+    {
+      "suite": "Catalog Contract",
+      "name": "TC-01: should list seeded books",
+      "tcId": "TC-01",
+      "category": "core",
+      "status": "failed",
+      "duration": 822,
+      "failureMessages": [
+        "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 401\nReceived array: [200]\n    at toContain (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\helpers.js:69:24)\n    at Object.expectStatus (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\catalog.contract.test.js:23:5)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)"
+      ]
+    },
+    {
+      "suite": "Catalog Contract",
+      "name": "TC-02: should filter books by category",
+      "tcId": "TC-02",
+      "category": "core",
+      "status": "failed",
+      "duration": 804,
+      "failureMessages": [
+        "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 401\nReceived array: [200]\n    at toContain (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\helpers.js:69:24)\n    at Object.expectStatus (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\catalog.contract.test.js:37:5)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)"
+      ]
+    },
+    {
+      "suite": "Catalog Contract",
+      "name": "TC-03: should fetch a known book by id",
+      "tcId": "TC-03",
+      "category": "core",
+      "status": "failed",
+      "duration": 814,
+      "failureMessages": [
+        "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 401\nReceived array: [200]\n    at toContain (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\helpers.js:69:24)\n    at Object.expectStatus (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\catalog.contract.test.js:47:5)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)"
+      ]
+    },
+    {
+      "suite": "Catalog Contract",
+      "name": "TC-04: should reject unknown book ids",
+      "tcId": "TC-04",
+      "category": "core",
+      "status": "failed",
+      "duration": 809,
+      "failureMessages": [
+        "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 401\nReceived array: [404]\n    at toContain (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\helpers.js:69:24)\n    at Object.expectStatus (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\catalog.contract.test.js:56:5)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)"
+      ]
+    },
+    {
+      "suite": "Catalog Contract",
+      "name": "TC-05: should search books by keyword",
+      "tcId": "TC-05",
+      "category": "core",
+      "status": "failed",
+      "duration": 817,
+      "failureMessages": [
+        "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 401\nReceived array: [200]\n    at toContain (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\helpers.js:69:24)\n    at Object.expectStatus (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\catalog.contract.test.js:63:5)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)"
+      ]
+    },
+    {
+      "suite": "Catalog Contract",
+      "name": "TC-06: should reject search without q",
+      "tcId": "TC-06",
+      "category": "core",
+      "status": "failed",
+      "duration": 826,
+      "failureMessages": [
+        "Error: expect(received).toContain(expected) // indexOf\n\nExpected value: 401\nReceived array: [400]\n    at toContain (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\helpers.js:69:24)\n    at Object.expectStatus (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-bookstore\\tests\\catalog.contract.test.js:73:5)\n    at processTicksAndRejections (node:internal/process/task_queues:105:5)"
+      ]
+    },
+    {
+      "suite": "Cart And Orders Contract",
+      "name": "TC-07: should support cart CRUD flow",
+      "tcId": "TC-07",
+      "category": "core",
+      "status": "passed",
+      "duration": 6971,
+      "failureMessages": []
+    },
+    {
+      "suite": "Cart And Orders Contract",
+      "name": "TC-08: should create an order from cart items",
+      "tcId": "TC-08",
+      "category": "core",
+      "status": "passed",
+      "duration": 4604,
+      "failureMessages": []
+    },
+    {
+      "suite": "Cart And Orders Contract",
+      "name": "TC-09: should expose order history and clear purchased cart items",
+      "tcId": "TC-09",
+      "category": "core",
+      "status": "passed",
+      "duration": 1829,
+      "failureMessages": []
+    },
+    {
+      "suite": "Auth Enforcement",
+      "name": "AUTH-01: GET /cart without auth should be rejected",
+      "tcId": "AUTH-01",
+      "category": "auth",
+      "status": "passed",
+      "duration": 801,
+      "failureMessages": []
+    },
+    {
+      "suite": "Auth Enforcement",
+      "name": "AUTH-02: POST /cart without auth should be rejected",
+      "tcId": "AUTH-02",
+      "category": "auth",
+      "status": "passed",
+      "duration": 1219,
+      "failureMessages": []
+    },
+    {
+      "suite": "Auth Enforcement",
+      "name": "AUTH-03: POST /orders without auth should be rejected",
+      "tcId": "AUTH-03",
+      "category": "auth",
+      "status": "passed",
+      "duration": 910,
+      "failureMessages": []
+    },
+    {
+      "suite": "Auth Enforcement",
+      "name": "AUTH-04: GET /orders without auth should be rejected",
+      "tcId": "AUTH-04",
+      "category": "auth",
+      "status": "passed",
+      "duration": 1071,
+      "failureMessages": []
+    }
+  ]
+}

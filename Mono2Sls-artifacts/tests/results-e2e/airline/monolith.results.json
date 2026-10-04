@@ -1,0 +1,333 @@
+{
+  "target": "e2e_airline_monolith",
+  "timestamp": "2026-10-04T10:42:53.503Z",
+  "totalTests": 32,
+  "passed": 25,
+  "failed": 0,
+  "pending": 7,
+  "applicable": 25,
+  "passRate": "100.0",
+  "core": {
+    "total": 19,
+    "applicable": 19,
+    "passed": 19,
+    "failed": 0,
+    "pending": 0,
+    "passRate": "100.0"
+  },
+  "authCompatibility": {
+    "total": 6,
+    "applicable": 0,
+    "passed": 0,
+    "failed": 0,
+    "pending": 6,
+    "passRate": null
+  },
+  "asyncSemantics": {
+    "total": 2,
+    "applicable": 1,
+    "passed": 1,
+    "failed": 0,
+    "pending": 1,
+    "passRate": "100.0"
+  },
+  "robustness": {
+    "total": 5,
+    "applicable": 5,
+    "passed": 5,
+    "failed": 0,
+    "pending": 0,
+    "passRate": "100.0"
+  },
+  "duration": 1517,
+  "tests": [
+    {
+      "suite": "Auth Compatibility",
+      "name": "AUTH-01a: should register a user through the generated auth endpoint",
+      "tcId": "AUTH-01a",
+      "category": "auth",
+      "status": "pending",
+      "duration": null,
+      "failureMessages": []
+    },
+    {
+      "suite": "Auth Compatibility",
+      "name": "AUTH-02a: should login through the generated auth endpoint",
+      "tcId": "AUTH-02a",
+      "category": "auth",
+      "status": "pending",
+      "duration": null,
+      "failureMessages": []
+    },
+    {
+      "suite": "Auth Compatibility",
+      "name": "AUTH-03a: should return the current user through /auth/me",
+      "tcId": "AUTH-03a",
+      "category": "auth",
+      "status": "pending",
+      "duration": null,
+      "failureMessages": []
+    },
+    {
+      "suite": "Auth Compatibility",
+      "name": "AUTH-04a: should reject unauthenticated /auth/me requests",
+      "tcId": "AUTH-04a",
+      "category": "auth",
+      "status": "pending",
+      "duration": null,
+      "failureMessages": []
+    },
+    {
+      "suite": "Auth Compatibility",
+      "name": "AUTH-05a: should reject malformed bearer tokens on /auth/me",
+      "tcId": "AUTH-05a",
+      "category": "auth",
+      "status": "pending",
+      "duration": null,
+      "failureMessages": []
+    },
+    {
+      "suite": "Auth Compatibility",
+      "name": "AUTH-06a: should reject /auth/users for a non-admin test account",
+      "tcId": "AUTH-06a",
+      "category": "auth",
+      "status": "pending",
+      "duration": null,
+      "failureMessages": []
+    },
+    {
+      "suite": "Booking Contract",
+      "name": "TC-06a: should reject booking creation without authentication",
+      "tcId": "TC-06a",
+      "category": "core",
+      "status": "passed",
+      "duration": 19,
+      "failureMessages": []
+    },
+    {
+      "suite": "Booking Contract > Authenticated booking flow",
+      "name": "TC-07a: should create a booking for an authenticated user",
+      "tcId": "TC-07a",
+      "category": "core",
+      "status": "passed",
+      "duration": 28,
+      "failureMessages": []
+    },
+    {
+      "suite": "Booking Contract > Authenticated booking flow",
+      "name": "TC-08a: should fetch the owner booking details",
+      "tcId": "TC-08a",
+      "category": "core",
+      "status": "passed",
+      "duration": 14,
+      "failureMessages": []
+    },
+    {
+      "suite": "Booking Contract > Authenticated booking flow",
+      "name": "TC-09a: should list the owner bookings",
+      "tcId": "TC-09a",
+      "category": "core",
+      "status": "passed",
+      "duration": 12,
+      "failureMessages": []
+    },
+    {
+      "suite": "Booking Contract > Authenticated booking flow",
+      "name": "TC-10a: should cancel the owner booking",
+      "tcId": "TC-10a",
+      "category": "core",
+      "status": "passed",
+      "duration": 24,
+      "failureMessages": []
+    },
+    {
+      "suite": "Booking Contract > Authenticated booking flow",
+      "name": "TC-11a: should persist cancelled booking state",
+      "tcId": "TC-11a",
+      "category": "core",
+      "status": "passed",
+      "duration": 15,
+      "failureMessages": []
+    },
+    {
+      "suite": "Booking Contract > Authenticated booking flow",
+      "name": "TC-12a: should reject invalid booking payloads",
+      "tcId": "TC-12a",
+      "category": "core",
+      "status": "passed",
+      "duration": 21,
+      "failureMessages": []
+    },
+    {
+      "suite": "Async Semantics > Booking -> Loyalty eventual consistency",
+      "name": "ASYNC-01a: successful booking should eventually increase loyalty points",
+      "tcId": "ASYNC-01a",
+      "category": "async",
+      "status": "passed",
+      "duration": 83,
+      "failureMessages": []
+    },
+    {
+      "suite": "Async Semantics > Cancel -> Seat restoration eventual consistency",
+      "name": "ASYNC-02a: cancelling a booking should eventually restore seat capacity",
+      "tcId": "ASYNC-02a",
+      "category": "async",
+      "status": "pending",
+      "duration": null,
+      "failureMessages": []
+    },
+    {
+      "suite": "Robustness",
+      "name": "ROB-01a: key endpoints should return JSON responses",
+      "tcId": "ROB-01a",
+      "category": "robustness",
+      "status": "passed",
+      "duration": 12,
+      "failureMessages": []
+    },
+    {
+      "suite": "Robustness",
+      "name": "ROB-01b: key endpoints should expose CORS headers",
+      "tcId": "ROB-01b",
+      "category": "robustness",
+      "status": "passed",
+      "duration": 8,
+      "failureMessages": []
+    },
+    {
+      "suite": "Robustness",
+      "name": "ROB-03a: repeated unauthenticated protected requests should stay rejected",
+      "tcId": "ROB-03a",
+      "category": "robustness",
+      "status": "passed",
+      "duration": 6,
+      "failureMessages": []
+    },
+    {
+      "suite": "Robustness",
+      "name": "ROB-04a: flight search should be deterministic for the fixture query",
+      "tcId": "ROB-04a",
+      "category": "robustness",
+      "status": "passed",
+      "duration": 13,
+      "failureMessages": []
+    },
+    {
+      "suite": "Robustness > Authenticated robustness",
+      "name": "ROB-02a: booking should tolerate special characters in the optional name field",
+      "tcId": "ROB-02a",
+      "category": "robustness",
+      "status": "passed",
+      "duration": 20,
+      "failureMessages": []
+    },
+    {
+      "suite": "Isolation Contract",
+      "name": "TC-13a: user B should not fetch user A booking by id",
+      "tcId": "TC-13a",
+      "category": "core",
+      "status": "passed",
+      "duration": 9,
+      "failureMessages": []
+    },
+    {
+      "suite": "Isolation Contract",
+      "name": "TC-14a: user B should not list bookings for user A",
+      "tcId": "TC-14a",
+      "category": "core",
+      "status": "passed",
+      "duration": 8,
+      "failureMessages": []
+    },
+    {
+      "suite": "Isolation Contract",
+      "name": "TC-15a: user B should not read user A loyalty state",
+      "tcId": "TC-15a",
+      "category": "core",
+      "status": "passed",
+      "duration": 6,
+      "failureMessages": []
+    },
+    {
+      "suite": "Flights Contract",
+      "name": "TC-01a: should search flights from the source-monolith fixture schedule without authentication",
+      "tcId": "TC-01a",
+      "category": "core",
+      "status": "passed",
+      "duration": 11,
+      "failureMessages": []
+    },
+    {
+      "suite": "Flights Contract",
+      "name": "TC-02a: should reject flight search with missing required query parameters",
+      "tcId": "TC-02a",
+      "category": "core",
+      "status": "passed",
+      "duration": 3,
+      "failureMessages": []
+    },
+    {
+      "suite": "Flights Contract",
+      "name": "TC-03a: should fetch a known flight by id without authentication",
+      "tcId": "TC-03a",
+      "category": "core",
+      "status": "passed",
+      "duration": 8,
+      "failureMessages": []
+    },
+    {
+      "suite": "Flights Contract",
+      "name": "TC-04a: should reject unknown flight ids",
+      "tcId": "TC-04a",
+      "category": "core",
+      "status": "passed",
+      "duration": 6,
+      "failureMessages": []
+    },
+    {
+      "suite": "Flights Contract",
+      "name": "TC-05a: reserve and release should change observable seat capacity",
+      "tcId": "TC-05a",
+      "category": "core",
+      "status": "passed",
+      "duration": 35,
+      "failureMessages": []
+    },
+    {
+      "suite": "Payments Contract",
+      "name": "TC-16a: should collect payment with a valid charge id without authentication",
+      "tcId": "TC-16a",
+      "category": "core",
+      "status": "passed",
+      "duration": 10,
+      "failureMessages": []
+    },
+    {
+      "suite": "Payments Contract",
+      "name": "TC-17a: should refund payment with a valid charge id without authentication",
+      "tcId": "TC-17a",
+      "category": "core",
+      "status": "passed",
+      "duration": 3,
+      "failureMessages": []
+    },
+    {
+      "suite": "Payments Contract",
+      "name": "TC-18a: should expose payment lookup semantics for a collected charge id",
+      "tcId": "TC-18a",
+      "category": "core",
+      "status": "passed",
+      "duration": 4,
+      "failureMessages": []
+    },
+    {
+      "suite": "Payments Contract",
+      "name": "TC-19a: should reject payment requests missing chargeId",
+      "tcId": "TC-19a",
+      "category": "core",
+      "status": "passed",
+      "duration": 4,
+      "failureMessages": []
+    }
+  ]
+}

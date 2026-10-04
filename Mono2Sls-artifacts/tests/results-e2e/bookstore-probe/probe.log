@@ -1,0 +1,679 @@
+Building codeuri: D:\tmp\m2s-e2e\bookstore-probe\output\lambdas\books\books-list runtime: nodejs22.x architecture: arm64 functions: BooksListFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\bookstore-probe\output\lambdas\books\books-get-item runtime: nodejs22.x architecture: arm64 functions: BooksGetItemFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\bookstore-probe\output\lambdas\search\search-books runtime: nodejs22.x architecture: arm64 functions: SearchBooksFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\bookstore-probe\output\lambdas\bestsellers\bestsellers-list runtime: nodejs22.x architecture: arm64 functions: BestsellersListFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\bookstore-probe\output\lambdas\bestsellers\bestsellers-update runtime: nodejs22.x architecture: arm64 functions: BestsellersUpdateFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\bookstore-probe\output\lambdas\cart\cart-get runtime: nodejs22.x architecture: arm64 functions: CartGetFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\bookstore-probe\output\lambdas\cart\cart-get-item runtime: nodejs22.x architecture: arm64 functions: CartGetItemFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\bookstore-probe\output\lambdas\cart\cart-add runtime: nodejs22.x architecture: arm64 functions: CartAddFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\bookstore-probe\output\lambdas\cart\cart-update runtime: nodejs22.x architecture: arm64 functions: CartUpdateFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\bookstore-probe\output\lambdas\cart\cart-remove runtime: nodejs22.x architecture: arm64 functions: CartRemoveFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\bookstore-probe\output\lambdas\orders\orders-list runtime: nodejs22.x architecture: arm64 functions: OrdersListFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\bookstore-probe\output\lambdas\orders\orders-create runtime: nodejs22.x architecture: arm64 functions: OrdersCreateFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+
+Build Succeeded
+
+Built Artifacts  : .aws-sam\build
+Built Template   : .aws-sam\build\template.yaml
+
+Commands you can use next
+=========================
+[*] Validate SAM template: sam validate
+[*] Invoke Function: sam local invoke
+[*] Test Function in the Cloud: sam sync --stack-name {{stack-name}} --watch
+[*] Deploy: sam deploy --guided
+
+$ C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.EXE build
+
+	Managed S3 bucket: aws-sam-cli-managed-default-samclisourcebucket-34ra6c785sxm
+	Auto resolution of buckets can be turned off by setting resolve_s3=False
+	To use a specific S3 bucket, set --s3-bucket=<bucket_name>
+	Above settings can be stored in samconfig.toml
+	Uploading to 517071d7dca23e471ce56b73d7ba71e9  1048576 / 2734301  (38.35%)	Uploading to 517071d7dca23e471ce56b73d7ba71e9  2097152 / 2734301  (76.70%)	Uploading to 517071d7dca23e471ce56b73d7ba71e9  2734301 / 2734301  (100.00%)
+	Uploading to 56325503e317a947fcf1c9bffa5d5d9b  1048576 / 2734098  (38.35%)	Uploading to 56325503e317a947fcf1c9bffa5d5d9b  2097152 / 2734098  (76.70%)	Uploading to 56325503e317a947fcf1c9bffa5d5d9b  2734098 / 2734098  (100.00%)
+	Uploading to 20d3211b7e2a2ba9ffc61ffd615dbeac  1048576 / 2734354  (38.35%)	Uploading to 20d3211b7e2a2ba9ffc61ffd615dbeac  2097152 / 2734354  (76.70%)	Uploading to 20d3211b7e2a2ba9ffc61ffd615dbeac  2734354 / 2734354  (100.00%)
+	Uploading to c18604218edd1566aaf006b6659fda64  1048576 / 2735234  (38.34%)	Uploading to c18604218edd1566aaf006b6659fda64  2097152 / 2735234  (76.67%)	Uploading to c18604218edd1566aaf006b6659fda64  2735234 / 2735234  (100.00%)
+	Uploading to 3244a0f38ff4961be950b10f01f5dbb3  1048576 / 2740094  (38.27%)	Uploading to 3244a0f38ff4961be950b10f01f5dbb3  2097152 / 2740094  (76.54%)	Uploading to 3244a0f38ff4961be950b10f01f5dbb3  2740094 / 2740094  (100.00%)
+	Uploading to ba724ec7a1e1c0a2baf1e6bb3820273a  1048576 / 2734077  (38.35%)	Uploading to ba724ec7a1e1c0a2baf1e6bb3820273a  2097152 / 2734077  (76.70%)	Uploading to ba724ec7a1e1c0a2baf1e6bb3820273a  2734077 / 2734077  (100.00%)
+	Uploading to c62044f2d29d8d5fd2438eac734c2997  1048576 / 2734123  (38.35%)	Uploading to c62044f2d29d8d5fd2438eac734c2997  2097152 / 2734123  (76.70%)	Uploading to c62044f2d29d8d5fd2438eac734c2997  2734123 / 2734123  (100.00%)
+	Uploading to 85d7fad5571c817face9495527ea4614  1048576 / 2734205  (38.35%)	Uploading to 85d7fad5571c817face9495527ea4614  2097152 / 2734205  (76.70%)	Uploading to 85d7fad5571c817face9495527ea4614  2734205 / 2734205  (100.00%)
+	Uploading to e4ec831a951fdf43e622743bc8d26ef8  1048576 / 2734288  (38.35%)	Uploading to e4ec831a951fdf43e622743bc8d26ef8  2097152 / 2734288  (76.70%)	Uploading to e4ec831a951fdf43e622743bc8d26ef8  2734288 / 2734288  (100.00%)
+	Uploading to 4b5694bdf4f57681c2dfc8e0af09c37e  1048576 / 2734154  (38.35%)	Uploading to 4b5694bdf4f57681c2dfc8e0af09c37e  2097152 / 2734154  (76.70%)	Uploading to 4b5694bdf4f57681c2dfc8e0af09c37e  2734154 / 2734154  (100.00%)
+	Uploading to 791acd946c563516a210c3de5cf579f6  1048576 / 2734049  (38.35%)	Uploading to 791acd946c563516a210c3de5cf579f6  2097152 / 2734049  (76.70%)	Uploading to 791acd946c563516a210c3de5cf579f6  2734049 / 2734049  (100.00%)
+	Uploading to c0d733159a714e32772a7d5dc9b6ac37  1048576 / 2921898  (35.89%)	Uploading to c0d733159a714e32772a7d5dc9b6ac37  2097152 / 2921898  (71.77%)	Uploading to c0d733159a714e32772a7d5dc9b6ac37  2921898 / 2921898  (100.00%)
+
+	Deploying with following values
+	===============================
+	Stack name                   : m2s-e2e-bookstore-opt
+	Region                       : us-east-1
+	Confirm changeset            : False
+	Disable rollback             : False
+	Deployment s3 bucket         : aws-sam-cli-managed-default-samclisourcebucket-34ra6c785sxm
+	Capabilities                 : ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
+	Parameter overrides          : {"Environment": "staging"}
+	Signing Profiles             : {}
+
+Initiating deployment
+=====================
+
+
+	File with same data already exists at bd1561e6cedbb8f7fde94e59c0f2d282.template, skipping upload
+
+
+Waiting for changeset to be created..
+
+CloudFormation stack changeset
+-------------------------------------------------------------------------------------------------
+Operation                LogicalResourceId        ResourceType             Replacement            
+-------------------------------------------------------------------------------------------------
++ Add                    ApiLogGroup              AWS::Logs::LogGroup      N/A                    
++ Add                    BestsellerUpdateQueueD   AWS::SQS::Queue          N/A                    
+                         LQ                                                                       
++ Add                    BestsellerUpdateQueue    AWS::SQS::Queue          N/A                    
++ Add                    BestsellersListFunctio   AWS::Lambda::Permissio   N/A                    
+                         nListBestsellersPermis   n                                               
+                         sionStage                                                                
++ Add                    BestsellersListFunctio   AWS::IAM::Role           N/A                    
+                         nRole                                                                    
++ Add                    BestsellersListFunctio   AWS::Lambda::Function    N/A                    
+                         n                                                                        
++ Add                    BestsellersTable         AWS::DynamoDB::Table     N/A                    
++ Add                    BestsellersUpdateFunct   AWS::Lambda::EventSour   N/A                    
+                         ionBestsellerUpdateSQS   ceMapping                                       
+                         Event                                                                    
++ Add                    BestsellersUpdateFunct   AWS::IAM::Role           N/A                    
+                         ionRole                                                                  
++ Add                    BestsellersUpdateFunct   AWS::Lambda::Function    N/A                    
+                         ion                                                                      
++ Add                    BooksGetItemFunctionGe   AWS::Lambda::Permissio   N/A                    
+                         tBookPermissionStage     n                                               
++ Add                    BooksGetItemFunctionRo   AWS::IAM::Role           N/A                    
+                         le                                                                       
++ Add                    BooksGetItemFunction     AWS::Lambda::Function    N/A                    
++ Add                    BooksListFunctionListB   AWS::Lambda::Permissio   N/A                    
+                         ooksPermissionStage      n                                               
++ Add                    BooksListFunctionRole    AWS::IAM::Role           N/A                    
++ Add                    BooksListFunction        AWS::Lambda::Function    N/A                    
++ Add                    BooksTable               AWS::DynamoDB::Table     N/A                    
++ Add                    BookstoreApiDeployment   AWS::ApiGateway::Deplo   N/A                    
+                         a671bb005a               yment                                           
++ Add                    BookstoreApiStage        AWS::ApiGateway::Stage   N/A                    
++ Add                    BookstoreApi             AWS::ApiGateway::RestA   N/A                    
+                                                  pi                                              
++ Add                    CartAddFunctionAddCart   AWS::Lambda::Permissio   N/A                    
+                         ItemPermissionStage      n                                               
++ Add                    CartAddFunctionRole      AWS::IAM::Role           N/A                    
++ Add                    CartAddFunction          AWS::Lambda::Function    N/A                    
++ Add                    CartGetFunctionGetCart   AWS::Lambda::Permissio   N/A                    
+                         PermissionStage          n                                               
++ Add                    CartGetFunctionRole      AWS::IAM::Role           N/A                    
++ Add                    CartGetFunction          AWS::Lambda::Function    N/A                    
++ Add                    CartGetItemFunctionGet   AWS::Lambda::Permissio   N/A                    
+                         CartItemPermissionStag   n                                               
+                         e                                                                        
++ Add                    CartGetItemFunctionRol   AWS::IAM::Role           N/A                    
+                         e                                                                        
++ Add                    CartGetItemFunction      AWS::Lambda::Function    N/A                    
++ Add                    CartRemoveFunctionRemo   AWS::Lambda::Permissio   N/A                    
+                         veCartItemPermissionSt   n                                               
+                         age                                                                      
++ Add                    CartRemoveFunctionRole   AWS::IAM::Role           N/A                    
++ Add                    CartRemoveFunction       AWS::Lambda::Function    N/A                    
++ Add                    CartTable                AWS::DynamoDB::Table     N/A                    
++ Add                    CartUpdateFunctionRole   AWS::IAM::Role           N/A                    
++ Add                    CartUpdateFunctionUpda   AWS::Lambda::Permissio   N/A                    
+                         teCartItemPermissionSt   n                                               
+                         age                                                                      
++ Add                    CartUpdateFunction       AWS::Lambda::Function    N/A                    
++ Add                    CognitoUserPoolClient    AWS::Cognito::UserPool   N/A                    
+                                                  Client                                          
++ Add                    CognitoUserPool          AWS::Cognito::UserPool   N/A                    
++ Add                    IdempotencyTable         AWS::DynamoDB::Table     N/A                    
++ Add                    OrdersCreateFunctionCr   AWS::Lambda::Permissio   N/A                    
+                         eateOrderPermissionSta   n                                               
+                         ge                                                                       
++ Add                    OrdersCreateFunctionRo   AWS::IAM::Role           N/A                    
+                         le                                                                       
++ Add                    OrdersCreateFunction     AWS::Lambda::Function    N/A                    
++ Add                    OrdersListFunctionList   AWS::Lambda::Permissio   N/A                    
+                         OrdersPermissionStage    n                                               
++ Add                    OrdersListFunctionRole   AWS::IAM::Role           N/A                    
++ Add                    OrdersListFunction       AWS::Lambda::Function    N/A                    
++ Add                    OrdersTable              AWS::DynamoDB::Table     N/A                    
++ Add                    SearchBooksFunctionRol   AWS::IAM::Role           N/A                    
+                         e                                                                        
++ Add                    SearchBooksFunctionSea   AWS::Lambda::Permissio   N/A                    
+                         rchBooksPermissionStag   n                                               
+                         e                                                                        
++ Add                    SearchBooksFunction      AWS::Lambda::Function    N/A                    
+-------------------------------------------------------------------------------------------------
+
+
+Changeset created successfully. arn:aws:cloudformation:us-east-1:882112174488:changeSet/samcli-deploy1791106781/6765a7f6-2a94-426d-bfa9-a25ff946ea04
+
+
+2026-10-04 17:39:56 - Waiting for stack create/update to complete
+
+CloudFormation events from stack operations (refresh every 5.0 seconds)
+-------------------------------------------------------------------------------------------------
+ResourceStatus           ResourceType             LogicalResourceId        ResourceStatusReason   
+-------------------------------------------------------------------------------------------------
+CREATE_IN_PROGRESS       AWS::CloudFormation::S   m2s-e2e-bookstore-opt    User Initiated         
+                         tack                                                                     
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     OrdersTable              -                      
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     BooksTable               -                      
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     IdempotencyTable         -                      
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     BestsellersTable         -                      
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     CartTable                -                      
+CREATE_IN_PROGRESS       AWS::SQS::Queue          BestsellerUpdateQueueD   -                      
+                                                  LQ                                              
+CREATE_IN_PROGRESS       AWS::Cognito::UserPool   CognitoUserPool          -                      
+CREATE_IN_PROGRESS       AWS::SQS::Queue          BestsellerUpdateQueueD   Resource creation      
+                                                  LQ                       Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     IdempotencyTable         Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     BooksTable               Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     OrdersTable              Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     CartTable                Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     BestsellersTable         Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Cognito::UserPool   CognitoUserPool          Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::Cognito::UserPool   CognitoUserPool          Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Cognito::UserPool   CognitoUserPool          -                      
+CREATE_IN_PROGRESS       AWS::Cognito::UserPool   CognitoUserPoolClient    -                      
+                         Client                                                                   
+CREATE_IN_PROGRESS       AWS::Cognito::UserPool   CognitoUserPoolClient    Resource creation      
+                         Client                                            Initiated              
+CREATE_IN_PROGRESS -     AWS::Cognito::UserPool   CognitoUserPoolClient    Eventual consistency   
+CONFIGURATION_COMPLETE   Client                                            check initiated        
+CREATE_COMPLETE          AWS::Cognito::UserPool   CognitoUserPoolClient    -                      
+                         Client                                                                   
+CREATE_IN_PROGRESS -     AWS::DynamoDB::Table     OrdersTable              Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::DynamoDB::Table     OrdersTable              -                      
+CREATE_IN_PROGRESS -     AWS::DynamoDB::Table     CartTable                Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS       AWS::IAM::Role           OrdersListFunctionRole   -                      
+CREATE_COMPLETE          AWS::DynamoDB::Table     CartTable                -                      
+CREATE_IN_PROGRESS -     AWS::DynamoDB::Table     IdempotencyTable         Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS       AWS::IAM::Role           OrdersListFunctionRole   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           CartRemoveFunctionRole   -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           CartGetFunctionRole      -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           CartAddFunctionRole      -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           CartGetItemFunctionRol   -                      
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::IAM::Role           CartUpdateFunctionRole   -                      
+CREATE_COMPLETE          AWS::DynamoDB::Table     IdempotencyTable         -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           CartGetFunctionRole      Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           CartGetItemFunctionRol   Resource creation      
+                                                  e                        Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           CartUpdateFunctionRole   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           CartRemoveFunctionRole   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           CartAddFunctionRole      Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::IAM::Role           CartGetFunctionRole      Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::IAM::Role           CartAddFunctionRole      Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::IAM::Role           CartGetFunctionRole      -                      
+CREATE_COMPLETE          AWS::IAM::Role           CartAddFunctionRole      -                      
+CREATE_IN_PROGRESS -     AWS::IAM::Role           OrdersListFunctionRole   Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::IAM::Role           CartGetItemFunctionRol   Eventual consistency   
+CONFIGURATION_COMPLETE                            e                        check initiated        
+CREATE_IN_PROGRESS -     AWS::IAM::Role           CartUpdateFunctionRole   Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CartGetFunction          -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CartAddFunction          -                      
+CREATE_COMPLETE          AWS::IAM::Role           CartGetItemFunctionRol   -                      
+                                                  e                                               
+CREATE_COMPLETE          AWS::IAM::Role           CartUpdateFunctionRole   -                      
+CREATE_COMPLETE          AWS::IAM::Role           OrdersListFunctionRole   -                      
+CREATE_IN_PROGRESS -     AWS::IAM::Role           CartRemoveFunctionRole   Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CartGetItemFunction      -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    OrdersListFunction       -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CartUpdateFunction       -                      
+CREATE_COMPLETE          AWS::IAM::Role           CartRemoveFunctionRole   -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CartGetFunction          Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::DynamoDB::Table     BooksTable               Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CartRemoveFunction       -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CartAddFunction          Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CartGetItemFunction      Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    OrdersListFunction       Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CartUpdateFunction       Resource creation      
+                                                                           Initiated              
+CREATE_COMPLETE          AWS::DynamoDB::Table     BooksTable               -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           SearchBooksFunctionRol   -                      
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::IAM::Role           BooksGetItemFunctionRo   -                      
+                                                  le                                              
+CREATE_IN_PROGRESS       AWS::IAM::Role           BooksListFunctionRole    -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CartRemoveFunction       Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           BooksListFunctionRole    Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           BooksGetItemFunctionRo   Resource creation      
+                                                  le                       Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           SearchBooksFunctionRol   Resource creation      
+                                                  e                        Initiated              
+CREATE_IN_PROGRESS -     AWS::DynamoDB::Table     BestsellersTable         Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::DynamoDB::Table     BestsellersTable         -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           BestsellersListFunctio   -                      
+                                                  nRole                                           
+CREATE_IN_PROGRESS       AWS::IAM::Role           BestsellersUpdateFunct   -                      
+                                                  ionRole                                         
+CREATE_IN_PROGRESS       AWS::IAM::Role           BestsellersListFunctio   Resource creation      
+                                                  nRole                    Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           BestsellersUpdateFunct   Resource creation      
+                                                  ionRole                  Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    CartGetFunction          Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    CartGetItemFunction      Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    OrdersListFunction       Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    CartAddFunction          Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    CartGetItemFunction      -                      
+CREATE_COMPLETE          AWS::Lambda::Function    CartGetFunction          -                      
+CREATE_COMPLETE          AWS::Lambda::Function    OrdersListFunction       -                      
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    CartUpdateFunction       Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    CartAddFunction          -                      
+CREATE_COMPLETE          AWS::Lambda::Function    CartUpdateFunction       -                      
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    CartRemoveFunction       Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    CartRemoveFunction       -                      
+CREATE_IN_PROGRESS -     AWS::IAM::Role           SearchBooksFunctionRol   Eventual consistency   
+CONFIGURATION_COMPLETE                            e                        check initiated        
+CREATE_COMPLETE          AWS::IAM::Role           SearchBooksFunctionRol   -                      
+                                                  e                                               
+CREATE_IN_PROGRESS -     AWS::IAM::Role           BooksGetItemFunctionRo   Eventual consistency   
+CONFIGURATION_COMPLETE                            le                       check initiated        
+CREATE_COMPLETE          AWS::IAM::Role           BooksGetItemFunctionRo   -                      
+                                                  le                                              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    SearchBooksFunction      -                      
+CREATE_IN_PROGRESS -     AWS::IAM::Role           BooksListFunctionRole    Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::IAM::Role           BestsellersListFunctio   Eventual consistency   
+CONFIGURATION_COMPLETE                            nRole                    check initiated        
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BooksGetItemFunction     -                      
+CREATE_COMPLETE          AWS::IAM::Role           BooksListFunctionRole    -                      
+CREATE_COMPLETE          AWS::IAM::Role           BestsellersListFunctio   -                      
+                                                  nRole                                           
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BooksListFunction        -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    SearchBooksFunction      Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BestsellersListFunctio   -                      
+                                                  n                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BooksGetItemFunction     Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::IAM::Role           BestsellersUpdateFunct   Eventual consistency   
+CONFIGURATION_COMPLETE                            ionRole                  check initiated        
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BooksListFunction        Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BestsellersListFunctio   Resource creation      
+                                                  n                        Initiated              
+CREATE_COMPLETE          AWS::IAM::Role           BestsellersUpdateFunct   -                      
+                                                  ionRole                                         
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BestsellersUpdateFunct   -                      
+                                                  ion                                             
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BestsellersUpdateFunct   Resource creation      
+                                                  ion                      Initiated              
+CREATE_IN_PROGRESS -     AWS::SQS::Queue          BestsellerUpdateQueueD   Eventual consistency   
+CONFIGURATION_COMPLETE                            LQ                       check initiated        
+CREATE_COMPLETE          AWS::SQS::Queue          BestsellerUpdateQueueD   -                      
+                                                  LQ                                              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    SearchBooksFunction      Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS       AWS::SQS::Queue          BestsellerUpdateQueue    -                      
+CREATE_IN_PROGRESS       AWS::SQS::Queue          BestsellerUpdateQueue    Resource creation      
+                                                                           Initiated              
+CREATE_COMPLETE          AWS::Lambda::Function    SearchBooksFunction      -                      
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BooksListFunction        Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BooksGetItemFunction     Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    BooksListFunction        -                      
+CREATE_COMPLETE          AWS::Lambda::Function    BooksGetItemFunction     -                      
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BestsellersListFunctio   Eventual consistency   
+CONFIGURATION_COMPLETE                            n                        check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    BestsellersListFunctio   -                      
+                                                  n                                               
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BestsellersUpdateFunct   Eventual consistency   
+CONFIGURATION_COMPLETE                            ion                      check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    BestsellersUpdateFunct   -                      
+                                                  ion                                             
+CREATE_IN_PROGRESS -     AWS::SQS::Queue          BestsellerUpdateQueue    Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::SQS::Queue          BestsellerUpdateQueue    -                      
+CREATE_IN_PROGRESS       AWS::Lambda::EventSour   BestsellersUpdateFunct   -                      
+                         ceMapping                ionBestsellerUpdateSQS                          
+                                                  Event                                           
+CREATE_IN_PROGRESS       AWS::IAM::Role           OrdersCreateFunctionRo   -                      
+                                                  le                                              
+CREATE_IN_PROGRESS       AWS::IAM::Role           OrdersCreateFunctionRo   Resource creation      
+                                                  le                       Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::EventSour   BestsellersUpdateFunct   Resource creation      
+                         ceMapping                ionBestsellerUpdateSQS   Initiated              
+                                                  Event                                           
+CREATE_IN_PROGRESS -     AWS::Lambda::EventSour   BestsellersUpdateFunct   Eventual consistency   
+CONFIGURATION_COMPLETE   ceMapping                ionBestsellerUpdateSQS   check initiated        
+                                                  Event                                           
+CREATE_COMPLETE          AWS::Lambda::EventSour   BestsellersUpdateFunct   -                      
+                         ceMapping                ionBestsellerUpdateSQS                          
+                                                  Event                                           
+CREATE_IN_PROGRESS -     AWS::IAM::Role           OrdersCreateFunctionRo   Eventual consistency   
+CONFIGURATION_COMPLETE                            le                       check initiated        
+CREATE_COMPLETE          AWS::IAM::Role           OrdersCreateFunctionRo   -                      
+                                                  le                                              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    OrdersCreateFunction     -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    OrdersCreateFunction     Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    OrdersCreateFunction     Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    OrdersCreateFunction     -                      
+CREATE_IN_PROGRESS       AWS::ApiGateway::RestA   BookstoreApi             -                      
+                         pi                                                                       
+CREATE_IN_PROGRESS       AWS::ApiGateway::RestA   BookstoreApi             Resource creation      
+                         pi                                                Initiated              
+CREATE_IN_PROGRESS -     AWS::ApiGateway::RestA   BookstoreApi             Eventual consistency   
+CONFIGURATION_COMPLETE   pi                                                check initiated        
+CREATE_COMPLETE          AWS::ApiGateway::RestA   BookstoreApi             -                      
+                         pi                                                                       
+CREATE_IN_PROGRESS       AWS::ApiGateway::Deplo   BookstoreApiDeployment   -                      
+                         yment                    a671bb005a                                      
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CartGetFunctionGetCart   -                      
+                         n                        PermissionStage                                 
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   OrdersListFunctionList   -                      
+                         n                        OrdersPermissionStage                           
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CartGetItemFunctionGet   -                      
+                         n                        CartItemPermissionStag                          
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CartRemoveFunctionRemo   -                      
+                         n                        veCartItemPermissionSt                          
+                                                  age                                             
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BooksGetItemFunctionGe   -                      
+                         n                        tBookPermissionStage                            
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CartAddFunctionAddCart   -                      
+                         n                        ItemPermissionStage                             
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   OrdersCreateFunctionCr   -                      
+                         n                        eateOrderPermissionSta                          
+                                                  ge                                              
+CREATE_IN_PROGRESS       AWS::Logs::LogGroup      ApiLogGroup              -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BestsellersListFunctio   -                      
+                         n                        nListBestsellersPermis                          
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BooksListFunctionListB   -                      
+                         n                        ooksPermissionStage                             
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   SearchBooksFunctionSea   -                      
+                         n                        rchBooksPermissionStag                          
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CartUpdateFunctionUpda   -                      
+                         n                        teCartItemPermissionSt                          
+                                                  age                                             
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   SearchBooksFunctionSea   Resource creation      
+                         n                        rchBooksPermissionStag   Initiated              
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BooksListFunctionListB   Resource creation      
+                         n                        ooksPermissionStage      Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CartAddFunctionAddCart   Resource creation      
+                         n                        ItemPermissionStage      Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CartGetFunctionGetCart   Resource creation      
+                         n                        PermissionStage          Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CartGetItemFunctionGet   Resource creation      
+                         n                        CartItemPermissionStag   Initiated              
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CartRemoveFunctionRemo   Resource creation      
+                         n                        veCartItemPermissionSt   Initiated              
+                                                  age                                             
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   OrdersListFunctionList   Resource creation      
+                         n                        OrdersPermissionStage    Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   SearchBooksFunctionSea   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        rchBooksPermissionStag   check initiated        
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Logs::LogGroup      ApiLogGroup              Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CartUpdateFunctionUpda   Resource creation      
+                         n                        teCartItemPermissionSt   Initiated              
+                                                  age                                             
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BestsellersListFunctio   Resource creation      
+                         n                        nListBestsellersPermis   Initiated              
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BooksGetItemFunctionGe   Resource creation      
+                         n                        tBookPermissionStage     Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   CartGetFunctionGetCart   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        PermissionStage          check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   BooksListFunctionListB   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        ooksPermissionStage      check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   CartAddFunctionAddCart   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        ItemPermissionStage      check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   CartGetItemFunctionGet   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        CartItemPermissionStag   check initiated        
+                                                  e                                               
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   CartRemoveFunctionRemo   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        veCartItemPermissionSt   check initiated        
+                                                  age                                             
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   OrdersCreateFunctionCr   Resource creation      
+                         n                        eateOrderPermissionSta   Initiated              
+                                                  ge                                              
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   OrdersListFunctionList   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        OrdersPermissionStage    check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   CartUpdateFunctionUpda   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        teCartItemPermissionSt   check initiated        
+                                                  age                                             
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   BestsellersListFunctio   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        nListBestsellersPermis   check initiated        
+                                                  sionStage                                       
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   BooksGetItemFunctionGe   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        tBookPermissionStage     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   OrdersCreateFunctionCr   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        eateOrderPermissionSta   check initiated        
+                                                  ge                                              
+CREATE_IN_PROGRESS       AWS::ApiGateway::Deplo   BookstoreApiDeployment   Resource creation      
+                         yment                    a671bb005a               Initiated              
+CREATE_IN_PROGRESS -     AWS::ApiGateway::Deplo   BookstoreApiDeployment   Eventual consistency   
+CONFIGURATION_COMPLETE   yment                    a671bb005a               check initiated        
+CREATE_COMPLETE          AWS::Lambda::Permissio   SearchBooksFunctionSea   -                      
+                         n                        rchBooksPermissionStag                          
+                                                  e                                               
+CREATE_COMPLETE          AWS::Lambda::Permissio   CartAddFunctionAddCart   -                      
+                         n                        ItemPermissionStage                             
+CREATE_COMPLETE          AWS::Lambda::Permissio   BooksListFunctionListB   -                      
+                         n                        ooksPermissionStage                             
+CREATE_COMPLETE          AWS::Lambda::Permissio   CartGetFunctionGetCart   -                      
+                         n                        PermissionStage                                 
+CREATE_COMPLETE          AWS::Lambda::Permissio   CartGetItemFunctionGet   -                      
+                         n                        CartItemPermissionStag                          
+                                                  e                                               
+CREATE_COMPLETE          AWS::Lambda::Permissio   CartUpdateFunctionUpda   -                      
+                         n                        teCartItemPermissionSt                          
+                                                  age                                             
+CREATE_COMPLETE          AWS::Lambda::Permissio   OrdersListFunctionList   -                      
+                         n                        OrdersPermissionStage                           
+CREATE_COMPLETE          AWS::Lambda::Permissio   CartRemoveFunctionRemo   -                      
+                         n                        veCartItemPermissionSt                          
+                                                  age                                             
+CREATE_COMPLETE          AWS::Lambda::Permissio   BooksGetItemFunctionGe   -                      
+                         n                        tBookPermissionStage                            
+CREATE_COMPLETE          AWS::Lambda::Permissio   BestsellersListFunctio   -                      
+                         n                        nListBestsellersPermis                          
+                                                  sionStage                                       
+CREATE_COMPLETE          AWS::Lambda::Permissio   OrdersCreateFunctionCr   -                      
+                         n                        eateOrderPermissionSta                          
+                                                  ge                                              
+CREATE_COMPLETE          AWS::ApiGateway::Deplo   BookstoreApiDeployment   -                      
+                         yment                    a671bb005a                                      
+CREATE_IN_PROGRESS -     AWS::Logs::LogGroup      ApiLogGroup              Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Logs::LogGroup      ApiLogGroup              -                      
+CREATE_IN_PROGRESS       AWS::ApiGateway::Stage   BookstoreApiStage        -                      
+CREATE_IN_PROGRESS       AWS::ApiGateway::Stage   BookstoreApiStage        Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::ApiGateway::Stage   BookstoreApiStage        Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::CloudFormation::S   m2s-e2e-bookstore-opt    Eventual consistency   
+CONFIGURATION_COMPLETE   tack                                              check initiated        
+CREATE_COMPLETE          AWS::ApiGateway::Stage   BookstoreApiStage        -                      
+CREATE_COMPLETE          AWS::CloudFormation::S   m2s-e2e-bookstore-opt    -                      
+                         tack                                                                     
+-------------------------------------------------------------------------------------------------
+
+CloudFormation outputs from deployed stack
+-------------------------------------------------------------------------------------------------
+Outputs                                                                                         
+-------------------------------------------------------------------------------------------------
+Key                 BookstoreApiUrl                                                             
+Description         API Gateway endpoint URL for the bookstore API                              
+Value               https://nmmnycutwd.execute-api.us-east-1.amazonaws.com/staging/             
+
+Key                 CognitoUserPoolClientId                                                     
+Description         Cognito User Pool Client ID                                                 
+Value               48iba2h3vkm9pr4ta8snr071m8                                                  
+
+Key                 CognitoUserPoolId                                                           
+Description         Cognito User Pool ID                                                        
+Value               us-east-1_Zza3Sm3k3                                                         
+
+Key                 BestsellerUpdateQueueUrl                                                    
+Description         SQS queue URL for async bestseller updates                                  
+Value               https://sqs.us-east-1.amazonaws.com/882112174488/m2s-e2e-bookstore-opt-     
+bestseller-update                                                                               
+-------------------------------------------------------------------------------------------------
+
+
+Successfully created/updated stack - m2s-e2e-bookstore-opt in us-east-1
+
+
+$ C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.EXE deploy --stack-name m2s-e2e-bookstore-opt --region us-east-1 --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --parameter-overrides Environment=staging
+	- Deleting S3 object with key 517071d7dca23e471ce56b73d7ba71e9
+	- Deleting S3 object with key 56325503e317a947fcf1c9bffa5d5d9b
+	- Deleting S3 object with key 20d3211b7e2a2ba9ffc61ffd615dbeac
+	- Deleting S3 object with key c18604218edd1566aaf006b6659fda64
+	- Deleting S3 object with key 3244a0f38ff4961be950b10f01f5dbb3
+	- Deleting S3 object with key ba724ec7a1e1c0a2baf1e6bb3820273a
+	- Deleting S3 object with key c62044f2d29d8d5fd2438eac734c2997
+	- Deleting S3 object with key 85d7fad5571c817face9495527ea4614
+	- Deleting S3 object with key e4ec831a951fdf43e622743bc8d26ef8
+	- Deleting S3 object with key 4b5694bdf4f57681c2dfc8e0af09c37e
+	- Deleting S3 object with key 791acd946c563516a210c3de5cf579f6
+	- Deleting S3 object with key c0d733159a714e32772a7d5dc9b6ac37
+	- Could not find and delete the S3 object with the key 12084d13509a5fa0cabd42c24644380f.template
+	- Deleting Cloudformation stack m2s-e2e-bookstore-opt
+
+Deleted successfully
+
+$ C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.EXE delete --stack-name m2s-e2e-bookstore-opt --region us-east-1 --no-prompts
+deleted retained AWS::DynamoDB::Table staging-bestsellers
+deleted retained AWS::DynamoDB::Table staging-books
+deleted retained AWS::DynamoDB::Table staging-cart
+deleted retained AWS::DynamoDB::Table staging-orders
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-BestsellersUpdateFunction-yErrqId6M773
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-CartAddFunction-h2eUTw8KSsXP
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-CartGetFunction-iGtsE18twVnO
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-CartGetItemFunction-CIjGsvDuN42p
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-CartRemoveFunction-rxsbHxKIx8lB
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-CartUpdateFunction-F08AMTWUEg2h
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-OrdersCreateFunction-pIFreBhRlPJp
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-OrdersListFunction-zdbm5Whq76b6

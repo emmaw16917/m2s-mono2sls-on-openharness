@@ -1,0 +1,582 @@
+{
+  "monolith": {
+    "variant": "monolith",
+    "started": 1791110553.2786062,
+    "ended": 1791110573.5469043,
+    "summary": {
+      "totalTests": 32,
+      "passed": 25,
+      "failed": 0,
+      "flaky": 0,
+      "runs": [
+        {
+          "totalTests": 32,
+          "passed": 25,
+          "failed": 0,
+          "pending": 7,
+          "passRate": "100.0"
+        },
+        {
+          "totalTests": 32,
+          "passed": 25,
+          "failed": 0,
+          "pending": 7,
+          "passRate": "100.0"
+        }
+      ]
+    },
+    "tests": {
+      "Async Semantics > Booking -> Loyalty eventual consistency > ASYNC-01a: successful booking should eventually increase loyalty points": "passed",
+      "Async Semantics > Cancel -> Seat restoration eventual consistency > ASYNC-02a: cancelling a booking should eventually restore seat capacity": "pending",
+      "Auth Compatibility > AUTH-01a: should register a user through the generated auth endpoint": "pending",
+      "Auth Compatibility > AUTH-02a: should login through the generated auth endpoint": "pending",
+      "Auth Compatibility > AUTH-03a: should return the current user through /auth/me": "pending",
+      "Auth Compatibility > AUTH-04a: should reject unauthenticated /auth/me requests": "pending",
+      "Auth Compatibility > AUTH-05a: should reject malformed bearer tokens on /auth/me": "pending",
+      "Auth Compatibility > AUTH-06a: should reject /auth/users for a non-admin test account": "pending",
+      "Booking Contract > Authenticated booking flow > TC-07a: should create a booking for an authenticated user": "passed",
+      "Booking Contract > Authenticated booking flow > TC-08a: should fetch the owner booking details": "passed",
+      "Booking Contract > Authenticated booking flow > TC-09a: should list the owner bookings": "passed",
+      "Booking Contract > Authenticated booking flow > TC-10a: should cancel the owner booking": "passed",
+      "Booking Contract > Authenticated booking flow > TC-11a: should persist cancelled booking state": "passed",
+      "Booking Contract > Authenticated booking flow > TC-12a: should reject invalid booking payloads": "passed",
+      "Booking Contract > TC-06a: should reject booking creation without authentication": "passed",
+      "Flights Contract > TC-01a: should search flights from the source-monolith fixture schedule without authentication": "passed",
+      "Flights Contract > TC-02a: should reject flight search with missing required query parameters": "passed",
+      "Flights Contract > TC-03a: should fetch a known flight by id without authentication": "passed",
+      "Flights Contract > TC-04a: should reject unknown flight ids": "passed",
+      "Flights Contract > TC-05a: reserve and release should change observable seat capacity": "passed",
+      "Isolation Contract > TC-13a: user B should not fetch user A booking by id": "passed",
+      "Isolation Contract > TC-14a: user B should not list bookings for user A": "passed",
+      "Isolation Contract > TC-15a: user B should not read user A loyalty state": "passed",
+      "Payments Contract > TC-16a: should collect payment with a valid charge id without authentication": "passed",
+      "Payments Contract > TC-17a: should refund payment with a valid charge id without authentication": "passed",
+      "Payments Contract > TC-18a: should expose payment lookup semantics for a collected charge id": "passed",
+      "Payments Contract > TC-19a: should reject payment requests missing chargeId": "passed",
+      "Robustness > Authenticated robustness > ROB-02a: booking should tolerate special characters in the optional name field": "passed",
+      "Robustness > ROB-01a: key endpoints should return JSON responses": "passed",
+      "Robustness > ROB-01b: key endpoints should expose CORS headers": "passed",
+      "Robustness > ROB-03a: repeated unauthenticated protected requests should stay rejected": "passed",
+      "Robustness > ROB-04a: flight search should be deterministic for the fixture query": "passed"
+    },
+    "categories": {
+      "core": {
+        "total": 19,
+        "applicable": 19,
+        "passed": 19,
+        "failed": 0,
+        "pending": 0,
+        "passRate": "100.0"
+      },
+      "authCompatibility": {
+        "total": 6,
+        "applicable": 0,
+        "passed": 0,
+        "failed": 0,
+        "pending": 6,
+        "passRate": null
+      },
+      "asyncSemantics": {
+        "total": 2,
+        "applicable": 1,
+        "passed": 1,
+        "failed": 0,
+        "pending": 1,
+        "passRate": "100.0"
+      },
+      "robustness": {
+        "total": 5,
+        "applicable": 5,
+        "passed": 5,
+        "failed": 0,
+        "pending": 0,
+        "passRate": "100.0"
+      }
+    },
+    "workload": {
+      "started": 1791110593.8578641,
+      "ended": 1791110597.0822504,
+      "setup_statuses": [
+        201,
+        201,
+        201,
+        201,
+        201
+      ],
+      "calls": {
+        "GET /flights/search?departureCode=LAX&arrivalCode=SFO&departureDate=2025-11-10": {
+          "p50_ms": 26.6,
+          "p90_ms": 29.1,
+          "statuses": [
+            "200"
+          ],
+          "errors": 0
+        },
+        "GET /flights/FL001": {
+          "p50_ms": 30.1,
+          "p90_ms": 31.7,
+          "statuses": [
+            "200"
+          ],
+          "errors": 0
+        },
+        "GET /customers/{sub}/bookings": {
+          "p50_ms": 35.9,
+          "p90_ms": 39.4,
+          "statuses": [
+            "200"
+          ],
+          "errors": 0
+        },
+        "GET /loyalty/{sub}": {
+          "p50_ms": 27.7,
+          "p90_ms": 33.0,
+          "statuses": [
+            "200"
+          ],
+          "errors": 0
+        }
+      }
+    }
+  },
+  "v0": {
+    "variant": "v0",
+    "ref": "v0",
+    "commit": "b037819",
+    "architecture": "x86_64",
+    "started": 1791125027.2123277,
+    "ended": 1791125190.2142413,
+    "summary": {
+      "totalTests": 32,
+      "passed": 23,
+      "failed": 1,
+      "flaky": 1,
+      "runs": [
+        {
+          "totalTests": 32,
+          "passed": 23,
+          "failed": 2,
+          "pending": 7,
+          "passRate": "92.0"
+        },
+        {
+          "totalTests": 32,
+          "passed": 24,
+          "failed": 1,
+          "pending": 7,
+          "passRate": "96.0"
+        }
+      ]
+    },
+    "tests": {
+      "Async Semantics > Booking -> Loyalty eventual consistency > ASYNC-01a: successful booking should eventually increase loyalty points": "passed",
+      "Async Semantics > Cancel -> Seat restoration eventual consistency > ASYNC-02a: cancelling a booking should eventually restore seat capacity": "pending",
+      "Auth Compatibility > AUTH-01a: should register a user through the generated auth endpoint": "pending",
+      "Auth Compatibility > AUTH-02a: should login through the generated auth endpoint": "pending",
+      "Auth Compatibility > AUTH-03a: should return the current user through /auth/me": "pending",
+      "Auth Compatibility > AUTH-04a: should reject unauthenticated /auth/me requests": "pending",
+      "Auth Compatibility > AUTH-05a: should reject malformed bearer tokens on /auth/me": "pending",
+      "Auth Compatibility > AUTH-06a: should reject /auth/users for a non-admin test account": "pending",
+      "Booking Contract > Authenticated booking flow > TC-07a: should create a booking for an authenticated user": "passed",
+      "Booking Contract > Authenticated booking flow > TC-08a: should fetch the owner booking details": "flaky",
+      "Booking Contract > Authenticated booking flow > TC-09a: should list the owner bookings": "passed",
+      "Booking Contract > Authenticated booking flow > TC-10a: should cancel the owner booking": "passed",
+      "Booking Contract > Authenticated booking flow > TC-11a: should persist cancelled booking state": "passed",
+      "Booking Contract > Authenticated booking flow > TC-12a: should reject invalid booking payloads": "passed",
+      "Booking Contract > TC-06a: should reject booking creation without authentication": "passed",
+      "Flights Contract > TC-01a: should search flights from the source-monolith fixture schedule without authentication": "passed",
+      "Flights Contract > TC-02a: should reject flight search with missing required query parameters": "passed",
+      "Flights Contract > TC-03a: should fetch a known flight by id without authentication": "passed",
+      "Flights Contract > TC-04a: should reject unknown flight ids": "passed",
+      "Flights Contract > TC-05a: reserve and release should change observable seat capacity": "passed",
+      "Isolation Contract > TC-13a: user B should not fetch user A booking by id": "passed",
+      "Isolation Contract > TC-14a: user B should not list bookings for user A": "passed",
+      "Isolation Contract > TC-15a: user B should not read user A loyalty state": "passed",
+      "Payments Contract > TC-16a: should collect payment with a valid charge id without authentication": "passed",
+      "Payments Contract > TC-17a: should refund payment with a valid charge id without authentication": "passed",
+      "Payments Contract > TC-18a: should expose payment lookup semantics for a collected charge id": "passed",
+      "Payments Contract > TC-19a: should reject payment requests missing chargeId": "passed",
+      "Robustness > Authenticated robustness > ROB-02a: booking should tolerate special characters in the optional name field": "passed",
+      "Robustness > ROB-01a: key endpoints should return JSON responses": "passed",
+      "Robustness > ROB-01b: key endpoints should expose CORS headers": "failed",
+      "Robustness > ROB-03a: repeated unauthenticated protected requests should stay rejected": "passed",
+      "Robustness > ROB-04a: flight search should be deterministic for the fixture query": "passed"
+    },
+    "categories": {
+      "core": {
+        "total": 19,
+        "applicable": 19,
+        "passed": 19,
+        "failed": 0,
+        "pending": 0,
+        "passRate": "100.0"
+      },
+      "authCompatibility": {
+        "total": 6,
+        "applicable": 0,
+        "passed": 0,
+        "failed": 0,
+        "pending": 6,
+        "passRate": null
+      },
+      "asyncSemantics": {
+        "total": 2,
+        "applicable": 1,
+        "passed": 1,
+        "failed": 0,
+        "pending": 1,
+        "passRate": "100.0"
+      },
+      "robustness": {
+        "total": 5,
+        "applicable": 5,
+        "passed": 4,
+        "failed": 1,
+        "pending": 0,
+        "passRate": "80.0"
+      }
+    },
+    "workload": {
+      "error": "command failed (1): D:\\Tools\\Nodejs22\\node.EXE auth/cognito-cli.js create-session perf\n\nnode:internal/modules/cjs/loader:1386\n  throw err;\n  ^\n\nError: Cannot find module 'D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-airline-booking\\auth\\cognito-cli.js'\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)\n    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)\n    at Func"
+    },
+    "metrics": {
+      "functions": {
+        "BookingsCancelFunction": {
+          "invocations": 8,
+          "cold": 1,
+          "warm_p50_ms": 47.3,
+          "warm_p90_ms": 57.9,
+          "init_p50_ms": 948.2,
+          "max_memory_mb": 115
+        },
+        "BookingsCreateFunction": {
+          "invocations": 10,
+          "cold": 1,
+          "warm_p50_ms": 39.0,
+          "warm_p90_ms": 49.0,
+          "init_p50_ms": 1165.3,
+          "max_memory_mb": 118
+        },
+        "BookingsGetDetailFunction": {
+          "invocations": 5,
+          "cold": 1,
+          "warm_p50_ms": 7.7,
+          "warm_p90_ms": 8.4,
+          "init_p50_ms": 511.8,
+          "max_memory_mb": 95
+        },
+        "CustomersListBookingsFunction": {
+          "invocations": 4,
+          "cold": 1,
+          "warm_p50_ms": 1.7,
+          "warm_p90_ms": 1.7,
+          "init_p50_ms": 480.3,
+          "max_memory_mb": 95
+        },
+        "FlightsGetDetailFunction": {
+          "invocations": 10,
+          "cold": 1,
+          "warm_p50_ms": 6.3,
+          "warm_p90_ms": 7.4,
+          "init_p50_ms": 396.5,
+          "max_memory_mb": 95
+        },
+        "FlightsReleaseSeatFunction": {
+          "invocations": 2,
+          "cold": 1,
+          "warm_p50_ms": 66.4,
+          "warm_p90_ms": 66.4,
+          "init_p50_ms": 467.8,
+          "max_memory_mb": 95
+        },
+        "FlightsReserveSeatFunction": {
+          "invocations": 2,
+          "cold": 1,
+          "warm_p50_ms": 72.3,
+          "warm_p90_ms": 72.3,
+          "init_p50_ms": 476.0,
+          "max_memory_mb": 95
+        },
+        "FlightsSearchFunction": {
+          "invocations": 12,
+          "cold": 1,
+          "warm_p50_ms": 10.9,
+          "warm_p90_ms": 14.1,
+          "init_p50_ms": 472.3,
+          "max_memory_mb": 95
+        },
+        "LoyaltyAccruePointsFunction": {
+          "invocations": 8,
+          "cold": 1,
+          "warm_p50_ms": 23.0,
+          "warm_p90_ms": 23.7,
+          "init_p50_ms": 477.9,
+          "max_memory_mb": 94
+        },
+        "LoyaltyGetSummaryFunction": {
+          "invocations": 6,
+          "cold": 1,
+          "warm_p50_ms": 9.8,
+          "warm_p90_ms": 13.1,
+          "init_p50_ms": 503.6,
+          "max_memory_mb": 95
+        },
+        "PaymentsCollectFunction": {
+          "invocations": 6,
+          "cold": 1,
+          "warm_p50_ms": 6.2,
+          "warm_p90_ms": 6.5,
+          "init_p50_ms": 1189.9,
+          "max_memory_mb": 115
+        },
+        "PaymentsGetDetailFunction": {
+          "invocations": 2,
+          "cold": 1,
+          "warm_p50_ms": 6.7,
+          "warm_p90_ms": 6.7,
+          "init_p50_ms": 1238.9,
+          "max_memory_mb": 116
+        },
+        "PaymentsRefundFunction": {
+          "invocations": 4,
+          "cold": 1,
+          "warm_p50_ms": 2.2,
+          "warm_p90_ms": 2.2,
+          "init_p50_ms": 1153.7,
+          "max_memory_mb": 115
+        }
+      },
+      "invocations": 79,
+      "lambda_gb_seconds": 6.034,
+      "rru": 64.0,
+      "wru": 104.0
+    },
+    "cost_usd": {
+      "lambda_duration": 0.00010057,
+      "lambda_requests": 1.58e-05,
+      "dynamodb": 7.3e-05,
+      "api_gateway": 0.0002765,
+      "total": 0.00046587
+    }
+  },
+  "opt": {
+    "variant": "opt",
+    "ref": "HEAD",
+    "commit": "9574f0b",
+    "architecture": "arm64",
+    "started": 1791125955.982769,
+    "ended": 1791126099.0352507,
+    "summary": {
+      "totalTests": 32,
+      "passed": 23,
+      "failed": 1,
+      "flaky": 1,
+      "runs": [
+        {
+          "totalTests": 32,
+          "passed": 23,
+          "failed": 2,
+          "pending": 7,
+          "passRate": "92.0"
+        },
+        {
+          "totalTests": 32,
+          "passed": 24,
+          "failed": 1,
+          "pending": 7,
+          "passRate": "96.0"
+        }
+      ]
+    },
+    "tests": {
+      "Async Semantics > Booking -> Loyalty eventual consistency > ASYNC-01a: successful booking should eventually increase loyalty points": "passed",
+      "Async Semantics > Cancel -> Seat restoration eventual consistency > ASYNC-02a: cancelling a booking should eventually restore seat capacity": "pending",
+      "Auth Compatibility > AUTH-01a: should register a user through the generated auth endpoint": "pending",
+      "Auth Compatibility > AUTH-02a: should login through the generated auth endpoint": "pending",
+      "Auth Compatibility > AUTH-03a: should return the current user through /auth/me": "pending",
+      "Auth Compatibility > AUTH-04a: should reject unauthenticated /auth/me requests": "pending",
+      "Auth Compatibility > AUTH-05a: should reject malformed bearer tokens on /auth/me": "pending",
+      "Auth Compatibility > AUTH-06a: should reject /auth/users for a non-admin test account": "pending",
+      "Booking Contract > Authenticated booking flow > TC-07a: should create a booking for an authenticated user": "passed",
+      "Booking Contract > Authenticated booking flow > TC-08a: should fetch the owner booking details": "passed",
+      "Booking Contract > Authenticated booking flow > TC-09a: should list the owner bookings": "passed",
+      "Booking Contract > Authenticated booking flow > TC-10a: should cancel the owner booking": "passed",
+      "Booking Contract > Authenticated booking flow > TC-11a: should persist cancelled booking state": "passed",
+      "Booking Contract > Authenticated booking flow > TC-12a: should reject invalid booking payloads": "passed",
+      "Booking Contract > TC-06a: should reject booking creation without authentication": "passed",
+      "Flights Contract > TC-01a: should search flights from the source-monolith fixture schedule without authentication": "passed",
+      "Flights Contract > TC-02a: should reject flight search with missing required query parameters": "passed",
+      "Flights Contract > TC-03a: should fetch a known flight by id without authentication": "passed",
+      "Flights Contract > TC-04a: should reject unknown flight ids": "passed",
+      "Flights Contract > TC-05a: reserve and release should change observable seat capacity": "passed",
+      "Isolation Contract > TC-13a: user B should not fetch user A booking by id": "passed",
+      "Isolation Contract > TC-14a: user B should not list bookings for user A": "passed",
+      "Isolation Contract > TC-15a: user B should not read user A loyalty state": "passed",
+      "Payments Contract > TC-16a: should collect payment with a valid charge id without authentication": "passed",
+      "Payments Contract > TC-17a: should refund payment with a valid charge id without authentication": "passed",
+      "Payments Contract > TC-18a: should expose payment lookup semantics for a collected charge id": "passed",
+      "Payments Contract > TC-19a: should reject payment requests missing chargeId": "passed",
+      "Robustness > Authenticated robustness > ROB-02a: booking should tolerate special characters in the optional name field": "passed",
+      "Robustness > ROB-01a: key endpoints should return JSON responses": "flaky",
+      "Robustness > ROB-01b: key endpoints should expose CORS headers": "failed",
+      "Robustness > ROB-03a: repeated unauthenticated protected requests should stay rejected": "passed",
+      "Robustness > ROB-04a: flight search should be deterministic for the fixture query": "passed"
+    },
+    "categories": {
+      "core": {
+        "total": 19,
+        "applicable": 19,
+        "passed": 19,
+        "failed": 0,
+        "pending": 0,
+        "passRate": "100.0"
+      },
+      "authCompatibility": {
+        "total": 6,
+        "applicable": 0,
+        "passed": 0,
+        "failed": 0,
+        "pending": 6,
+        "passRate": null
+      },
+      "asyncSemantics": {
+        "total": 2,
+        "applicable": 1,
+        "passed": 1,
+        "failed": 0,
+        "pending": 1,
+        "passRate": "100.0"
+      },
+      "robustness": {
+        "total": 5,
+        "applicable": 5,
+        "passed": 4,
+        "failed": 1,
+        "pending": 0,
+        "passRate": "80.0"
+      }
+    },
+    "workload": {
+      "error": "command failed (1): D:\\Tools\\Nodejs22\\node.EXE auth/cognito-cli.js create-session perf\n\nnode:internal/modules/cjs/loader:1386\n  throw err;\n  ^\n\nError: Cannot find module 'D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\tests\\e2e-test-suite-airline-booking\\auth\\cognito-cli.js'\n    at Function._resolveFilename (node:internal/modules/cjs/loader:1383:15)\n    at defaultResolveImpl (node:internal/modules/cjs/loader:1025:19)\n    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1030:22)\n    at Func"
+    },
+    "metrics": {
+      "functions": {
+        "BookingsCancelFunction": {
+          "invocations": 8,
+          "cold": 1,
+          "warm_p50_ms": 37.3,
+          "warm_p90_ms": 59.0,
+          "init_p50_ms": 978.1,
+          "max_memory_mb": 131
+        },
+        "BookingsCreateFunction": {
+          "invocations": 10,
+          "cold": 1,
+          "warm_p50_ms": 41.5,
+          "warm_p90_ms": 59.7,
+          "init_p50_ms": 968.6,
+          "max_memory_mb": 126
+        },
+        "BookingsGetDetailFunction": {
+          "invocations": 6,
+          "cold": 1,
+          "warm_p50_ms": 10.7,
+          "warm_p90_ms": 10.8,
+          "init_p50_ms": 486.2,
+          "max_memory_mb": 100
+        },
+        "CustomersListBookingsFunction": {
+          "invocations": 4,
+          "cold": 1,
+          "warm_p50_ms": 7.3,
+          "warm_p90_ms": 7.3,
+          "init_p50_ms": 489.7,
+          "max_memory_mb": 99
+        },
+        "FlightsGetDetailFunction": {
+          "invocations": 10,
+          "cold": 1,
+          "warm_p50_ms": 5.9,
+          "warm_p90_ms": 6.3,
+          "init_p50_ms": 479.9,
+          "max_memory_mb": 99
+        },
+        "FlightsReleaseSeatFunction": {
+          "invocations": 2,
+          "cold": 1,
+          "warm_p50_ms": 12.3,
+          "warm_p90_ms": 12.3,
+          "init_p50_ms": 376.8,
+          "max_memory_mb": 100
+        },
+        "FlightsReserveSeatFunction": {
+          "invocations": 2,
+          "cold": 1,
+          "warm_p50_ms": 9.4,
+          "warm_p90_ms": 9.4,
+          "init_p50_ms": 503.1,
+          "max_memory_mb": 100
+        },
+        "FlightsSearchFunction": {
+          "invocations": 10,
+          "cold": 1,
+          "warm_p50_ms": 11.4,
+          "warm_p90_ms": 12.8,
+          "init_p50_ms": 630.2,
+          "max_memory_mb": 99
+        },
+        "LoyaltyAccruePointsFunction": {
+          "invocations": 8,
+          "cold": 1,
+          "warm_p50_ms": 26.1,
+          "warm_p90_ms": 28.9,
+          "init_p50_ms": 448.3,
+          "max_memory_mb": 99
+        },
+        "LoyaltyGetSummaryFunction": {
+          "invocations": 6,
+          "cold": 1,
+          "warm_p50_ms": 6.0,
+          "warm_p90_ms": 7.1,
+          "init_p50_ms": 468.2,
+          "max_memory_mb": 98
+        },
+        "PaymentsCollectFunction": {
+          "invocations": 6,
+          "cold": 1,
+          "warm_p50_ms": 6.2,
+          "warm_p90_ms": 7.0,
+          "init_p50_ms": 1275.0,
+          "max_memory_mb": 127
+        },
+        "PaymentsGetDetailFunction": {
+          "invocations": 2,
+          "cold": 1,
+          "warm_p50_ms": 13.4,
+          "warm_p90_ms": 13.4,
+          "init_p50_ms": 704.5,
+          "max_memory_mb": 123
+        },
+        "PaymentsRefundFunction": {
+          "invocations": 4,
+          "cold": 1,
+          "warm_p50_ms": 1.6,
+          "warm_p90_ms": 1.6,
+          "init_p50_ms": 1217.2,
+          "max_memory_mb": 125
+        }
+      },
+      "invocations": 78,
+      "lambda_gb_seconds": 5.808,
+      "rru": 41.0,
+      "wru": 104.0
+    },
+    "cost_usd": {
+      "lambda_duration": 7.744e-05,
+      "lambda_requests": 1.56e-05,
+      "dynamodb": 7.013e-05,
+      "api_gateway": 0.000273,
+      "total": 0.00043617
+    }
+  }
+}

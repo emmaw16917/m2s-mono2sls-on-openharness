@@ -1,0 +1,781 @@
+1791112622550	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	INIT_START Runtime Version: nodejs:22.mainline.v122	Runtime Version ARN: arn:aws:lambda:us-east-1::runtime:775dab0d220a0b97f3ec34fe1692d7a07b5d13049153b00f03204c9543bd69e4
+1791112622870	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 73271b9b-6188-46e6-b875-e136cbc55f44 Version: $LATEST
+1791112623099	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:03.099Z	73271b9b-6188-46e6-b875-e136cbc55f44	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'AEM5BH1UNC83QKN3KE2QKJ9HAVVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112623123	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 73271b9b-6188-46e6-b875-e136cbc55f44
+1791112623123	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 73271b9b-6188-46e6-b875-e136cbc55f44	Duration: 251.99 ms	Billed Duration: 569 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	Init Duration: 316.73 ms	
+XRAY TraceId: 1-6ac235ae-2f6a82e616b8be4336d14e50	SegmentId: b534db3f2869c6a8	Sampled: true
+1791112625867	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 4d0a2284-6b5e-4c0a-ae88-95b69a4d402d Version: $LATEST
+1791112625880	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:05.880Z	4d0a2284-6b5e-4c0a-ae88-95b69a4d402d	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '3865Q7FD6N1GGCPI7BVTQRPNG7VV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112625883	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 4d0a2284-6b5e-4c0a-ae88-95b69a4d402d
+1791112625883	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 4d0a2284-6b5e-4c0a-ae88-95b69a4d402d	Duration: 15.08 ms	Billed Duration: 16 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235b1-1a3b036447c344c57348f023	SegmentId: 72db8769d8e28e8e	Sampled: true
+1791112628818	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 3e56368e-cd70-44ee-afe1-40e279997071 Version: $LATEST
+1791112628829	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:08.829Z	3e56368e-cd70-44ee-afe1-40e279997071	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'TFN96SPPS3I25D1CFD2F1JSQB3VV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112628840	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 3e56368e-cd70-44ee-afe1-40e279997071
+1791112628840	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 3e56368e-cd70-44ee-afe1-40e279997071	Duration: 21.58 ms	Billed Duration: 22 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235b4-2a14f2ed169e566667feb667	SegmentId: 654f5e4bf66f796c	Sampled: true
+1791112631301	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: a667a59f-8d91-4017-b1d1-0a36b331e718 Version: $LATEST
+1791112631400	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:11.400Z	a667a59f-8d91-4017-b1d1-0a36b331e718	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '07PJU64R0U9EFPUBF8F84NB4PJVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112631404	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: a667a59f-8d91-4017-b1d1-0a36b331e718
+1791112631404	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: a667a59f-8d91-4017-b1d1-0a36b331e718	Duration: 101.73 ms	Billed Duration: 102 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235b7-4691db151328037709ba6fc7	SegmentId: 01706efe92097742	Sampled: true
+1791112633486	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 609318d3-eef2-4937-8838-40bc865abe13 Version: $LATEST
+1791112633497	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:13.497Z	609318d3-eef2-4937-8838-40bc865abe13	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'LT17IQUOCBJC485KPIUFGS88FFVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112633500	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 609318d3-eef2-4937-8838-40bc865abe13
+1791112633500	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 609318d3-eef2-4937-8838-40bc865abe13	Duration: 13.95 ms	Billed Duration: 14 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235b9-57b8bd40601d2de26e6f561b	SegmentId: b6296615ea032523	Sampled: true
+1791112635839	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 2c1997e2-74af-4e49-b36a-00003ef475f8 Version: $LATEST
+1791112635848	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:15.848Z	2c1997e2-74af-4e49-b36a-00003ef475f8	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'AI9TTVA4FJLDCF6QSN6QUID81NVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112635850	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 2c1997e2-74af-4e49-b36a-00003ef475f8
+1791112635850	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 2c1997e2-74af-4e49-b36a-00003ef475f8	Duration: 11.05 ms	Billed Duration: 12 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235bb-225ca1115dd42a243a78960d	SegmentId: b90620213a581bfd	Sampled: true
+1791112637898	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 9e5dbfda-de73-4615-8b2a-2fc38796271a Version: $LATEST
+1791112637908	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:17.908Z	9e5dbfda-de73-4615-8b2a-2fc38796271a	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'I2NVBQ548KRU44AIFAULUM1I3NVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112637910	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 9e5dbfda-de73-4615-8b2a-2fc38796271a
+1791112637910	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 9e5dbfda-de73-4615-8b2a-2fc38796271a	Duration: 11.67 ms	Billed Duration: 12 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235bd-63b33da5174650ba2084414c	SegmentId: 4ce469c7d2895144	Sampled: true
+1791112640072	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 1219162a-1402-4f29-9b62-17ae2d3b6401 Version: $LATEST
+1791112640082	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:20.082Z	1219162a-1402-4f29-9b62-17ae2d3b6401	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'NENEENNTJFE9JIK129V2RENH9RVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112640086	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 1219162a-1402-4f29-9b62-17ae2d3b6401
+1791112640086	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 1219162a-1402-4f29-9b62-17ae2d3b6401	Duration: 13.67 ms	Billed Duration: 14 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235c0-141b67915f80c80010bc8bf7	SegmentId: 162116d4dae1afce	Sampled: true
+1791112642754	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 7b5356d7-2200-42eb-bcce-1d230023a560 Version: $LATEST
+1791112642783	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:22.783Z	7b5356d7-2200-42eb-bcce-1d230023a560	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '82B8DL5A1I57VV02QPBE4KC6BVVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112642800	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 7b5356d7-2200-42eb-bcce-1d230023a560
+1791112642800	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 7b5356d7-2200-42eb-bcce-1d230023a560	Duration: 45.35 ms	Billed Duration: 46 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235c2-598d89662d4963ae4335d511	SegmentId: a199582cadb81672	Sampled: true
+1791112645437	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 4905d47d-2aca-4845-999a-a83548acebae Version: $LATEST
+1791112645448	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:25.448Z	4905d47d-2aca-4845-999a-a83548acebae	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'AAQCAUCO7IQ5MOCDSQP1CICQQ7VV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112645461	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 4905d47d-2aca-4845-999a-a83548acebae
+1791112645461	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 4905d47d-2aca-4845-999a-a83548acebae	Duration: 22.60 ms	Billed Duration: 23 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235c5-6a7a6c904e4c7c9322066b8c	SegmentId: 791a3e28e10804d7	Sampled: true
+1791112647876	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 2db1ea8a-e711-4e3b-aeca-35b397edf217 Version: $LATEST
+1791112647885	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:27.885Z	2db1ea8a-e711-4e3b-aeca-35b397edf217	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'RVTLABGQ5HASMR1JDBBNR2ALFFVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112647887	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 2db1ea8a-e711-4e3b-aeca-35b397edf217
+1791112647887	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 2db1ea8a-e711-4e3b-aeca-35b397edf217	Duration: 9.73 ms	Billed Duration: 10 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235c7-769e6545306b98a50e3b8e8c	SegmentId: 3e5885bf99e84cf2	Sampled: true
+1791112650119	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 9fb5208c-3803-4705-aebd-f36e709f3bdb Version: $LATEST
+1791112650128	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:30.128Z	9fb5208c-3803-4705-aebd-f36e709f3bdb	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '88KQIBS2SA2IOS961SHESLO24NVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112650130	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 9fb5208c-3803-4705-aebd-f36e709f3bdb
+1791112650130	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 9fb5208c-3803-4705-aebd-f36e709f3bdb	Duration: 10.58 ms	Billed Duration: 11 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235ca-09dc7de9090edf75184b3a42	SegmentId: dc1faf6bfb57173f	Sampled: true
+1791112653328	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: efdcc61f-8fad-4e30-9a67-241e04a78349 Version: $LATEST
+1791112653337	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:33.337Z	efdcc61f-8fad-4e30-9a67-241e04a78349	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '5TO9SMIVIVAF2JUVHKD82ABUOFVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112653339	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: efdcc61f-8fad-4e30-9a67-241e04a78349
+1791112653339	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: efdcc61f-8fad-4e30-9a67-241e04a78349	Duration: 10.35 ms	Billed Duration: 11 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235cd-6ab74b2e53db9d7201377cd8	SegmentId: 00b53e7c091d8799	Sampled: true
+1791112656078	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 9d6f60e6-bb8e-4d22-9c40-bfc597b0907e Version: $LATEST
+1791112656087	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:36.087Z	9d6f60e6-bb8e-4d22-9c40-bfc597b0907e	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'E0HAABOMTNNAR5BKTI4BVJOV2JVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112656089	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 9d6f60e6-bb8e-4d22-9c40-bfc597b0907e
+1791112656089	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 9d6f60e6-bb8e-4d22-9c40-bfc597b0907e	Duration: 10.60 ms	Billed Duration: 11 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235d0-7001a25711d7761c4d1f2fac	SegmentId: bf994adcf5d4b151	Sampled: true
+1791112658252	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: e985c34a-e073-4cfd-af47-ae066ff1b1e7 Version: $LATEST
+1791112658261	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:38.261Z	e985c34a-e073-4cfd-af47-ae066ff1b1e7	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '4S3A53KP2PHS9K2PMMATR54AJNVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112658264	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: e985c34a-e073-4cfd-af47-ae066ff1b1e7
+1791112658264	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: e985c34a-e073-4cfd-af47-ae066ff1b1e7	Duration: 10.75 ms	Billed Duration: 11 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235d2-7b3eb48d68fed84025b3580e	SegmentId: f0f0896a159f5a57	Sampled: true
+1791112661103	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: f70b3366-1b21-4c77-a94f-c34ac9924dbd Version: $LATEST
+1791112661111	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:41.111Z	f70b3366-1b21-4c77-a94f-c34ac9924dbd	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '6FU77744I817EAT4283IPBL773VV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112661113	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: f70b3366-1b21-4c77-a94f-c34ac9924dbd
+1791112661113	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: f70b3366-1b21-4c77-a94f-c34ac9924dbd	Duration: 9.35 ms	Billed Duration: 10 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235d5-5d44f886701522310123ae7f	SegmentId: c181d18a7301e37a	Sampled: true
+1791112663223	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: af37f63e-36d7-40ae-ab82-9c91f776057e Version: $LATEST
+1791112663232	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:43.232Z	af37f63e-36d7-40ae-ab82-9c91f776057e	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'PGSVCTU6NL35A41IF6MO6OJ5MBVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112663234	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: af37f63e-36d7-40ae-ab82-9c91f776057e
+1791112663234	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: af37f63e-36d7-40ae-ab82-9c91f776057e	Duration: 9.80 ms	Billed Duration: 10 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235d7-2d7d88ba7dd67ab36ce2a30a	SegmentId: 86b392ff0e012de4	Sampled: true
+1791112665551	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 5ed5f0de-1d01-47f0-aecd-8273fdfa3e7d Version: $LATEST
+1791112665560	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:45.560Z	5ed5f0de-1d01-47f0-aecd-8273fdfa3e7d	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'IF9MMNIJBHKLOM038DTQDOM42NVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112665562	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 5ed5f0de-1d01-47f0-aecd-8273fdfa3e7d
+1791112665562	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 5ed5f0de-1d01-47f0-aecd-8273fdfa3e7d	Duration: 10.89 ms	Billed Duration: 11 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235d9-1260b72c76cdd3896d02f43f	SegmentId: 6fca83e371c3746c	Sampled: true
+1791112667828	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 0d65e668-a995-4fa6-a361-d32ed7ad815b Version: $LATEST
+1791112667837	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:47.837Z	0d65e668-a995-4fa6-a361-d32ed7ad815b	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'G38KPNT15VBCGEPUV4AIGRFDJJVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112667839	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 0d65e668-a995-4fa6-a361-d32ed7ad815b
+1791112667839	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 0d65e668-a995-4fa6-a361-d32ed7ad815b	Duration: 10.46 ms	Billed Duration: 11 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235db-371c0321048608b13cb29fcb	SegmentId: 6f8804f60b964306	Sampled: true
+1791112670273	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 464b4277-2d65-4a04-95ad-f231e1378543 Version: $LATEST
+1791112670282	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:50.282Z	464b4277-2d65-4a04-95ad-f231e1378543	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'V7P7GISGTD9T9K0K624H4UFJ2JVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112670284	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 464b4277-2d65-4a04-95ad-f231e1378543
+1791112670284	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 464b4277-2d65-4a04-95ad-f231e1378543	Duration: 10.07 ms	Billed Duration: 11 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235de-64ee6925148d17c41689f960	SegmentId: ed90711d59e011b8	Sampled: true
+1791112672518	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 680fd783-25a1-46f5-aa9d-ec2e6ded6d7d Version: $LATEST
+1791112672526	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:52.526Z	680fd783-25a1-46f5-aa9d-ec2e6ded6d7d	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'MF8QLS01772EUQ2LTQQSPCO4HNVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112672528	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 680fd783-25a1-46f5-aa9d-ec2e6ded6d7d
+1791112672528	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 680fd783-25a1-46f5-aa9d-ec2e6ded6d7d	Duration: 8.89 ms	Billed Duration: 9 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235e0-65fd547e3efb01e43f7788db	SegmentId: 9dd1f4f8ec78d793	Sampled: true
+1791112674990	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 3fcfd016-00c8-4e10-b37a-ca59f40d9b2e Version: $LATEST
+1791112674998	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:54.998Z	3fcfd016-00c8-4e10-b37a-ca59f40d9b2e	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'HTA77J0IQOC4JJL0RKU7INJ4F3VV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112675000	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 3fcfd016-00c8-4e10-b37a-ca59f40d9b2e
+1791112675000	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 3fcfd016-00c8-4e10-b37a-ca59f40d9b2e	Duration: 9.74 ms	Billed Duration: 10 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235e2-53846a4d3b63c9725ffe6776	SegmentId: 69c3a394cf36b212	Sampled: true
+1791112677324	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 539febe4-451f-42d8-904a-4eb6b22ca586 Version: $LATEST
+1791112677332	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:57.332Z	539febe4-451f-42d8-904a-4eb6b22ca586	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '2O1IIHMEEJTBEINM6IDSH7JVNFVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112677334	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 539febe4-451f-42d8-904a-4eb6b22ca586
+1791112677334	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 539febe4-451f-42d8-904a-4eb6b22ca586	Duration: 8.77 ms	Billed Duration: 9 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235e5-48ba765a7852130e3069d93e	SegmentId: 1d2b691e6e7da37b	Sampled: true
+1791112679697	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: b2b6cc1a-05b3-4715-82d6-7aadbefd99cc Version: $LATEST
+1791112679706	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:17:59.706Z	b2b6cc1a-05b3-4715-82d6-7aadbefd99cc	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'D3LKQRGOC3CCFSQDHM8FAULVA7VV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112679708	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: b2b6cc1a-05b3-4715-82d6-7aadbefd99cc
+1791112679708	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: b2b6cc1a-05b3-4715-82d6-7aadbefd99cc	Duration: 9.76 ms	Billed Duration: 10 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235e7-5c71d21b7e1da60578124c1e	SegmentId: e9c04d26d4cac122	Sampled: true
+1791112682096	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 5870fddb-3770-44ff-beb1-b99e84f07e1c Version: $LATEST
+1791112682104	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:18:02.104Z	5870fddb-3770-44ff-beb1-b99e84f07e1c	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'EGF25HGR76GIFBTSBKFPPLBO07VV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112682106	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 5870fddb-3770-44ff-beb1-b99e84f07e1c
+1791112682106	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 5870fddb-3770-44ff-beb1-b99e84f07e1c	Duration: 9.78 ms	Billed Duration: 10 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235ea-5794a315342941d43e1ac4b9	SegmentId: 280cea8d0443bfa7	Sampled: true
+1791112684337	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 624862ae-14d5-4461-a2de-f1e37515517e Version: $LATEST
+1791112684345	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:18:04.345Z	624862ae-14d5-4461-a2de-f1e37515517e	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '5POG6L6L4MIM8K422M41AESLN3VV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112684348	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 624862ae-14d5-4461-a2de-f1e37515517e
+1791112684348	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 624862ae-14d5-4461-a2de-f1e37515517e	Duration: 10.31 ms	Billed Duration: 11 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235ec-7c1cffea55c52d1c5a144c29	SegmentId: 7f72518d6be6b596	Sampled: true
+1791112686583	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 41fd7561-1a99-42e2-ad7a-db01073c2ba8 Version: $LATEST
+1791112686592	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:18:06.592Z	41fd7561-1a99-42e2-ad7a-db01073c2ba8	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '353KNTC28QAG7TKI6A9UQQARN7VV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112686594	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 41fd7561-1a99-42e2-ad7a-db01073c2ba8
+1791112686594	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 41fd7561-1a99-42e2-ad7a-db01073c2ba8	Duration: 10.46 ms	Billed Duration: 11 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235ee-0183eaf933f5da1e6f8bfaba	SegmentId: e7823256f54d348b	Sampled: true
+1791112689038	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: d35dd2a0-27e0-47a7-804a-af3eef0fbb80 Version: $LATEST
+1791112689046	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:18:09.046Z	d35dd2a0-27e0-47a7-804a-af3eef0fbb80	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '76QLB4LCMIM3JPAFCBHCOBTASFVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112689048	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: d35dd2a0-27e0-47a7-804a-af3eef0fbb80
+1791112689048	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: d35dd2a0-27e0-47a7-804a-af3eef0fbb80	Duration: 10.01 ms	Billed Duration: 11 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235f0-7de906954c99719014e9e675	SegmentId: 59046782fddac37b	Sampled: true
+1791112691321	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: 94d68b06-9f12-4a95-9482-85025c1ffccd Version: $LATEST
+1791112691329	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:18:11.329Z	94d68b06-9f12-4a95-9482-85025c1ffccd	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'QMGQF9AEE19A2B97DSRC7FKHN3VV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112691331	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: 94d68b06-9f12-4a95-9482-85025c1ffccd
+1791112691331	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: 94d68b06-9f12-4a95-9482-85025c1ffccd	Duration: 9.43 ms	Billed Duration: 10 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235f3-2c2d69791fb9082c5b5e816a	SegmentId: 7fa8235f54877b01	Sampled: true
+1791112693574	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	START RequestId: c3dfdb0b-a910-4b42-8f97-0e2e512e151f Version: $LATEST
+1791112693581	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	2026-10-04T11:18:13.581Z	c3dfdb0b-a910-4b42-8f97-0e2e512e151f	ERROR	Error in GET /orders: ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (/var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/protocols/index.js:1385:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async AwsJson1_0Protocol.deserializeResponse (/var/task/node_modules/@smithy/core/dist-cjs/submodules/protocols/index.js:582:13)
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/schema/index.js:23:24
+    at async /var/task/node_modules/@aws-sdk/lib-dynamodb/dist-cjs/index.js:109:34
+    at async /var/task/node_modules/@smithy/core/dist-cjs/index.js:118:20
+    at async /var/task/node_modules/@smithy/core/dist-cjs/submodules/retry/index.js:175:50
+    at async /var/task/node_modules/@aws-sdk/core/dist-cjs/submodules/client/index.js:125:26
+    at async exports.lambda_handler [as handler] (/var/task/handler.js:46:18) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '573BOQNR8MLDB6V1EAMVH1TABBVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+1791112693583	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	END RequestId: c3dfdb0b-a910-4b42-8f97-0e2e512e151f
+1791112693583	2026/10/04/[$LATEST]0e4fceaa878c444aafd1420e63079408	REPORT RequestId: c3dfdb0b-a910-4b42-8f97-0e2e512e151f	Duration: 8.91 ms	Billed Duration: 9 ms	Memory Size: 512 MB	Max Memory Used: 102 MB	
+XRAY TraceId: 1-6ac235f5-362b202947d6d5677ad6bfeb	SegmentId: fca85307864a0bf6	Sampled: true

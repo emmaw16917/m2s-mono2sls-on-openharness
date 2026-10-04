@@ -1,0 +1,33 @@
+1791125094352	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	INIT_START Runtime Version: python:3.12.mainlinev2.v43	Runtime Version ARN: arn:aws:lambda:us-east-1::runtime:36aeb19f3326e129d9f096dea0a3c6a9ca8dce2610e62d2b2060747602d863ae
+1791125095545	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	START RequestId: 191cde0e-95ed-49bc-a763-9ddb85f5d491 Version: $LATEST
+1791125095546	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	STRIPE_SECRET_KEY not found in environment - running in simulation mode
+1791125095546	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	[SIMULATION] Collecting payment for charge: ch_test_payment_collect
+1791125095628	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	END RequestId: 191cde0e-95ed-49bc-a763-9ddb85f5d491
+1791125095628	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	REPORT RequestId: 191cde0e-95ed-49bc-a763-9ddb85f5d491	Duration: 82.08 ms	Billed Duration: 1273 ms	Memory Size: 512 MB	Max Memory Used: 115 MB	Init Duration: 1189.92 ms	
+XRAY TraceId: 1-6ac26666-791fc81b722967ad77e7e1ff	SegmentId: c99e96d2b6c7431b	Sampled: true
+1791125099349	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	START RequestId: 219d4450-dc0b-403c-8a63-552cec7befb9 Version: $LATEST
+1791125099350	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	STRIPE_SECRET_KEY not found in environment - running in simulation mode
+1791125099350	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	[SIMULATION] Collecting payment for charge: ch_test_payment_get
+1791125099357	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	END RequestId: 219d4450-dc0b-403c-8a63-552cec7befb9
+1791125099357	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	REPORT RequestId: 219d4450-dc0b-403c-8a63-552cec7befb9	Duration: 7.40 ms	Billed Duration: 8 ms	Memory Size: 512 MB	Max Memory Used: 115 MB	
+XRAY TraceId: 1-6ac2666b-2cd478b01bab72844bfe483c	SegmentId: 9a7e8a4f57d06eac	Sampled: true
+1791125103771	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	START RequestId: 08f527f4-1b34-4ab1-a431-02ed68dc3ae1 Version: $LATEST
+1791125103774	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	END RequestId: 08f527f4-1b34-4ab1-a431-02ed68dc3ae1
+1791125103774	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	REPORT RequestId: 08f527f4-1b34-4ab1-a431-02ed68dc3ae1	Duration: 1.67 ms	Billed Duration: 2 ms	Memory Size: 512 MB	Max Memory Used: 115 MB	
+XRAY TraceId: 1-6ac2666f-58eed8ca4b467d2309fcb15b	SegmentId: c9e682e3d3053650	Sampled: true
+1791125156004	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	START RequestId: e4dad717-9b4b-499a-a644-a87c2c071c24 Version: $LATEST
+1791125156006	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	STRIPE_SECRET_KEY not found in environment - running in simulation mode
+1791125156006	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	[SIMULATION] Collecting payment for charge: ch_test_payment_collect
+1791125156011	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	END RequestId: e4dad717-9b4b-499a-a644-a87c2c071c24
+1791125156012	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	REPORT RequestId: e4dad717-9b4b-499a-a644-a87c2c071c24	Duration: 6.47 ms	Billed Duration: 7 ms	Memory Size: 512 MB	Max Memory Used: 115 MB	
+XRAY TraceId: 1-6ac266a3-402886ad058823ec567388b9	SegmentId: 0e8d38741cc3c493	Sampled: true
+1791125156946	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	START RequestId: 9bab89dc-12d0-4481-9a0f-bb1bddfd83a8 Version: $LATEST
+1791125156946	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	STRIPE_SECRET_KEY not found in environment - running in simulation mode
+1791125156946	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	[SIMULATION] Collecting payment for charge: ch_test_payment_get
+1791125156953	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	END RequestId: 9bab89dc-12d0-4481-9a0f-bb1bddfd83a8
+1791125156953	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	REPORT RequestId: 9bab89dc-12d0-4481-9a0f-bb1bddfd83a8	Duration: 6.22 ms	Billed Duration: 7 ms	Memory Size: 512 MB	Max Memory Used: 115 MB	
+XRAY TraceId: 1-6ac266a4-2b6dbc4b08d4d5b77a51c3a1	SegmentId: 6580aaaa5bde56d1	Sampled: true
+1791125159645	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	START RequestId: 88a26230-7c91-473e-9561-d23ae30e02fc Version: $LATEST
+1791125159647	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	END RequestId: 88a26230-7c91-473e-9561-d23ae30e02fc
+1791125159647	2026/10/04/[$LATEST]bcea87f3dd6c4cd2aeeffabff9f4d236	REPORT RequestId: 88a26230-7c91-473e-9561-d23ae30e02fc	Duration: 1.57 ms	Billed Duration: 2 ms	Memory Size: 512 MB	Max Memory Used: 115 MB	
+XRAY TraceId: 1-6ac266a7-5ded401f70e4a9ec585183f2	SegmentId: f86278fe72843b55	Sampled: true

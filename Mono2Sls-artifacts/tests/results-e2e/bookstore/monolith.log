@@ -1,0 +1,594 @@
+========================================
+AWS Bookstore Database Initialization
+========================================
+
+Step 1: Create DynamoDB tables
+
+(node:26848) NOTE: The AWS SDK for JavaScript (v2) is in maintenance mode.
+ SDK releases are limited to address critical bug fixes and security issues only.
+
+Please migrate your code to use AWS SDK for JavaScript (v3).
+For more information, check the blog post at https://a.co/cUPnyil
+(Use `node.EXE --trace-warnings ...` to show where the warning was created)
+✓ Table Bookstore-Books created successfully
+✓ Table Bookstore-Cart created successfully
+✓ Table Bookstore-Orders created successfully
+✓ Table Bookstore-Users created successfully
+✓ Table Bookstore-Bestsellers created successfully
+
+Step 2: Wait for tables to be ready
+
+Waiting for table Bookstore-Books to become ACTIVE...
+✓ Table Bookstore-Books is ready
+Waiting for table Bookstore-Cart to become ACTIVE...
+✓ Table Bookstore-Cart is ready
+Waiting for table Bookstore-Orders to become ACTIVE...
+✓ Table Bookstore-Orders is ready
+Waiting for table Bookstore-Users to become ACTIVE...
+✓ Table Bookstore-Users is ready
+Waiting for table Bookstore-Bestsellers to become ACTIVE...
+✓ Table Bookstore-Bestsellers is ready
+
+Step 3: Initialize sample data
+
+Starting initialization of sample book data...
+✓ Added book: JavaScript Advanced Programming
+✓ Added book: Node.js Development Guide
+✓ Added book: Computer Systems: A Programmer's Perspective
+✓ Added book: Clean Code
+✓ Added book: Design Patterns
+✓ Sample data initialization completed
+
+========================================
+✓ Database initialization completed!
+========================================
+
+$ D:\Tools\Nodejs22\node.EXE scripts/init-db.js
+Catalog seeded for e2e_bookstore_monolith
+Mutable state reset for e2e_bookstore_monolith
+FAIL tests/bestsellers.async.test.js (31.256 s)
+  Async Bestsellers Semantics
+    × ASYNC-01 / TC-10: should eventually expose ordered books in bestsellers (30151 ms)
+
+  ● Async Bestsellers Semantics › ASYNC-01 / TC-10: should eventually expose ordered books in bestsellers
+
+    Condition not satisfied within 30000ms. Last value: {"status":401,"data":{"error":"Authentication required. Please provide a valid Bearer token."}}
+
+    [0m [90m 200 |[39m   }
+     [90m 201 |[39m
+    [31m[1m>[22m[39m[90m 202 |[39m   [36mthrow[39m [36mnew[39m [33mError[39m([32m`Condition not satisfied within ${timeoutMs}ms. Last value: ${summarizeForError(lastValue)}`[39m)[33m;[39m
+     [90m     |[39m         [31m[1m^[22m[39m
+     [90m 203 |[39m }
+     [90m 204 |[39m
+     [90m 205 |[39m [36mfunction[39m sleep(ms) {[0m
+
+      at pollUntil (tests/helpers.js:202:9)
+      at Object.<anonymous> (tests/bestsellers.async.test.js:41:22)
+
+Catalog seeded for e2e_bookstore_monolith
+Mutable state reset for e2e_bookstore_monolith
+FAIL tests/cart-negative.test.js
+  Cart Negative Cases
+    √ TC-NEG-01: should return 404 for getting a non-existent cart item (15 ms)
+    × TC-NEG-02: should handle update of a non-existent cart item (17 ms)
+    √ TC-NEG-03: should handle delete of a non-existent cart item (8 ms)
+
+  ● Cart Negative Cases › TC-NEG-02: should handle update of a non-existent cart item
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 200
+    Received array: [400, 404]
+
+    [0m [90m 34 |[39m     Updated bestseller: bookId=book-001, quantity=1
+Updated bestseller: bookId=book-004, quantity=2
+Bestseller updated: 2 books
+Updated bestseller: bookId=book-001, quantity=2
+Bestseller updated: 1 books
+Updated bestseller: bookId=book-001, quantity=1
+Updated bestseller: bookId=book-004, quantity=2
+Bestseller updated: 2 books
+Updated bestseller: bookId=book-001, quantity=1
+Updated bestseller: bookId=book-004, quantity=2
+Bestseller updated: 2 books
+Updated bestseller: bookId=book-001, quantity=1
+Updated bestseller: bookId=book-004, quantity=2
+Bestseller updated: 2 books
+Updated bestseller: bookId=book-001, quantity=1
+Updated bestseller: bookId=book-004, quantity=2
+Bestseller updated: 2 books
+Updated bestseller: bookId=book-001, quantity=1
+Updated bestseller: bookId=book-004, quantity=2
+Bestseller updated: 2 books
+Updated bestseller: bookId=book-001, quantity=1
+Updated bestseller: bookId=book-004, quantity=2
+Bestseller updated: 2 books
+× ROB-04: search should handle special characters gracefully (2 ms)
+
+  ● Robustness › ROB-01: catalog responses should return valid JSON with correct Content-Type
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/robustness.test.js:23:5)
+
+  ● Robustness › ROB-02: should handle concurrent book detail requests
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/robustness.test.js:36:7)
+
+  ● Robustness › ROB-03: list and get should return consistent data for the same book
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/robustness.test.js:47:5)
+
+  ● Robustness › ROB-04: search should handle special characters gracefully
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200, 400]
+
+    [0m [90m 61 |[39m   test([32m'ROB-04: search should handle special characters gracefully'[39m[33m,[39m [36masync[39m () [33m=>[39m {
+     [90m 62 |[39m     [36mconst[39m res [33m=[39m [36mawait[39m searchBooks([32m'test<script>alert(1)</script>'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 63 |[39m     expect([[35m200[39m[33m,[39m [35m400[39m])[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 64 |[39m   })[33m;[39m
+     [90m 65 |[39m })[33m;[39m
+     [90m 66 |[39m[0m
+
+      at Object.toContain (tests/robustness.test.js:63:24)
+
+Catalog seeded for e2e_bookstore_monolith
+Mutable state reset for e2e_bookstore_monolith
+FAIL tests/catalog.contract.test.js
+  Catalog Contract
+    × TC-01: should list seeded books (5 ms)
+    × TC-02: should filter books by category (2 ms)
+    × TC-03: should fetch a known book by id (1 ms)
+    × TC-04: should reject unknown book ids (1 ms)
+    × TC-05: should search books by keyword (3 ms)
+    × TC-06: should reject search without q (2 ms)
+
+  ● Catalog Contract › TC-01: should list seeded books
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/catalog.contract.test.js:23:5)
+
+  ● Catalog Contract › TC-02: should filter books by category
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/catalog.contract.test.js:37:5)
+
+  ● Catalog Contract › TC-03: should fetch a known book by id
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/catalog.contract.test.js:47:5)
+
+  ● Catalog Contract › TC-04: should reject unknown book ids
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [404]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/catalog.contract.test.js:56:5)
+
+  ● Catalog Contract › TC-05: should search books by keyword
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/catalog.contract.test.js:63:5)
+
+  ● Catalog Contract › TC-06: should reject search without q
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [400]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/catalog.contract.test.js:73:5)
+
+Catalog seeded for e2e_bookstore_monolith
+Mutable state reset for e2e_bookstore_monolith
+PASS tests/cart-orders.contract.test.js
+  Cart And Orders Contract
+    √ TC-07: should support cart CRUD flow (53 ms)
+    √ TC-08: should create an order from cart items (25 ms)
+    √ TC-09: should expose order history and clear purchased cart items (15 ms)
+
+Catalog seeded for e2e_bookstore_monolith
+Mutable state reset for e2e_bookstore_monolith
+PASS tests/auth-enforcement.test.js
+  Auth Enforcement
+    √ AUTH-01: GET /cart without auth should be rejected (4 ms)
+    √ AUTH-02: POST /cart without auth should be rejected (2 ms)
+    √ AUTH-03: POST /orders without auth should be rejected (1 ms)
+    √ AUTH-04: GET /orders without auth should be rejected (1 ms)
+
+Results written to: D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\results\e2e_bookstore_monolith_2026-10-04T10-19-12-334Z.json
+Test Suites: 4 failed, 2 passed, 6 total
+Tests:       12 failed, 9 passed, 21 total
+Snapshots:   0 total
+Time:        34.069 s, estimated 113 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+
+$ D:\Tools\Nodejs22\npx.CMD jest --runInBand --forceExit
+Catalog seeded for e2e_bookstore_monolith
+Mutable state reset for e2e_bookstore_monolith
+FAIL tests/bestsellers.async.test.js (31.037 s)
+  Async Bestsellers Semantics
+    × ASYNC-01 / TC-10: should eventually expose ordered books in bestsellers (30157 ms)
+
+  ● Async Bestsellers Semantics › ASYNC-01 / TC-10: should eventually expose ordered books in bestsellers
+
+    Condition not satisfied within 30000ms. Last value: {"status":401,"data":{"error":"Authentication required. Please provide a valid Bearer token."}}
+
+    [0m [90m 200 |[39m   }
+     [90m 201 |[39m
+    [31m[1m>[22m[39m[90m 202 |[39m   [36mthrow[39m [36mnew[39m [33mError[39m([32m`Condition not satisfied within ${timeoutMs}ms. Last value: ${summarizeForError(lastValue)}`[39m)[33m;[39m
+     [90m     |[39m         [31m[1m^[22m[39m
+     [90m 203 |[39m }
+     [90m 204 |[39m
+     [90m 205 |[39m [36mfunction[39m sleep(ms) {[0m
+
+      at pollUntil (tests/helpers.js:202:9)
+      at Object.<anonymous> (tests/bestsellers.async.test.js:41:22)
+
+Catalog seeded for e2e_bookstore_monolith
+Mutable state reset for e2e_bookstore_monolith
+FAIL tests/cart-negative.test.js
+  Cart Negative Cases
+    √ TC-NEG-01: should return 404 for getting a non-existent cart item (9 ms)
+    × TC-NEG-02: should handle update of a non-existent cart item (8 ms)
+    √ TC-NEG-03: should handle delete of a non-existent cart item (6 ms)
+
+  ● Cart Negative Cases › TC-NEG-02: should handle update of a non-existent cart item
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 200
+    Received array: [400, 404]
+
+    [0m [90m 34 |[39m       quantity[33m:[39m [35m5[39m[33m,[39m
+     [90m 35 |[39m     })[33m;[39m
+    [31m[1m>[22m[39m[90m 36 |[39m     expect([[35m400[39m[33m,[39m [35m404[39m])[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 37 |[39m   })[33m;[39m
+     [90m 38 |[39m
+     [90m 39 |[39m   test([32m'TC-NEG-03: should handle delete of a non-existent cart item'[39m[33m,[39m [36masync[39m () [33m=>[39m {[0m
+
+      at Object.toContain (tests/cart-negative.test.js:36:24)
+
+Catalog seeded for e2e_bookstore_monolith
+Mutable state reset for e2e_bookstore_monolith
+FAIL tests/robustness.test.js
+  Robustness
+    × ROB-01: catalog responses should return valid JSON with correct Content-Type (5 ms)
+    × ROB-02: should handle concurrent book detail requests (5 ms)
+    × ROB-03: list and get should return consistent data for the same book (1 ms)
+    × ROB-04: search should handle special characters gracefully (1 ms)
+
+  ● Robustness › ROB-01: catalog responses should return valid JSON with correct Content-Type
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/robustness.test.js:23:5)
+
+  ● Robustness › ROB-02: should handle concurrent book detail requests
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/robustness.test.js:36:7)
+
+  ● Robustness › ROB-03: list and get should return consistent data for the same book
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/robustness.test.js:47:5)
+
+  ● Robustness › ROB-04: search should handle special characters gracefully
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200, 400]
+
+    [0m [90m 61 |[39m   test([32m'ROB-04: search should handle special characters gracefully'[39m[33m,[39m [36masync[39m () [33m=>[39m {
+     [90m 62 |[39m     [36mconst[39m res [33m=[39m [36mawait[39m searchBooks([32m'test<script>alert(1)</script>'[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 63 |[39m     expect([[35m200[39m[33m,[39m [35m400[39m])[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 64 |[39m   })[33m;[39m
+     [90m 65 |[39m })[33m;[39m
+     [90m 66 |[39m[0m
+
+      at Object.toContain (tests/robustness.test.js:63:24)
+
+Catalog seeded for e2e_bookstore_monolith
+Mutable state reset for e2e_bookstore_monolith
+FAIL tests/catalog.contract.test.js
+  Catalog Contract
+    × TC-01: should list seeded books (5 ms)
+    × TC-02: should filter books by category (5 ms)
+    × TC-03: should fetch a known book by id (2 ms)
+    × TC-04: should reject unknown book ids (1 ms)
+    × TC-05: should search books by keyword (2 ms)
+    × TC-06: should reject search without q (1 ms)
+
+  ● Catalog Contract › TC-01: should list seeded books
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/catalog.contract.test.js:23:5)
+
+  ● Catalog Contract › TC-02: should filter books by category
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/catalog.contract.test.js:37:5)
+
+  ● Catalog Contract › TC-03: should fetch a known book by id
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/catalog.contract.test.js:47:5)
+
+  ● Catalog Contract › TC-04: should reject unknown book ids
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [404]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/catalog.contract.test.js:56:5)
+
+  ● Catalog Contract › TC-05: should search books by keyword
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [200]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/catalog.contract.test.js:63:5)
+
+  ● Catalog Contract › TC-06: should reject search without q
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 401
+    Received array: [400]
+
+    [0m [90m 67 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 68 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 69 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 70 |[39m }
+     [90m 71 |[39m
+     [90m 72 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:69:24)
+      at Object.expectStatus (tests/catalog.contract.test.js:73:5)
+
+Catalog seeded for e2e_bookstore_monolith
+Mutable state reset for e2e_bookstore_monolith
+PASS tests/cart-orders.contract.test.js
+  Cart And Orders Contract
+    √ TC-07: should support cart CRUD flow (47 ms)
+    √ TC-08: should create an order from cart items (27 ms)
+    √ TC-09: should expose order history and clear purchased cart items (12 ms)
+
+Catalog seeded for e2e_bookstore_monolith
+Mutable state reset for e2e_bookstore_monolith
+PASS tests/auth-enforcement.test.js
+  Auth Enforcement
+    √ AUTH-01: GET /cart without auth should be rejected (5 ms)
+    √ AUTH-02: POST /cart without auth should be rejected (2 ms)
+    √ AUTH-03: POST /orders without auth should be rejected (1 ms)
+    √ AUTH-04: GET /orders without auth should be rejected (1 ms)
+
+Results written to: D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\results\e2e_bookstore_monolith_2026-10-04T10-19-47-185Z.json
+Test Suites: 4 failed, 2 passed, 6 total
+Tests:       12 failed, 9 passed, 21 total
+Snapshots:   0 total
+Time:        33.87 s, estimated 34 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+
+$ D:\Tools\Nodejs22\npx.CMD jest --runInBand --forceExit

@@ -1,0 +1,1904 @@
+{
+  "functions": {
+    "BestsellersListFunction": [
+      {
+        "duration": 176.99,
+        "billed": 477,
+        "memory": 512,
+        "max_memory": 98,
+        "init": 299.65
+      },
+      {
+        "duration": 19.52,
+        "billed": 20,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 12.09,
+        "billed": 13,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 10.31,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.86,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 10.05,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 10.9,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.29,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 17.64,
+        "billed": 18,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 16.16,
+        "billed": 17,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 10.04,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 15.55,
+        "billed": 16,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 9.09,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 9.65,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 8.92,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 9.81,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 9.42,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 9.99,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 9.15,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 8.26,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 8.36,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 9.39,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 9.95,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 9.08,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 10.43,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 9.71,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 8.93,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 9.11,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 15.07,
+        "billed": 16,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 7.94,
+        "billed": 8,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      }
+    ],
+    "BestsellersUpdateFunction": [
+      {
+        "duration": 215.83,
+        "billed": 526,
+        "memory": 512,
+        "max_memory": 99,
+        "init": 310.04
+      },
+      {
+        "duration": 123.26,
+        "billed": 124,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 25.06,
+        "billed": 26,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 128.67,
+        "billed": 129,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 23.53,
+        "billed": 24,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 24.23,
+        "billed": 25,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 23.37,
+        "billed": 24,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 22.52,
+        "billed": 23,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 28.46,
+        "billed": 29,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      }
+    ],
+    "BooksGetItemFunction": [
+      {
+        "duration": 195.05,
+        "billed": 487,
+        "memory": 512,
+        "max_memory": 99,
+        "init": 291.53
+      },
+      {
+        "duration": 8.44,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 76.93,
+        "billed": 77,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.4,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.08,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.21,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.41,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.72,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.18,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.4,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.45,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 7.36,
+        "billed": 8,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.16,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.38,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.26,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 4.75,
+        "billed": 5,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.05,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.51,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 70.61,
+        "billed": 71,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 4.82,
+        "billed": 5,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 4.64,
+        "billed": 5,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.37,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.07,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 4.64,
+        "billed": 5,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 7.68,
+        "billed": 8,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 4.62,
+        "billed": 5,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 4.91,
+        "billed": 5,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 4.85,
+        "billed": 5,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 4.89,
+        "billed": 5,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 19.66,
+        "billed": 20,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      }
+    ],
+    "BooksListFunction": [
+      {
+        "duration": 193.98,
+        "billed": 501,
+        "memory": 512,
+        "max_memory": 99,
+        "init": 306.81
+      },
+      {
+        "duration": 12.48,
+        "billed": 13,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 88.31,
+        "billed": 89,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 13.38,
+        "billed": 14,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 10.53,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 9.81,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 11.35,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 10.01,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 14.91,
+        "billed": 15,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 11.21,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 12.26,
+        "billed": 13,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 15.42,
+        "billed": 16,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 10.66,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 9.47,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 10.45,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 9.15,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 11.66,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 11.51,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 75.9,
+        "billed": 76,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 12.45,
+        "billed": 13,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 8.97,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 8.51,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 9.31,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 10.85,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 10.16,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 10.07,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 9.64,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 10.26,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 10.68,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 10.31,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      }
+    ],
+    "CartAddFunction": [
+      {
+        "duration": 186.89,
+        "billed": 491,
+        "memory": 512,
+        "max_memory": 100,
+        "init": 303.86
+      },
+      {
+        "duration": 103.49,
+        "billed": 104,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 8.81,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 8.35,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 18.01,
+        "billed": 19,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 119.75,
+        "billed": 120,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 8.12,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 8.39,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      }
+    ],
+    "CartGetFunction": [
+      {
+        "duration": 205.81,
+        "billed": 455,
+        "memory": 512,
+        "max_memory": 99,
+        "init": 248.97
+      },
+      {
+        "duration": 8.02,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 69.68,
+        "billed": 70,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 122.26,
+        "billed": 123,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.85,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.0,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 7.51,
+        "billed": 8,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.39,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 8.62,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 7.14,
+        "billed": 8,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.49,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.45,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.34,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.64,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.11,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.12,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.94,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 4.93,
+        "billed": 5,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 10.36,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.22,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.05,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.27,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.72,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.74,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.26,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.53,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.22,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.36,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.01,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.8,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.12,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 20.62,
+        "billed": 21,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 6.32,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.51,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 5.61,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 16.48,
+        "billed": 17,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      }
+    ],
+    "CartGetItemFunction": [
+      {
+        "duration": 118.96,
+        "billed": 355,
+        "memory": 512,
+        "max_memory": 99,
+        "init": 235.92
+      },
+      {
+        "duration": 53.61,
+        "billed": 54,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 18.65,
+        "billed": 19,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 63.76,
+        "billed": 64,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      }
+    ],
+    "CartRemoveFunction": [
+      {
+        "duration": 198.71,
+        "billed": 464,
+        "memory": 512,
+        "max_memory": 99,
+        "init": 265.25
+      },
+      {
+        "duration": 88.87,
+        "billed": 89,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.15,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 86.84,
+        "billed": 87,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      }
+    ],
+    "CartUpdateFunction": [
+      {
+        "duration": 214.27,
+        "billed": 573,
+        "memory": 512,
+        "max_memory": 99,
+        "init": 358.09
+      },
+      {
+        "duration": 90.38,
+        "billed": 91,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 84.04,
+        "billed": 85,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 11.9,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      }
+    ],
+    "OrdersCreateFunction": [
+      {
+        "duration": 264.32,
+        "billed": 571,
+        "memory": 512,
+        "max_memory": 100,
+        "init": 306.47
+      },
+      {
+        "duration": 176.5,
+        "billed": 177,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 39.87,
+        "billed": 40,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 164.59,
+        "billed": 165,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 33.7,
+        "billed": 34,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 18.42,
+        "billed": 19,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 15.85,
+        "billed": 16,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 20.54,
+        "billed": 21,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 18.38,
+        "billed": 19,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      }
+    ],
+    "OrdersListFunction": [
+      {
+        "duration": 177.56,
+        "billed": 474,
+        "memory": 512,
+        "max_memory": 98,
+        "init": 295.9
+      },
+      {
+        "duration": 53.21,
+        "billed": 54,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 8.9,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 6.53,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 7.74,
+        "billed": 8,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 11.16,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 10.15,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 7.81,
+        "billed": 8,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 18.49,
+        "billed": 19,
+        "memory": 512,
+        "max_memory": 100,
+        "init": null
+      },
+      {
+        "duration": 7.81,
+        "billed": 8,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 6.54,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 6.93,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 5.71,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 101,
+        "init": null
+      },
+      {
+        "duration": 6.6,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 6.92,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 5.57,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 11.69,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 6.34,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 6.26,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 28.39,
+        "billed": 29,
+        "memory": 512,
+        "max_memory": 102,
+        "init": null
+      },
+      {
+        "duration": 6.34,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 6.28,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 6.2,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 5.76,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 6.14,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 6.7,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 5.7,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 5.99,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 5.07,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 103,
+        "init": null
+      },
+      {
+        "duration": 7.16,
+        "billed": 8,
+        "memory": 512,
+        "max_memory": 104,
+        "init": null
+      },
+      {
+        "duration": 5.9,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 104,
+        "init": null
+      },
+      {
+        "duration": 6.22,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 104,
+        "init": null
+      }
+    ],
+    "SearchBooksFunction": [
+      {
+        "duration": 178.46,
+        "billed": 483,
+        "memory": 512,
+        "max_memory": 99,
+        "init": 303.69
+      },
+      {
+        "duration": 11.47,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 29.39,
+        "billed": 30,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 41.66,
+        "billed": 42,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 11.31,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.64,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 11.13,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 10.51,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 15.48,
+        "billed": 16,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 20.85,
+        "billed": 21,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 10.5,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 13.67,
+        "billed": 14,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.07,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.86,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.91,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.69,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 8.85,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.65,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 8.99,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 8.2,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.11,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.41,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 11.02,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 13.01,
+        "billed": 14,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 74.61,
+        "billed": 75,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.56,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 8.93,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.32,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.35,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      },
+      {
+        "duration": 9.34,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 99,
+        "init": null
+      }
+    ]
+  },
+  "tables": {
+    "BestsellersTable": {
+      "ConsumedReadCapacityUnits": 84.0,
+      "ConsumedReadCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-04T18:35:00+08:00",
+          "sum": 0.0
+        },
+        {
+          "time": "2026-10-04T18:36:00+08:00",
+          "sum": 2.0
+        },
+        {
+          "time": "2026-10-04T18:37:00+08:00",
+          "sum": 8.0
+        },
+        {
+          "time": "2026-10-04T18:38:00+08:00",
+          "sum": 4.0
+        },
+        {
+          "time": "2026-10-04T18:39:00+08:00",
+          "sum": 8.0
+        },
+        {
+          "time": "2026-10-04T18:40:00+08:00",
+          "sum": 4.0
+        },
+        {
+          "time": "2026-10-04T18:41:00+08:00",
+          "sum": 22.0
+        },
+        {
+          "time": "2026-10-04T18:42:00+08:00",
+          "sum": 26.0
+        },
+        {
+          "time": "2026-10-04T18:43:00+08:00",
+          "sum": 10.0
+        }
+      ],
+      "ConsumedWriteCapacityUnits": 38.0,
+      "ConsumedWriteCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-04T18:35:00+08:00",
+          "sum": 0.0
+        },
+        {
+          "time": "2026-10-04T18:36:00+08:00",
+          "sum": 2.0
+        },
+        {
+          "time": "2026-10-04T18:37:00+08:00",
+          "sum": 1.0
+        },
+        {
+          "time": "2026-10-04T18:38:00+08:00",
+          "sum": 8.0
+        },
+        {
+          "time": "2026-10-04T18:39:00+08:00",
+          "sum": 1.0
+        },
+        {
+          "time": "2026-10-04T18:40:00+08:00",
+          "sum": 26.0
+        }
+      ]
+    },
+    "BooksTable": {
+      "ConsumedReadCapacityUnits": 135.0,
+      "ConsumedReadCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-04T18:35:00+08:00",
+          "sum": 0.0
+        },
+        {
+          "time": "2026-10-04T18:36:00+08:00",
+          "sum": 0.0
+        },
+        {
+          "time": "2026-10-04T18:40:00+08:00",
+          "sum": 6.5
+        },
+        {
+          "time": "2026-10-04T18:41:00+08:00",
+          "sum": 47.5
+        },
+        {
+          "time": "2026-10-04T18:42:00+08:00",
+          "sum": 60.5
+        },
+        {
+          "time": "2026-10-04T18:43:00+08:00",
+          "sum": 20.5
+        }
+      ],
+      "ConsumedWriteCapacityUnits": 60.0,
+      "ConsumedWriteCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-04T18:35:00+08:00",
+          "sum": 0.0
+        },
+        {
+          "time": "2026-10-04T18:36:00+08:00",
+          "sum": 5.0
+        },
+        {
+          "time": "2026-10-04T18:37:00+08:00",
+          "sum": 20.0
+        },
+        {
+          "time": "2026-10-04T18:38:00+08:00",
+          "sum": 10.0
+        },
+        {
+          "time": "2026-10-04T18:39:00+08:00",
+          "sum": 20.0
+        },
+        {
+          "time": "2026-10-04T18:40:00+08:00",
+          "sum": 5.0
+        }
+      ]
+    },
+    "CartTable": {
+      "ConsumedReadCapacityUnits": 44.0,
+      "ConsumedReadCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-04T18:35:00+08:00",
+          "sum": 0.0
+        },
+        {
+          "time": "2026-10-04T18:36:00+08:00",
+          "sum": 2.0
+        },
+        {
+          "time": "2026-10-04T18:37:00+08:00",
+          "sum": 8.5
+        },
+        {
+          "time": "2026-10-04T18:38:00+08:00",
+          "sum": 6.0
+        },
+        {
+          "time": "2026-10-04T18:39:00+08:00",
+          "sum": 8.5
+        },
+        {
+          "time": "2026-10-04T18:40:00+08:00",
+          "sum": 4.5
+        },
+        {
+          "time": "2026-10-04T18:41:00+08:00",
+          "sum": 5.5
+        },
+        {
+          "time": "2026-10-04T18:42:00+08:00",
+          "sum": 6.5
+        },
+        {
+          "time": "2026-10-04T18:43:00+08:00",
+          "sum": 2.5
+        }
+      ],
+      "ConsumedWriteCapacityUnits": 32.0,
+      "ConsumedWriteCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-04T18:35:00+08:00",
+          "sum": 0.0
+        },
+        {
+          "time": "2026-10-04T18:36:00+08:00",
+          "sum": 2.0
+        },
+        {
+          "time": "2026-10-04T18:37:00+08:00",
+          "sum": 2.0
+        },
+        {
+          "time": "2026-10-04T18:38:00+08:00",
+          "sum": 9.0
+        },
+        {
+          "time": "2026-10-04T18:39:00+08:00",
+          "sum": 2.0
+        },
+        {
+          "time": "2026-10-04T18:40:00+08:00",
+          "sum": 17.0
+        }
+      ]
+    },
+    "IdempotencyTable": {
+      "ConsumedReadCapacityUnits": 0.0,
+      "ConsumedReadCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-04T18:35:00+08:00",
+          "sum": 0.0
+        },
+        {
+          "time": "2026-10-04T18:36:00+08:00",
+          "sum": 0.0
+        }
+      ],
+      "ConsumedWriteCapacityUnits": 18.0,
+      "ConsumedWriteCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-04T18:35:00+08:00",
+          "sum": 0.0
+        },
+        {
+          "time": "2026-10-04T18:36:00+08:00",
+          "sum": 2.0
+        },
+        {
+          "time": "2026-10-04T18:38:00+08:00",
+          "sum": 4.0
+        },
+        {
+          "time": "2026-10-04T18:40:00+08:00",
+          "sum": 12.0
+        }
+      ]
+    },
+    "OrdersTable": {
+      "ConsumedReadCapacityUnits": 40.0,
+      "ConsumedReadCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-04T18:35:00+08:00",
+          "sum": 0.0
+        },
+        {
+          "time": "2026-10-04T18:36:00+08:00",
+          "sum": 2.0
+        },
+        {
+          "time": "2026-10-04T18:37:00+08:00",
+          "sum": 8.0
+        },
+        {
+          "time": "2026-10-04T18:38:00+08:00",
+          "sum": 4.5
+        },
+        {
+          "time": "2026-10-04T18:39:00+08:00",
+          "sum": 8.0
+        },
+        {
+          "time": "2026-10-04T18:40:00+08:00",
+          "sum": 3.0
+        },
+        {
+          "time": "2026-10-04T18:41:00+08:00",
+          "sum": 5.0
+        },
+        {
+          "time": "2026-10-04T18:42:00+08:00",
+          "sum": 7.0
+        },
+        {
+          "time": "2026-10-04T18:43:00+08:00",
+          "sum": 2.5
+        }
+      ],
+      "ConsumedWriteCapacityUnits": 13.0,
+      "ConsumedWriteCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-04T18:35:00+08:00",
+          "sum": 0.0
+        },
+        {
+          "time": "2026-10-04T18:36:00+08:00",
+          "sum": 1.0
+        },
+        {
+          "time": "2026-10-04T18:37:00+08:00",
+          "sum": 1.0
+        },
+        {
+          "time": "2026-10-04T18:38:00+08:00",
+          "sum": 3.0
+        },
+        {
+          "time": "2026-10-04T18:39:00+08:00",
+          "sum": 1.0
+        },
+        {
+          "time": "2026-10-04T18:40:00+08:00",
+          "sum": 7.0
+        }
+      ]
+    }
+  }
+}

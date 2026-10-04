@@ -1,0 +1,592 @@
+{
+  "app": "airline",
+  "generated_at": "2026-10-04 23:06",
+  "variants": {
+    "monolith": {
+      "ref": null,
+      "commit": null,
+      "architecture": null,
+      "summary": {
+        "totalTests": 32,
+        "passed": 25,
+        "failed": 0,
+        "flaky": 0,
+        "runs": [
+          {
+            "totalTests": 32,
+            "passed": 25,
+            "failed": 0,
+            "pending": 7,
+            "passRate": "100.0"
+          },
+          {
+            "totalTests": 32,
+            "passed": 25,
+            "failed": 0,
+            "pending": 7,
+            "passRate": "100.0"
+          }
+        ]
+      },
+      "metrics": null,
+      "cost_usd": null
+    },
+    "v0": {
+      "ref": "v0",
+      "commit": "b037819",
+      "architecture": "x86_64",
+      "summary": {
+        "totalTests": 32,
+        "passed": 23,
+        "failed": 1,
+        "flaky": 1,
+        "runs": [
+          {
+            "totalTests": 32,
+            "passed": 23,
+            "failed": 2,
+            "pending": 7,
+            "passRate": "92.0"
+          },
+          {
+            "totalTests": 32,
+            "passed": 24,
+            "failed": 1,
+            "pending": 7,
+            "passRate": "96.0"
+          }
+        ]
+      },
+      "metrics": {
+        "functions": {
+          "BookingsCancelFunction": {
+            "invocations": 8,
+            "cold": 1,
+            "warm_p50_ms": 47.3,
+            "warm_p90_ms": 57.9,
+            "init_p50_ms": 948.2,
+            "max_memory_mb": 115
+          },
+          "BookingsCreateFunction": {
+            "invocations": 10,
+            "cold": 1,
+            "warm_p50_ms": 39.0,
+            "warm_p90_ms": 49.0,
+            "init_p50_ms": 1165.3,
+            "max_memory_mb": 118
+          },
+          "BookingsGetDetailFunction": {
+            "invocations": 5,
+            "cold": 1,
+            "warm_p50_ms": 7.7,
+            "warm_p90_ms": 8.4,
+            "init_p50_ms": 511.8,
+            "max_memory_mb": 95
+          },
+          "CustomersListBookingsFunction": {
+            "invocations": 4,
+            "cold": 1,
+            "warm_p50_ms": 1.7,
+            "warm_p90_ms": 1.7,
+            "init_p50_ms": 480.3,
+            "max_memory_mb": 95
+          },
+          "FlightsGetDetailFunction": {
+            "invocations": 10,
+            "cold": 1,
+            "warm_p50_ms": 6.3,
+            "warm_p90_ms": 7.4,
+            "init_p50_ms": 396.5,
+            "max_memory_mb": 95
+          },
+          "FlightsReleaseSeatFunction": {
+            "invocations": 2,
+            "cold": 1,
+            "warm_p50_ms": 66.4,
+            "warm_p90_ms": 66.4,
+            "init_p50_ms": 467.8,
+            "max_memory_mb": 95
+          },
+          "FlightsReserveSeatFunction": {
+            "invocations": 2,
+            "cold": 1,
+            "warm_p50_ms": 72.3,
+            "warm_p90_ms": 72.3,
+            "init_p50_ms": 476.0,
+            "max_memory_mb": 95
+          },
+          "FlightsSearchFunction": {
+            "invocations": 12,
+            "cold": 1,
+            "warm_p50_ms": 10.9,
+            "warm_p90_ms": 14.1,
+            "init_p50_ms": 472.3,
+            "max_memory_mb": 95
+          },
+          "LoyaltyAccruePointsFunction": {
+            "invocations": 8,
+            "cold": 1,
+            "warm_p50_ms": 23.0,
+            "warm_p90_ms": 23.7,
+            "init_p50_ms": 477.9,
+            "max_memory_mb": 94
+          },
+          "LoyaltyGetSummaryFunction": {
+            "invocations": 6,
+            "cold": 1,
+            "warm_p50_ms": 9.8,
+            "warm_p90_ms": 13.1,
+            "init_p50_ms": 503.6,
+            "max_memory_mb": 95
+          },
+          "PaymentsCollectFunction": {
+            "invocations": 6,
+            "cold": 1,
+            "warm_p50_ms": 6.2,
+            "warm_p90_ms": 6.5,
+            "init_p50_ms": 1189.9,
+            "max_memory_mb": 115
+          },
+          "PaymentsGetDetailFunction": {
+            "invocations": 2,
+            "cold": 1,
+            "warm_p50_ms": 6.7,
+            "warm_p90_ms": 6.7,
+            "init_p50_ms": 1238.9,
+            "max_memory_mb": 116
+          },
+          "PaymentsRefundFunction": {
+            "invocations": 4,
+            "cold": 1,
+            "warm_p50_ms": 2.2,
+            "warm_p90_ms": 2.2,
+            "init_p50_ms": 1153.7,
+            "max_memory_mb": 115
+          }
+        },
+        "invocations": 79,
+        "lambda_gb_seconds": 6.034,
+        "rru": 64.0,
+        "wru": 104.0
+      },
+      "cost_usd": {
+        "lambda_duration": 0.00010057,
+        "lambda_requests": 1.58e-05,
+        "dynamodb": 7.3e-05,
+        "api_gateway": 0.0002765,
+        "total": 0.00046587
+      }
+    },
+    "opt": {
+      "ref": "HEAD",
+      "commit": "9574f0b",
+      "architecture": "arm64",
+      "summary": {
+        "totalTests": 32,
+        "passed": 23,
+        "failed": 1,
+        "flaky": 1,
+        "runs": [
+          {
+            "totalTests": 32,
+            "passed": 23,
+            "failed": 2,
+            "pending": 7,
+            "passRate": "92.0"
+          },
+          {
+            "totalTests": 32,
+            "passed": 24,
+            "failed": 1,
+            "pending": 7,
+            "passRate": "96.0"
+          }
+        ]
+      },
+      "metrics": {
+        "functions": {
+          "BookingsCancelFunction": {
+            "invocations": 8,
+            "cold": 1,
+            "warm_p50_ms": 37.3,
+            "warm_p90_ms": 59.0,
+            "init_p50_ms": 978.1,
+            "max_memory_mb": 131
+          },
+          "BookingsCreateFunction": {
+            "invocations": 10,
+            "cold": 1,
+            "warm_p50_ms": 41.5,
+            "warm_p90_ms": 59.7,
+            "init_p50_ms": 968.6,
+            "max_memory_mb": 126
+          },
+          "BookingsGetDetailFunction": {
+            "invocations": 6,
+            "cold": 1,
+            "warm_p50_ms": 10.7,
+            "warm_p90_ms": 10.8,
+            "init_p50_ms": 486.2,
+            "max_memory_mb": 100
+          },
+          "CustomersListBookingsFunction": {
+            "invocations": 4,
+            "cold": 1,
+            "warm_p50_ms": 7.3,
+            "warm_p90_ms": 7.3,
+            "init_p50_ms": 489.7,
+            "max_memory_mb": 99
+          },
+          "FlightsGetDetailFunction": {
+            "invocations": 10,
+            "cold": 1,
+            "warm_p50_ms": 5.9,
+            "warm_p90_ms": 6.3,
+            "init_p50_ms": 479.9,
+            "max_memory_mb": 99
+          },
+          "FlightsReleaseSeatFunction": {
+            "invocations": 2,
+            "cold": 1,
+            "warm_p50_ms": 12.3,
+            "warm_p90_ms": 12.3,
+            "init_p50_ms": 376.8,
+            "max_memory_mb": 100
+          },
+          "FlightsReserveSeatFunction": {
+            "invocations": 2,
+            "cold": 1,
+            "warm_p50_ms": 9.4,
+            "warm_p90_ms": 9.4,
+            "init_p50_ms": 503.1,
+            "max_memory_mb": 100
+          },
+          "FlightsSearchFunction": {
+            "invocations": 10,
+            "cold": 1,
+            "warm_p50_ms": 11.4,
+            "warm_p90_ms": 12.8,
+            "init_p50_ms": 630.2,
+            "max_memory_mb": 99
+          },
+          "LoyaltyAccruePointsFunction": {
+            "invocations": 8,
+            "cold": 1,
+            "warm_p50_ms": 26.1,
+            "warm_p90_ms": 28.9,
+            "init_p50_ms": 448.3,
+            "max_memory_mb": 99
+          },
+          "LoyaltyGetSummaryFunction": {
+            "invocations": 6,
+            "cold": 1,
+            "warm_p50_ms": 6.0,
+            "warm_p90_ms": 7.1,
+            "init_p50_ms": 468.2,
+            "max_memory_mb": 98
+          },
+          "PaymentsCollectFunction": {
+            "invocations": 6,
+            "cold": 1,
+            "warm_p50_ms": 6.2,
+            "warm_p90_ms": 7.0,
+            "init_p50_ms": 1275.0,
+            "max_memory_mb": 127
+          },
+          "PaymentsGetDetailFunction": {
+            "invocations": 2,
+            "cold": 1,
+            "warm_p50_ms": 13.4,
+            "warm_p90_ms": 13.4,
+            "init_p50_ms": 704.5,
+            "max_memory_mb": 123
+          },
+          "PaymentsRefundFunction": {
+            "invocations": 4,
+            "cold": 1,
+            "warm_p50_ms": 1.6,
+            "warm_p90_ms": 1.6,
+            "init_p50_ms": 1217.2,
+            "max_memory_mb": 125
+          }
+        },
+        "invocations": 78,
+        "lambda_gb_seconds": 5.808,
+        "rru": 41.0,
+        "wru": 104.0
+      },
+      "cost_usd": {
+        "lambda_duration": 7.744e-05,
+        "lambda_requests": 1.56e-05,
+        "dynamodb": 7.013e-05,
+        "api_gateway": 0.000273,
+        "total": 0.00043617
+      }
+    }
+  },
+  "tests": [
+    {
+      "test": "Async Semantics > Booking -> Loyalty eventual consistency > ASYNC-01a: successful booking should eventually increase loyalty points",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Async Semantics > Cancel -> Seat restoration eventual consistency > ASYNC-02a: cancelling a booking should eventually restore seat capacity",
+      "monolith": "pending",
+      "v0": "pending",
+      "opt": "pending",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Auth Compatibility > AUTH-01a: should register a user through the generated auth endpoint",
+      "monolith": "pending",
+      "v0": "pending",
+      "opt": "pending",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Auth Compatibility > AUTH-02a: should login through the generated auth endpoint",
+      "monolith": "pending",
+      "v0": "pending",
+      "opt": "pending",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Auth Compatibility > AUTH-03a: should return the current user through /auth/me",
+      "monolith": "pending",
+      "v0": "pending",
+      "opt": "pending",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Auth Compatibility > AUTH-04a: should reject unauthenticated /auth/me requests",
+      "monolith": "pending",
+      "v0": "pending",
+      "opt": "pending",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Auth Compatibility > AUTH-05a: should reject malformed bearer tokens on /auth/me",
+      "monolith": "pending",
+      "v0": "pending",
+      "opt": "pending",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Auth Compatibility > AUTH-06a: should reject /auth/users for a non-admin test account",
+      "monolith": "pending",
+      "v0": "pending",
+      "opt": "pending",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Booking Contract > Authenticated booking flow > TC-07a: should create a booking for an authenticated user",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Booking Contract > Authenticated booking flow > TC-08a: should fetch the owner booking details",
+      "monolith": "passed",
+      "v0": "flaky",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": [
+        "v0"
+      ]
+    },
+    {
+      "test": "Booking Contract > Authenticated booking flow > TC-09a: should list the owner bookings",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Booking Contract > Authenticated booking flow > TC-10a: should cancel the owner booking",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Booking Contract > Authenticated booking flow > TC-11a: should persist cancelled booking state",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Booking Contract > Authenticated booking flow > TC-12a: should reject invalid booking payloads",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Booking Contract > TC-06a: should reject booking creation without authentication",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Flights Contract > TC-01a: should search flights from the source-monolith fixture schedule without authentication",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Flights Contract > TC-02a: should reject flight search with missing required query parameters",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Flights Contract > TC-03a: should fetch a known flight by id without authentication",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Flights Contract > TC-04a: should reject unknown flight ids",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Flights Contract > TC-05a: reserve and release should change observable seat capacity",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Isolation Contract > TC-13a: user B should not fetch user A booking by id",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Isolation Contract > TC-14a: user B should not list bookings for user A",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Isolation Contract > TC-15a: user B should not read user A loyalty state",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Payments Contract > TC-16a: should collect payment with a valid charge id without authentication",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Payments Contract > TC-17a: should refund payment with a valid charge id without authentication",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Payments Contract > TC-18a: should expose payment lookup semantics for a collected charge id",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Payments Contract > TC-19a: should reject payment requests missing chargeId",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Robustness > Authenticated robustness > ROB-02a: booking should tolerate special characters in the optional name field",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Robustness > ROB-01a: key endpoints should return JSON responses",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "flaky",
+      "diff_vs_monolith": [],
+      "flaky": [
+        "opt"
+      ]
+    },
+    {
+      "test": "Robustness > ROB-01b: key endpoints should expose CORS headers",
+      "monolith": "passed",
+      "v0": "failed",
+      "opt": "failed",
+      "diff_vs_monolith": [
+        "v0",
+        "opt"
+      ],
+      "flaky": []
+    },
+    {
+      "test": "Robustness > ROB-03a: repeated unauthenticated protected requests should stay rejected",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    },
+    {
+      "test": "Robustness > ROB-04a: flight search should be deterministic for the fixture query",
+      "monolith": "passed",
+      "v0": "passed",
+      "opt": "passed",
+      "diff_vs_monolith": [],
+      "flaky": []
+    }
+  ]
+}

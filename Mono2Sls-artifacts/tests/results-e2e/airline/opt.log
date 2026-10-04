@@ -1,0 +1,1044 @@
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\flights\flights-search runtime: python3.12 architecture: arm64 functions: FlightsSearchFunction
+requirements.txt file not found. Continuing the build without dependencies.
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\flights\flights-get-detail runtime: python3.12 architecture: arm64 functions: FlightsGetDetailFunction
+requirements.txt file not found. Continuing the build without dependencies.
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\flights\flights-reserve-seat runtime: python3.12 architecture: arm64 functions: FlightsReserveSeatFunction
+requirements.txt file not found. Continuing the build without dependencies.
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\flights\flights-release-seat runtime: python3.12 architecture: arm64 functions: FlightsReleaseSeatFunction
+requirements.txt file not found. Continuing the build without dependencies.
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\payments\payments-collect runtime: python3.12 architecture: arm64 functions: PaymentsCollectFunction
+ Running PythonPipBuilder:ResolveDependencies
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\payments\payments-refund runtime: python3.12 architecture: arm64 functions: PaymentsRefundFunction
+ Running PythonPipBuilder:ResolveDependencies
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\payments\payments-get-detail runtime: python3.12 architecture: arm64 functions: PaymentsGetDetailFunction
+ Running PythonPipBuilder:ResolveDependencies
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\bookings\bookings-create runtime: python3.12 architecture: arm64 functions: BookingsCreateFunction
+ Running PythonPipBuilder:ResolveDependencies
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\bookings\bookings-get-detail runtime: python3.12 architecture: arm64 functions: BookingsGetDetailFunction
+requirements.txt file not found. Continuing the build without dependencies.
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\bookings\bookings-confirm runtime: python3.12 architecture: arm64 functions: BookingsConfirmFunction
+requirements.txt file not found. Continuing the build without dependencies.
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\bookings\bookings-cancel runtime: python3.12 architecture: arm64 functions: BookingsCancelFunction
+ Running PythonPipBuilder:ResolveDependencies
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\customers\customers-list-bookings runtime: python3.12 architecture: arm64 functions: CustomersListBookingsFunction
+requirements.txt file not found. Continuing the build without dependencies.
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\loyalty\loyalty-get-summary runtime: python3.12 architecture: arm64 functions: LoyaltyGetSummaryFunction
+requirements.txt file not found. Continuing the build without dependencies.
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\loyalty\loyalty-add-points runtime: python3.12 architecture: arm64 functions: LoyaltyAddPointsFunction
+requirements.txt file not found. Continuing the build without dependencies.
+ Running PythonPipBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\airline-opt\output\lambdas\loyalty\loyalty-accrue-points runtime: python3.12 architecture: arm64 functions: LoyaltyAccruePointsFunction
+requirements.txt file not found. Continuing the build without dependencies.
+ Running PythonPipBuilder:CopySource
+
+Build Succeeded
+
+Built Artifacts  : .aws-sam\build
+Built Template   : .aws-sam\build\template.yaml
+
+Commands you can use next
+=========================
+[*] Validate SAM template: sam validate
+[*] Invoke Function: sam local invoke
+[*] Test Function in the Cloud: sam sync --stack-name {{stack-name}} --watch
+[*] Deploy: sam deploy --guided
+
+$ C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.EXE build
+
+	Managed S3 bucket: aws-sam-cli-managed-default-samclisourcebucket-34ra6c785sxm
+	Auto resolution of buckets can be turned off by setting resolve_s3=False
+	To use a specific S3 bucket, set --s3-bucket=<bucket_name>
+	Above settings can be stored in samconfig.toml
+	Uploading to cbf463631acbef13f009ee370cc2f1cf  1493 / 1493  (100.00%)
+	Uploading to 1a14191b7da1ffb63e9652686f326855  1317 / 1317  (100.00%)
+	Uploading to f5406b2e91dd580d21c1ece9c22d841c  1502 / 1502  (100.00%)
+	Uploading to af68a226eef014718d695c05d9c454e8  1716 / 1716  (100.00%)
+	Uploading to 773c9b1b05ab05aba74df6977906c38d  1048576 / 1596157  (65.69%)	Uploading to 773c9b1b05ab05aba74df6977906c38d  1596157 / 1596157  (100.00%)
+	Uploading to 8855096559b4498052ea32bf60167cbd  1048576 / 1595825  (65.71%)	Uploading to 8855096559b4498052ea32bf60167cbd  1595825 / 1595825  (100.00%)
+	Uploading to 70bba4d742334d1b4ae373e28c6317bb  1048576 / 1595175  (65.73%)	Uploading to 70bba4d742334d1b4ae373e28c6317bb  1595175 / 1595175  (100.00%)
+	Uploading to f37ab61d389a6dfe6d17cd0b9ec68f84  1048576 / 1599367  (65.56%)	Uploading to f37ab61d389a6dfe6d17cd0b9ec68f84  1599367 / 1599367  (100.00%)
+	Uploading to f690549931701a704024fdc0d1d6d46f  1851 / 1851  (100.00%)
+	Uploading to 5cc554c5fae6f0a067052c0aaf3b7956  2358 / 2358  (100.00%)
+	Uploading to 5b78c54c7f0fbc82b489eb4a619284c8  1048576 / 1597863  (65.62%)	Uploading to 5b78c54c7f0fbc82b489eb4a619284c8  1597863 / 1597863  (100.00%)
+	Uploading to e9b6008b403756c0217196ede5b7ea79  2130 / 2130  (100.00%)
+	Uploading to ec0a99f9ebda0649d6695fc27103dea2  2212 / 2212  (100.00%)
+	Uploading to 655fb2f4321e5113e13c1fa8da184ed7  2151 / 2151  (100.00%)
+	Uploading to e12b2aca62476df57d0ae4a7e02a5557  4244 / 4244  (100.00%)
+
+	Deploying with following values
+	===============================
+	Stack name                   : m2s-e2e-airline-opt
+	Region                       : us-east-1
+	Confirm changeset            : False
+	Disable rollback             : False
+	Deployment s3 bucket         : aws-sam-cli-managed-default-samclisourcebucket-34ra6c785sxm
+	Capabilities                 : ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
+	Parameter overrides          : {"Environment": "staging"}
+	Signing Profiles             : {}
+
+Initiating deployment
+=====================
+
+
+	File with same data already exists at cbf6634e5dc73bbe048b6204928595f3.template, skipping upload
+
+
+Waiting for changeset to be created..
+
+CloudFormation stack changeset
+-------------------------------------------------------------------------------------------------
+Operation                LogicalResourceId        ResourceType             Replacement            
+-------------------------------------------------------------------------------------------------
++ Add                    AirlineBookingApiDeplo   AWS::ApiGateway::Deplo   N/A                    
+                         yment0bbe40f9ec          yment                                           
++ Add                    AirlineBookingApiStage   AWS::ApiGateway::Stage   N/A                    
++ Add                    AirlineBookingApi        AWS::ApiGateway::RestA   N/A                    
+                                                  pi                                              
++ Add                    ApiLogGroup              AWS::Logs::LogGroup      N/A                    
++ Add                    BookingTable             AWS::DynamoDB::Table     N/A                    
++ Add                    BookingsCancelFunction   AWS::Lambda::Permissio   N/A                    
+                         CancelBookingApiPermis   n                                               
+                         sionStage                                                                
++ Add                    BookingsCancelFunction   AWS::IAM::Role           N/A                    
+                         Role                                                                     
++ Add                    BookingsCancelFunction   AWS::Lambda::Function    N/A                    
++ Add                    BookingsConfirmFunctio   AWS::Lambda::Permissio   N/A                    
+                         nConfirmBookingApiPerm   n                                               
+                         issionStage                                                              
++ Add                    BookingsConfirmFunctio   AWS::IAM::Role           N/A                    
+                         nRole                                                                    
++ Add                    BookingsConfirmFunctio   AWS::Lambda::Function    N/A                    
+                         n                                                                        
++ Add                    BookingsCreateFunction   AWS::Lambda::Permissio   N/A                    
+                         CreateBookingApiPermis   n                                               
+                         sionStage                                                                
++ Add                    BookingsCreateFunction   AWS::IAM::Role           N/A                    
+                         Role                                                                     
++ Add                    BookingsCreateFunction   AWS::Lambda::Function    N/A                    
++ Add                    BookingsGetDetailFunct   AWS::Lambda::Permissio   N/A                    
+                         ionGetBookingApiPermis   n                                               
+                         sionStage                                                                
++ Add                    BookingsGetDetailFunct   AWS::IAM::Role           N/A                    
+                         ionRole                                                                  
++ Add                    BookingsGetDetailFunct   AWS::Lambda::Function    N/A                    
+                         ion                                                                      
++ Add                    CognitoAdminGroup        AWS::Cognito::UserPool   N/A                    
+                                                  Group                                           
++ Add                    CognitoUserPoolClient    AWS::Cognito::UserPool   N/A                    
+                                                  Client                                          
++ Add                    CognitoUserPool          AWS::Cognito::UserPool   N/A                    
++ Add                    CustomersListBookingsF   AWS::Lambda::Permissio   N/A                    
+                         unctionListCustomerBoo   n                                               
+                         kingsApiPermissionStag                                                   
+                         e                                                                        
++ Add                    CustomersListBookingsF   AWS::IAM::Role           N/A                    
+                         unctionRole                                                              
++ Add                    CustomersListBookingsF   AWS::Lambda::Function    N/A                    
+                         unction                                                                  
++ Add                    FlightTable              AWS::DynamoDB::Table     N/A                    
++ Add                    FlightsGetDetailFuncti   AWS::Lambda::Permissio   N/A                    
+                         onGetFlightApiPermissi   n                                               
+                         onStage                                                                  
++ Add                    FlightsGetDetailFuncti   AWS::IAM::Role           N/A                    
+                         onRole                                                                   
++ Add                    FlightsGetDetailFuncti   AWS::Lambda::Function    N/A                    
+                         on                                                                       
++ Add                    FlightsReleaseSeatFunc   AWS::Lambda::Permissio   N/A                    
+                         tionReleaseSeatApiPerm   n                                               
+                         issionStage                                                              
++ Add                    FlightsReleaseSeatFunc   AWS::IAM::Role           N/A                    
+                         tionRole                                                                 
++ Add                    FlightsReleaseSeatFunc   AWS::Lambda::Function    N/A                    
+                         tion                                                                     
++ Add                    FlightsReserveSeatFunc   AWS::Lambda::Permissio   N/A                    
+                         tionReserveSeatApiPerm   n                                               
+                         issionStage                                                              
++ Add                    FlightsReserveSeatFunc   AWS::IAM::Role           N/A                    
+                         tionRole                                                                 
++ Add                    FlightsReserveSeatFunc   AWS::Lambda::Function    N/A                    
+                         tion                                                                     
++ Add                    FlightsSearchFunctionR   AWS::IAM::Role           N/A                    
+                         ole                                                                      
++ Add                    FlightsSearchFunctionS   AWS::Lambda::Permissio   N/A                    
+                         earchFlightsApiPermiss   n                                               
+                         ionStage                                                                 
++ Add                    FlightsSearchFunction    AWS::Lambda::Function    N/A                    
++ Add                    IdempotencyTable         AWS::DynamoDB::Table     N/A                    
++ Add                    LoyaltyAccruePointsFun   AWS::Lambda::EventSour   N/A                    
+                         ctionLoyaltyPointsQueu   ceMapping                                       
+                         eEvent                                                                   
++ Add                    LoyaltyAccruePointsFun   AWS::IAM::Role           N/A                    
+                         ctionRole                                                                
++ Add                    LoyaltyAccruePointsFun   AWS::Lambda::Function    N/A                    
+                         ction                                                                    
++ Add                    LoyaltyAddPointsFuncti   AWS::Lambda::Permissio   N/A                    
+                         onAddLoyaltyPointsApiP   n                                               
+                         ermissionStage                                                           
++ Add                    LoyaltyAddPointsFuncti   AWS::IAM::Role           N/A                    
+                         onRole                                                                   
++ Add                    LoyaltyAddPointsFuncti   AWS::Lambda::Function    N/A                    
+                         on                                                                       
++ Add                    LoyaltyGetSummaryFunct   AWS::Lambda::Permissio   N/A                    
+                         ionGetLoyaltySummaryAp   n                                               
+                         iPermissionStage                                                         
++ Add                    LoyaltyGetSummaryFunct   AWS::IAM::Role           N/A                    
+                         ionRole                                                                  
++ Add                    LoyaltyGetSummaryFunct   AWS::Lambda::Function    N/A                    
+                         ion                                                                      
++ Add                    LoyaltyPointsQueueDLQ    AWS::SQS::Queue          N/A                    
++ Add                    LoyaltyPointsQueue       AWS::SQS::Queue          N/A                    
++ Add                    LoyaltyTable             AWS::DynamoDB::Table     N/A                    
++ Add                    PaymentTable             AWS::DynamoDB::Table     N/A                    
++ Add                    PaymentsCollectFunctio   AWS::Lambda::Permissio   N/A                    
+                         nCollectPaymentApiPerm   n                                               
+                         issionStage                                                              
++ Add                    PaymentsCollectFunctio   AWS::IAM::Role           N/A                    
+                         nRole                                                                    
++ Add                    PaymentsCollectFunctio   AWS::Lambda::Function    N/A                    
+                         n                                                                        
++ Add                    PaymentsGetDetailFunct   AWS::Lambda::Permissio   N/A                    
+                         ionGetPaymentApiPermis   n                                               
+                         sionStage                                                                
++ Add                    PaymentsGetDetailFunct   AWS::IAM::Role           N/A                    
+                         ionRole                                                                  
++ Add                    PaymentsGetDetailFunct   AWS::Lambda::Function    N/A                    
+                         ion                                                                      
++ Add                    PaymentsRefundFunction   AWS::Lambda::Permissio   N/A                    
+                         RefundPaymentApiPermis   n                                               
+                         sionStage                                                                
++ Add                    PaymentsRefundFunction   AWS::IAM::Role           N/A                    
+                         Role                                                                     
++ Add                    PaymentsRefundFunction   AWS::Lambda::Function    N/A                    
+-------------------------------------------------------------------------------------------------
+
+
+Changeset created successfully. arn:aws:cloudformation:us-east-1:882112174488:changeSet/samcli-deploy1791125740/32c4abd7-3070-47bf-8758-5936f7ff7b52
+
+
+2026-10-04 22:55:55 - Waiting for stack create/update to complete
+
+CloudFormation events from stack operations (refresh every 5.0 seconds)
+-------------------------------------------------------------------------------------------------
+ResourceStatus           ResourceType             LogicalResourceId        ResourceStatusReason   
+-------------------------------------------------------------------------------------------------
+CREATE_IN_PROGRESS       AWS::CloudFormation::S   m2s-e2e-airline-opt      User Initiated         
+                         tack                                                                     
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     IdempotencyTable         -                      
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     PaymentTable             -                      
+CREATE_IN_PROGRESS       AWS::SQS::Queue          LoyaltyPointsQueueDLQ    -                      
+CREATE_IN_PROGRESS       AWS::Cognito::UserPool   CognitoUserPool          -                      
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     LoyaltyTable             -                      
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     BookingTable             -                      
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     FlightTable              -                      
+CREATE_IN_PROGRESS       AWS::SQS::Queue          LoyaltyPointsQueueDLQ    Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     IdempotencyTable         Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     PaymentTable             Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     LoyaltyTable             Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     BookingTable             Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     FlightTable              Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Cognito::UserPool   CognitoUserPool          Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::Cognito::UserPool   CognitoUserPool          Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Cognito::UserPool   CognitoUserPool          -                      
+CREATE_IN_PROGRESS       AWS::Cognito::UserPool   CognitoAdminGroup        -                      
+                         Group                                                                    
+CREATE_IN_PROGRESS       AWS::Cognito::UserPool   CognitoUserPoolClient    -                      
+                         Client                                                                   
+CREATE_IN_PROGRESS       AWS::Cognito::UserPool   CognitoAdminGroup        Resource creation      
+                         Group                                             Initiated              
+CREATE_IN_PROGRESS       AWS::Cognito::UserPool   CognitoUserPoolClient    Resource creation      
+                         Client                                            Initiated              
+CREATE_IN_PROGRESS -     AWS::Cognito::UserPool   CognitoUserPoolClient    Eventual consistency   
+CONFIGURATION_COMPLETE   Client                                            check initiated        
+CREATE_COMPLETE          AWS::Cognito::UserPool   CognitoUserPoolClient    -                      
+                         Client                                                                   
+CREATE_IN_PROGRESS -     AWS::DynamoDB::Table     IdempotencyTable         Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::DynamoDB::Table     IdempotencyTable         -                      
+CREATE_IN_PROGRESS -     AWS::DynamoDB::Table     PaymentTable             Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::DynamoDB::Table     PaymentTable             -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           PaymentsRefundFunction   -                      
+                                                  Role                                            
+CREATE_IN_PROGRESS       AWS::IAM::Role           PaymentsGetDetailFunct   -                      
+                                                  ionRole                                         
+CREATE_IN_PROGRESS       AWS::IAM::Role           PaymentsCollectFunctio   -                      
+                                                  nRole                                           
+CREATE_IN_PROGRESS       AWS::IAM::Role           PaymentsGetDetailFunct   Resource creation      
+                                                  ionRole                  Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           PaymentsRefundFunction   Resource creation      
+                                                  Role                     Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           PaymentsCollectFunctio   Resource creation      
+                                                  nRole                    Initiated              
+CREATE_IN_PROGRESS -     AWS::DynamoDB::Table     FlightTable              Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::DynamoDB::Table     FlightTable              -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           FlightsGetDetailFuncti   -                      
+                                                  onRole                                          
+CREATE_IN_PROGRESS       AWS::IAM::Role           FlightsSearchFunctionR   -                      
+                                                  ole                                             
+CREATE_IN_PROGRESS       AWS::IAM::Role           FlightsReleaseSeatFunc   -                      
+                                                  tionRole                                        
+CREATE_IN_PROGRESS       AWS::IAM::Role           FlightsReserveSeatFunc   -                      
+                                                  tionRole                                        
+CREATE_IN_PROGRESS       AWS::IAM::Role           FlightsGetDetailFuncti   Resource creation      
+                                                  onRole                   Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           FlightsSearchFunctionR   Resource creation      
+                                                  ole                      Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           FlightsReserveSeatFunc   Resource creation      
+                                                  tionRole                 Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           FlightsReleaseSeatFunc   Resource creation      
+                                                  tionRole                 Initiated              
+CREATE_IN_PROGRESS -     AWS::Cognito::UserPool   CognitoAdminGroup        Eventual consistency   
+CONFIGURATION_COMPLETE   Group                                             check initiated        
+CREATE_COMPLETE          AWS::Cognito::UserPool   CognitoAdminGroup        -                      
+                         Group                                                                    
+CREATE_IN_PROGRESS -     AWS::DynamoDB::Table     LoyaltyTable             Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::DynamoDB::Table     LoyaltyTable             -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoyaltyAddPointsFuncti   -                      
+                                                  onRole                                          
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoyaltyGetSummaryFunct   -                      
+                                                  ionRole                                         
+CREATE_IN_PROGRESS -     AWS::IAM::Role           PaymentsGetDetailFunct   Eventual consistency   
+CONFIGURATION_COMPLETE                            ionRole                  check initiated        
+CREATE_IN_PROGRESS -     AWS::IAM::Role           PaymentsCollectFunctio   Eventual consistency   
+CONFIGURATION_COMPLETE                            nRole                    check initiated        
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoyaltyGetSummaryFunct   Resource creation      
+                                                  ionRole                  Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoyaltyAddPointsFuncti   Resource creation      
+                                                  onRole                   Initiated              
+CREATE_COMPLETE          AWS::IAM::Role           PaymentsGetDetailFunct   -                      
+                                                  ionRole                                         
+CREATE_COMPLETE          AWS::IAM::Role           PaymentsCollectFunctio   -                      
+                                                  nRole                                           
+CREATE_IN_PROGRESS -     AWS::IAM::Role           PaymentsRefundFunction   Eventual consistency   
+CONFIGURATION_COMPLETE                            Role                     check initiated        
+CREATE_IN_PROGRESS       AWS::Lambda::Function    PaymentsGetDetailFunct   -                      
+                                                  ion                                             
+CREATE_COMPLETE          AWS::IAM::Role           PaymentsRefundFunction   -                      
+                                                  Role                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    PaymentsCollectFunctio   -                      
+                                                  n                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Function    PaymentsRefundFunction   -                      
+CREATE_IN_PROGRESS -     AWS::DynamoDB::Table     BookingTable             Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS       AWS::Lambda::Function    PaymentsGetDetailFunct   Resource creation      
+                                                  ion                      Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    PaymentsCollectFunctio   Resource creation      
+                                                  n                        Initiated              
+CREATE_COMPLETE          AWS::DynamoDB::Table     BookingTable             -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsConfirmFunctio   -                      
+                                                  nRole                                           
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsGetDetailFunct   -                      
+                                                  ionRole                                         
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsCancelFunction   -                      
+                                                  Role                                            
+CREATE_IN_PROGRESS       AWS::IAM::Role           CustomersListBookingsF   -                      
+                                                  unctionRole                                     
+CREATE_IN_PROGRESS       AWS::Lambda::Function    PaymentsRefundFunction   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsConfirmFunctio   Resource creation      
+                                                  nRole                    Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsGetDetailFunct   Resource creation      
+                                                  ionRole                  Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           CustomersListBookingsF   Resource creation      
+                                                  unctionRole              Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsCancelFunction   Resource creation      
+                                                  Role                     Initiated              
+CREATE_IN_PROGRESS -     AWS::IAM::Role           FlightsReserveSeatFunc   Eventual consistency   
+CONFIGURATION_COMPLETE                            tionRole                 check initiated        
+CREATE_IN_PROGRESS -     AWS::IAM::Role           FlightsReleaseSeatFunc   Eventual consistency   
+CONFIGURATION_COMPLETE                            tionRole                 check initiated        
+CREATE_COMPLETE          AWS::IAM::Role           FlightsReleaseSeatFunc   -                      
+                                                  tionRole                                        
+CREATE_COMPLETE          AWS::IAM::Role           FlightsReserveSeatFunc   -                      
+                                                  tionRole                                        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    PaymentsGetDetailFunct   Eventual consistency   
+CONFIGURATION_COMPLETE                            ion                      check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    PaymentsCollectFunctio   Eventual consistency   
+CONFIGURATION_COMPLETE                            n                        check initiated        
+CREATE_IN_PROGRESS       AWS::Lambda::Function    FlightsReserveSeatFunc   -                      
+                                                  tion                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    FlightsReleaseSeatFunc   -                      
+                                                  tion                                            
+CREATE_IN_PROGRESS -     AWS::IAM::Role           FlightsGetDetailFuncti   Eventual consistency   
+CONFIGURATION_COMPLETE                            onRole                   check initiated        
+CREATE_IN_PROGRESS -     AWS::IAM::Role           FlightsSearchFunctionR   Eventual consistency   
+CONFIGURATION_COMPLETE                            ole                      check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    PaymentsGetDetailFunct   -                      
+                                                  ion                                             
+CREATE_COMPLETE          AWS::Lambda::Function    PaymentsCollectFunctio   -                      
+                                                  n                                               
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    PaymentsRefundFunction   Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::IAM::Role           FlightsGetDetailFuncti   -                      
+                                                  onRole                                          
+CREATE_COMPLETE          AWS::IAM::Role           FlightsSearchFunctionR   -                      
+                                                  ole                                             
+CREATE_IN_PROGRESS       AWS::Lambda::Function    FlightsReserveSeatFunc   Resource creation      
+                                                  tion                     Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    FlightsReleaseSeatFunc   Resource creation      
+                                                  tion                     Initiated              
+CREATE_COMPLETE          AWS::Lambda::Function    PaymentsRefundFunction   -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    FlightsGetDetailFuncti   -                      
+                                                  on                                              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    FlightsSearchFunction    -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    FlightsGetDetailFuncti   Resource creation      
+                                                  on                       Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    FlightsSearchFunction    Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    FlightsReleaseSeatFunc   Eventual consistency   
+CONFIGURATION_COMPLETE                            tion                     check initiated        
+CREATE_IN_PROGRESS -     AWS::IAM::Role           LoyaltyGetSummaryFunct   Eventual consistency   
+CONFIGURATION_COMPLETE                            ionRole                  check initiated        
+CREATE_COMPLETE          AWS::IAM::Role           LoyaltyGetSummaryFunct   -                      
+                                                  ionRole                                         
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    FlightsReserveSeatFunc   Eventual consistency   
+CONFIGURATION_COMPLETE                            tion                     check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    FlightsReleaseSeatFunc   -                      
+                                                  tion                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoyaltyGetSummaryFunct   -                      
+                                                  ion                                             
+CREATE_COMPLETE          AWS::Lambda::Function    FlightsReserveSeatFunc   -                      
+                                                  tion                                            
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    FlightsGetDetailFuncti   Eventual consistency   
+CONFIGURATION_COMPLETE                            on                       check initiated        
+CREATE_IN_PROGRESS -     AWS::IAM::Role           LoyaltyAddPointsFuncti   Eventual consistency   
+CONFIGURATION_COMPLETE                            onRole                   check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    FlightsSearchFunction    Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::IAM::Role           LoyaltyAddPointsFuncti   -                      
+                                                  onRole                                          
+CREATE_COMPLETE          AWS::Lambda::Function    FlightsGetDetailFuncti   -                      
+                                                  on                                              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoyaltyGetSummaryFunct   Resource creation      
+                                                  ion                      Initiated              
+CREATE_COMPLETE          AWS::Lambda::Function    FlightsSearchFunction    -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoyaltyAddPointsFuncti   -                      
+                                                  on                                              
+CREATE_IN_PROGRESS -     AWS::IAM::Role           CustomersListBookingsF   Eventual consistency   
+CONFIGURATION_COMPLETE                            unctionRole              check initiated        
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoyaltyAddPointsFuncti   Resource creation      
+                                                  on                       Initiated              
+CREATE_COMPLETE          AWS::IAM::Role           CustomersListBookingsF   -                      
+                                                  unctionRole                                     
+CREATE_IN_PROGRESS -     AWS::IAM::Role           BookingsConfirmFunctio   Eventual consistency   
+CONFIGURATION_COMPLETE                            nRole                    check initiated        
+CREATE_IN_PROGRESS -     AWS::IAM::Role           BookingsGetDetailFunct   Eventual consistency   
+CONFIGURATION_COMPLETE                            ionRole                  check initiated        
+CREATE_IN_PROGRESS -     AWS::IAM::Role           BookingsCancelFunction   Eventual consistency   
+CONFIGURATION_COMPLETE                            Role                     check initiated        
+CREATE_COMPLETE          AWS::IAM::Role           BookingsConfirmFunctio   -                      
+                                                  nRole                                           
+CREATE_COMPLETE          AWS::IAM::Role           BookingsGetDetailFunct   -                      
+                                                  ionRole                                         
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CustomersListBookingsF   -                      
+                                                  unction                                         
+CREATE_COMPLETE          AWS::IAM::Role           BookingsCancelFunction   -                      
+                                                  Role                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsConfirmFunctio   -                      
+                                                  n                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsGetDetailFunct   -                      
+                                                  ion                                             
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsCancelFunction   -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CustomersListBookingsF   Resource creation      
+                                                  unction                  Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsConfirmFunctio   Resource creation      
+                                                  n                        Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsGetDetailFunct   Resource creation      
+                                                  ion                      Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsCancelFunction   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    LoyaltyGetSummaryFunct   Eventual consistency   
+CONFIGURATION_COMPLETE                            ion                      check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    LoyaltyGetSummaryFunct   -                      
+                                                  ion                                             
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    LoyaltyAddPointsFuncti   Eventual consistency   
+CONFIGURATION_COMPLETE                            on                       check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    LoyaltyAddPointsFuncti   -                      
+                                                  on                                              
+CREATE_IN_PROGRESS -     AWS::SQS::Queue          LoyaltyPointsQueueDLQ    Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::SQS::Queue          LoyaltyPointsQueueDLQ    -                      
+CREATE_IN_PROGRESS       AWS::SQS::Queue          LoyaltyPointsQueue       -                      
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BookingsGetDetailFunct   Eventual consistency   
+CONFIGURATION_COMPLETE                            ion                      check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    CustomersListBookingsF   Eventual consistency   
+CONFIGURATION_COMPLETE                            unction                  check initiated        
+CREATE_IN_PROGRESS       AWS::SQS::Queue          LoyaltyPointsQueue       Resource creation      
+                                                                           Initiated              
+CREATE_COMPLETE          AWS::Lambda::Function    BookingsGetDetailFunct   -                      
+                                                  ion                                             
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BookingsConfirmFunctio   Eventual consistency   
+CONFIGURATION_COMPLETE                            n                        check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    CustomersListBookingsF   -                      
+                                                  unction                                         
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BookingsCancelFunction   Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    BookingsConfirmFunctio   -                      
+                                                  n                                               
+CREATE_COMPLETE          AWS::Lambda::Function    BookingsCancelFunction   -                      
+CREATE_IN_PROGRESS -     AWS::SQS::Queue          LoyaltyPointsQueue       Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::SQS::Queue          LoyaltyPointsQueue       -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoyaltyAccruePointsFun   -                      
+                                                  ctionRole                                       
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsCreateFunction   -                      
+                                                  Role                                            
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsCreateFunction   Resource creation      
+                                                  Role                     Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoyaltyAccruePointsFun   Resource creation      
+                                                  ctionRole                Initiated              
+CREATE_IN_PROGRESS -     AWS::IAM::Role           BookingsCreateFunction   Eventual consistency   
+CONFIGURATION_COMPLETE                            Role                     check initiated        
+CREATE_COMPLETE          AWS::IAM::Role           BookingsCreateFunction   -                      
+                                                  Role                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsCreateFunction   -                      
+CREATE_IN_PROGRESS -     AWS::IAM::Role           LoyaltyAccruePointsFun   Eventual consistency   
+CONFIGURATION_COMPLETE                            ctionRole                check initiated        
+CREATE_COMPLETE          AWS::IAM::Role           LoyaltyAccruePointsFun   -                      
+                                                  ctionRole                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsCreateFunction   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoyaltyAccruePointsFun   -                      
+                                                  ction                                           
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoyaltyAccruePointsFun   Resource creation      
+                                                  ction                    Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BookingsCreateFunction   Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    BookingsCreateFunction   -                      
+CREATE_IN_PROGRESS       AWS::ApiGateway::RestA   AirlineBookingApi        -                      
+                         pi                                                                       
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    LoyaltyAccruePointsFun   Eventual consistency   
+CONFIGURATION_COMPLETE                            ction                    check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    LoyaltyAccruePointsFun   -                      
+                                                  ction                                           
+CREATE_IN_PROGRESS       AWS::Lambda::EventSour   LoyaltyAccruePointsFun   -                      
+                         ceMapping                ctionLoyaltyPointsQueu                          
+                                                  eEvent                                          
+CREATE_IN_PROGRESS       AWS::ApiGateway::RestA   AirlineBookingApi        Resource creation      
+                         pi                                                Initiated              
+CREATE_IN_PROGRESS -     AWS::ApiGateway::RestA   AirlineBookingApi        Eventual consistency   
+CONFIGURATION_COMPLETE   pi                                                check initiated        
+CREATE_IN_PROGRESS       AWS::Lambda::EventSour   LoyaltyAccruePointsFun   Resource creation      
+                         ceMapping                ctionLoyaltyPointsQueu   Initiated              
+                                                  eEvent                                          
+CREATE_COMPLETE          AWS::ApiGateway::RestA   AirlineBookingApi        -                      
+                         pi                                                                       
+CREATE_IN_PROGRESS       AWS::ApiGateway::Deplo   AirlineBookingApiDeplo   -                      
+                         yment                    yment0bbe40f9ec                                 
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsGetDetailFunct   -                      
+                         n                        ionGetBookingApiPermis                          
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   PaymentsCollectFunctio   -                      
+                         n                        nCollectPaymentApiPerm                          
+                                                  issionStage                                     
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   FlightsSearchFunctionS   -                      
+                         n                        earchFlightsApiPermiss                          
+                                                  ionStage                                        
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsCreateFunction   -                      
+                         n                        CreateBookingApiPermis                          
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   FlightsGetDetailFuncti   -                      
+                         n                        onGetFlightApiPermissi                          
+                                                  onStage                                         
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsConfirmFunctio   -                      
+                         n                        nConfirmBookingApiPerm                          
+                                                  issionStage                                     
+CREATE_IN_PROGRESS       AWS::Logs::LogGroup      ApiLogGroup              -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoyaltyGetSummaryFunct   -                      
+                         n                        ionGetLoyaltySummaryAp                          
+                                                  iPermissionStage                                
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   FlightsReserveSeatFunc   -                      
+                         n                        tionReserveSeatApiPerm                          
+                                                  issionStage                                     
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoyaltyAddPointsFuncti   -                      
+                         n                        onAddLoyaltyPointsApiP                          
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   FlightsReleaseSeatFunc   -                      
+                         n                        tionReleaseSeatApiPerm                          
+                                                  issionStage                                     
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   PaymentsRefundFunction   -                      
+                         n                        RefundPaymentApiPermis                          
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsCancelFunction   -                      
+                         n                        CancelBookingApiPermis                          
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CustomersListBookingsF   -                      
+                         n                        unctionListCustomerBoo                          
+                                                  kingsApiPermissionStag                          
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   PaymentsGetDetailFunct   -                      
+                         n                        ionGetPaymentApiPermis                          
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   FlightsSearchFunctionS   Resource creation      
+                         n                        earchFlightsApiPermiss   Initiated              
+                                                  ionStage                                        
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsGetDetailFunct   Resource creation      
+                         n                        ionGetBookingApiPermis   Initiated              
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CustomersListBookingsF   Resource creation      
+                         n                        unctionListCustomerBoo   Initiated              
+                                                  kingsApiPermissionStag                          
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsCancelFunction   Resource creation      
+                         n                        CancelBookingApiPermis   Initiated              
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   FlightsReleaseSeatFunc   Resource creation      
+                         n                        tionReleaseSeatApiPerm   Initiated              
+                                                  issionStage                                     
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoyaltyAddPointsFuncti   Resource creation      
+                         n                        onAddLoyaltyPointsApiP   Initiated              
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoyaltyGetSummaryFunct   Resource creation      
+                         n                        ionGetLoyaltySummaryAp   Initiated              
+                                                  iPermissionStage                                
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsConfirmFunctio   Resource creation      
+                         n                        nConfirmBookingApiPerm   Initiated              
+                                                  issionStage                                     
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   FlightsSearchFunctionS   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        earchFlightsApiPermiss   check initiated        
+                                                  ionStage                                        
+CREATE_IN_PROGRESS       AWS::Logs::LogGroup      ApiLogGroup              Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   BookingsGetDetailFunct   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        ionGetBookingApiPermis   check initiated        
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   PaymentsRefundFunction   Resource creation      
+                         n                        RefundPaymentApiPermis   Initiated              
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   PaymentsCollectFunctio   Resource creation      
+                         n                        nCollectPaymentApiPerm   Initiated              
+                                                  issionStage                                     
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   CustomersListBookingsF   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        unctionListCustomerBoo   check initiated        
+                                                  kingsApiPermissionStag                          
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsCreateFunction   Resource creation      
+                         n                        CreateBookingApiPermis   Initiated              
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   FlightsGetDetailFuncti   Resource creation      
+                         n                        onGetFlightApiPermissi   Initiated              
+                                                  onStage                                         
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   LoyaltyAddPointsFuncti   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        onAddLoyaltyPointsApiP   check initiated        
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   BookingsConfirmFunctio   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        nConfirmBookingApiPerm   check initiated        
+                                                  issionStage                                     
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   LoyaltyGetSummaryFunct   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        ionGetLoyaltySummaryAp   check initiated        
+                                                  iPermissionStage                                
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   FlightsReleaseSeatFunc   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        tionReleaseSeatApiPerm   check initiated        
+                                                  issionStage                                     
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   BookingsCancelFunction   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        CancelBookingApiPermis   check initiated        
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   PaymentsGetDetailFunct   Resource creation      
+                         n                        ionGetPaymentApiPermis   Initiated              
+                                                  sionStage                                       
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   PaymentsRefundFunction   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        RefundPaymentApiPermis   check initiated        
+                                                  sionStage                                       
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   PaymentsCollectFunctio   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        nCollectPaymentApiPerm   check initiated        
+                                                  issionStage                                     
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   FlightsGetDetailFuncti   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        onGetFlightApiPermissi   check initiated        
+                                                  onStage                                         
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   BookingsCreateFunction   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        CreateBookingApiPermis   check initiated        
+                                                  sionStage                                       
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   PaymentsGetDetailFunct   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        ionGetPaymentApiPermis   check initiated        
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   FlightsReserveSeatFunc   Resource creation      
+                         n                        tionReserveSeatApiPerm   Initiated              
+                                                  issionStage                                     
+CREATE_IN_PROGRESS -     AWS::Lambda::Permissio   FlightsReserveSeatFunc   Eventual consistency   
+CONFIGURATION_COMPLETE   n                        tionReserveSeatApiPerm   check initiated        
+                                                  issionStage                                     
+CREATE_IN_PROGRESS       AWS::ApiGateway::Deplo   AirlineBookingApiDeplo   Resource creation      
+                         yment                    yment0bbe40f9ec          Initiated              
+CREATE_IN_PROGRESS -     AWS::ApiGateway::Deplo   AirlineBookingApiDeplo   Eventual consistency   
+CONFIGURATION_COMPLETE   yment                    yment0bbe40f9ec          check initiated        
+CREATE_COMPLETE          AWS::Lambda::Permissio   BookingsGetDetailFunct   -                      
+                         n                        ionGetBookingApiPermis                          
+                                                  sionStage                                       
+CREATE_COMPLETE          AWS::Lambda::Permissio   CustomersListBookingsF   -                      
+                         n                        unctionListCustomerBoo                          
+                                                  kingsApiPermissionStag                          
+                                                  e                                               
+CREATE_COMPLETE          AWS::Lambda::Permissio   LoyaltyGetSummaryFunct   -                      
+                         n                        ionGetLoyaltySummaryAp                          
+                                                  iPermissionStage                                
+CREATE_COMPLETE          AWS::Lambda::Permissio   FlightsSearchFunctionS   -                      
+                         n                        earchFlightsApiPermiss                          
+                                                  ionStage                                        
+CREATE_COMPLETE          AWS::Lambda::Permissio   FlightsReleaseSeatFunc   -                      
+                         n                        tionReleaseSeatApiPerm                          
+                                                  issionStage                                     
+CREATE_COMPLETE          AWS::Lambda::Permissio   LoyaltyAddPointsFuncti   -                      
+                         n                        onAddLoyaltyPointsApiP                          
+                                                  ermissionStage                                  
+CREATE_COMPLETE          AWS::Lambda::Permissio   BookingsCancelFunction   -                      
+                         n                        CancelBookingApiPermis                          
+                                                  sionStage                                       
+CREATE_COMPLETE          AWS::Lambda::Permissio   BookingsConfirmFunctio   -                      
+                         n                        nConfirmBookingApiPerm                          
+                                                  issionStage                                     
+CREATE_COMPLETE          AWS::Lambda::Permissio   PaymentsCollectFunctio   -                      
+                         n                        nCollectPaymentApiPerm                          
+                                                  issionStage                                     
+CREATE_COMPLETE          AWS::Lambda::Permissio   PaymentsRefundFunction   -                      
+                         n                        RefundPaymentApiPermis                          
+                                                  sionStage                                       
+CREATE_COMPLETE          AWS::Lambda::Permissio   BookingsCreateFunction   -                      
+                         n                        CreateBookingApiPermis                          
+                                                  sionStage                                       
+CREATE_COMPLETE          AWS::Lambda::Permissio   PaymentsGetDetailFunct   -                      
+                         n                        ionGetPaymentApiPermis                          
+                                                  sionStage                                       
+CREATE_COMPLETE          AWS::Lambda::Permissio   FlightsGetDetailFuncti   -                      
+                         n                        onGetFlightApiPermissi                          
+                                                  onStage                                         
+CREATE_COMPLETE          AWS::Lambda::Permissio   FlightsReserveSeatFunc   -                      
+                         n                        tionReserveSeatApiPerm                          
+                                                  issionStage                                     
+CREATE_COMPLETE          AWS::ApiGateway::Deplo   AirlineBookingApiDeplo   -                      
+                         yment                    yment0bbe40f9ec                                 
+CREATE_IN_PROGRESS -     AWS::Logs::LogGroup      ApiLogGroup              Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Logs::LogGroup      ApiLogGroup              -                      
+CREATE_IN_PROGRESS       AWS::ApiGateway::Stage   AirlineBookingApiStage   -                      
+CREATE_IN_PROGRESS       AWS::ApiGateway::Stage   AirlineBookingApiStage   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::ApiGateway::Stage   AirlineBookingApiStage   Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::ApiGateway::Stage   AirlineBookingApiStage   -                      
+CREATE_IN_PROGRESS -     AWS::Lambda::EventSour   LoyaltyAccruePointsFun   Eventual consistency   
+CONFIGURATION_COMPLETE   ceMapping                ctionLoyaltyPointsQueu   check initiated        
+                                                  eEvent                                          
+CREATE_IN_PROGRESS -     AWS::CloudFormation::S   m2s-e2e-airline-opt      Eventual consistency   
+CONFIGURATION_COMPLETE   tack                                              check initiated        
+CREATE_COMPLETE          AWS::Lambda::EventSour   LoyaltyAccruePointsFun   -                      
+                         ceMapping                ctionLoyaltyPointsQueu                          
+                                                  eEvent                                          
+CREATE_COMPLETE          AWS::CloudFormation::S   m2s-e2e-airline-opt      -                      
+                         tack                                                                     
+-------------------------------------------------------------------------------------------------
+
+CloudFormation outputs from deployed stack
+-------------------------------------------------------------------------------------------------
+Outputs                                                                                         
+-------------------------------------------------------------------------------------------------
+Key                 BookingTableName                                                            
+Description         Booking records and status machine (env var BOOKING_TABLE).                 
+Value               staging-booking                                                             
+
+Key                 LoyaltyAccruePointsFunctionArn                                              
+Description         SQS consumer function ARN (for log/alarm wiring by operators).              
+Value               arn:aws:lambda:us-east-1:882112174488:function:m2s-e2e-airline-opt-         
+LoyaltyAccruePointsFunction-BWACgS9uv5hU                                                        
+
+Key                 LoyaltyPointsQueueArn                                                       
+Description         Queue ARN (event source for loyalty-accrue-points).                         
+Value               arn:aws:sqs:us-east-1:882112174488:m2s-e2e-airline-opt-loyalty-points       
+
+Key                 IdempotencyTableName                                                        
+Description         TTL'd (expiresAt) dedupe marker table for the SQS consumer (env var         
+IDEMPOTENCY_TABLE, Pattern A / D-7).
+                                                           
+Value               m2s-e2e-airline-opt-IdempotencyTable-8JNG52DADNAE                           
+
+Key                 LoyaltyPointsQueueDLQUrl                                                    
+Description         Poison-message sink; a message reported through batchItemFailures 3 times   
+ends up here (maxReceiveCount=3).
+                                                              
+Value               https://sqs.us-east-1.amazonaws.com/882112174488/m2s-e2e-airline-opt-       
+loyalty-points-dlq                                                                              
+
+Key                 LoyaltyTableName                                                            
+Description         Loyalty award rows, summed on read (env var LOYALTY_TABLE).                 
+Value               staging-loyalty                                                             
+
+Key                 UserPoolClientId                                                            
+Description         Public app client the frontend uses for sign-up and USER_PASSWORD_AUTH      
+sign-in (no OAuth/Hosted UI, so no domain).
+                                                    
+Value               7hq8r7857spqtlferalqu8krde                                                  
+
+Key                 PaymentTableName                                                            
+Description         Payment records, replacing the monolith's in-process                        
+PaymentService._payments dict (env var PAYMENT_TABLE, D-8).
+                                    
+Value               staging-payment                                                             
+
+Key                 ApiUrl                                                                      
+Description         Base URL of the migrated REST API (monolith routes unchanged: /flights/*,   
+/bookings*, /payments/*, /customers/{customer_id}/bookings, /loyalty/*).
+                       
+Value               https://b2rurba3bk.execute-api.us-east-1.amazonaws.com/staging              
+
+Key                 UserPoolId                                                                  
+Description         Cognito User Pool replacing the dropped /auth endpoints; its Arn is the     
+AirlineBookingApi CognitoAuthorizer's UserPoolArn.
+                                             
+Value               us-east-1_OByBMfnRS                                                         
+
+Key                 AdminGroupName                                                              
+Description         Group whose membership surfaces to the handlers as claims['cognito:groups'] 
+ (owner-or-Admin / Admin-only rules, D-3/SI-2).
+                                                
+Value               Admin                                                                       
+
+Key                 LoyaltyPointsQueueUrl                                                       
+Description         booking -> loyalty fan-out queue; its URL is injected into bookings-create  
+as LOYALTY_QUEUE_URL.
+                                                                          
+Value               https://sqs.us-east-1.amazonaws.com/882112174488/m2s-e2e-airline-opt-       
+loyalty-points                                                                                  
+
+Key                 FlightTableName                                                             
+Description         Flight catalog / seat-capacity table (env var FLIGHT_TABLE).                
+Value               staging-flight                                                              
+
+Key                 ApiStage                                                                    
+Description         API Gateway stage (from the Environment parameter).                         
+Value               staging                                                                     
+-------------------------------------------------------------------------------------------------
+
+
+Successfully created/updated stack - m2s-e2e-airline-opt in us-east-1
+
+
+$ C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.EXE deploy --stack-name m2s-e2e-airline-opt --region us-east-1 --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --parameter-overrides Environment=staging
+seeded 2 items into staging-flight
+
+$ D:\Tools\Nodejs22\node.EXE D:\Emma\MyLab\Mono2SLs\m2s-mcp-server\e2e-tools\seed-from-suite.js D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-airline-booking seed-flights.js FLIGHTS staging-flight us-east-1
+FAIL tests/robustness.test.js (23.399 s)
+  Robustness
+    × ROB-01a: key endpoints should return JSON responses (6699 ms)
+    × ROB-01b: key endpoints should expose CORS headers (379 ms)
+    √ ROB-03a: repeated unauthenticated protected requests should stay rejected (5822 ms)
+    √ ROB-04a: flight search should be deterministic for the fixture query (1673 ms)
+    Authenticated robustness
+      √ ROB-02a: booking should tolerate special characters in the optional name field (2096 ms)
+
+  ● Robustness › ROB-01a: key endpoints should return JSON responses
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 403
+    Received array: [200]
+
+    [0m [90m 59 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 60 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 61 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 62 |[39m }
+     [90m 63 |[39m
+     [90m 64 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:61:24)
+      at Object.expectStatus (tests/robustness.test.js:15:5)
+
+  ● Robustness › ROB-01b: key endpoints should expose CORS headers
+
+    expect(received).toContain(expected) // indexOf
+
+    Expected value: 403
+    Received array: [200]
+
+    [0m [90m 59 |[39m [36mfunction[39m expectStatus(res[33m,[39m expected) {
+     [90m 60 |[39m   [36mconst[39m expectedList [33m=[39m [33mArray[39m[33m.[39misArray(expected) [33m?[39m expected [33m:[39m [expected][33m;[39m
+    [31m[1m>[22m[39m[90m 61 |[39m   expect(expectedList)[33m.[39mtoContain(res[33m.[39mstatus)[33m;[39m
+     [90m    |[39m                        [31m[1m^[22m[39m
+     [90m 62 |[39m }
+     [90m 63 |[39m
+     [90m 64 |[39m [36mfunction[39m getEndpointContract(id) {[0m
+
+      at toContain (tests/helpers.js:61:24)
+      at Object.expectStatus (tests/robustness.test.js:23:5)
+
+PASS tests/async.semantics.test.js (15.186 s)
+  Async Semantics
+    Booking -> Loyalty eventual consistency
+      √ ASYNC-01a: successful booking should eventually increase loyalty points (6073 ms)
+    Cancel -> Seat restoration eventual consistency
+      ○ skipped ASYNC-02a: cancelling a booking should eventually restore seat capacity
+
+PASS tests/isolation.contract.test.js (15.499 s)
+  Isolation Contract
+    √ TC-13a: user B should not fetch user A booking by id (1510 ms)
+    √ TC-14a: user B should not list bookings for user A (1297 ms)
+    √ TC-15a: user B should not read user A loyalty state (889 ms)
+
+PASS tests/booking.contract.test.js (9.501 s)
+  Booking Contract
+    √ TC-06a: should reject booking creation without authentication (568 ms)
+    Authenticated booking flow
+      √ TC-07a: should create a booking for an authenticated user (739 ms)
+      √ TC-08a: should fetch the owner booking details (529 ms)
+      √ TC-09a: should list the owner bookings (756 ms)
+      √ TC-10a: should cancel the owner booking (1236 ms)
+      √ TC-11a: should persist cancelled booking state (595 ms)
+      √ TC-12a: should reject invalid booking payloads (1015 ms)
+
+PASS tests/flights.contract.test.js (7.427 s)
+  Flights Contract
+    √ TC-01a: should search flights from the source-monolith fixture schedule without authentication (774 ms)
+    √ TC-02a: should reject flight search with missing required query parameters (585 ms)
+    √ TC-03a: should fetch a known flight by id without authentication (1337 ms)
+    √ TC-04a: should reject unknown flight ids (606 ms)
+    √ TC-05a: reserve and release should change observable seat capacity (4021 ms)
+
+PASS tests/payments.contract.test.js (8.262 s)
+  Payments Contract
+    √ TC-16a: should collect payment with a valid charge id without authentication (2135 ms)
+    √ TC-17a: should refund payment with a valid charge id without authentication (1918 ms)
+    √ TC-18a: should expose payment lookup semantics for a collected charge id (2597 ms)
+    √ TC-19a: should reject payment requests missing chargeId (1522 ms)
+
+Results written to: D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-airline-booking\results\e2e_airline_opt_2026-10-04T15-00-36-542Z.json
+Test Suites: 1 failed, 1 skipped, 5 passed, 6 of 7 total
+Tests:       2 failed, 7 skipped, 23 passed, 32 total
+Snapshots:   0 total
+Time:        79.488 s, estimated 85 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+
+$ D:\Tools\Nodejs22\npx.CMD jest --runInBand --forceExit
+FAIL tests/robustness.test.js (21.059 s)
+  Robustness
+    √ ROB-01a: key endpoints should return JSON responses (3558 ms)
+    × ROB-01b: key endpoints should expose CORS headers (335 ms)
+    √ ROB-03a: repeated unauthenticated protected requests should stay rejected (1145 ms)
+    √ ROB-04a: flight search should be deterministic for the fixture query (1766 ms)
+    Authenticated robustness
+      √ ROB-02a: booking should tolerate special characters in the optional name field (4723 ms)
+
+  ● Robustness › ROB-01b: key endpoints should expose CORS headers
+
+    expect(received).toBeDefined()
+
+    Received: undefined
+
+    [0m [90m 22 |[39m     })[33m;[39m
+     [90m 23 |[39m     expectStatus(res[33m,[39m [35m200[39m)[33m;[39m
+    [31m[1m>[22m[39m[90m 24 |[39m     expect(res[33m.[39mheaders[[32m'access-control-allow-origin'[39m])[33m.[39mtoBeDefined()[33m;[39m
+     [90m    |[39m                                                        [31m[1m^[22m[39m
+     [90m 25 |[39m   })[33m;[39m
+     [90m 26 |[39m
+     [90m 27 |[39m   test([32m'ROB-03a: repeated unauthenticated protected requests should stay rejected'[39m[33m,[39m [36masync[39m () [33m=>[39m {[0m
+
+      at Object.toBeDefined (tests/robustness.test.js:24:56)
+
+PASS tests/isolation.contract.test.js (10.842 s)
+  Isolation Contract
+    √ TC-13a: user B should not fetch user A booking by id (754 ms)
+    √ TC-14a: user B should not list bookings for user A (599 ms)
+    √ TC-15a: user B should not read user A loyalty state (432 ms)
+
+PASS tests/async.semantics.test.js (12.27 s)
+  Async Semantics
+    Booking -> Loyalty eventual consistency
+      √ ASYNC-01a: successful booking should eventually increase loyalty points (8423 ms)
+    Cancel -> Seat restoration eventual consistency
+      ○ skipped ASYNC-02a: cancelling a booking should eventually restore seat capacity
+
+PASS tests/booking.contract.test.js (10.044 s)
+  Booking Contract
+    √ TC-06a: should reject booking creation without authentication (730 ms)
+    Authenticated booking flow
+      √ TC-07a: should create a booking for an authenticated user (649 ms)
+      √ TC-08a: should fetch the owner booking details (594 ms)
+      √ TC-09a: should list the owner bookings (592 ms)
+      √ TC-10a: should cancel the owner booking (1854 ms)
+      √ TC-11a: should persist cancelled booking state (685 ms)
+      √ TC-12a: should reject invalid booking payloads (1405 ms)
+
+PASS tests/payments.contract.test.js
+  Payments Contract
+    √ TC-16a: should collect payment with a valid charge id without authentication (342 ms)
+    √ TC-17a: should refund payment with a valid charge id without authentication (338 ms)
+    √ TC-18a: should expose payment lookup semantics for a collected charge id (703 ms)
+    √ TC-19a: should reject payment requests missing chargeId (1064 ms)
+
+PASS tests/flights.contract.test.js
+  Flights Contract
+    √ TC-01a: should search flights from the source-monolith fixture schedule without authentication (723 ms)
+    √ TC-02a: should reject flight search with missing required query parameters (381 ms)
+    √ TC-03a: should fetch a known flight by id without authentication (326 ms)
+    √ TC-04a: should reject unknown flight ids (738 ms)
+    √ TC-05a: reserve and release should change observable seat capacity (2071 ms)
+
+Results written to: D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-airline-booking\results\e2e_airline_opt_2026-10-04T15-01-38-985Z.json
+Test Suites: 1 failed, 1 skipped, 5 passed, 6 of 7 total
+Tests:       1 failed, 7 skipped, 24 passed, 32 total
+Snapshots:   0 total
+Time:        61.301 s, estimated 80 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+
+$ D:\Tools\Nodejs22\npx.CMD jest --runInBand --forceExit
+	- Deleting S3 object with key cbf463631acbef13f009ee370cc2f1cf
+	- Deleting S3 object with key 1a14191b7da1ffb63e9652686f326855
+	- Deleting S3 object with key f5406b2e91dd580d21c1ece9c22d841c
+	- Deleting S3 object with key af68a226eef014718d695c05d9c454e8
+	- Deleting S3 object with key 773c9b1b05ab05aba74df6977906c38d
+	- Deleting S3 object with key 8855096559b4498052ea32bf60167cbd
+	- Deleting S3 object with key 70bba4d742334d1b4ae373e28c6317bb
+	- Deleting S3 object with key f37ab61d389a6dfe6d17cd0b9ec68f84
+	- Deleting S3 object with key f690549931701a704024fdc0d1d6d46f
+	- Deleting S3 object with key 5cc554c5fae6f0a067052c0aaf3b7956
+	- Deleting S3 object with key 5b78c54c7f0fbc82b489eb4a619284c8
+	- Deleting S3 object with key e9b6008b403756c0217196ede5b7ea79
+	- Deleting S3 object with key ec0a99f9ebda0649d6695fc27103dea2
+	- Deleting S3 object with key 655fb2f4321e5113e13c1fa8da184ed7
+	- Deleting S3 object with key e12b2aca62476df57d0ae4a7e02a5557
+	- Could not find and delete the S3 object with the key 09b83a98d3850df39846ae9de94d8955.template
+	- Deleting Cloudformation stack m2s-e2e-airline-opt
+
+Deleted successfully
+
+$ C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.EXE delete --stack-name m2s-e2e-airline-opt --region us-east-1 --no-prompts
+deleted retained AWS::DynamoDB::Table staging-booking
+deleted retained AWS::DynamoDB::Table staging-flight
+deleted retained AWS::DynamoDB::Table staging-loyalty
+deleted retained AWS::DynamoDB::Table staging-payment
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-airline-opt-BookingsCancelFunction-UH3zIPAixbpw
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-airline-opt-BookingsCreateFunction-GBwX7zMZKwNy
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-airline-opt-BookingsGetDetailFunction-i0H21QYz7zLP
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-airline-opt-CustomersListBookingsFunction-9odMWprJN42W
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-airline-opt-FlightsGetDetailFunction-D3qUutkquyKd
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-airline-opt-FlightsReleaseSeatFunction-5HAE1QLColCx
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-airline-opt-FlightsReserveSeatFunction-L7YtHfXrcWDH
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-airline-opt-FlightsSearchFunction-ZlbNxrh9NKHJ
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-airline-opt-LoyaltyAccruePointsFunction-BWACgS9uv5hU
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-airline-opt-LoyaltyGetSummaryFunction-Y8RAIjezELIY
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-airline-opt-PaymentsCollectFunction-8LxnEbtzOnwD
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-airline-opt-PaymentsGetDetailFunction-6Bc4nUUxn4RU
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-airline-opt-PaymentsRefundFunction-QJVtJZ6i5hxY

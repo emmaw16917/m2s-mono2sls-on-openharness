@@ -1,0 +1,962 @@
+reusing deployed stack m2s-e2e-bookstore-opt
+ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\core\dist-cjs\submodules\protocols\index.js:767:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsJson1_0Protocol.deserializeResponse (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\protocols\index.js:518:13)
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\schema\index.js:27:24
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\index.js:120:20
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\middleware-retry\dist-cjs\index.js:251:46
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\middleware-logger\dist-cjs\index.js:5:26
+    at async seedCatalog (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\state\bookstore-state.js:19:5) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '11TJ338FAMLISB80G6TNTNT0GRVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+FAIL tests/bestsellers.async.test.js (6.641 s)
+  Async Bestsellers Semantics
+    × ASYNC-01 / TC-10: should eventually expose ordered books in bestsellers (1 ms)
+
+  ● Async Bestsellers Semantics › ASYNC-01 / TC-10: should eventually expose ordered books in bestsellers
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\core\dist-cjs\submodules\protocols\index.js:767:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsJson1_0Protocol.deserializeResponse (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\protocols\index.js:518:13)
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\schema\index.js:27:24
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\index.js:120:20
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\middleware-retry\dist-cjs\index.js:251:46
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\middleware-logger\dist-cjs\index.js:5:26
+    at async seedCatalog (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\state\bookstore-state.js:19:5) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'P0MGDJHBP9H963ACVN0SNIO22NVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+FAIL tests/cart-negative.test.js
+  Cart Negative Cases
+    × TC-NEG-01: should return 404 for getting a non-existent cart item (1 ms)
+    × TC-NEG-02: should handle update of a non-existent cart item (1 ms)
+    × TC-NEG-03: should handle delete of a non-existent cart item
+
+  ● Cart Negative Cases › TC-NEG-01: should return 404 for getting a non-existent cart item
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Cart Negative Cases › TC-NEG-02: should handle update of a non-existent cart item
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Cart Negative Cases › TC-NEG-03: should handle delete of a non-existent cart item
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\core\dist-cjs\submodules\protocols\index.js:767:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsJson1_0Protocol.deserializeResponse (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\protocols\index.js:518:13)
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\schema\index.js:27:24
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\index.js:120:20
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\middleware-retry\dist-cjs\index.js:251:46
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\middleware-logger\dist-cjs\index.js:5:26
+    at async seedCatalog (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\state\bookstore-state.js:19:5) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '2S0N73LQTA2KF4KE2CAIIGQ6DBVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+FAIL tests/catalog.contract.test.js
+  Catalog Contract
+    × TC-01: should list seeded books (1 ms)
+    × TC-02: should filter books by category
+    × TC-03: should fetch a known book by id
+    × TC-04: should reject unknown book ids
+    × TC-05: should search books by keyword
+    × TC-06: should reject search without q
+
+  ● Catalog Contract › TC-01: should list seeded books
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Catalog Contract › TC-02: should filter books by category
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Catalog Contract › TC-03: should fetch a known book by id
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Catalog Contract › TC-04: should reject unknown book ids
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Catalog Contract › TC-05: should search books by keyword
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Catalog Contract › TC-06: should reject search without q
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\core\dist-cjs\submodules\protocols\index.js:767:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsJson1_0Protocol.deserializeResponse (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\protocols\index.js:518:13)
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\schema\index.js:27:24
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\index.js:120:20
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\middleware-retry\dist-cjs\index.js:251:46
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\middleware-logger\dist-cjs\index.js:5:26
+    at async seedCatalog (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\state\bookstore-state.js:19:5) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'QAFFKEVPUQK9DGSH7VS748N9O3VV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+FAIL tests/robustness.test.js
+  Robustness
+    × ROB-01: catalog responses should return valid JSON with correct Content-Type
+    × ROB-02: should handle concurrent book detail requests
+    × ROB-03: list and get should return consistent data for the same book
+    × ROB-04: search should handle special characters gracefully
+
+  ● Robustness › ROB-01: catalog responses should return valid JSON with correct Content-Type
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Robustness › ROB-02: should handle concurrent book detail requests
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Robustness › ROB-03: list and get should return consistent data for the same book
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Robustness › ROB-04: search should handle special characters gracefully
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\core\dist-cjs\submodules\protocols\index.js:767:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsJson1_0Protocol.deserializeResponse (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\protocols\index.js:518:13)
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\schema\index.js:27:24
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\index.js:120:20
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\middleware-retry\dist-cjs\index.js:251:46
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\middleware-logger\dist-cjs\index.js:5:26
+    at async seedCatalog (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\state\bookstore-state.js:19:5) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '2DMOLNROMDP3FFBMEPEFGCMUJJVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+FAIL tests/cart-orders.contract.test.js
+  Cart And Orders Contract
+    × TC-07: should support cart CRUD flow (1 ms)
+    × TC-08: should create an order from cart items
+    × TC-09: should expose order history and clear purchased cart items
+
+  ● Cart And Orders Contract › TC-07: should support cart CRUD flow
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Cart And Orders Contract › TC-08: should create an order from cart items
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Cart And Orders Contract › TC-09: should expose order history and clear purchased cart items
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\core\dist-cjs\submodules\protocols\index.js:767:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsJson1_0Protocol.deserializeResponse (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\protocols\index.js:518:13)
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\schema\index.js:27:24
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\index.js:120:20
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\middleware-retry\dist-cjs\index.js:251:46
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\middleware-logger\dist-cjs\index.js:5:26
+    at async seedCatalog (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\state\bookstore-state.js:19:5) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '1CM5J0Q60ANFE0M079K651QBNJVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+FAIL tests/auth-enforcement.test.js
+  Auth Enforcement
+    × AUTH-01: GET /cart without auth should be rejected (1 ms)
+    × AUTH-02: POST /cart without auth should be rejected (1 ms)
+    × AUTH-03: POST /orders without auth should be rejected
+    × AUTH-04: GET /orders without auth should be rejected
+
+  ● Auth Enforcement › AUTH-01: GET /cart without auth should be rejected
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Auth Enforcement › AUTH-02: POST /cart without auth should be rejected
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Auth Enforcement › AUTH-03: POST /orders without auth should be rejected
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Auth Enforcement › AUTH-04: GET /orders without auth should be rejected
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+Results written to: D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\results\e2e_bookstore_opt_2026-10-04T11-16-14-018Z.json
+Test Suites: 6 failed, 6 total
+Tests:       21 failed, 21 total
+Snapshots:   0 total
+Time:        20.914 s, estimated 121 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+
+$ D:\Tools\Nodejs22\npx.CMD jest --runInBand --forceExit
+ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\core\dist-cjs\submodules\protocols\index.js:767:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsJson1_0Protocol.deserializeResponse (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\protocols\index.js:518:13)
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\schema\index.js:27:24
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\index.js:120:20
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\middleware-retry\dist-cjs\index.js:251:46
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\middleware-logger\dist-cjs\index.js:5:26
+    at async seedCatalog (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\state\bookstore-state.js:19:5) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '1U90I6PQA5KDERU1MUE35KANRRVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+FAIL tests/bestsellers.async.test.js
+  Async Bestsellers Semantics
+    × ASYNC-01 / TC-10: should eventually expose ordered books in bestsellers (1 ms)
+
+  ● Async Bestsellers Semantics › ASYNC-01 / TC-10: should eventually expose ordered books in bestsellers
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\core\dist-cjs\submodules\protocols\index.js:767:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsJson1_0Protocol.deserializeResponse (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\protocols\index.js:518:13)
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\schema\index.js:27:24
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\index.js:120:20
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\middleware-retry\dist-cjs\index.js:251:46
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\middleware-logger\dist-cjs\index.js:5:26
+    at async seedCatalog (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\state\bookstore-state.js:19:5) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'VTA66C679HK4K49T0N3K0UMDNFVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+FAIL tests/cart-orders.contract.test.js
+  Cart And Orders Contract
+    × TC-07: should support cart CRUD flow (1 ms)
+    × TC-08: should create an order from cart items
+    × TC-09: should expose order history and clear purchased cart items
+
+  ● Cart And Orders Contract › TC-07: should support cart CRUD flow
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Cart And Orders Contract › TC-08: should create an order from cart items
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Cart And Orders Contract › TC-09: should expose order history and clear purchased cart items
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\core\dist-cjs\submodules\protocols\index.js:767:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsJson1_0Protocol.deserializeResponse (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\protocols\index.js:518:13)
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\schema\index.js:27:24
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\index.js:120:20
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\middleware-retry\dist-cjs\index.js:251:46
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\middleware-logger\dist-cjs\index.js:5:26
+    at async seedCatalog (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\state\bookstore-state.js:19:5) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'G0G3B3B36LM05MJJG5HR8V8A17VV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+FAIL tests/cart-negative.test.js
+  Cart Negative Cases
+    × TC-NEG-01: should return 404 for getting a non-existent cart item
+    × TC-NEG-02: should handle update of a non-existent cart item
+    × TC-NEG-03: should handle delete of a non-existent cart item
+
+  ● Cart Negative Cases › TC-NEG-01: should return 404 for getting a non-existent cart item
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Cart Negative Cases › TC-NEG-02: should handle update of a non-existent cart item
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Cart Negative Cases › TC-NEG-03: should handle delete of a non-existent cart item
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\core\dist-cjs\submodules\protocols\index.js:767:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsJson1_0Protocol.deserializeResponse (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\protocols\index.js:518:13)
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\schema\index.js:27:24
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\index.js:120:20
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\middleware-retry\dist-cjs\index.js:251:46
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\middleware-logger\dist-cjs\index.js:5:26
+    at async seedCatalog (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\state\bookstore-state.js:19:5) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '9VVF8CTV5NDTB3K34L0PUE5EVFVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+FAIL tests/robustness.test.js
+  Robustness
+    × ROB-01: catalog responses should return valid JSON with correct Content-Type (1 ms)
+    × ROB-02: should handle concurrent book detail requests (1 ms)
+    × ROB-03: list and get should return consistent data for the same book
+    × ROB-04: search should handle special characters gracefully
+
+  ● Robustness › ROB-01: catalog responses should return valid JSON with correct Content-Type
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Robustness › ROB-02: should handle concurrent book detail requests
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Robustness › ROB-03: list and get should return consistent data for the same book
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Robustness › ROB-04: search should handle special characters gracefully
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\core\dist-cjs\submodules\protocols\index.js:767:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsJson1_0Protocol.deserializeResponse (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\protocols\index.js:518:13)
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\schema\index.js:27:24
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\index.js:120:20
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\middleware-retry\dist-cjs\index.js:251:46
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\middleware-logger\dist-cjs\index.js:5:26
+    at async seedCatalog (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\state\bookstore-state.js:19:5) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: 'MKN2M17OBU5KBGDBLGQ4A99D5NVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+FAIL tests/catalog.contract.test.js
+  Catalog Contract
+    × TC-01: should list seeded books
+    × TC-02: should filter books by category
+    × TC-03: should fetch a known book by id
+    × TC-04: should reject unknown book ids
+    × TC-05: should search books by keyword
+    × TC-06: should reject search without q
+
+  ● Catalog Contract › TC-01: should list seeded books
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Catalog Contract › TC-02: should filter books by category
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Catalog Contract › TC-03: should fetch a known book by id
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Catalog Contract › TC-04: should reject unknown book ids
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Catalog Contract › TC-05: should search books by keyword
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Catalog Contract › TC-06: should reject search without q
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+ResourceNotFoundException: Requested resource not found
+    at AwsJson1_0Protocol.handleError (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\core\dist-cjs\submodules\protocols\index.js:767:27)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async AwsJson1_0Protocol.deserializeResponse (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\protocols\index.js:518:13)
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\submodules\schema\index.js:27:24
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\core\dist-cjs\index.js:120:20
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@smithy\middleware-retry\dist-cjs\index.js:251:46
+    at async D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\node_modules\@aws-sdk\middleware-logger\dist-cjs\index.js:5:26
+    at async seedCatalog (D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\state\bookstore-state.js:19:5) {
+  '$fault': 'client',
+  '$retryable': undefined,
+  '$metadata': {
+    httpStatusCode: 400,
+    requestId: '78TU34CSH72HSNDBC8B24QN8RFVV4KQNSO5AEMVJF66Q9ASUAAJG',
+    extendedRequestId: undefined,
+    cfId: undefined,
+    attempts: 1,
+    totalRetryDelay: 0
+  },
+  __type: 'com.amazonaws.dynamodb.v20120810#ResourceNotFoundException'
+}
+FAIL tests/auth-enforcement.test.js
+  Auth Enforcement
+    × AUTH-01: GET /cart without auth should be rejected
+    × AUTH-02: POST /cart without auth should be rejected
+    × AUTH-03: POST /orders without auth should be rejected
+    × AUTH-04: GET /orders without auth should be rejected
+
+  ● Auth Enforcement › AUTH-01: GET /cart without auth should be rejected
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Auth Enforcement › AUTH-02: POST /cart without auth should be rejected
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Auth Enforcement › AUTH-03: POST /orders without auth should be rejected
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+  ● Auth Enforcement › AUTH-04: GET /orders without auth should be rejected
+
+    Command failed: node seed-catalog.js e2e_bookstore_opt
+
+    [0m [90m 43 |[39m   [36mif[39m ([33m![39mpreparePromise) {
+     [90m 44 |[39m     preparePromise [33m=[39m [33mPromise[39m[33m.[39mresolve()[33m.[39mthen(() [33m=>[39m {
+    [31m[1m>[22m[39m[90m 45 |[39m       execFileSync([32m'node'[39m[33m,[39m [[32m'seed-catalog.js'[39m[33m,[39m [33mTARGET[39m][33m,[39m {
+     [90m    |[39m       [31m[1m^[22m[39m
+     [90m 46 |[39m         cwd[33m:[39m path[33m.[39mresolve(__dirname[33m,[39m [32m'..'[39m)[33m,[39m
+     [90m 47 |[39m         env[33m:[39m process[33m.[39menv[33m,[39m
+     [90m 48 |[39m         stdio[33m:[39m [32m'inherit'[39m[33m,[39m[0m
+
+      at execFileSync (tests/setup.js:45:7)
+
+Results written to: D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\tests\e2e-test-suite-bookstore\results\e2e_bookstore_opt_2026-10-04T11-16-23-743Z.json
+Test Suites: 6 failed, 6 total
+Tests:       21 failed, 21 total
+Snapshots:   0 total
+Time:        8.656 s, estimated 21 s
+Ran all test suites.
+Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
+
+$ D:\Tools\Nodejs22\npx.CMD jest --runInBand --forceExit
+	- Deleting S3 object with key 517071d7dca23e471ce56b73d7ba71e9
+	- Deleting S3 object with key 56325503e317a947fcf1c9bffa5d5d9b
+	- Deleting S3 object with key 20d3211b7e2a2ba9ffc61ffd615dbeac
+	- Deleting S3 object with key c18604218edd1566aaf006b6659fda64
+	- Deleting S3 object with key 3244a0f38ff4961be950b10f01f5dbb3
+	- Deleting S3 object with key ba724ec7a1e1c0a2baf1e6bb3820273a
+	- Deleting S3 object with key c62044f2d29d8d5fd2438eac734c2997
+	- Deleting S3 object with key 85d7fad5571c817face9495527ea4614
+	- Deleting S3 object with key e4ec831a951fdf43e622743bc8d26ef8
+	- Deleting S3 object with key 4b5694bdf4f57681c2dfc8e0af09c37e
+	- Deleting S3 object with key 791acd946c563516a210c3de5cf579f6
+	- Deleting S3 object with key c0d733159a714e32772a7d5dc9b6ac37
+	- Could not find and delete the S3 object with the key 12084d13509a5fa0cabd42c24644380f.template
+	- Deleting Cloudformation stack m2s-e2e-bookstore-opt
+
+Deleted successfully
+
+$ C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.EXE delete --stack-name m2s-e2e-bookstore-opt --region us-east-1 --no-prompts
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-BestsellersListFunction-aHhqTzYveeb6
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-BooksGetItemFunction-Cyq3Pjl2NbMt
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-BooksListFunction-SRXQSy3DFrzH
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-CartGetFunction-wkag80cgNSCP
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-OrdersCreateFunction-bmhUEGtKW554
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-OrdersListFunction-BXw30Iel9NR9
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-bookstore-opt-SearchBooksFunction-zftdNBtFZtZS
