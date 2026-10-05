@@ -1,0 +1,29 @@
+1791180769217	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	INIT_START Runtime Version: python:3.12.mainlinev2.v43	Runtime Version ARN: arn:aws:lambda:us-east-1::runtime:0fec05b8b43b0ecfbabe4fd585b35e423f655861556712f8a10b0e8739c36c07
+1791180769286	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	START RequestId: d7b0a794-670e-410f-abd2-ade937322303 Version: $LATEST
+1791180769287	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	[SIMULATION] Collecting payment for charge: ch_test_payment_collect
+1791180769289	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	END RequestId: d7b0a794-670e-410f-abd2-ade937322303
+1791180769289	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	REPORT RequestId: d7b0a794-670e-410f-abd2-ade937322303	Duration: 1.83 ms	Billed Duration: 69 ms	Memory Size: 512 MB	Max Memory Used: 37 MB	Init Duration: 66.41 ms	
+XRAY TraceId: 1-6ac33fe1-372a53040394efeb2089bcdd	SegmentId: cc132035a8ecfbb0	Sampled: true
+1791180770950	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	START RequestId: 50fd1730-6f2a-4526-8c21-5c63735d1164 Version: $LATEST
+1791180770951	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	[SIMULATION] Collecting payment for charge: ch_test_payment_get
+1791180770953	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	END RequestId: 50fd1730-6f2a-4526-8c21-5c63735d1164
+1791180770953	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	REPORT RequestId: 50fd1730-6f2a-4526-8c21-5c63735d1164	Duration: 1.64 ms	Billed Duration: 2 ms	Memory Size: 512 MB	Max Memory Used: 37 MB	
+XRAY TraceId: 1-6ac33fe2-04d836bc06bcb27b71393cb8	SegmentId: 712bbe3bb825e490	Sampled: true
+1791180772968	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	START RequestId: 19843cc6-dd82-4544-8242-7e15e0467c9e Version: $LATEST
+1791180772970	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	END RequestId: 19843cc6-dd82-4544-8242-7e15e0467c9e
+1791180772970	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	REPORT RequestId: 19843cc6-dd82-4544-8242-7e15e0467c9e	Duration: 1.45 ms	Billed Duration: 2 ms	Memory Size: 512 MB	Max Memory Used: 37 MB	
+XRAY TraceId: 1-6ac33fe4-66b3fbf2752480893811d7f9	SegmentId: 0c45f3a9c5c03f4d	Sampled: true
+1791180802950	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	START RequestId: e54cd5c1-6950-42a4-af5e-f5e5f2317299 Version: $LATEST
+1791180802951	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	[SIMULATION] Collecting payment for charge: ch_test_payment_collect
+1791180802952	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	END RequestId: e54cd5c1-6950-42a4-af5e-f5e5f2317299
+1791180802952	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	REPORT RequestId: e54cd5c1-6950-42a4-af5e-f5e5f2317299	Duration: 1.51 ms	Billed Duration: 2 ms	Memory Size: 512 MB	Max Memory Used: 37 MB	
+XRAY TraceId: 1-6ac34002-00a0b74a0c44e7041f6acd8d	SegmentId: 6e84dee09496d5f8	Sampled: true
+1791180803997	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	START RequestId: 1604ee63-7155-4090-926f-42d78ad5ea38 Version: $LATEST
+1791180803997	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	[SIMULATION] Collecting payment for charge: ch_test_payment_get
+1791180803999	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	END RequestId: 1604ee63-7155-4090-926f-42d78ad5ea38
+1791180803999	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	REPORT RequestId: 1604ee63-7155-4090-926f-42d78ad5ea38	Duration: 1.66 ms	Billed Duration: 2 ms	Memory Size: 512 MB	Max Memory Used: 37 MB	
+XRAY TraceId: 1-6ac34003-625841412db6eedb1176519c	SegmentId: 1810468557fa44b0	Sampled: true
+1791180805035	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	START RequestId: 1f4ad33a-e719-4f87-90ed-9136d8ae54fb Version: $LATEST
+1791180805037	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	END RequestId: 1f4ad33a-e719-4f87-90ed-9136d8ae54fb
+1791180805037	2026/10/05/[$LATEST]5eccf86b4cf642dba7de989387df3f95	REPORT RequestId: 1f4ad33a-e719-4f87-90ed-9136d8ae54fb	Duration: 1.44 ms	Billed Duration: 2 ms	Memory Size: 512 MB	Max Memory Used: 37 MB	
+XRAY TraceId: 1-6ac34005-7e5720c20364ce9c7617eafe	SegmentId: faa6a225931fa9dd	Sampled: true

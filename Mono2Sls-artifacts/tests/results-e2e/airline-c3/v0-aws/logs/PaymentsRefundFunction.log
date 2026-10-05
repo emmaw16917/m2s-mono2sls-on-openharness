@@ -1,0 +1,19 @@
+1791183387680	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	INIT_START Runtime Version: python:3.12.mainlinev2.v43	Runtime Version ARN: arn:aws:lambda:us-east-1::runtime:36aeb19f3326e129d9f096dea0a3c6a9ca8dce2610e62d2b2060747602d863ae
+1791183387782	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	START RequestId: 7e6bceb7-87ee-49d7-b101-8307d755fa1d Version: $LATEST
+1791183387782	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	[SIMULATION] Refunding payment for charge: ch_test_payment_refund
+1791183387784	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	END RequestId: 7e6bceb7-87ee-49d7-b101-8307d755fa1d
+1791183387784	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	REPORT RequestId: 7e6bceb7-87ee-49d7-b101-8307d755fa1d	Duration: 1.96 ms	Billed Duration: 100 ms	Memory Size: 512 MB	Max Memory Used: 44 MB	Init Duration: 97.70 ms	
+XRAY TraceId: 1-6ac34a1b-2eba17fb31ae40a838706327	SegmentId: 946f7b2786b5545b	Sampled: true
+1791183388801	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	START RequestId: 5e9ace7b-92fc-444e-a0e2-3247f7181044 Version: $LATEST
+1791183388803	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	END RequestId: 5e9ace7b-92fc-444e-a0e2-3247f7181044
+1791183388803	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	REPORT RequestId: 5e9ace7b-92fc-444e-a0e2-3247f7181044	Duration: 1.60 ms	Billed Duration: 2 ms	Memory Size: 512 MB	Max Memory Used: 44 MB	
+XRAY TraceId: 1-6ac34a1c-317867041a99cee24603b780	SegmentId: e6079078e19e77f0	Sampled: true
+1791183472452	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	START RequestId: fef968c2-dc58-47fa-9294-66e0d40e324d Version: $LATEST
+1791183472453	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	[SIMULATION] Refunding payment for charge: ch_test_payment_refund
+1791183472455	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	END RequestId: fef968c2-dc58-47fa-9294-66e0d40e324d
+1791183472455	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	REPORT RequestId: fef968c2-dc58-47fa-9294-66e0d40e324d	Duration: 1.94 ms	Billed Duration: 2 ms	Memory Size: 512 MB	Max Memory Used: 44 MB	
+XRAY TraceId: 1-6ac34a70-3f8b430d5eeb84446dd90a73	SegmentId: f5f999c8d8afe334	Sampled: true
+1791183474427	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	START RequestId: 0bd25451-8897-4d0e-a48f-4f237050eb71 Version: $LATEST
+1791183474429	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	END RequestId: 0bd25451-8897-4d0e-a48f-4f237050eb71
+1791183474429	2026/10/05/[$LATEST]0d97d19a922c4bec93cbccc12e5babad	REPORT RequestId: 0bd25451-8897-4d0e-a48f-4f237050eb71	Duration: 1.62 ms	Billed Duration: 2 ms	Memory Size: 512 MB	Max Memory Used: 44 MB	
+XRAY TraceId: 1-6ac34a72-2bbd16983a9f44402ce00f05	SegmentId: a5894f2162636676	Sampled: true

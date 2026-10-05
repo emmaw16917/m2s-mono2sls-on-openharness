@@ -1,0 +1,634 @@
+{
+  "functions": {
+    "BookingsCancelFunction": [
+      {
+        "duration": 118.42,
+        "billed": 652,
+        "memory": 512,
+        "max_memory": 95,
+        "init": 532.89
+      },
+      {
+        "duration": 37.78,
+        "billed": 38,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 35.67,
+        "billed": 36,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 42.67,
+        "billed": 43,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 34.11,
+        "billed": 35,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 42.9,
+        "billed": 43,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 32.84,
+        "billed": 33,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 49.47,
+        "billed": 50,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      }
+    ],
+    "BookingsConfirmFunction": [],
+    "BookingsCreateFunction": [
+      {
+        "duration": 109.18,
+        "billed": 599,
+        "memory": 512,
+        "max_memory": 95,
+        "init": 489.57
+      },
+      {
+        "duration": 43.18,
+        "billed": 44,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 42.45,
+        "billed": 43,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 30.31,
+        "billed": 31,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 32.25,
+        "billed": 33,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 30.09,
+        "billed": 31,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 32.58,
+        "billed": 33,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 29.29,
+        "billed": 30,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 33.26,
+        "billed": 34,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 42.34,
+        "billed": 43,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      }
+    ],
+    "BookingsGetFunction": [
+      {
+        "duration": 68.14,
+        "billed": 549,
+        "memory": 512,
+        "max_memory": 95,
+        "init": 480.31
+      },
+      {
+        "duration": 7.88,
+        "billed": 8,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 6.54,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 19.54,
+        "billed": 20,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 6.52,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 8.01,
+        "billed": 9,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      }
+    ],
+    "CustomersListBookingsFunction": [
+      {
+        "duration": 2.29,
+        "billed": 507,
+        "memory": 512,
+        "max_memory": 93,
+        "init": 504.34
+      },
+      {
+        "duration": 110.05,
+        "billed": 111,
+        "memory": 512,
+        "max_memory": 94,
+        "init": null
+      },
+      {
+        "duration": 3.2,
+        "billed": 4,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 13.67,
+        "billed": 14,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      }
+    ],
+    "FlightsGetFlightFunction": [
+      {
+        "duration": 65.12,
+        "billed": 526,
+        "memory": 512,
+        "max_memory": 94,
+        "init": 460.31
+      },
+      {
+        "duration": 6.85,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 94,
+        "init": null
+      },
+      {
+        "duration": 6.02,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 94,
+        "init": null
+      },
+      {
+        "duration": 5.92,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 5.96,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 6.24,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 6.04,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 5.8,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 6.06,
+        "billed": 7,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 5.72,
+        "billed": 6,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      }
+    ],
+    "FlightsReleaseSeatFunction": [
+      {
+        "duration": 96.0,
+        "billed": 581,
+        "memory": 512,
+        "max_memory": 95,
+        "init": 484.3
+      },
+      {
+        "duration": 14.7,
+        "billed": 15,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      }
+    ],
+    "FlightsReserveSeatFunction": [
+      {
+        "duration": 87.56,
+        "billed": 561,
+        "memory": 512,
+        "max_memory": 95,
+        "init": 472.59
+      },
+      {
+        "duration": 63.58,
+        "billed": 64,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      }
+    ],
+    "FlightsSearchFunction": [
+      {
+        "duration": 83.68,
+        "billed": 568,
+        "memory": 512,
+        "max_memory": 95,
+        "init": 483.77
+      },
+      {
+        "duration": 10.67,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 10.04,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 11.39,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 11.1,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 1.52,
+        "billed": 2,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 12.65,
+        "billed": 13,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 10.45,
+        "billed": 11,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 11.56,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 11.24,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 12.76,
+        "billed": 13,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 1.53,
+        "billed": 2,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      }
+    ],
+    "LoyaltyAddPointsFunction": [],
+    "LoyaltyGetCustomerFunction": [
+      {
+        "duration": 1.85,
+        "billed": 459,
+        "memory": 512,
+        "max_memory": 93,
+        "init": 456.97
+      },
+      {
+        "duration": 81.46,
+        "billed": 82,
+        "memory": 512,
+        "max_memory": 94,
+        "init": null
+      },
+      {
+        "duration": 11.42,
+        "billed": 12,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 1.95,
+        "billed": 2,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 15.82,
+        "billed": 16,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      },
+      {
+        "duration": 9.49,
+        "billed": 10,
+        "memory": 512,
+        "max_memory": 95,
+        "init": null
+      }
+    ],
+    "PaymentsCollectFunction": [
+      {
+        "duration": 2.17,
+        "billed": 99,
+        "memory": 512,
+        "max_memory": 38,
+        "init": 95.87
+      },
+      {
+        "duration": 1.74,
+        "billed": 2,
+        "memory": 512,
+        "max_memory": 38,
+        "init": null
+      },
+      {
+        "duration": 2.38,
+        "billed": 3,
+        "memory": 512,
+        "max_memory": 38,
+        "init": null
+      },
+      {
+        "duration": 1.6,
+        "billed": 2,
+        "memory": 512,
+        "max_memory": 38,
+        "init": null
+      },
+      {
+        "duration": 1.66,
+        "billed": 2,
+        "memory": 512,
+        "max_memory": 38,
+        "init": null
+      }
+    ],
+    "PaymentsGetFunction": [
+      {
+        "duration": 1.99,
+        "billed": 86,
+        "memory": 512,
+        "max_memory": 37,
+        "init": 83.03
+      }
+    ],
+    "PaymentsRefundFunction": [
+      {
+        "duration": 1.96,
+        "billed": 100,
+        "memory": 512,
+        "max_memory": 44,
+        "init": 97.7
+      },
+      {
+        "duration": 1.6,
+        "billed": 2,
+        "memory": 512,
+        "max_memory": 44,
+        "init": null
+      },
+      {
+        "duration": 1.94,
+        "billed": 2,
+        "memory": 512,
+        "max_memory": 44,
+        "init": null
+      },
+      {
+        "duration": 1.62,
+        "billed": 2,
+        "memory": 512,
+        "max_memory": 44,
+        "init": null
+      }
+    ]
+  },
+  "tables": {
+    "BookingTable": {
+      "ConsumedReadCapacityUnits": 11.0,
+      "ConsumedReadCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-05T14:56:00+08:00",
+          "sum": 1.0
+        },
+        {
+          "time": "2026-10-05T14:57:00+08:00",
+          "sum": 4.5
+        },
+        {
+          "time": "2026-10-05T14:58:00+08:00",
+          "sum": 5.0
+        },
+        {
+          "time": "2026-10-05T14:59:00+08:00",
+          "sum": 0.5
+        }
+      ],
+      "ConsumedWriteCapacityUnits": 24.0,
+      "ConsumedWriteCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-05T14:56:00+08:00",
+          "sum": 3.0
+        },
+        {
+          "time": "2026-10-05T14:57:00+08:00",
+          "sum": 9.0
+        },
+        {
+          "time": "2026-10-05T14:58:00+08:00",
+          "sum": 9.0
+        },
+        {
+          "time": "2026-10-05T14:59:00+08:00",
+          "sum": 3.0
+        }
+      ]
+    },
+    "FlightTable": {
+      "ConsumedReadCapacityUnits": 31.0,
+      "ConsumedReadCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-05T14:56:00+08:00",
+          "sum": 6.5
+        },
+        {
+          "time": "2026-10-05T14:57:00+08:00",
+          "sum": 9.0
+        },
+        {
+          "time": "2026-10-05T14:58:00+08:00",
+          "sum": 10.0
+        },
+        {
+          "time": "2026-10-05T14:59:00+08:00",
+          "sum": 5.5
+        }
+      ],
+      "ConsumedWriteCapacityUnits": 26.0,
+      "ConsumedWriteCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-05T14:56:00+08:00",
+          "sum": 4.0
+        },
+        {
+          "time": "2026-10-05T14:57:00+08:00",
+          "sum": 10.0
+        },
+        {
+          "time": "2026-10-05T14:58:00+08:00",
+          "sum": 8.0
+        },
+        {
+          "time": "2026-10-05T14:59:00+08:00",
+          "sum": 4.0
+        }
+      ]
+    },
+    "LoyaltyTable": {
+      "ConsumedReadCapacityUnits": 8.0,
+      "ConsumedReadCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-05T14:57:00+08:00",
+          "sum": 4.0
+        },
+        {
+          "time": "2026-10-05T14:59:00+08:00",
+          "sum": 4.0
+        }
+      ],
+      "ConsumedWriteCapacityUnits": 8.0,
+      "ConsumedWriteCapacityUnits_datapoints": [
+        {
+          "time": "2026-10-05T14:56:00+08:00",
+          "sum": 1.0
+        },
+        {
+          "time": "2026-10-05T14:57:00+08:00",
+          "sum": 3.0
+        },
+        {
+          "time": "2026-10-05T14:58:00+08:00",
+          "sum": 3.0
+        },
+        {
+          "time": "2026-10-05T14:59:00+08:00",
+          "sum": 1.0
+        }
+      ]
+    }
+  }
+}

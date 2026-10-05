@@ -61,6 +61,9 @@ _FUNC_RES = [
 ]
 
 
+_MONGO_REQUIRE_RE = re.compile(r"require\(\s*['\"](mongodb|mongoose)['\"]\s*\)|from\s+['\"](mongodb|mongoose)['\"]")
+
+
 def _blank_comments(src: str) -> str:
     """Comments replaced by spaces (newlines kept), so offsets and line
     numbers stay valid and commented-out code is never matched."""
@@ -189,7 +192,12 @@ class _Project:
         if not m:
             return None
         ident = m.group(1)
-        values = {v for s in self.src.values() for v in re.findall(rf"\b{re.escape(ident)}\s*[:=]\s*['\"]([^'\"]+)['\"]", s)}
+        rx = rf"\b{re.escape(ident)}\s*[:=]\s*['\"]([^'\"]+)['\"]"
+        values = {v for s in self.src.values() for v in re.findall(rx, s)}
+        if len(values) > 1:
+            # several data-access implementations (mongo / cloudant / cassandra)
+            # name the same constant differently: the MongoDB module's wins
+            values = {v for s in self.src.values() if _MONGO_REQUIRE_RE.search(s) for v in re.findall(rx, s)}
         return values.pop() if len(values) == 1 else None
 
 
@@ -198,7 +206,7 @@ def detect(monolith_root: str | Path) -> dict[str, Any] | None:
     pj = _Project(root)
     driver, req_src = None, []
     for rel, s in pj.src.items():
-        for m in re.finditer(r"require\(\s*['\"](mongodb|mongoose)['\"]\s*\)|from\s+['\"](mongodb|mongoose)['\"]", s):
+        for m in _MONGO_REQUIRE_RE.finditer(s):
             lib = m.group(1) or m.group(2)
             driver = "mongoose" if lib == "mongoose" or driver == "mongoose" else "mongodb"
             req_src.append(pj.ref(rel, m.start(), lib))

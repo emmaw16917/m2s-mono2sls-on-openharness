@@ -231,3 +231,22 @@ def test_gm2_rejects_unknown_gateway_response_type(tmp_path):
     tpl = {"Globals": {"Api": {"GatewayResponses": {"INTERNAL_ERROR": {}, "DEFAULT_4XX": {}}}}}
     msgs = [f["description"] for f in gates.check_gm_template(ws, tpl)]
     assert len(msgs) == 1 and "INTERNAL_ERROR" in msgs[0]
+
+
+def test_spec_extract_prefix_from_settings_json(tmp_path):
+    root = tmp_path / "svc"
+    root.mkdir()
+    (root / "settings.json").write_text('{"contextRoot": "/rest/api"}', encoding="utf-8")
+    (root / "app.js").write_text("""var fs = require('fs');
+var settings = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
+var express = require('express');
+var app = express();
+var router = express.Router();
+router.post('/login', function (req, res) { res.send(req.body.login); });
+app.use(settings.contextRoot, router);
+""", encoding="utf-8")
+    report = {"entry_points": [{"file": "svc/app.js", "method": "POST", "path": "/login", "handler_function": "h"}]}
+    spec_extract.enrich_report(report, root)
+    [ep] = report["entry_points"]
+    assert ep["path"] == "/rest/api/login" and ep["path_prefix"]["prefix"] == "/rest/api"
+    assert [f["name"] for f in ep["request"]["body"]] == ["login"]

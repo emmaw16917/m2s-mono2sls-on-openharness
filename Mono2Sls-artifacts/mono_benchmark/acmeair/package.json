@@ -1,23 +1,26 @@
 {
   "name": "acmeair",
-  "version": "0.0.5",
+  "version": "0.0.4",
   "private": true,
   "scripts": {
     "start": "node app.js"
   },
   "dependencies": {
-    "async": "^2.1.5",
-    "body-parser": "^1.11.x",
-    "cookie-parser": "^1.3.x",
-    "csv": "^0.2.4",
-    "debug": "^2.0.0",
-    "express": "^4.15.x",
-    "log4js": "^1.1.1",
-    "method-override": "^2.3.7",
-    "mongodb": "^2.2.25",
-    "morgan": "^1.5.x",
-    "stats-lite": "^2.0.4",
-    "ttl-lru-cache": "^0.0.2",
-    "uuid": "^3.0.1"
+    "async":    "0.2.x",
+    "express":  "4.11.x",
+    "morgan":  "1.5.x",
+    "body-parser": "1.11.x",
+    "method-override": "2.3.x",
+    "cookie-parser": "1.3.x",
+    "mongodb":  "2.0.x",
+    "node-uuid":"1.3.3",
+    "async": "0.2.10",
+    "csv": "0.2.4",
+    "log4js": "0.6.12",
+    "ttl-lru-cache": "0.0.2",
+    "nano":"5.10.x",
+    "cassandra-driver":"2.0.x",
+    "stats-lite":"1.0.3",
+    "circuit-breaker":"0.0.4"
   }
 }

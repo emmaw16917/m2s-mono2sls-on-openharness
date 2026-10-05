@@ -19,11 +19,10 @@ module.exports = function (loadUtil,settings) {
     
 	var csv = require('csv');
 	var log4js = require('log4js');
-	var uuid = require('uuid');
+	var uuid = require('node-uuid');
 	var async = require('async');
 	var fs = require('fs');
 	
-	log4js.configure('log4js.json', {});
 	var logger = log4js.getLogger('loader');
 	logger.setLevel(settings.loggerLevel);
 
@@ -31,9 +30,7 @@ module.exports = function (loadUtil,settings) {
 
 	var DATABASE_PARALLELISM = 5;
 
-	var d = new Date(); // Today!
-	d.setDate(d.getDate() - 2); // Yesterday!
-	var nowAtMidnight = getDateAtTwelveAM(d);
+	var nowAtMidnight = getDateAtTwelveAM(new Date());
 
 	var customerTemplate = {
 	    _id : undefined,
@@ -131,15 +128,17 @@ module.exports = function (loadUtil,settings) {
 	}
 
 	module.startLoadDatabase = function startLoadDatabase(req, res) {
-		
+		if (customers.length>=1)
+	      {
+			res.send('Already loaded');
+			return;
+	      }
 		var numCustomers = req.query.numCustomers;
 		if(numCustomers === undefined) {
 			numCustomers = loaderSettings.MAX_CUSTOMERS;
 		}
-		loadUtil.initialize(function() {
-		  logger.info('DB initialized');
-		  logger.info('starting loading database');
-			createCustomers(numCustomers, function(){});
+		logger.info('starting loading database');
+			createCustomers(numCustomers);
 			createFlightRelatedData(function() {
 				logger.info('number of customers = ' + customers.length);
 				logger.info('number of airportCodeMappings = ' + airportCodeMappings.length);
@@ -149,111 +148,11 @@ module.exports = function (loadUtil,settings) {
 					logger.info('all flights loaded');
 					logger.info('ending loading database');
 					res.send('Database Finished Loading');
-					loadUtil.closeDBConnection(function(err){
-						if (!err){
-							loadUtil.initializeDatabaseConnections(function(err){
-								if(err){
-									logger.info('Error initalizing database : ' + err);
-								}
-							});
-						}else{
-							logger.info('Error iclosing database : ' + err);
-						}
-					});
 				};
 				customerQueue.push(customers);
 			});
-		  });
 		//res.send('Trigger DB loading');
 	}
-	
-	module.startLoadCustomerDatabase = function startLoadCustomerDatabase(req, res) {
-
-		logger.info("numCustomers: " + req.query.numCustomers);
-		
-		var numCustomers = req.query.numCustomers;
-		if(numCustomers == undefined) {
-			numCustomers = loaderSettings.MAX_CUSTOMERS;
-		}
-		
-		logger.info('starting loading database');
-		
-		loadUtil.removeAll(loadUtil.dbNames.customerName, function(err) {
-			logger.info('#number of customers = ' + customers.length);
-			if (err) {
-				logger.error(err);
-			} else {		
-				createCustomers(numCustomers, function() {
-					logger.info('number of customers = ' + customers.length);
-					customerQueue.push(customers);
-					res.send('Database Finished Loading');
-				});
-			}
-		});
-	}
-	
-	module.startLoadFlightDatabase = function startLoadFlightDatabase(req, res) {
-		
-			// this is ugly...
-			logger.info('starting loading database');	
-			loadUtil.removeAll(loadUtil.dbNames.airportCodeMappingName, function(err) {
-				if (err) {
-					logger.debug(err);
-				} else {	
-					
-					loadUtil.removeAll(loadUtil.dbNames.flightSegmentName, function(err) {
-						if (err) {
-							logger.debug(err);
-						} else {		
-					
-							loadUtil.removeAll(loadUtil.dbNames.flightName, function(err) {
-								if (err) {
-									logger.debug(err);
-								} else {		
-									
-									createFlightRelatedData(function() {
-										logger.info('number of airportCodeMappings = ' + airportCodeMappings.length);
-										logger.info('number of flightSegments = ' + flightSegments.length);
-										logger.info('number of flights = ' + flights.length);
-				
-										airportCodeMappingQueue.push(airportCodeMappings);
-				
-										flightQueue.drain = function() {
-											logger.info('all flights loaded');
-											logger.info('ending loading database');
-											res.send('Database Finished Loading');
-										};	
-									});
-								}
-							});
-						}
-					});
-				}
-			});
-	}
-	
-	module.clearSessionDatabase = function clearSessionDatabase(req, res) {
-		
-		logger.info('starting clearing sesison database');	
-		loadUtil.removeAll(loadUtil.dbNames.customerSessionName, function(err) {
-			if (err) {
-				logger.debug(err);
-			} 
-			res.send('Database Finished Loading');
-		});
-	}
-	
-	module.clearBookingDatabase = function clearSessionDatabase(req, res) {
-		
-		logger.info('starting clearing sesison database');	
-		loadUtil.removeAll(loadUtil.dbNames.bookingName, function(err) {
-			if (err) {
-				logger.debug(err);
-			} 
-			res.send('Database Finished Loading');
-		});
-	}
-	
 	
 	module.getNumConfiguredCustomers = function (req, res) {
 		res.contentType("text/plain");
@@ -280,6 +179,10 @@ module.exports = function (loadUtil,settings) {
 	}
 	
 	var flightQueue = async.queue(insertFlight, DATABASE_PARALLELISM);
+	//flightQueue.drain = function() {
+	//	logger.info('all flights loaded');
+	//	logger.info('ending loading database');
+	//}
 	
 	
 	var customers = new Array();
@@ -287,14 +190,12 @@ module.exports = function (loadUtil,settings) {
 	var flightSegments = new Array();
 	var flights = new Array();
 	
-	function createCustomers(numCustomers, callback) {
-		customers = new Array();
+	function createCustomers(numCustomers) {
 		for (var ii = 0; ii < numCustomers; ii++) {
 			var customer = cloneObjectThroughSerialization(customerTemplate);
 			customer._id = "uid" + ii + "@email.com";
 			customers.push(customer);
 		};
-		callback();
 	}
 	
 	function createFlightRelatedData(callback/*()*/) {

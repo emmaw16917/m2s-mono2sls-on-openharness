@@ -1,0 +1,41 @@
+1791180709520	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	INIT_START Runtime Version: python:3.12.mainlinev2.v43	Runtime Version ARN: arn:aws:lambda:us-east-1::runtime:0fec05b8b43b0ecfbabe4fd585b35e423f655861556712f8a10b0e8739c36c07
+1791180710015	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	START RequestId: 41272db4-1bee-4c0e-82be-b6c6259f3796 Version: $LATEST
+1791180710126	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	[SIMULATION] Refunding payment for charge: ch_test_special_name
+1791180710128	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	END RequestId: 41272db4-1bee-4c0e-82be-b6c6259f3796
+1791180710128	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	REPORT RequestId: 41272db4-1bee-4c0e-82be-b6c6259f3796	Duration: 113.06 ms	Billed Duration: 604 ms	Memory Size: 512 MB	Max Memory Used: 96 MB	Init Duration: 490.82 ms	
+XRAY TraceId: 1-6ac33fa5-5bf5b90f6dde5a32260c92db	SegmentId: a25e64fd3ec6ed48	Sampled: true
+1791180736844	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	START RequestId: 68d2c23f-ac37-4487-9619-2f0bd70260b8 Version: $LATEST
+1791180736872	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	[SIMULATION] Refunding payment for charge: ch_test_e2e_booking_1791180731141_s6nx9n
+1791180736874	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	END RequestId: 68d2c23f-ac37-4487-9619-2f0bd70260b8
+1791180736874	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	REPORT RequestId: 68d2c23f-ac37-4487-9619-2f0bd70260b8	Duration: 29.75 ms	Billed Duration: 30 ms	Memory Size: 512 MB	Max Memory Used: 99 MB	
+XRAY TraceId: 1-6ac33fc0-703123ce0df06869395ff3e4	SegmentId: 1e73d22462e74900	Sampled: true
+1791180751690	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	START RequestId: 1af0bab4-24e4-4cf4-8288-8a210c2f01ee Version: $LATEST
+1791180751726	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	[SIMULATION] Refunding payment for charge: ch_test_core
+1791180751728	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	END RequestId: 1af0bab4-24e4-4cf4-8288-8a210c2f01ee
+1791180751728	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	REPORT RequestId: 1af0bab4-24e4-4cf4-8288-8a210c2f01ee	Duration: 37.35 ms	Billed Duration: 38 ms	Memory Size: 512 MB	Max Memory Used: 99 MB	
+XRAY TraceId: 1-6ac33fcf-0401b28e2c57fb076111d69f	SegmentId: 9e4aea145b377abc	Sampled: true
+1791180767567	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	START RequestId: 225fa122-2640-4409-951d-d855ffb9b3ae Version: $LATEST
+1791180767606	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	[SIMULATION] Refunding payment for charge: ch_test_e2e_booking_1791180765394_ji6s63
+1791180767608	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	END RequestId: 225fa122-2640-4409-951d-d855ffb9b3ae
+1791180767608	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	REPORT RequestId: 225fa122-2640-4409-951d-d855ffb9b3ae	Duration: 40.38 ms	Billed Duration: 41 ms	Memory Size: 512 MB	Max Memory Used: 99 MB	
+XRAY TraceId: 1-6ac33fdf-37aee4ac251726ec2e53efc9	SegmentId: 06cc4408c2667324	Sampled: true
+1791180801995	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	START RequestId: 6f2547cd-5cd5-4546-b88b-da0d79d9137b Version: $LATEST
+1791180802026	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	[SIMULATION] Refunding payment for charge: ch_test_special_name
+1791180802028	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	END RequestId: 6f2547cd-5cd5-4546-b88b-da0d79d9137b
+1791180802028	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	REPORT RequestId: 6f2547cd-5cd5-4546-b88b-da0d79d9137b	Duration: 32.53 ms	Billed Duration: 33 ms	Memory Size: 512 MB	Max Memory Used: 99 MB	
+XRAY TraceId: 1-6ac34001-5de28a38666d708f110c7f1d	SegmentId: 8584f42d0a3dc46a	Sampled: true
+1791180831381	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	START RequestId: 51f017bd-0b42-4724-a1f9-88b6baa8353b Version: $LATEST
+1791180831413	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	[SIMULATION] Refunding payment for charge: ch_test_e2e_booking_1791180826877_5vhc40
+1791180831414	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	END RequestId: 51f017bd-0b42-4724-a1f9-88b6baa8353b
+1791180831414	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	REPORT RequestId: 51f017bd-0b42-4724-a1f9-88b6baa8353b	Duration: 32.81 ms	Billed Duration: 33 ms	Memory Size: 512 MB	Max Memory Used: 100 MB	
+XRAY TraceId: 1-6ac3401f-75c2b7b2666ca3451679c3ec	SegmentId: ad30c2f0866dc90f	Sampled: true
+1791180847672	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	START RequestId: ae90c2ae-dec0-4d98-a2fe-070b2cd50c73 Version: $LATEST
+1791180847706	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	[SIMULATION] Refunding payment for charge: ch_test_e2e_booking_1791180845866_ez2o6x
+1791180847708	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	END RequestId: ae90c2ae-dec0-4d98-a2fe-070b2cd50c73
+1791180847708	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	REPORT RequestId: ae90c2ae-dec0-4d98-a2fe-070b2cd50c73	Duration: 35.55 ms	Billed Duration: 36 ms	Memory Size: 512 MB	Max Memory Used: 100 MB	
+XRAY TraceId: 1-6ac3402f-5d05b3e077ecb83b1310a322	SegmentId: 4ea32f3966d08cc6	Sampled: true
+1791180863104	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	START RequestId: 411a6f1b-ee61-42ac-bbdf-ab54af4c6dff Version: $LATEST
+1791180863132	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	[SIMULATION] Refunding payment for charge: ch_test_core
+1791180863147	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	END RequestId: 411a6f1b-ee61-42ac-bbdf-ab54af4c6dff
+1791180863147	2026/10/05/[$LATEST]9ad4db087dac4d198ea5495d4537fbda	REPORT RequestId: 411a6f1b-ee61-42ac-bbdf-ab54af4c6dff	Duration: 41.72 ms	Billed Duration: 42 ms	Memory Size: 512 MB	Max Memory Used: 100 MB	
+XRAY TraceId: 1-6ac3403f-4c1a92820de40dce759b7358	SegmentId: 543eb5c9b77050e1	Sampled: true

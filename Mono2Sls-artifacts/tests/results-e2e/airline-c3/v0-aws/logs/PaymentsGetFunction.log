@@ -1,0 +1,5 @@
+1791183473595	2026/10/05/[$LATEST]e72a73f091c24c288ca7d48a1af89f9a	INIT_START Runtime Version: python:3.12.mainlinev2.v43	Runtime Version ARN: arn:aws:lambda:us-east-1::runtime:36aeb19f3326e129d9f096dea0a3c6a9ca8dce2610e62d2b2060747602d863ae
+1791183473682	2026/10/05/[$LATEST]e72a73f091c24c288ca7d48a1af89f9a	START RequestId: 675b99bf-0795-4ddc-8ed2-78b5d56a2e98 Version: $LATEST
+1791183473684	2026/10/05/[$LATEST]e72a73f091c24c288ca7d48a1af89f9a	END RequestId: 675b99bf-0795-4ddc-8ed2-78b5d56a2e98
+1791183473685	2026/10/05/[$LATEST]e72a73f091c24c288ca7d48a1af89f9a	REPORT RequestId: 675b99bf-0795-4ddc-8ed2-78b5d56a2e98	Duration: 1.99 ms	Billed Duration: 86 ms	Memory Size: 512 MB	Max Memory Used: 37 MB	Init Duration: 83.03 ms	
+XRAY TraceId: 1-6ac34a71-3b1ab84a24f6287c494d61f4	SegmentId: 0db58783362ed9d6	Sampled: true

@@ -301,6 +301,51 @@ def _mounts(project: _Project) -> dict[str, list[dict[str, Any]]]:
     return out
 
 
+def _config_value(project: _Project, rel: str, src: str, expr: str) -> str | None:
+    """A mount prefix expression -> its string: a literal, or `settings.key`
+    where `settings = JSON.parse(fs.readFileSync('settings.json'...))` or
+    `settings = require('./settings.json')` (acmeair: settings.contextRoot)."""
+    expr = expr.strip()
+    lit = re.fullmatch(r"['\"]([^'\"]*)['\"]", expr)
+    if lit:
+        return lit.group(1)
+    m = re.fullmatch(rf"({_IDENT})\s*\.\s*({_IDENT})", expr)
+    if not m:
+        return None
+    var, key = m.groups()
+    d = re.search(rf"(?<![\w$.]){re.escape(var)}\s*=\s*(?:JSON\.parse\(\s*\w+\.readFileSync\(\s*|require\(\s*)['\"]([^'\"]+\.json)['\"]", src)
+    if not d:
+        return None
+    base = (project.root.parent / rel).parent
+    for cand in (base / d.group(1), project.root / d.group(1)):
+        try:
+            value = json.loads(cand.read_text(encoding="utf-8")).get(key)
+        except (OSError, ValueError, AttributeError):
+            continue
+        return value if isinstance(value, str) else None
+    return None
+
+
+def _local_mounts(project: _Project) -> dict[tuple[str, str], dict[str, Any]]:
+    """(file, router variable) -> {prefix, source} for a router created and
+    mounted in the same file: `var router = express.Router(); ...
+    app.use(settings.contextRoot, router)`."""
+    out: dict[tuple[str, str], dict[str, Any]] = {}
+    for rel, src in project.sources.items():
+        routers = set(re.findall(rf"(?:const|let|var)\s+({_IDENT})\s*=\s*\w+\.Router\(\s*\)", src))
+        for m in _USE_RE.finditer(src):
+            close = _match_close(src, m.end() - 1)
+            if close == -1:
+                continue
+            args = _split_top_level(src[m.end():close])
+            if len(args) != 2 or args[1][0] not in routers:
+                continue
+            prefix = _config_value(project, rel, src, args[0][0])
+            if prefix:
+                out[(rel, args[1][0])] = {"prefix": prefix.rstrip("/"), "source": _src(rel, _line_of(src, m.start()), args[1][0])}
+    return out
+
+
 def _error_handler(project: _Project) -> dict[str, Any] | None:
     """The app-level `app.use((err, req, res, next) => ...)` handler's
     response: status expression, body keys, source."""
@@ -847,6 +892,7 @@ def enrich_report(report: dict[str, Any], monolith_root: Path) -> dict[str, Any]
     a summary {entry_points, script_extracted, unsupported, unknown_items}."""
     project = _Project(monolith_root)
     mounts = _mounts(project)
+    local_mounts = _local_mounts(project)
     error_handler = _error_handler(project)
 
     # (file, METHOD, full path) -> route call location, computed the same way
@@ -854,10 +900,20 @@ def enrich_report(report: dict[str, Any], monolith_root: Path) -> dict[str, Any]
     routes: dict[tuple[str, str, str], dict[str, Any]] = {}
     commented: set[tuple[str, str, str]] = set()
     registrations: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+    # (file, METHOD, path as the analyzer wrote it) -> (prefixed path, mount)
+    # for routers mounted in their own file under a config value
+    renames: dict[tuple[str, str, str], tuple[str, dict[str, Any]]] = {}
     for rel, src in project.sources.items():
-        mount_list = mounts.get(rel) or [{"prefix": "", "middleware": [], "source": None}]
+        default_mounts = mounts.get(rel) or [{"prefix": "", "middleware": [], "source": None}]
         blank = _blank_comments(src)
         for m in _ROUTE_RE.finditer(src):
+            receiver = re.match(rf"({_IDENT})", m.group(0)).group(1)
+            lm = local_mounts.get((rel, receiver))
+            mount_list = [{"prefix": lm["prefix"], "middleware": [], "source": lm["source"]}] if lm else default_mounts
+            if lm:
+                raw0 = m.group(3)
+                renames[(rel, m.group(1).upper(), raw0 if raw0.startswith("/") else "/" + raw0)] = (
+                    lm["prefix"] + "/" + raw0.lstrip("/") if raw0 not in ("", "/") else (lm["prefix"] or "/"), lm)
             if blank[m.start():m.end()] != src[m.start():m.end()]:
                 # inside /* ... */ or after // -- not a route (acmeair app.js)
                 for mount in mount_list:
@@ -893,6 +949,11 @@ def enrich_report(report: dict[str, Any], monolith_root: Path) -> dict[str, Any]
                 registrations.setdefault(key, []).append(entry)
                 routes.setdefault(key, entry)
 
+    for ep in report.get("entry_points", []):
+        rn = renames.get((ep.get("file"), (ep.get("method") or "").upper(), ep.get("path")))
+        if rn:
+            ep["path"] = rn[0]
+            ep["path_prefix"] = {"prefix": rn[1]["prefix"], "source": [rn[1]["source"]]}
     dropped = [ep for ep in report.get("entry_points", [])
                if (ep.get("file"), (ep.get("method") or "").upper(), ep.get("path")) in commented
                and (ep.get("file"), (ep.get("method") or "").upper(), ep.get("path")) not in routes]
