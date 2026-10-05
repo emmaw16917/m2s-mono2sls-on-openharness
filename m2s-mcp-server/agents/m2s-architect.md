@@ -167,6 +167,7 @@ blueprint 里的每个判断都要能追溯到依据。用 `write_file` 写 `sto
 单体的数据存储不是 DynamoDB 时（目前是 MongoDB），P0 的 `source_data_store` 列出了代码对每个集合的**全部访问模式**（`access_patterns`：`id`、`collection`、`operation`、`filter_fields`（每个字段带 `match`：`eq`/`range`/`in`/`other`）、`sort`、`via`、`note`、`source`）。表要**从访问模式反推**，而不是照搬集合：
 
 1. **每个集合一张表**（除非明确合并或删除，删除写进 `dropped_functions`，`type: "table"`）。主键从最常用的等值访问选：按 `_id` 取的，partition key 就是它，属性名可以改（例如 `_id` → `id`），在 `field_mapping` 里写清楚。
+   `source_data_store.indexes`（单体用 `ensureIndex`/`createIndex` 建的索引，没有这个字段就读数据访问模块的源码找）说明了单体已经依赖的查询路径，是设计 GSI 和 sort key 的直接依据。
 2. **每个访问模式落到一个 DynamoDB 操作**：
    - 按完整主键等值 → `GetItem`（`UpdateItem`/`DeleteItem` 同理）；
    - 按非主键字段等值 → 给表加 GSI，用 `Query`；多个等值字段时，一个当 partition key，另一个当 sort key（范围条件只能放在 sort key 上）；

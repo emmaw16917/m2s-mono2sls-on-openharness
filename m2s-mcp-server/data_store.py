@@ -18,6 +18,7 @@ tables from it and gate DM1 can check every pattern is covered.
          "filter_raw": "<the filter as written>", "sort": "<raw>" | null,
          "via": "<wrapper method>" | null, "note": str | null,
          "source": [{file, line, symbol}], "origin": "script"}],
+      "indexes": [{"collection", "keys": [field, ...], "source"}],   # ensureIndex / createIndex
       "unresolved": ["<what the script could not determine>"]}
 
 Generic data-access wrappers (`dataaccess.findBy(collection, condition)` over
@@ -335,11 +336,34 @@ def detect(monolith_root: str | Path) -> dict[str, Any] | None:
                                  "sort": w["sort"], "via": " -> ".join([wname] + ([w["raw_wrapper"]] if wname != w["raw_wrapper"] else [])),
                                  "note": note, "source": [ref] + w["defs"][::-1], "origin": "script"})
 
+    # indexes the monolith declares: db.ensureIndex(coll, {a:1, b:1}) or
+    # coll.createIndex({a:1}) -- the access paths it already relies on
+    indexes = []
+    for rel, s in pj.src.items():
+        for m in re.finditer(rf"\b({_IDENT})\s*\.\s*(ensureIndex|createIndex)\s*\(", s):
+            args = _call_args(s, m.end() - 1)
+            if not args:
+                continue
+            if args[0].strip().startswith("{"):
+                coll, keys = None, args[0]
+                fn = _enclosing(_functions(s), m.start())
+                b = re.search(rf"{re.escape(m.group(1))}\s*=\s*\w+\s*\.\s*collection\s*\(\s*([^(),]+)", s[fn[2]:fn[3]] if fn else s)
+                coll = pj.name_of(b.group(1)) if b else None
+            elif len(args) > 1:
+                coll, keys = pj.name_of(args[0]), args[1]
+            else:
+                continue
+            fields = _filter_fields(keys)
+            if fields is not None:
+                indexes.append({"collection": coll, "keys": [f["name"] for f in fields],
+                                "source": [pj.ref(rel, m.start(2), m.group(2))], "origin": "script"})
+
     for i, p in enumerate(patterns, 1):
         p["id"] = f"AP{i}"
     return {
         "kind": "mongodb", "driver": driver, "source": req_src,
         "collections": [{"name": n, "source": refs[:3]} for n, refs in sorted(collections.items())],
         "access_patterns": [{"id": p.pop("id"), **p} for p in patterns],
+        "indexes": indexes,
         "unresolved": unresolved,
     }
