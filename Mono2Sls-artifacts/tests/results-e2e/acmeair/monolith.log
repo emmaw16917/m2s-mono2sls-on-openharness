@@ -1,0 +1,17 @@
+882eede35524234cbf4468bd747d015d50e0af7154cf7818e3e5cd965190364f
+
+$ C:\Program Files\Docker\Docker\resources\bin\docker.EXE run -d --name acmeair-mongo -p 27017:27017 mongo:4.4
+Oct 05, 2026 7:25:52 AM java.util.prefs.FileSystemPreferences$1 run
+INFO: Created user preferences directory.
+Creating summariser <summary>
+Created the tree successfully using AcmeAir.jmx
+Starting standalone test @ October 5, 2026 7:25:53 AM UTC (1791185153058)
+Waiting for possible Shutdown/StopTestNow/HeapDump/ThreadDump message on port 4445
+usePureIDs property was set.
+summary +   1300 in 00:00:07 =  183.3/s Avg:     3 Min:     1 Max:    61 Err:     0 (0.00%) Active: 1 Started: 8 Finished: 7
+summary +    560 in 00:00:03 =  202.8/s Avg:     3 Min:     1 Max:     8 Err:     0 (0.00%) Active: 0 Started: 10 Finished: 10
+summary =   1860 in 00:00:10 =  188.8/s Avg:     3 Min:     1 Max:    61 Err:     0 (0.00%)
+Tidying up ...    @ October 5, 2026 7:26:02 AM UTC (1791185162995)
+... end of run
+
+$ C:\Program Files\Docker\Docker\resources\bin\docker.EXE run --rm -e TZ=UTC -v D:\tmp\m2s-e2e\jm-monolith:/test -w /test --entrypoint sh justb4/jmeter:5.5 -c cp /test/*.jar $JMETER_HOME/lib/ext/ && jmeter -n -t AcmeAir.jmx -JNUM_THREAD=10 -JLOOP_COUNT=20 -JPROTOCOL=http -DusePureIDs=true -l /test/result.jtl -j /test/jmeter.log

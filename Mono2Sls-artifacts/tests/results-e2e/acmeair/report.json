@@ -1,0 +1,98 @@
+{
+  "monolith": {
+    "variant": "monolith",
+    "loader": "Database Finished Loading",
+    "counts": {
+      "Customers": "10000",
+      "Flights": "1970",
+      "FlightSegments": "394",
+      "Airports": "14"
+    },
+    "started": 1791185151.1124046,
+    "ended": 1791185163.7842665,
+    "samples": 1860,
+    "errors": 0,
+    "throughput_per_s": 191.99,
+    "all": {
+      "p50": 3.0,
+      "p90": 5.0,
+      "p99": 7.0
+    },
+    "labels": {
+      "Login": {
+        "n": 200,
+        "errors": 0,
+        "codes": {
+          "200": 200
+        },
+        "p50": 3.0,
+        "p90": 5.0,
+        "p99": 9.0
+      },
+      "QueryFlight": {
+        "n": 1000,
+        "errors": 0,
+        "codes": {
+          "200": 1000
+        },
+        "p50": 4.0,
+        "p90": 6.0,
+        "p99": 7.0
+      },
+      "BookFlight": {
+        "n": 160,
+        "errors": 0,
+        "codes": {
+          "200": 160
+        },
+        "p50": 3.0,
+        "p90": 4.0,
+        "p99": 5.0
+      },
+      "List Bookings": {
+        "n": 200,
+        "errors": 0,
+        "codes": {
+          "200": 200
+        },
+        "p50": 3.0,
+        "p90": 4.0,
+        "p99": 5.0
+      },
+      "logout": {
+        "n": 200,
+        "errors": 0,
+        "codes": {
+          "200": 200
+        },
+        "p50": 2.0,
+        "p90": 3.0,
+        "p99": 4.0
+      },
+      "View Profile Information": {
+        "n": 50,
+        "errors": 0,
+        "codes": {
+          "200": 50
+        },
+        "p50": 3.0,
+        "p90": 3.0,
+        "p99": 4.0
+      },
+      "Update Customer": {
+        "n": 50,
+        "errors": 0,
+        "codes": {
+          "200": 50
+        },
+        "p50": 3.0,
+        "p90": 4.0,
+        "p99": 7.0
+      }
+    },
+    "counts_after": {
+      "Bookings": "160",
+      "Sessions": "0"
+    }
+  }
+}
