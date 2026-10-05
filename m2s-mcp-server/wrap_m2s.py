@@ -28,6 +28,7 @@ from preprocessor.static_analyzer import run_static_analysis  # noqa: E402
 
 import spec_extract
 import global_middleware  # noqa: E402
+import data_store  # noqa: E402
 
 
 def analyze(monolith_root: str, workspace: str) -> dict[str, Any]:
@@ -49,6 +50,11 @@ def analyze(monolith_root: str, workspace: str) -> dict[str, Any]:
     # app-wide middleware that changes every response (CORS, security headers,
     # header hooks): outside every route, so route-level extraction misses it
     report["global_middleware"] = global_middleware.detect(monolith_path)
+    # a non-DynamoDB data store (MongoDB): its access patterns, which S1 must
+    # map onto DynamoDB tables (gate DM1/DM2)
+    store = data_store.detect(monolith_path)
+    if store:
+        report["source_data_store"] = store
 
     # Mirror static_analyzer.main(): pop symbol_table, write it separately.
     # Nested under storage/ to match M2S's own storage/-output/ convention,
@@ -76,6 +82,7 @@ def analyze(monolith_root: str, workspace: str) -> dict[str, Any]:
         "spec": spec_summary,
         "config_info": report.get("config_info", {}),
         "dynamodb_info": report.get("dynamodb_info", {}),
+        "source_data_store": {k: (len(v) if isinstance(v, list) else v) for k, v in (report.get("source_data_store") or {}).items()},
     }
 
 

@@ -267,13 +267,20 @@ def check_gm_code(workspace: Path) -> list[dict[str, Any]]:
     return findings
 
 
+GATEWAY_RESPONSE_TYPES = {
+    "DEFAULT_INTERNAL", "DEFAULT_4XX", "DEFAULT_5XX", "RESOURCE_NOT_FOUND", "UNAUTHORIZED", "ACCESS_DENIED",
+    "AUTHORIZER_FAILURE", "AUTHORIZER_CONFIGURATION_ERROR", "MISSING_AUTHENTICATION_TOKEN", "INVALID_SIGNATURE",
+    "EXPIRED_TOKEN", "INTEGRATION_FAILURE", "INTEGRATION_TIMEOUT", "API_CONFIGURATION_ERROR", "UNSUPPORTED_MEDIA_TYPE",
+    "INVALID_API_KEY", "BAD_REQUEST_PARAMETERS", "BAD_REQUEST_BODY", "REQUEST_TOO_LARGE", "THROTTLED", "QUOTA_EXCEEDED",
+    "WAF_FILTERED",
+}
+
+
 def check_gm_template(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
     """GM2: responses API Gateway produces itself (authorizer 401/403,
     throttling 429, integration 5xx) must carry the app-wide headers too --
     the monolith added them to its error responses as well."""
     headers = _contract_headers(workspace)
-    if not headers:
-        return []
     resources = template.get("Resources", {}) or {}
     sources = [((template.get("Globals", {}) or {}).get("Api", {}) or {}).get("GatewayResponses") or {}]
     sources += [((r.get("Properties") or {}).get("GatewayResponses") or {}) for r in resources.values()
@@ -284,11 +291,120 @@ def check_gm_template(workspace: Path, template: dict[str, Any]) -> list[dict[st
             hdrs = (((cfg or {}).get("ResponseParameters") or {}).get("Headers") or {})
             covered.setdefault(rtype, set()).update(k.lower() for k in hdrs)
     findings = []
-    for rtype in ("DEFAULT_4XX", "DEFAULT_5XX"):
+    # cfn-lint does not check these names; API Gateway rejects the whole RestApi
+    # at deploy time (airline-booking-c3 2026-10-05: INTERNAL_ERROR)
+    for rtype in sorted(set(covered) - GATEWAY_RESPONSE_TYPES):
+        findings.append(_finding("GM2", "ERROR", f"GatewayResponses type {rtype!r} does not exist; API Gateway rejects the RestApi on "
+                                 f"deploy. Valid types: {', '.join(sorted(GATEWAY_RESPONSE_TYPES))}", "template.yaml"))
+    for rtype in ("DEFAULT_4XX", "DEFAULT_5XX") if headers else ():
         missing = [h for h in headers if h.lower() not in covered.get(rtype, set())]
         if missing:
             findings.append(_finding("GM2", "ERROR", f"GatewayResponses {rtype} does not set {missing}: the gateway's own error responses "
                                      "would lack headers the monolith sends on every response.", "template.yaml"))
+    return findings
+
+
+DM_VIA = {"GetItem", "Query", "PutItem", "UpdateItem", "DeleteItem", "Scan", "BatchWriteItem", "TransactWriteItems"}
+DM_KEYED = {"GetItem", "UpdateItem", "DeleteItem"}  # need the full primary key
+
+
+def check_dm(workspace: Path) -> list[dict[str, Any]]:
+    """DM1: a monolith on another data store (analysis_report.source_data_store,
+    P0 data_store.py) needs every access pattern mapped onto a DynamoDB
+    operation in blueprint.data_model. DM2: each mapping is one DynamoDB can
+    actually serve -- GetItem/UpdateItem/DeleteItem name the table's full
+    primary key, Query names the partition key of the table or the index (plus
+    optionally its sort key), filter fields outside the key are declared as a
+    FilterExpression, and a Scan states why. Without this, a find by a
+    non-key field silently becomes a full-table Scan in the serverless code."""
+    try:
+        report = json.loads((workspace / "storage" / "analysis_report.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    store = report.get("source_data_store")
+    if not isinstance(store, dict) or not store.get("access_patterns"):
+        return []
+    try:
+        blueprint = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []  # B0 reports it
+    dm = blueprint.get("data_model")
+    if not isinstance(dm, dict):
+        return [_finding("DM1", "ERROR", f"The monolith uses {store.get('kind')}, so blueprint.json needs a data_model section mapping "
+                         f"its {len(store['access_patterns'])} access patterns (analysis_report.source_data_store) onto DynamoDB tables.",
+                         "storage/blueprint.json")]
+    tables = {t.get("logical_name"): t for t in blueprint.get("dynamodb_tables", []) if isinstance(t, dict)}
+    colls = {c.get("collection"): c for c in dm.get("collections") or [] if isinstance(c, dict)}
+    findings: list[dict[str, Any]] = []
+    aps = {ap["id"]: ap for ap in store["access_patterns"] if isinstance(ap, dict) and ap.get("id")}
+
+    for name in sorted({ap.get("collection") for ap in aps.values()} - set(colls) - {None}):
+        findings.append(_finding("DM1", "ERROR", f"collection {name!r} has no entry in data_model.collections.", "storage/blueprint.json"))
+    for name, c in colls.items():
+        if c.get("table") not in tables and c.get("dropped") is not True:
+            findings.append(_finding("DM2", "ERROR", f"data_model.collections[{name!r}].table {c.get('table')!r} is not a "
+                                     "dynamodb_tables logical_name.", "storage/blueprint.json"))
+
+    mapped: dict[str, int] = {}
+    for i, m in enumerate(dm.get("access_patterns") or []):
+        where = f"data_model.access_patterns[{i}]"
+        if not isinstance(m, dict):
+            findings.append(_finding("DM2", "ERROR", f"{where} must be an object.", "storage/blueprint.json"))
+            continue
+        for ap_id in m.get("ids") or []:
+            mapped[ap_id] = mapped.get(ap_id, 0) + 1
+            if ap_id not in aps:
+                findings.append(_finding("DM2", "ERROR", f"{where}: {ap_id} is not an access pattern in source_data_store.", "storage/blueprint.json"))
+        via = m.get("via")
+        if via not in DM_VIA:
+            findings.append(_finding("DM2", "ERROR", f"{where}: via must be one of {sorted(DM_VIA)}.", "storage/blueprint.json"))
+            continue
+        if via == "Scan" and not str(m.get("reason") or "").strip():
+            findings.append(_finding("DM2", "ERROR", f"{where}: a Scan needs a reason (why no key or GSI serves {m.get('ids')}).",
+                                     "storage/blueprint.json"))
+        t = tables.get(m.get("table"))
+        if t is None:
+            findings.append(_finding("DM2", "ERROR", f"{where}: table {m.get('table')!r} is not a dynamodb_tables logical_name.",
+                                     "storage/blueprint.json"))
+            continue
+        if via in ("Scan", "PutItem", "BatchWriteItem", "TransactWriteItems"):
+            continue
+        key_src = t
+        if m.get("index"):
+            key_src = next((g for g in t.get("gsi") or [] if isinstance(g, dict) and g.get("index_name") == m["index"]), None)
+            if key_src is None:
+                findings.append(_finding("DM2", "ERROR", f"{where}: {m['table']} has no GSI {m['index']!r}.", "storage/blueprint.json"))
+                continue
+            if via != "Query":
+                findings.append(_finding("DM2", "ERROR", f"{where}: {via} cannot use an index; only Query can.", "storage/blueprint.json"))
+                continue
+        pk = (key_src.get("partition_key") or {}).get("name")
+        sk = (key_src.get("sort_key") or {}).get("name")
+        cond = list(m.get("key_condition") or [])
+        if via in DM_KEYED and set(cond) != {k for k in (pk, sk) if k}:
+            findings.append(_finding("DM2", "ERROR", f"{where}: {via} needs the full primary key {[k for k in (pk, sk) if k]}, "
+                                     f"key_condition is {cond}.", "storage/blueprint.json"))
+        if via == "Query" and (pk not in cond or not set(cond) <= {pk, sk}):
+            findings.append(_finding("DM2", "ERROR", f"{where}: Query on {m['table']}{'/' + m['index'] if m.get('index') else ''} "
+                                     f"must name partition key {pk!r} (and optionally sort key {sk!r}); key_condition is {cond}.",
+                                     "storage/blueprint.json"))
+        # every filter field of the source pattern is served by the key or declared as a FilterExpression
+        for ap_id in m.get("ids") or []:
+            ap = aps.get(ap_id) or {}
+            rename = (colls.get(ap.get("collection")) or {}).get("field_mapping") or {}
+            fields = [rename.get(f["name"], f["name"]) for f in ap.get("filter_fields") or []]
+            uncovered = sorted(set(fields) - set(cond) - set(m.get("filter_expression") or []))
+            if uncovered:
+                findings.append(_finding("DM2", "ERROR", f"{where}: {ap_id} filters on {uncovered} which is neither in key_condition "
+                                         f"{cond} nor in filter_expression.", "storage/blueprint.json"))
+
+    for ap_id, ap in aps.items():
+        n = mapped.get(ap_id, 0)
+        if n != 1:
+            src = (ap.get("source") or [{}])[0]
+            findings.append(_finding("DM1", "ERROR", f"{ap_id} ({ap.get('operation')} {ap.get('collection')} by "
+                                     f"{[f['name'] for f in ap.get('filter_fields') or []]}, {src.get('file')}:{src.get('line')}) is mapped "
+                                     f"{n} times in data_model.access_patterns; it must be mapped exactly once.", "storage/blueprint.json"))
     return findings
 
 
@@ -364,11 +480,11 @@ def check_b0(workspace: Path) -> list[dict[str, Any]]:
                 findings.append(
                     _finding("B0", "ERROR", f"{label} missing non-empty 'entry_points' (required for trigger_type='api').", label)
                 )
-            if fn.get("auth") not in {"required", "none"}:
+            if fn.get("auth") not in {"required", "none", "function"}:
                 findings.append(
                     _finding(
                         "B0", "ERROR",
-                        f"{label} 'auth' must be 'required' or 'none' for trigger_type='api', got {fn.get('auth')!r}.",
+                        f"{label} 'auth' must be 'required', 'none' or 'function' (gateway open, function checks the monolith's own session) for trigger_type='api', got {fn.get('auth')!r}.",
                         label,
                     )
                 )
@@ -749,6 +865,8 @@ def check_c7b(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]
         if not isinstance(fn, dict):
             continue
         auth = fn.get("auth")
+        if auth == "function":
+            auth = "none"  # the function checks the monolith's own session; the gateway must not
         for ep in fn.get("entry_points", []) or []:
             method, _, path = ep.partition(" ")
             key = f"{method.upper()} {_normalize_path(path)}"
@@ -1256,7 +1374,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
     severe = False
 
     if phase == "blueprint":
-        checks = check_b0(ws) + check_contract(ws)
+        checks = check_b0(ws) + check_contract(ws) + check_dm(ws)
         severe = any(f["severity"] == "ERROR" for f in checks)
 
     elif phase == "code":
@@ -1327,7 +1445,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_gm_code(ws)
                 + check_gm_template(ws, template)
             )
-        checks += check_tools_unmodified() + check_spec_relaxations(ws)
+        checks += check_tools_unmodified() + check_spec_relaxations(ws) + check_dm(ws)
         report_path = ws / "output" / "consistency_report.json"
         report = None
         if report_path.exists():

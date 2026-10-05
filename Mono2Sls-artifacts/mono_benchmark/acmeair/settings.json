@@ -1,0 +1,19 @@
+{
+	"port":80,
+	"contextRoot": "",	
+
+	"mongoDatabaseName" : "acmeair",
+	"mongoHost" : "127.0.0.1",
+	"mongoPort" : 27017,
+	"mongoConnectionPoolSize": 10,
+	"mongoUsername": "",
+	"mongoPassword": "",
+
+	"useFlightDataRelatedCaching" : true,
+	
+	"flightDataCacheTTL" :  1200000,
+	"flightDataCacheMaxSize" : 100000,
+	
+	"loggerLevel" : "INFO",
+	"useDevLogger" : false     
+}

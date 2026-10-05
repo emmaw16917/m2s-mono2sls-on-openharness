@@ -103,8 +103,10 @@ def merge_blueprint_key(key: str, value_json: str, mode: str = "append") -> str:
     Args:
         key: one of metadata, lambda_functions, dynamodb_tables, s3_buckets,
             sqs_queues, eventbridge_rules, lambda_invoke_permissions,
-            cognito, api_gateway, dropped_functions. Any other key is
-            rejected -- do not invent new top-level keys.
+            cognito, api_gateway, dropped_functions; plus data_model when the
+            monolith's data store is not DynamoDB (analysis_report has
+            source_data_store). Any other key is rejected -- do not invent
+            new top-level keys.
         value_json: a JSON string holding the value for that key (an object
             for metadata/cognito/api_gateway, an array for the rest).
         mode: "append" (default) -- for array values, concatenates onto

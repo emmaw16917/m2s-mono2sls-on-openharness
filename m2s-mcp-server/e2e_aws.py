@@ -387,7 +387,12 @@ def serverless_config(app: dict, target: str, outputs: dict, resources: dict) ->
            "authConfig": {"userPoolId": outputs[o["userPoolId"]], "clientId": outputs[o["clientId"]], "region": REGION,
                           "userEmailDomain": "example.com", "defaultPassword": "TestPass123!"}}
     for field, logical in app["tables"].items():
-        cfg[field] = resources[logical]["physical"]
+        # a workspace may drop a table the suite knows about (airline-booking-c3:
+        # no Payment table); tests that read it then fail and show in the report
+        if logical in resources:
+            cfg[field] = resources[logical]["physical"]
+        else:
+            print(f"  note: stack has no {logical}; {field} left unset", flush=True)
     # stage already in the URL from the stack output; the suite adds pathPrefix
     if cfg["baseUrl"].endswith("/" + app["base"].get("pathPrefix", "")):
         cfg["baseUrl"] = cfg["baseUrl"][: -(len(app["base"]["pathPrefix"]) + 1)]
@@ -670,9 +675,14 @@ def main() -> None:
     ap.add_argument("--only", choices=["monolith", "v0", "opt"], action="append")
     ap.add_argument("--keep", action="store_true", help="keep the stacks (debugging); delete them yourself with sam delete")
     ap.add_argument("--reuse", action="store_true", help="test an already deployed m2s-e2e-<app>-<variant> stack instead of deploying")
+    ap.add_argument("--workspace", help="test this runs/<workspace> instead of the app's default one")
+    ap.add_argument("--out", help="results-e2e/<out> (default: the app name)")
+    ap.add_argument("--v0-ref", default="v0", help="git ref deployed as v0 (default: the v0 tag)")
     args = ap.parse_args()
-    app = APPS[args.app]
-    out_dir = TESTS / "results-e2e" / args.app
+    app = dict(APPS[args.app])
+    if args.workspace:
+        app["workspace"] = args.workspace
+    out_dir = TESTS / "results-e2e" / (args.out or args.app)
     out_dir.mkdir(parents=True, exist_ok=True)
     results_path = out_dir / "results.json"
     results = json.loads(results_path.read_text(encoding="utf-8")) if results_path.exists() else {}
@@ -680,7 +690,7 @@ def main() -> None:
         print(f"== {args.app} {variant}", flush=True)
         try:
             results[variant] = run_monolith(args.app, app, out_dir) if variant == "monolith" else \
-                run_serverless(args.app, app, variant, "v0" if variant == "v0" else "HEAD", out_dir, args.keep, args.reuse)
+                run_serverless(args.app, app, variant, args.v0_ref if variant == "v0" else "HEAD", out_dir, args.keep, args.reuse)
         except Exception as exc:  # noqa: BLE001 -- keep going; the report shows the failure
             results[variant] = {"variant": variant, "error": str(exc)[:2000]}
         results_path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")

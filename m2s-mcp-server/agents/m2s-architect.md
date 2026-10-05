@@ -53,7 +53,8 @@ model: inherit
 
 ## 数据架构
 
-- `dynamodb_info.used == false` → `dynamodb_tables = []`。
+- `dynamodb_info.used == false` 且报告里**没有** `source_data_store` → `dynamodb_tables = []`。
+- 报告里有 `source_data_store`（单体用的是 MongoDB 等非 DynamoDB 存储）→ 见下一节「数据模型转换」，表从访问模式设计出来。
 - `used == true` → 以 `dynamodb_info.table_schemas` 为准，提取**精确**的表结构（partition key 名称/类型、sort key 名称/类型（如有）、GSI（如有）），直接写进 `dynamodb_tables`，不要编造字段。`table_schemas` 缺表或有疑问时，再用 `read_file` 读 `schema_files` 核对。
 - Users 表三种处理方式：①只有凭据字段（密码/哈希/token）→ 整表删除，交给 Cognito；②还有业务资料字段（头像、偏好等）→ 拆分，凭据归 Cognito、业务字段单独建 DynamoDB 表；③只有姓名/邮箱/电话等标准字段 → 用 Cognito 标准属性，不需要额外建表。**不要把任何用户凭据字段（登录邮箱、密码、token）迁移进 DynamoDB**。
 - 业务表（订单、商品等）的外键从"整数 user_id"改成"字符串 userId = Cognito Sub"。
@@ -61,6 +62,7 @@ model: inherit
 ## 认证与 API Gateway
 
 - 有 `Auth` 标签：`cognito.enabled=true`，`user_pool_attributes` 从用户模型里提取（如 `["email", "name"]`），`password_policy` 给出合理的默认要求。**不要**创建 `post_confirmation` 触发器或任何 Cognito 触发的 Lambda。
+- **例外：单体自己管理会话**（登录端点自己校验密码、生成会话 id 存进自己的表或集合，再通过 cookie 或请求头发给客户端；受保护路由的中间件按这个 id 查表，例如 Acme Air 的 `checkForValidSessionCookie` 查 `customerSession`）。客户端（包括性能测试脚本）依赖的是这套登录和 cookie 契约，换成 Cognito 会改掉对外接口。这时**保留单体的机制**：`cognito.enabled=false`，`authorizer="None"`；会话集合照常迁成表，每个受保护函数自己按单体中间件的逻辑校验会话（读 cookie → `GetItem` 会话表 → 不存在或过期就返回单体的状态码），放进共用 layer；这些函数在 blueprint 里 `auth` 写 `"none"`（网关层不鉴权），并在 `notes` 里写"函数内校验会话，见 D-x"。在 `DECISIONS.md` 写一条决策说明为什么不用 Cognito。
 - `api_gateway.type = "REST"`，`cors = {allow_origins: ["*"], allow_methods: ["GET","POST","PUT","DELETE","OPTIONS"]}`。
 - `cognito.enabled == true` 时：`authorizer="Cognito"`、`authorizer_type="COGNITO_USER_POOLS"`、`user_pool_arn` 引用 Cognito User Pool、`token_validation="Automatic at API Gateway layer"`、`identity_source="Authorization header (Bearer token)"`；否则 `authorizer="None"`。
 
@@ -160,6 +162,43 @@ blueprint 里的每个判断都要能追溯到依据。用 `write_file` 写 `sto
    - 以前回炉写过的裁定要保留，不要删。
 4. 照常跑 `run_gate(phase="blueprint")` 自查，再写工作报告，在 `issues` 里逐条列出你的裁定。
 
+## 数据模型转换（`analysis_report.source_data_store`）
+
+单体的数据存储不是 DynamoDB 时（目前是 MongoDB），P0 的 `source_data_store` 列出了代码对每个集合的**全部访问模式**（`access_patterns`：`id`、`collection`、`operation`、`filter_fields`（每个字段带 `match`：`eq`/`range`/`in`/`other`）、`sort`、`via`、`note`、`source`）。表要**从访问模式反推**，而不是照搬集合：
+
+1. **每个集合一张表**（除非明确合并或删除，删除写进 `dropped_functions`，`type: "table"`）。主键从最常用的等值访问选：按 `_id` 取的，partition key 就是它，属性名可以改（例如 `_id` → `id`），在 `field_mapping` 里写清楚。
+2. **每个访问模式落到一个 DynamoDB 操作**：
+   - 按完整主键等值 → `GetItem`（`UpdateItem`/`DeleteItem` 同理）；
+   - 按非主键字段等值 → 给表加 GSI，用 `Query`；多个等值字段时，一个当 partition key，另一个当 sort key（范围条件只能放在 sort key 上）；
+   - 范围条件（`match: "range"`）→ 该字段必须是 sort key；
+   - 过滤字段里有不在 key 里的 → 写进 `filter_expression`（注意这会多读）；
+   - `count`、清空集合（`deleteMany({})`）这类全表操作 → `Scan`，**必须**写 `reason`；能用计数器条目代替的高频计数，写明为什么不用；
+   - 插入 → `PutItem`（批量用 `BatchWriteItem`）。
+3. **类型转换**：MongoDB 的 `Date` 存成 ISO-8601 字符串（排序和比较才对）或毫秒数，`ObjectId` 存成字符串；在 `collections[].type_mapping` 里写清楚，代码和测试都按这个来。
+4. **语义差异**（`note` 字段会提示），例如 `remove({_id, customerId})` 实际只按 `_id` 删：迁移后**保持单体的行为**（这是契约），在 `DECISIONS.md` 里写一条说明，不要顺手"修复"。
+5. `count` 在单体里是精确值；`DescribeTable.ItemCount` 是约 6 小时更新一次的近似值，**不能**用来代替。
+
+写进 blueprint 的 `data_model`（可选顶层 key，只有这种单体才写）：
+
+```json
+{
+  "source": "mongodb",
+  "collections": [
+    {"collection": "booking", "table": "BookingTable", "field_mapping": {"_id": "id"},
+     "type_mapping": [{"field": "dateOfBooking", "from": "Date", "to": "S (ISO-8601)"}], "notes": "..."}
+  ],
+  "access_patterns": [
+    {"ids": ["AP23"], "via": "Query", "table": "BookingTable", "index": "customerId-index", "key_condition": ["customerId"]},
+    {"ids": ["AP8", "AP10", "AP11"], "via": "GetItem", "table": "CustomerTable", "key_condition": ["id"]},
+    {"ids": ["AP27"], "via": "Scan", "table": "BookingTable", "reason": "GET /config/countBookings 返回精确总数"}
+  ]
+}
+```
+
+`key_condition`、`filter_expression` 用的是**映射后的属性名**（`field_mapping` 之后）。每个 `AP` id 必须恰好出现一次。gate(blueprint) 的 DM1/DM2 会检查：每个模式都映射了、表和 GSI 存在、`GetItem`/`UpdateItem`/`DeleteItem` 给出了完整主键、`Query` 给出了 partition key、过滤字段要么在 key 里要么在 `filter_expression` 里、`Scan` 有 `reason`。
+
+`dynamodb_tables` 里每张表的 `source` 指向 `source_data_store` 里这个集合的访问点（`collections[].source`）。
+
 ## 全局响应头（`analysis_report.global_middleware`）
 
 单体里作用于所有响应的中间件（CORS、安全头、统一的响应头 hook）在 `global_middleware` 里，每项的 `headers` 是**每个响应**都会带的头。迁到 API Gateway + Lambda 代理集成后，没有"全局中间件"这一层了：
@@ -224,6 +263,8 @@ spawn prompt 写明"裁定 perf 申请"时，主 Agent 会给你若干条申请�
 metadata, lambda_functions, dynamodb_tables, s3_buckets, sqs_queues,
 eventbridge_rules, lambda_invoke_permissions, cognito, api_gateway, dropped_functions
 ```
+
+例外：报告里有 `source_data_store` 时，还要写第 11 个 key `data_model`（见「数据模型转换」）。
 
 依次调用（`lambda_functions` 如果函数很多，可以分几次调用，每次传一部分数组，工具会自动拼接）：
 

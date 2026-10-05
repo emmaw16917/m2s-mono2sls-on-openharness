@@ -64,6 +64,23 @@ model: inherit
 - `headers` 为 `null` 的项：带了参数，P0 判断不了。读参数和它引用的配置（例如 `CORS_ORIGINS`、`supports_credentials=True`），用 `annotate_global_middleware(index, headers_json, note, source_json)` 写下**每个响应**都会带的头和值；值依赖请求时写成描述，例如 `"<请求的 Origin，当它在 CORS_ORIGINS 里>"`。`check_provenance` 在这些项填好之前不会 PASS。
 - P0 漏掉的全局中间件（例如自定义的响应头 hook）：在报告的 `issues` 里写明位置，交给主 Agent。
 
+## 非 DynamoDB 的数据存储（`source_data_store`，P0 已列出）
+
+单体用 MongoDB 时，报告顶层有 `source_data_store`：集合列表和每个访问模式（`AP1`…）。端点的 `data_access` 是按 DynamoDB 调用提取的，对这种单体是空的；**访问模式在 `source_data_store` 里，不在端点上**。你要做的：
+
+- 端点的 `business_rules` 里，`data_scope` 规则要说清楚这个端点按什么条件读写哪个集合，并在 `note` 里写对应的 `AP` 编号（例如 `"AP23"`），architect 据此设计表和 GSI；
+- 访问模式带 `note` 的（例如"调用方传了 `customerId`，但封装函数只按 `_id` 删"），这是**单体真实的行为**，按它写规则（例如 authorization 规则写"取消预订**不**校验预订属于当前用户"），不要按调用方的意图写；
+- `unresolved` 里列出脚本没确定的集合名或过滤条件：读代码确定后，写进相关端点规则的 `note`，并在工作报告的 `issues` 里列出，交给 architect。
+
+## 按配置注册的路由（`registration_condition` / `registration_alternatives`）
+
+有的路由只在某个配置开启时才注册（例如 `if (settings.payload) { router.post('/booking/payload', ...) }`），同一路由在两个分支里注册了不同的 handler 时，端点上有 `registration_alternatives`（每个分支的条件和 handler 位置）。
+
+- 读配置文件（如 `settings.json`）和环境变量的默认值，确定**默认配置下**哪个分支生效；
+- 生效的不是脚本选的那个 handler 时，用 `annotate_entry_point` 改 `handler_location`；
+- 默认配置下根本不注册的路由，在工作报告 `issues` 里写明，由 architect 决定放进 `dropped_functions` 还是保留；
+- 在端点的 `business_rules` 里加一条 `kind: "other"` 的规则写明这个条件。
+
 ## 出处格式（会被机械检查，写错会被工具当场拒绝）
 
 `source` 是一个非空列表，每项严格是 `{"file": ..., "line": ..., "symbol": ...}`，不能有其他键：

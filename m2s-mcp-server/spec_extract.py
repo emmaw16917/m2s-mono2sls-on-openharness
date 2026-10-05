@@ -685,6 +685,153 @@ def _extract_table_schemas(project: _Project, schema_files: list[str]) -> list[d
 # Entry point
 # ---------------------------------------------------------------------------
 
+def _blank_comments(src: str) -> str:
+    """Comments replaced by spaces, newlines kept (offsets stay valid)."""
+    out, i, n = list(src), 0, len(src)
+    while i < n:
+        c = src[i]
+        if c in "'\"`":
+            j = i + 1
+            while j < n and src[j] != c:
+                j += 2 if src[j] == "\\" else 1
+            i = j + 1
+        elif src.startswith("//", i):
+            j = src.find(chr(10), i)
+            j = n if j == -1 else j
+            out[i:j] = " " * (j - i)
+            i = j
+        elif src.startswith("/*", i):
+            j = src.find("*/", i + 2)
+            j = n if j == -1 else j + 2
+            out[i:j] = [ch if ch == chr(10) else " " for ch in src[i:j]]
+            i = j
+        else:
+            i += 1
+    return "".join(out)
+
+
+# Only conditions on configuration make a route optional; an `if (error)`
+# around registration after a successful DB connect does not.
+_CONFIG_COND_RE = re.compile(r"\b(?:settings|config|conf|cfg|options|process\.env|os\.environ)\b|\b[A-Z][A-Z0-9_]{2,}\b")
+
+
+def _registration_condition(blank: str, idx: int) -> str | None:
+    """The innermost configuration `if (...)` (or `!(...)` for its else
+    branch) whose block contains position idx; None outside any.
+    Function bodies stop the search: a route inside a callback is not
+    conditional just because the callback is."""
+    depth = 0
+    i = idx
+    while i > 0:
+        i -= 1
+        c = blank[i]
+        if c == "}":
+            depth += 1
+        elif c == "{":
+            if depth:
+                depth -= 1
+                continue
+            base = max(0, i - 300)
+            head = blank[base:i].rstrip()
+            if re.search(r"\belse$", head):
+                # the if-block closed right before `else`
+                k = head[:-4].rstrip()
+                cond = _if_condition_before_block(blank, base + len(k) - 1) if k.endswith("}") else None
+                if cond and _CONFIG_COND_RE.search(cond):
+                    return f"!({cond})"
+                continue
+            if head.endswith(")"):
+                close = len(head) - 1
+                depth_p, j = 0, close
+                while j >= 0:
+                    if head[j] == ")":
+                        depth_p += 1
+                    elif head[j] == "(":
+                        depth_p -= 1
+                        if depth_p == 0:
+                            break
+                    j -= 1
+                before = head[:j].rstrip()
+                if re.search(r"\bif$", before):
+                    cond = " ".join(head[j + 1:close].split())
+                    if _CONFIG_COND_RE.search(cond):
+                        return cond
+                    continue  # e.g. if (error) {...} else {...} around routes registered after the DB connects
+                if re.search(r"\bfunction\s*[\w$]*$|=>$", before) or re.search(r"=>\s*$", head):
+                    return None
+            if head.endswith("=>"):
+                return None
+    return None
+
+
+def _if_condition_before_block(blank: str, close_idx: int) -> str | None:
+    """close_idx is a `}` closing an if-block: return that if's condition."""
+    depth, i = 0, close_idx
+    while i >= 0:
+        if blank[i] == "}":
+            depth += 1
+        elif blank[i] == "{":
+            depth -= 1
+            if depth == 0:
+                break
+        i -= 1
+    head = blank[max(0, i - 300):i].rstrip()
+    if not head.endswith(")"):
+        return None
+    depth_p, j = 0, len(head) - 1
+    while j >= 0:
+        if head[j] == ")":
+            depth_p += 1
+        elif head[j] == "(":
+            depth_p -= 1
+            if depth_p == 0:
+                break
+        j -= 1
+    return " ".join(head[j + 1:len(head) - 1].split()) if re.search(r"\bif$", head[:j].rstrip()) else None
+
+
+def _member_function(src: str, member: str) -> tuple[int, int] | None:
+    """`module.member = function (...) {`, `exports.member = ...`,
+    `member: function (...) {` -> (start, end) of the function."""
+    for rx in (rf"(?:module\.exports|module|exports|this)\s*\.\s*{re.escape(member)}\s*=\s*(?:async\s+)?(?:function\b[^(]*\(|\([^)]*\)\s*=>)",
+               rf"(?<![\w$.]){re.escape(member)}\s*:\s*(?:async\s+)?(?:function\b[^(]*\(|\([^)]*\)\s*=>)"):
+        m = re.search(rx, src)
+        if m:
+            brace = src.find("{", m.end())
+            close = _match_close(src, brace) if brace != -1 else -1
+            if close != -1:
+                return m.start(), close
+    return None
+
+
+def _resolve_handler(project: "_Project", rel: str, src: str, text: str, depth: int = 0) -> "_Handler | None":
+    """A route handler given by name -> its function body: `getX` (a function
+    in the same file) or `xRoutes.getX` where `xRoutes = [new] require('./x')(...)`
+    and ./x defines `module.getX = function (req, res) {...}`. A body that only
+    delegates (`routes.login(req, res)`) is followed once more. None when the
+    handler is inline or cannot be resolved."""
+    text = text.strip()
+    target_rel, rng = None, None
+    m = re.fullmatch(rf"({_IDENT})\s*\.\s*({_IDENT})", text)
+    if m:
+        obj, member = m.groups()
+        rq = re.search(rf"(?<![\w$.]){re.escape(obj)}\s*=\s*(?:new\s+)?require\(\s*['\"]([^'\"]+)['\"]\s*\)", src)
+        target_rel = project.resolve_require(rel, rq.group(1)) if rq else None
+        tsrc = project.sources.get(target_rel) if target_rel else None
+        rng = _member_function(tsrc, member) if tsrc else None
+    elif re.fullmatch(_IDENT, text):
+        target_rel, tsrc = rel, src
+        rng = _function_ranges(src).get(text)
+    if not rng:
+        return None
+    h = _Handler(target_rel, project.sources[target_rel], rng[0], rng[1])
+    body = h.text[h.text.find("{") + 1:h.text.rfind("}")].strip().rstrip(";").strip()
+    d = re.fullmatch(rf"((?:{_IDENT}\s*\.\s*)?{_IDENT})\s*\(\s*req\s*,\s*res\s*(?:,\s*next\s*)?\)", body)
+    if d and depth < 2:
+        return _resolve_handler(project, target_rel, project.sources[target_rel], d.group(1), depth + 1) or h
+    return h
+
+
 def _empty_spec(ep: dict[str, Any], reason: str) -> None:
     ep.setdefault("handler_location", None)
     ep.setdefault("auth", None)
@@ -705,9 +852,19 @@ def enrich_report(report: dict[str, Any], monolith_root: Path) -> dict[str, Any]
     # (file, METHOD, full path) -> route call location, computed the same way
     # the analyzer builds its prefixed paths.
     routes: dict[tuple[str, str, str], dict[str, Any]] = {}
+    commented: set[tuple[str, str, str]] = set()
+    registrations: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
     for rel, src in project.sources.items():
         mount_list = mounts.get(rel) or [{"prefix": "", "middleware": [], "source": None}]
+        blank = _blank_comments(src)
         for m in _ROUTE_RE.finditer(src):
+            if blank[m.start():m.end()] != src[m.start():m.end()]:
+                # inside /* ... */ or after // -- not a route (acmeair app.js)
+                for mount in mount_list:
+                    raw, prefix = m.group(3), mount["prefix"]
+                    commented.add((rel, m.group(1).upper(),
+                                   prefix.rstrip("/") + "/" + raw.lstrip("/") if raw not in ("", "/") else (prefix or "/")))
+                continue
             open_idx = src.find("(", m.start())
             close = _match_close(src, open_idx)
             if close == -1:
@@ -721,14 +878,32 @@ def enrich_report(report: dict[str, Any], monolith_root: Path) -> dict[str, Any]
                 raw = m.group(3)
                 prefix = mount["prefix"]
                 full = prefix.rstrip("/") + "/" + raw.lstrip("/") if raw not in ("", "/") else (prefix or "/")
-                routes[(rel, m.group(1).upper(), full)] = {
-                    "handler": _Handler(rel, src, h_start, open_idx + 1 + handler_off + len(handler_text) - 1),
+                entry = {
+                    "handler": _resolve_handler(project, rel, src, handler_text)
+                    or _Handler(rel, src, h_start, open_idx + 1 + handler_off + len(handler_text) - 1),
                     "raw_path": raw,
                     "route_line": route_line,
+                    "condition": _registration_condition(blank, m.start()),
                     "middleware": mount["middleware"] + route_mw,
                     "mount_source": mount["source"],
                 }
+                key = (rel, m.group(1).upper(), full)
+                # the same route registered twice, e.g. in both branches of
+                # if(settings.payload): keep the first, list all of them
+                registrations.setdefault(key, []).append(entry)
+                routes.setdefault(key, entry)
 
+    dropped = [ep for ep in report.get("entry_points", [])
+               if (ep.get("file"), (ep.get("method") or "").upper(), ep.get("path")) in commented
+               and (ep.get("file"), (ep.get("method") or "").upper(), ep.get("path")) not in routes]
+    seen_keys: set[tuple] = set()
+    for ep in report.get("entry_points", []):
+        k = (ep.get("file"), (ep.get("method") or "").upper(), ep.get("path"))
+        if k in seen_keys:
+            dropped.append(ep)
+        seen_keys.add(k)
+    if dropped:
+        report["entry_points"] = [ep for ep in report["entry_points"] if all(ep is not d for d in dropped)]
     unknown = 0
     extracted = unsupported = 0
     py_project = None
@@ -769,6 +944,17 @@ def enrich_report(report: dict[str, Any], monolith_root: Path) -> dict[str, Any]
         ep["data_access"] = _extract_data_access(project, h)
         ep["business_rules"] = []
         ep["spec_status"] = {"script": "extracted", "annotated_fields": []}
+        regs = registrations.get(key) or []
+        if len(regs) > 1:
+            ep["registration_alternatives"] = [
+                {"condition": r["condition"],
+                 "handler_location": {"file": r["handler"].rel, "start_line": r["handler"].line(0),
+                                      "end_line": r["handler"].line(len(r["handler"].text) - 1)},
+                 "source": [_src(ep["file"], r["route_line"], r["raw_path"])]} for r in regs]
+        if route.get("condition"):
+            # registered only under a runtime condition (acmeair: if(settings.payload))
+            ep["registration_condition"] = {"expression": route["condition"],
+                                            "source": [_src(ep["file"], route["route_line"], route["raw_path"])]}
         extracted += 1
         for loc in ep["request"].values():
             unknown += sum(1 for f in loc if f["type"] == "unknown") + sum(1 for f in loc if f["required"] == "unknown")
@@ -788,6 +974,12 @@ def enrich_report(report: dict[str, Any], monolith_root: Path) -> dict[str, Any]
         "schema_version": SPEC_SCHEMA_VERSION,
         "monolith_root": str(monolith_root.resolve()),
     }
+    if dropped:
+        report["spec_meta"]["dropped_entry_points"] = [
+            f"{ep.get('method')} {ep.get('path')} ({ep.get('file')}): "
+            + ("commented out" if (ep.get("file"), (ep.get("method") or "").upper(), ep.get("path")) in commented
+               and (ep.get("file"), (ep.get("method") or "").upper(), ep.get("path")) not in routes
+               else "duplicate registration, see registration_alternatives") for ep in dropped]
     return {
         "entry_points": len(report.get("entry_points", [])),
         "script_extracted": extracted,
