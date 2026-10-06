@@ -1,0 +1,868 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1791260643658,1369,Login,200,OK,Thread Group 1-1,text,true,,586,297,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,1369,0,466
+1791260644520,671,Login,200,OK,Thread Group 1-2,text,true,,586,297,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,671,0,42
+1791260645514,78,Login,200,OK,Thread Group 1-3,text,true,,586,297,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,78,0,28
+1791260645033,808,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,808,0,0
+1791260645849,74,QueryFlight,200,OK,Thread Group 1-1,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,74,0,0
+1791260645193,786,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,785,0,0
+1791260645980,63,QueryFlight,200,OK,Thread Group 1-2,text,true,,1065,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,63,0,0
+1791260645924,121,QueryFlight,200,OK,Thread Group 1-1,text,true,,1066,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,121,0,0
+1791260646044,64,QueryFlight,200,OK,Thread Group 1-2,text,true,,1070,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,64,0,0
+1791260646047,110,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,110,0,0
+1791260646109,64,QueryFlight,200,OK,Thread Group 1-2,text,true,,1068,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,64,0,0
+1791260646159,60,QueryFlight,200,OK,Thread Group 1-1,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791260646174,70,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,70,0,0
+1791260645593,819,View Profile Information,200,OK,Thread Group 1-3,text,true,,760,251,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8006@email.com,818,0,0
+1791260646519,72,Login,200,OK,Thread Group 1-4,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,72,0,24
+1791260646592,55,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260646648,58,QueryFlight,200,OK,Thread Group 1-4,text,true,,1070,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260646707,55,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260646763,62,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791260646829,56,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791260646413,606,Update Customer,200,OK,Thread Group 1-3,text,true,,760,710,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8006@email.com,605,0,0
+1791260646220,804,List Bookings,200,OK,Thread Group 1-1,text,true,,479,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1924@email.com,804,0,0
+1791260646245,800,List Bookings,200,OK,Thread Group 1-2,text,true,,479,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2759@email.com,800,0,0
+1791260647021,50,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791260647072,55,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,54,0,0
+1791260647127,55,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260647183,62,QueryFlight,200,OK,Thread Group 1-3,text,true,,1067,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791260647246,56,QueryFlight,200,OK,Thread Group 1-3,text,true,,1065,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260646886,697,List Bookings,200,OK,Thread Group 1-4,text,true,,479,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9336@email.com,697,0,0
+1791260647508,83,Login,200,OK,Thread Group 1-5,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,83,0,23
+1791260647592,59,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791260647651,50,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791260647046,661,logout,200,OK,Thread Group 1-2,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2759%40email.com,661,0,0
+1791260647702,48,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791260647708,62,Login,200,OK,Thread Group 1-2,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,62,0,0
+1791260647026,765,logout,200,OK,Thread Group 1-1,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1924%40email.com,765,0,0
+1791260647751,60,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791260647792,34,Login,200,OK,Thread Group 1-1,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,34,0,0
+1791260647771,66,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,66,0,0
+1791260647812,45,QueryFlight,200,OK,Thread Group 1-5,text,true,,1070,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260647827,50,View Profile Information,200,OK,Thread Group 1-1,text,true,,760,251,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid3786@email.com,50,0,0
+1791260647838,62,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791260647878,42,Update Customer,200,OK,Thread Group 1-1,text,true,,760,710,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid3786@email.com,42,0,0
+1791260647901,56,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260647922,44,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260647958,46,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791260647968,54,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,54,0,0
+1791260648005,48,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791260648023,53,QueryFlight,200,OK,Thread Group 1-1,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791260648054,54,List Bookings,200,OK,Thread Group 1-2,text,true,,479,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4691@email.com,54,0,0
+1791260648077,60,QueryFlight,200,OK,Thread Group 1-1,text,true,,1067,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791260648108,46,logout,200,OK,Thread Group 1-2,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4691%40email.com,46,0,0
+1791260647583,594,logout,200,OK,Thread Group 1-4,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9336%40email.com,594,0,0
+1791260648138,41,QueryFlight,200,OK,Thread Group 1-1,text,true,,1065,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791260648155,35,Login,200,OK,Thread Group 1-2,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,35,0,0
+1791260648178,33,Login,200,OK,Thread Group 1-4,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791260648190,55,QueryFlight,200,OK,Thread Group 1-2,text,true,,1070,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260647302,964,BookFlight,200,OK,Thread Group 1-3,text,true,,575,473,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,964,0,0
+1791260648212,59,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791260648245,45,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260648267,40,List Bookings,200,OK,Thread Group 1-3,text,true,,653,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8006@email.com,40,0,0
+1791260648180,127,BookFlight,200,OK,Thread Group 1-1,text,true,,575,473,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,127,0,0
+1791260648272,55,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,54,0,0
+1791260648290,51,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791260648307,40,logout,200,OK,Thread Group 1-3,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8006%40email.com,40,0,0
+1791260648307,44,List Bookings,200,OK,Thread Group 1-1,text,true,,653,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3786@email.com,44,0,0
+1791260648348,29,Login,200,OK,Thread Group 1-3,text,true,,586,296,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,29,0,0
+1791260648327,58,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260648352,38,logout,200,OK,Thread Group 1-1,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3786%40email.com,38,0,0
+1791260648341,76,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,76,0,0
+1791260648379,42,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260648391,35,Login,200,OK,Thread Group 1-1,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,35,0,0
+1791260648386,75,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,75,0,0
+1791260648426,44,View Profile Information,200,OK,Thread Group 1-1,text,true,,760,251,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid2889@email.com,44,0,0
+1791260648418,52,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791260648422,78,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,78,0,0
+1791260648470,37,Update Customer,200,OK,Thread Group 1-1,text,true,,760,710,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid2889@email.com,37,0,0
+1791260648470,58,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,58,0,0
+1791260648501,41,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791260648510,50,Login,200,OK,Thread Group 1-6,text,true,,586,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,50,0,17
+1791260648508,57,QueryFlight,200,OK,Thread Group 1-1,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,57,0,0
+1791260648528,56,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8315@email.com,56,0,0
+1791260648544,52,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791260647858,742,BookFlight,200,OK,Thread Group 1-5,text,true,,575,475,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,742,0,0
+1791260648561,45,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260648584,36,logout,200,OK,Thread Group 1-2,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8315%40email.com,36,0,0
+1791260648566,60,QueryFlight,200,OK,Thread Group 1-1,text,true,,1068,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791260648600,34,List Bookings,200,OK,Thread Group 1-5,text,true,,653,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8130@email.com,34,0,0
+1791260648621,29,Login,200,OK,Thread Group 1-2,text,true,,586,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,29,0,0
+1791260648597,64,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,64,0,0
+1791260648635,27,logout,200,OK,Thread Group 1-5,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8130%40email.com,27,0,0
+1791260648606,58,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260648663,33,Login,200,OK,Thread Group 1-5,text,true,,586,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791260648662,38,BookFlight,200,OK,Thread Group 1-3,text,true,,575,474,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,38,0,0
+1791260648627,89,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,89,0,0
+1791260648651,75,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,75,0,0
+1791260648701,44,List Bookings,200,OK,Thread Group 1-3,text,true,,652,252,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid934@email.com,44,0,0
+1791260648697,59,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791260648746,32,logout,200,OK,Thread Group 1-3,text,true,,520,257,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid934%40email.com,32,0,0
+1791260648717,64,QueryFlight,200,OK,Thread Group 1-1,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,64,0,0
+1791260648727,56,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791260648784,40,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260648779,51,Login,200,OK,Thread Group 1-3,text,true,,586,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,51,0,0
+1791260648760,82,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,82,0,0
+1791260648782,82,QueryFlight,200,OK,Thread Group 1-1,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,82,0,0
+1791260648831,38,View Profile Information,200,OK,Thread Group 1-3,text,true,,760,251,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8784@email.com,38,0,0
+1791260648825,76,QueryFlight,200,OK,Thread Group 1-2,text,true,,1067,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,76,0,0
+1791260648842,63,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791260648869,41,Update Customer,200,OK,Thread Group 1-3,text,true,,760,710,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8784@email.com,41,0,0
+1791260648865,47,List Bookings,200,OK,Thread Group 1-1,text,true,,479,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2889@email.com,47,0,0
+1791260648913,33,logout,200,OK,Thread Group 1-1,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2889%40email.com,33,0,0
+1791260648902,44,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260648906,46,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791260648947,43,Login,200,OK,Thread Group 1-1,text,true,,586,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,43,0,0
+1791260648947,52,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,52,0,0
+1791260648953,63,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,63,0,0
+1791260649000,34,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7061@email.com,34,0,0
+1791260649017,42,BookFlight,200,OK,Thread Group 1-5,text,true,,575,475,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,42,0,0
+1791260649034,37,logout,200,OK,Thread Group 1-2,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7061%40email.com,37,0,0
+1791260649059,34,List Bookings,200,OK,Thread Group 1-5,text,true,,653,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9993@email.com,34,0,0
+1791260648462,638,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,638,0,0
+1791260648990,112,QueryFlight,200,OK,Thread Group 1-1,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,112,0,0
+1791260649072,34,Login,200,OK,Thread Group 1-2,text,true,,586,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,34,0,0
+1791260649101,37,List Bookings,200,OK,Thread Group 1-4,text,true,,479,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7527@email.com,37,0,0
+1791260649093,47,logout,200,OK,Thread Group 1-5,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9993%40email.com,47,0,0
+1791260649105,58,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,57,0,0
+1791260649141,29,Login,200,OK,Thread Group 1-5,text,true,,586,296,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,29,0,0
+1791260649138,42,logout,200,OK,Thread Group 1-4,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7527%40email.com,42,0,0
+1791260649107,93,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,93,0,0
+1791260649163,39,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260649181,29,Login,200,OK,Thread Group 1-4,text,true,,586,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,29,0,0
+1791260649171,50,QueryFlight,200,OK,Thread Group 1-5,text,true,,1070,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791260649222,41,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791260649204,61,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791260648665,603,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,603,0,0
+1791260649211,59,View Profile Information,200,OK,Thread Group 1-4,text,true,,760,251,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid2193@email.com,59,0,0
+1791260649201,99,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,98,0,0
+1791260649269,43,QueryFlight,200,OK,Thread Group 1-6,text,true,,1064,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260649266,55,QueryFlight,200,OK,Thread Group 1-1,text,true,,1066,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260649270,54,Update Customer,200,OK,Thread Group 1-4,text,true,,760,710,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid2193@email.com,54,0,0
+1791260649264,86,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,85,0,0
+1791260649321,59,BookFlight,200,OK,Thread Group 1-1,text,true,,575,474,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,59,0,0
+1791260649312,68,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,68,0,0
+1791260649324,71,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,71,0,0
+1791260649300,101,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,101,0,0
+1791260649380,35,List Bookings,200,OK,Thread Group 1-1,text,true,,653,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9199@email.com,35,0,0
+1791260649381,42,List Bookings,200,OK,Thread Group 1-6,text,true,,479,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6986@email.com,42,0,0
+1791260649350,84,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,84,0,0
+1791260649415,32,logout,200,OK,Thread Group 1-1,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9199%40email.com,32,0,0
+1791260649402,55,QueryFlight,200,OK,Thread Group 1-2,text,true,,1068,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260649424,35,logout,200,OK,Thread Group 1-6,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6986%40email.com,35,0,0
+1791260649397,66,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,66,0,0
+1791260649448,28,Login,200,OK,Thread Group 1-1,text,true,,586,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,28,0,0
+1791260649435,58,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260648911,587,QueryFlight,200,OK,Thread Group 1-3,text,true,,1070,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,587,0,0
+1791260649460,41,Login,200,OK,Thread Group 1-6,text,true,,586,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,41,0,0
+1791260649457,48,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791260649463,56,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791260649494,35,BookFlight,200,OK,Thread Group 1-5,text,true,,575,474,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,35,0,0
+1791260649477,72,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,72,0,0
+1791260649529,32,List Bookings,200,OK,Thread Group 1-5,text,true,,652,252,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid416@email.com,32,0,0
+1791260649499,62,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791260649521,44,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260649506,62,List Bookings,200,OK,Thread Group 1-2,text,true,,479,253,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8754@email.com,62,0,0
+1791260649502,79,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,79,0,0
+1791260649510,72,Login,200,OK,Thread Group 1-7,text,true,,586,297,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,72,0,24
+1791260649562,36,logout,200,OK,Thread Group 1-5,text,true,,520,257,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid416%40email.com,36,0,0
+1791260649568,32,logout,200,OK,Thread Group 1-2,text,true,,520,258,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8754%40email.com,32,0,0
+1791260649562,40,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260649550,75,QueryFlight,200,OK,Thread Group 1-1,text,true,,1066,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,75,0,0
+1791260649565,65,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,65,0,0
+1791260649601,37,Login,200,OK,Thread Group 1-2,text,true,,586,297,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,36,0,0
+1791260649582,58,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260649599,45,Login,200,OK,Thread Group 1-5,text,true,,586,297,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,45,0,0
+1791260649631,38,List Bookings,200,OK,Thread Group 1-4,text,true,,479,253,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2193@email.com,38,0,0
+1791260649582,97,QueryFlight,200,OK,Thread Group 1-7,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,97,0,0
+1791260649644,44,View Profile Information,200,OK,Thread Group 1-5,text,true,,760,251,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid9091@email.com,44,0,0
+1791260649638,50,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791260649641,51,QueryFlight,200,OK,Thread Group 1-6,text,true,,1068,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791260649626,73,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,73,0,0
+1791260649670,30,logout,200,OK,Thread Group 1-4,text,true,,520,258,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2193%40email.com,30,0,0
+1791260649603,113,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,113,0,0
+1791260649689,31,Update Customer,200,OK,Thread Group 1-5,text,true,,760,710,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid9091@email.com,31,0,0
+1791260649702,20,Login,500,Internal Server Error,Thread Group 1-4,text,false,,582,297,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,20,0,0
+1791260649679,48,QueryFlight,200,OK,Thread Group 1-7,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791260649692,47,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791260649728,19,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791260649703,44,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260649724,27,QueryFlight,403,Forbidden,Thread Group 1-4,text,false,,485,398,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,27,0,0
+1791260649721,45,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260649689,80,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,79,0,0
+1791260649753,31,QueryFlight,403,Forbidden,Thread Group 1-4,text,false,,485,398,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,31,0,0
+1791260649748,49,QueryFlight,200,OK,Thread Group 1-7,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791260649752,62,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791260649740,79,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,79,0,0
+1791260649786,39,QueryFlight,403,Forbidden,Thread Group 1-4,text,false,,485,398,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260649769,63,QueryFlight,200,OK,Thread Group 1-2,text,true,,1068,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,63,0,0
+1791260649767,70,QueryFlight,200,OK,Thread Group 1-5,text,true,,1070,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,70,0,0
+1791260649717,124,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,124,0,0
+1791260649815,44,BookFlight,200,OK,Thread Group 1-1,text,true,,575,475,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,44,0,0
+1791260649826,33,QueryFlight,403,Forbidden,Thread Group 1-4,text,false,,485,398,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,33,0,0
+1791260649798,62,QueryFlight,200,OK,Thread Group 1-7,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791260649820,53,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,53,0,0
+1791260649861,20,BookFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,475,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,20,0,0
+1791260649833,55,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260649860,28,QueryFlight,403,Forbidden,Thread Group 1-4,text,false,,485,398,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,28,0,0
+1791260649860,29,List Bookings,200,OK,Thread Group 1-1,text,true,,653,253,7,7,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5881@email.com,29,0,0
+1791260649838,61,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791260649841,62,List Bookings,200,OK,Thread Group 1-3,text,true,,479,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8784@email.com,62,0,0
+1791260649873,39,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9529@email.com,39,0,0
+1791260649890,32,logout,200,OK,Thread Group 1-1,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5881%40email.com,32,0,0
+1791260649881,42,List Bookings,200,OK,Thread Group 1-7,text,true,,479,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7780@email.com,42,0,0
+1791260649889,51,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791260649923,18,Login,500,Internal Server Error,Thread Group 1-1,text,false,,582,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,18,0,0
+1791260649903,44,logout,200,OK,Thread Group 1-3,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8784%40email.com,44,0,0
+1791260649899,51,QueryFlight,200,OK,Thread Group 1-5,text,true,,1068,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791260649948,22,Login,500,Internal Server Error,Thread Group 1-3,text,false,,582,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,22,0,0
+1791260649940,30,List Bookings,500,Internal Server Error,Thread Group 1-2,text,false,,582,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8923@email.com,30,0,0
+1791260649913,58,logout,200,OK,Thread Group 1-6,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9529%40email.com,58,0,0
+1791260649923,49,logout,200,OK,Thread Group 1-7,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7780%40email.com,49,0,0
+1791260649942,37,QueryFlight,403,Forbidden,Thread Group 1-1,text,false,,485,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,37,0,0
+1791260649972,24,Login,500,Internal Server Error,Thread Group 1-7,text,false,,582,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,24,0,0
+1791260649970,31,View Profile Information,403,Forbidden,Thread Group 1-3,text,false,,485,195,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid4807@email.com,31,0,0
+1791260649970,33,logout,200,OK,Thread Group 1-2,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8923%40email.com,33,0,0
+1791260649979,29,QueryFlight,403,Forbidden,Thread Group 1-1,text,false,,485,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,29,0,0
+1791260649997,17,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791260649950,67,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,67,0,0
+1791260650009,25,QueryFlight,403,Forbidden,Thread Group 1-1,text,false,,485,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,25,0,0
+1791260650004,31,Login,200,OK,Thread Group 1-2,text,true,,586,295,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791260650001,36,Update Customer,403,Forbidden,Thread Group 1-3,text,false,,485,375,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid4807@email.com,36,0,0
+1791260649971,68,Login,200,OK,Thread Group 1-6,text,true,,586,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,68,0,0
+1791260650015,26,QueryFlight,403,Forbidden,Thread Group 1-7,text,false,,485,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,26,0,0
+1791260650035,20,QueryFlight,403,Forbidden,Thread Group 1-1,text,false,,485,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791260650037,24,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,24,0,0
+1791260650042,20,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791260650056,29,QueryFlight,403,Forbidden,Thread Group 1-1,text,false,,485,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,29,0,0
+1791260650018,68,BookFlight,200,OK,Thread Group 1-5,text,true,,575,475,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,68,0,0
+1791260650062,27,QueryFlight,403,Forbidden,Thread Group 1-3,text,false,,485,398,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,27,0,0
+1791260650063,28,QueryFlight,403,Forbidden,Thread Group 1-7,text,false,,485,398,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,28,0,0
+1791260650035,65,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,65,0,0
+1791260650086,22,List Bookings,500,Internal Server Error,Thread Group 1-5,text,false,,582,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9091@email.com,22,0,0
+1791260650039,71,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,71,0,0
+1791260650089,23,QueryFlight,403,Forbidden,Thread Group 1-3,text,false,,485,398,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,23,0,0
+1791260650091,26,QueryFlight,403,Forbidden,Thread Group 1-7,text,false,,485,398,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,26,0,0
+1791260650113,22,QueryFlight,403,Forbidden,Thread Group 1-3,text,false,,485,398,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,22,0,0
+1791260650109,37,logout,200,OK,Thread Group 1-5,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9091%40email.com,36,0,0
+1791260650101,52,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791260650111,52,QueryFlight,200,OK,Thread Group 1-6,text,true,,1068,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791260650138,29,QueryFlight,403,Forbidden,Thread Group 1-3,text,false,,485,398,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,29,0,0
+1791260650164,17,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791260650146,41,Login,200,OK,Thread Group 1-5,text,true,,586,297,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,41,0,0
+1791260650154,43,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260650197,20,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791260650187,42,View Profile Information,200,OK,Thread Group 1-5,text,true,,760,251,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid2888@email.com,42,0,0
+1791260650186,51,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791260650230,34,Update Customer,200,OK,Thread Group 1-5,text,true,,760,710,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid2888@email.com,34,0,0
+1791260650218,62,QueryFlight,200,OK,Thread Group 1-2,text,true,,1070,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791260650238,54,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,54,0,0
+1791260650280,46,BookFlight,200,OK,Thread Group 1-2,text,true,,575,473,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,46,0,0
+1791260650293,35,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,35,0,0
+1791260650270,63,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,63,0,0
+1791260650328,35,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5010@email.com,35,0,0
+1791260650326,40,List Bookings,200,OK,Thread Group 1-2,text,true,,651,251,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid48@email.com,40,0,0
+1791260650334,42,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260650364,39,logout,200,OK,Thread Group 1-6,text,true,,520,258,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5010%40email.com,38,0,0
+1791260650366,40,logout,200,OK,Thread Group 1-2,text,true,,520,256,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid48%40email.com,40,0,0
+1791260650376,42,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260650404,34,Login,200,OK,Thread Group 1-6,text,true,,586,297,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,34,0,0
+1791260650408,33,Login,200,OK,Thread Group 1-2,text,true,,586,297,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791260650441,43,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260650439,45,QueryFlight,200,OK,Thread Group 1-6,text,true,,1065,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260650419,69,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,69,0,0
+1791260650485,43,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260650489,47,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791260650485,54,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,54,0,0
+1791260650508,56,Login,200,OK,Thread Group 1-8,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,56,0,19
+1791260650536,41,BookFlight,200,OK,Thread Group 1-5,text,true,,575,475,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,41,0,0
+1791260650529,51,QueryFlight,200,OK,Thread Group 1-6,text,true,,1068,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791260650539,80,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,80,0,0
+1791260650578,44,List Bookings,200,OK,Thread Group 1-5,text,true,,653,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2888@email.com,43,0,0
+1791260650565,63,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,63,0,0
+1791260650580,56,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791260650622,44,logout,200,OK,Thread Group 1-5,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2888%40email.com,44,0,0
+1791260650619,57,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,57,0,0
+1791260650628,50,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791260650637,43,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260650667,38,Login,200,OK,Thread Group 1-5,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,38,0,0
+1791260650681,35,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,35,0,0
+1791260650676,40,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260650678,45,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260650705,32,View Profile Information,200,OK,Thread Group 1-5,text,true,,760,251,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid6830@email.com,32,0,0
+1791260650716,33,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3559@email.com,33,0,0
+1791260650724,43,QueryFlight,200,OK,Thread Group 1-8,text,true,,1067,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260650737,38,Update Customer,200,OK,Thread Group 1-5,text,true,,760,710,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid6830@email.com,38,0,0
+1791260650716,67,List Bookings,200,OK,Thread Group 1-2,text,true,,479,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7371@email.com,67,0,0
+1791260650749,36,logout,200,OK,Thread Group 1-6,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3559%40email.com,36,0,0
+1791260650784,30,logout,200,OK,Thread Group 1-2,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7371%40email.com,30,0,0
+1791260650786,30,Login,200,OK,Thread Group 1-6,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,30,0,0
+1791260650768,51,QueryFlight,200,OK,Thread Group 1-8,text,true,,1064,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791260650776,60,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791260650814,33,Login,200,OK,Thread Group 1-2,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791260650820,36,BookFlight,200,OK,Thread Group 1-8,text,true,,575,473,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,36,0,0
+1791260650816,47,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791260650836,47,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791260650857,31,List Bookings,200,OK,Thread Group 1-8,text,true,,653,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7215@email.com,31,0,0
+1791260650848,58,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260650864,44,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260650889,41,logout,200,OK,Thread Group 1-8,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7215%40email.com,41,0,0
+1791260650883,56,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791260650909,43,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260650907,52,QueryFlight,200,OK,Thread Group 1-2,text,true,,1068,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791260650931,31,Login,200,OK,Thread Group 1-8,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791260650961,41,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791260650962,43,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260650940,68,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,68,0,0
+1791260651003,35,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,35,0,0
+1791260651006,36,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,36,0,0
+1791260651009,38,QueryFlight,200,OK,Thread Group 1-5,text,true,,1065,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260650952,108,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,107,0,0
+1791260651047,35,BookFlight,200,OK,Thread Group 1-5,text,true,,575,473,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,35,0,0
+1791260651039,50,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791260651043,53,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791260651082,40,List Bookings,200,OK,Thread Group 1-5,text,true,,653,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6830@email.com,40,0,0
+1791260651090,34,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,34,0,0
+1791260651060,66,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,66,0,0
+1791260651097,45,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260651122,30,logout,200,OK,Thread Group 1-5,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6830%40email.com,30,0,0
+1791260651125,34,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4002@email.com,34,0,0
+1791260651126,36,List Bookings,200,OK,Thread Group 1-6,text,true,,479,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3451@email.com,36,0,0
+1791260651159,25,logout,200,OK,Thread Group 1-2,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4002%40email.com,25,0,0
+1791260651153,32,Login,200,OK,Thread Group 1-5,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791260651163,34,logout,200,OK,Thread Group 1-6,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3451%40email.com,34,0,0
+1791260651142,62,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791260651185,29,View Profile Information,200,OK,Thread Group 1-5,text,true,,760,251,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid7151@email.com,29,0,0
+1791260651185,32,Login,200,OK,Thread Group 1-2,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791260651197,38,Login,200,OK,Thread Group 1-6,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,38,0,0
+1791260651205,35,List Bookings,200,OK,Thread Group 1-8,text,true,,479,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6347@email.com,35,0,0
+1791260651214,30,Update Customer,200,OK,Thread Group 1-5,text,true,,760,710,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid7151@email.com,30,0,0
+1791260651217,31,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,31,0,0
+1791260651236,34,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,34,0,0
+1791260651241,32,logout,200,OK,Thread Group 1-8,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6347%40email.com,32,0,0
+1791260651244,32,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,32,0,0
+1791260651248,33,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,33,0,0
+1791260651277,28,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,28,0,0
+1791260651274,40,Login,200,OK,Thread Group 1-8,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,40,0,0
+1791260651271,45,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260651282,33,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,33,0,0
+1791260651305,39,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260651316,38,QueryFlight,200,OK,Thread Group 1-6,text,true,,1064,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260651316,39,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260651314,49,QueryFlight,200,OK,Thread Group 1-8,text,true,,1067,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791260651364,48,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791260651354,59,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260651345,74,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,74,0,0
+1791260651356,64,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,64,0,0
+1791260651413,46,QueryFlight,200,OK,Thread Group 1-8,text,true,,1068,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791260651413,46,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791260651421,41,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,41,0,0
+1791260651463,26,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7487@email.com,26,0,0
+1791260651460,38,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,38,0,0
+1791260651420,86,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,86,0,0
+1791260651490,22,logout,200,OK,Thread Group 1-2,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7487%40email.com,22,0,0
+1791260651460,60,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791260651499,42,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6568@email.com,42,0,0
+1791260651506,36,List Bookings,200,OK,Thread Group 1-5,text,true,,479,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7151@email.com,36,0,0
+1791260651513,31,Login,200,OK,Thread Group 1-2,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791260651515,52,Login,200,OK,Thread Group 1-9,text,true,,586,296,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,52,0,17
+1791260651545,27,View Profile Information,200,OK,Thread Group 1-2,text,true,,760,251,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid4338@email.com,27,0,0
+1791260651543,30,logout,200,OK,Thread Group 1-6,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6568%40email.com,30,0,0
+1791260651543,33,logout,200,OK,Thread Group 1-5,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7151%40email.com,33,0,0
+1791260651521,58,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260651572,28,Update Customer,200,OK,Thread Group 1-2,text,true,,760,710,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid4338@email.com,28,0,0
+1791260651577,27,Login,200,OK,Thread Group 1-5,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,27,0,0
+1791260651574,33,Login,200,OK,Thread Group 1-6,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791260651579,38,BookFlight,200,OK,Thread Group 1-8,text,true,,575,475,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,38,0,0
+1791260651569,50,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791260651604,35,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,34,0,0
+1791260651601,40,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260651620,34,QueryFlight,200,OK,Thread Group 1-9,text,true,,1065,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,34,0,0
+1791260651639,17,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,16,0,0
+1791260651618,40,List Bookings,200,OK,Thread Group 1-8,text,true,,653,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2494@email.com,40,0,0
+1791260651607,58,QueryFlight,200,OK,Thread Group 1-6,text,true,,1066,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260651655,18,QueryFlight,500,Internal Server Error,Thread Group 1-9,text,false,,582,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791260651658,33,logout,200,OK,Thread Group 1-8,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2494%40email.com,33,0,0
+1791260651666,44,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260651642,72,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,72,0,0
+1791260651674,45,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260651692,32,Login,200,OK,Thread Group 1-8,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791260651656,84,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,84,0,0
+1791260651724,34,View Profile Information,200,OK,Thread Group 1-8,text,true,,760,251,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid7618@email.com,34,0,0
+1791260651720,41,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791260651714,58,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260651758,36,Update Customer,200,OK,Thread Group 1-8,text,true,,760,710,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid7618@email.com,36,0,0
+1791260651761,37,BookFlight,200,OK,Thread Group 1-9,text,true,,575,474,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,37,0,0
+1791260651743,60,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791260651774,52,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791260651799,40,List Bookings,200,OK,Thread Group 1-9,text,true,,652,252,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid470@email.com,40,0,0
+1791260651795,45,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260651803,42,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260651713,136,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,136,0,0
+1791260651845,31,List Bookings,200,OK,Thread Group 1-5,text,true,,479,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4370@email.com,31,0,0
+1791260651839,40,logout,200,OK,Thread Group 1-9,text,true,,520,257,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid470%40email.com,40,0,0
+1791260651840,39,QueryFlight,200,OK,Thread Group 1-8,text,true,,1065,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260651827,54,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,54,0,0
+1791260651850,63,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,63,0,0
+1791260651877,36,logout,200,OK,Thread Group 1-5,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4370%40email.com,36,0,0
+1791260651880,34,Login,200,OK,Thread Group 1-9,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,34,0,0
+1791260651881,41,List Bookings,200,OK,Thread Group 1-2,text,true,,479,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4338@email.com,41,0,0
+1791260651880,45,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260651914,35,Login,200,OK,Thread Group 1-5,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,34,0,0
+1791260651922,32,logout,200,OK,Thread Group 1-2,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4338%40email.com,32,0,0
+1791260651915,62,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791260651925,60,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791260651955,31,Login,200,OK,Thread Group 1-2,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791260651913,90,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,90,0,0
+1791260651985,38,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260651949,80,QueryFlight,200,OK,Thread Group 1-5,text,true,,1070,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,80,0,0
+1791260652004,37,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,37,0,0
+1791260651977,70,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,70,0,0
+1791260651988,60,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791260652024,42,BookFlight,200,OK,Thread Group 1-8,text,true,,575,475,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,42,0,0
+1791260652041,25,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6529@email.com,25,0,0
+1791260652030,45,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260652048,44,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260652066,34,logout,200,OK,Thread Group 1-6,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6529%40email.com,34,0,0
+1791260652066,35,List Bookings,200,OK,Thread Group 1-8,text,true,,653,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7618@email.com,35,0,0
+1791260652076,29,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,29,0,0
+1791260652102,30,Login,200,OK,Thread Group 1-6,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,30,0,0
+1791260652049,89,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,89,0,0
+1791260652101,37,logout,200,OK,Thread Group 1-8,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7618%40email.com,37,0,0
+1791260652105,40,QueryFlight,200,OK,Thread Group 1-5,text,true,,1065,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260652133,32,View Profile Information,200,OK,Thread Group 1-6,text,true,,760,251,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid4651@email.com,32,0,0
+1791260652093,72,QueryFlight,200,OK,Thread Group 1-9,text,true,,1067,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,72,0,0
+1791260652139,36,Login,200,OK,Thread Group 1-8,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,36,0,0
+1791260652145,50,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791260652165,34,Update Customer,200,OK,Thread Group 1-6,text,true,,760,710,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid4651@email.com,33,0,0
+1791260652139,69,QueryFlight,200,OK,Thread Group 1-2,text,true,,1070,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,69,0,0
+1791260652166,43,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260652196,29,List Bookings,200,OK,Thread Group 1-5,text,true,,479,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2010@email.com,29,0,0
+1791260652176,58,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260652209,41,BookFlight,200,OK,Thread Group 1-9,text,true,,575,475,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,41,0,0
+1791260652226,27,logout,200,OK,Thread Group 1-5,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2010%40email.com,27,0,0
+1791260652199,64,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,64,0,0
+1791260652235,43,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260652208,70,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,70,0,0
+1791260652253,34,Login,200,OK,Thread Group 1-5,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,34,0,0
+1791260652250,39,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6082@email.com,39,0,0
+1791260652289,16,logout,500,Internal Server Error,Thread Group 1-9,text,false,,582,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6082%40email.com,16,0,0
+1791260652264,58,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260652279,46,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791260652279,49,QueryFlight,200,OK,Thread Group 1-8,text,true,,1070,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791260652305,32,Login,200,OK,Thread Group 1-9,text,true,,586,353,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791260652322,39,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260652325,42,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,42,0,0
+1791260652328,39,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260652288,80,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,80,0,0
+1791260652337,50,QueryFlight,200,OK,Thread Group 1-9,text,true,,1067,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791260652368,27,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4700@email.com,27,0,0
+1791260652362,64,QueryFlight,200,OK,Thread Group 1-6,text,true,,1065,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,64,0,0
+1791260652368,61,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791260652396,37,logout,200,OK,Thread Group 1-2,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4700%40email.com,37,0,0
+1791260652387,49,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791260652369,71,QueryFlight,200,OK,Thread Group 1-5,text,true,,1068,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,71,0,0
+1791260652430,32,List Bookings,200,OK,Thread Group 1-8,text,true,,479,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3115@email.com,32,0,0
+1791260652434,35,Login,200,OK,Thread Group 1-2,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,35,0,0
+1791260652469,26,View Profile Information,200,OK,Thread Group 1-2,text,true,,760,251,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid1812@email.com,26,0,0
+1791260652427,73,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,73,0,0
+1791260652463,37,logout,200,OK,Thread Group 1-8,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3115%40email.com,37,0,0
+1791260652441,61,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791260652437,77,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,77,0,0
+1791260652496,34,Update Customer,200,OK,Thread Group 1-2,text,true,,760,710,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid1812@email.com,34,0,0
+1791260652501,31,Login,200,OK,Thread Group 1-8,text,true,,586,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791260652500,33,List Bookings,200,OK,Thread Group 1-6,text,true,,479,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4651@email.com,33,0,0
+1791260652502,47,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791260652534,29,logout,200,OK,Thread Group 1-6,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4651%40email.com,29,0,0
+1791260652520,49,Login,200,OK,Thread Group 1-10,text,true,,586,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,49,0,18
+1791260652531,45,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260652515,64,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,64,0,0
+1791260652533,56,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791260652550,40,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260652563,37,Login,200,OK,Thread Group 1-6,text,true,,586,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,37,0,0
+1791260652576,47,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791260652570,53,QueryFlight,200,OK,Thread Group 1-10,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791260652591,34,List Bookings,200,OK,Thread Group 1-5,text,true,,479,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3473@email.com,34,0,0
+1791260652579,59,QueryFlight,200,OK,Thread Group 1-9,text,true,,1067,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791260652623,17,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791260652601,47,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791260652590,58,QueryFlight,200,OK,Thread Group 1-8,text,true,,1064,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260652626,32,logout,200,OK,Thread Group 1-5,text,true,,520,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3473%40email.com,32,0,0
+1791260652638,34,BookFlight,200,OK,Thread Group 1-9,text,true,,575,474,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,34,0,0
+1791260652659,17,Login,500,Internal Server Error,Thread Group 1-5,text,false,,582,297,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,17,0,0
+1791260652649,42,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260652640,52,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791260652676,23,View Profile Information,403,Forbidden,Thread Group 1-5,text,false,,485,195,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid5608@email.com,23,0,0
+1791260652623,79,QueryFlight,200,OK,Thread Group 1-10,text,true,,1070,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,79,0,0
+1791260652672,32,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2135@email.com,32,0,0
+1791260652700,21,Update Customer,403,Forbidden,Thread Group 1-5,text,false,,485,375,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid5608@email.com,21,0,0
+1791260652705,19,logout,500,Internal Server Error,Thread Group 1-9,text,false,,582,258,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2135%40email.com,19,0,0
+1791260652649,91,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,91,0,0
+1791260652721,22,QueryFlight,403,Forbidden,Thread Group 1-5,text,false,,485,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,22,0,0
+1791260652693,56,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791260652702,49,QueryFlight,200,OK,Thread Group 1-10,text,true,,1070,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791260652725,32,Login,200,OK,Thread Group 1-9,text,true,,586,353,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791260652691,67,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,67,0,0
+1791260652743,22,QueryFlight,403,Forbidden,Thread Group 1-5,text,false,,485,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,22,0,0
+1791260652750,32,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,32,0,0
+1791260652740,46,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791260652765,26,QueryFlight,403,Forbidden,Thread Group 1-5,text,false,,485,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,26,0,0
+1791260652757,45,QueryFlight,200,OK,Thread Group 1-9,text,true,,1066,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260652751,53,QueryFlight,200,OK,Thread Group 1-10,text,true,,685,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791260652792,19,QueryFlight,403,Forbidden,Thread Group 1-5,text,false,,485,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791260652758,55,QueryFlight,200,OK,Thread Group 1-8,text,true,,1064,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260652783,36,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1812@email.com,36,0,0
+1791260652805,17,QueryFlight,500,Internal Server Error,Thread Group 1-10,text,false,,582,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791260652786,44,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260652811,20,QueryFlight,403,Forbidden,Thread Group 1-5,text,false,,485,398,6,6,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791260652820,19,logout,500,Internal Server Error,Thread Group 1-2,text,false,,582,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1812%40email.com,19,0,0
+1791260652813,34,BookFlight,200,OK,Thread Group 1-8,text,true,,575,473,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,34,0,0
+1791260652803,46,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791260652823,38,List Bookings,200,OK,Thread Group 1-10,text,true,,479,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3121@email.com,38,0,0
+1791260652862,14,logout,500,Internal Server Error,Thread Group 1-10,text,false,,582,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3121%40email.com,14,0,0
+1791260652840,37,Login,200,OK,Thread Group 1-2,text,true,,586,353,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,37,0,0
+1791260652847,33,List Bookings,200,OK,Thread Group 1-8,text,true,,653,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5070@email.com,33,0,0
+1791260652830,53,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791260652849,42,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260652884,16,BookFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,475,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,16,0,0
+1791260652881,25,logout,200,OK,Thread Group 1-8,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5070%40email.com,25,0,0
+1791260652876,32,Login,200,OK,Thread Group 1-10,text,true,,586,353,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791260652900,16,List Bookings,500,Internal Server Error,Thread Group 1-6,text,false,,582,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7116@email.com,16,0,0
+1791260652877,44,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260652906,33,Login,200,OK,Thread Group 1-8,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791260652916,35,logout,200,OK,Thread Group 1-6,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7116%40email.com,35,0,0
+1791260652922,40,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260652952,31,Login,200,OK,Thread Group 1-6,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791260652963,21,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791260652939,49,View Profile Information,200,OK,Thread Group 1-8,text,true,,760,251,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid1795@email.com,49,0,0
+1791260652891,101,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,101,0,0
+1791260652989,17,Update Customer,500,Internal Server Error,Thread Group 1-8,text,false,,582,710,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid1795@email.com,17,0,0
+1791260652910,113,QueryFlight,200,OK,Thread Group 1-10,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,113,0,0
+1791260652984,39,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260652984,49,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791260652992,47,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791260653006,53,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791260653024,38,QueryFlight,200,OK,Thread Group 1-10,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260653033,49,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791260653039,46,BookFlight,200,OK,Thread Group 1-9,text,true,,575,475,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,46,0,0
+1791260653024,65,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,65,0,0
+1791260653083,18,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791260653062,40,QueryFlight,200,OK,Thread Group 1-10,text,true,,1068,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260653085,33,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3090@email.com,33,0,0
+1791260653089,33,List Bookings,200,OK,Thread Group 1-2,text,true,,479,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5161@email.com,33,0,0
+1791260653118,13,logout,500,Internal Server Error,Thread Group 1-9,text,false,,582,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3090%40email.com,13,0,0
+1791260653102,36,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,36,0,0
+1791260653103,35,QueryFlight,200,OK,Thread Group 1-10,text,true,,1070,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,35,0,0
+1791260653060,79,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,79,0,0
+1791260653122,32,logout,200,OK,Thread Group 1-2,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5161%40email.com,32,0,0
+1791260653132,33,Login,200,OK,Thread Group 1-9,text,true,,586,353,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791260653140,40,QueryFlight,200,OK,Thread Group 1-10,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260653155,27,Login,200,OK,Thread Group 1-2,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,27,0,0
+1791260653139,46,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791260653139,70,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,70,0,0
+1791260653186,30,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,30,0,0
+1791260653165,54,QueryFlight,200,OK,Thread Group 1-9,text,true,,1067,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,54,0,0
+1791260653180,42,List Bookings,200,OK,Thread Group 1-10,text,true,,479,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4333@email.com,42,0,0
+1791260653219,17,QueryFlight,500,Internal Server Error,Thread Group 1-9,text,false,,582,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791260653182,60,QueryFlight,200,OK,Thread Group 1-2,text,true,,1068,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791260653216,31,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1990@email.com,31,0,0
+1791260653209,47,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791260653242,19,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791260653222,49,logout,200,OK,Thread Group 1-10,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4333%40email.com,49,0,0
+1791260653247,26,logout,200,OK,Thread Group 1-6,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1990%40email.com,26,0,0
+1791260653237,45,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260653272,19,Login,500,Internal Server Error,Thread Group 1-10,text,false,,582,296,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,19,0,0
+1791260653256,42,QueryFlight,200,OK,Thread Group 1-8,text,true,,1070,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260653262,37,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,37,0,0
+1791260653273,30,Login,200,OK,Thread Group 1-6,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,30,0,0
+1791260653291,17,View Profile Information,500,Internal Server Error,Thread Group 1-10,text,false,,582,194,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid566@email.com,16,0,0
+1791260653298,19,BookFlight,500,Internal Server Error,Thread Group 1-8,text,false,,582,475,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,19,0,0
+1791260653283,40,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260653308,26,Update Customer,403,Forbidden,Thread Group 1-10,text,false,,485,374,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid566@email.com,26,0,0
+1791260653324,15,QueryFlight,500,Internal Server Error,Thread Group 1-9,text,false,,582,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791260653299,40,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260653335,16,QueryFlight,500,Internal Server Error,Thread Group 1-10,text,false,,582,398,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,16,0,0
+1791260653340,15,BookFlight,500,Internal Server Error,Thread Group 1-9,text,false,,582,475,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,15,0,0
+1791260653317,40,List Bookings,200,OK,Thread Group 1-8,text,true,,479,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1795@email.com,40,0,0
+1791260653304,58,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260653355,15,List Bookings,500,Internal Server Error,Thread Group 1-9,text,false,,582,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7752@email.com,15,0,0
+1791260653340,30,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,30,0,0
+1791260653352,21,QueryFlight,403,Forbidden,Thread Group 1-10,text,false,,485,398,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791260653358,24,logout,200,OK,Thread Group 1-8,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1795%40email.com,24,0,0
+1791260653374,18,QueryFlight,500,Internal Server Error,Thread Group 1-10,text,false,,582,398,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791260653371,26,logout,200,OK,Thread Group 1-9,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7752%40email.com,26,0,0
+1791260653371,28,List Bookings,200,OK,Thread Group 1-2,text,true,,479,253,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6465@email.com,28,0,0
+1791260653362,46,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791260653383,31,Login,200,OK,Thread Group 1-8,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791260653393,26,QueryFlight,403,Forbidden,Thread Group 1-10,text,false,,485,398,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,26,0,0
+1791260653399,33,logout,200,OK,Thread Group 1-2,text,true,,520,258,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6465%40email.com,33,0,0
+1791260653398,36,Login,200,OK,Thread Group 1-9,text,true,,586,297,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,36,0,0
+1791260653419,19,QueryFlight,403,Forbidden,Thread Group 1-10,text,false,,485,398,5,5,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791260653408,38,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260653414,39,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260653433,26,Login,200,OK,Thread Group 1-2,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,26,0,0
+1791260653460,20,View Profile Information,500,Internal Server Error,Thread Group 1-2,text,false,,582,251,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8792@email.com,20,0,0
+1791260653446,39,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260653435,52,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791260653485,13,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,13,0,0
+1791260653453,58,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260653481,31,Update Customer,200,OK,Thread Group 1-2,text,true,,479,431,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8792@email.com,31,0,0
+1791260653499,19,BookFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,475,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,19,0,0
+1791260653487,42,QueryFlight,200,OK,Thread Group 1-9,text,true,,1070,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260653512,20,QueryFlight,500,Internal Server Error,Thread Group 1-8,text,false,,582,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791260653519,26,List Bookings,200,OK,Thread Group 1-6,text,true,,479,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9798@email.com,26,0,0
+1791260653513,38,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260653529,35,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,35,0,0
+1791260653533,32,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,32,0,0
+1791260653565,16,QueryFlight,500,Internal Server Error,Thread Group 1-9,text,false,,582,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,16,0,0
+1791260653546,35,logout,200,OK,Thread Group 1-6,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9798%40email.com,35,0,0
+1791260653551,47,QueryFlight,200,OK,Thread Group 1-2,text,true,,1067,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791260653582,28,Login,200,OK,Thread Group 1-6,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,28,0,0
+1791260653599,14,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791260653566,52,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791260653610,19,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791260653618,35,BookFlight,200,OK,Thread Group 1-8,text,true,,575,475,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,35,0,0
+1791260653613,49,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791260653654,17,List Bookings,500,Internal Server Error,Thread Group 1-8,text,false,,582,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2136@email.com,17,0,0
+1791260653630,59,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791260653581,115,QueryFlight,200,OK,Thread Group 1-9,text,true,,1068,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,115,0,0
+1791260653671,32,logout,200,OK,Thread Group 1-8,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2136%40email.com,32,0,0
+1791260653664,43,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260653697,30,BookFlight,200,OK,Thread Group 1-9,text,true,,575,475,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,30,0,0
+1791260653708,26,List Bookings,200,OK,Thread Group 1-2,text,true,,479,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8792@email.com,26,0,0
+1791260653704,33,Login,200,OK,Thread Group 1-8,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791260653690,53,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791260653727,34,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8745@email.com,34,0,0
+1791260653734,37,logout,200,OK,Thread Group 1-2,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8792%40email.com,37,0,0
+1791260653762,22,logout,200,OK,Thread Group 1-9,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8745%40email.com,22,0,0
+1791260653743,43,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260653771,31,Login,200,OK,Thread Group 1-2,text,true,,586,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791260653785,19,Login,500,Internal Server Error,Thread Group 1-9,text,false,,582,297,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,19,0,0
+1791260653737,69,QueryFlight,200,OK,Thread Group 1-8,text,true,,1070,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,69,0,0
+1791260653801,16,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,16,0,0
+1791260653804,22,View Profile Information,403,Forbidden,Thread Group 1-9,text,false,,485,195,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid1849@email.com,22,0,0
+1791260653803,38,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260653807,39,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260653817,32,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,32,0,0
+1791260653827,27,Update Customer,403,Forbidden,Thread Group 1-9,text,false,,485,375,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid1849@email.com,27,0,0
+1791260653855,19,QueryFlight,403,Forbidden,Thread Group 1-9,text,false,,485,398,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791260653850,34,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2156@email.com,34,0,0
+1791260653847,39,QueryFlight,200,OK,Thread Group 1-8,text,true,,1065,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260653875,17,QueryFlight,403,Forbidden,Thread Group 1-9,text,false,,485,398,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791260653842,57,QueryFlight,200,OK,Thread Group 1-2,text,true,,1067,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,57,0,0
+1791260653884,23,logout,200,OK,Thread Group 1-6,text,true,,520,258,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2156%40email.com,23,0,0
+1791260653892,24,QueryFlight,403,Forbidden,Thread Group 1-9,text,false,,485,398,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,24,0,0
+1791260653908,34,Login,200,OK,Thread Group 1-6,text,true,,586,296,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,34,0,0
+1791260653916,27,QueryFlight,403,Forbidden,Thread Group 1-9,text,false,,485,398,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,27,0,0
+1791260653887,73,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,73,0,0
+1791260653943,33,QueryFlight,403,Forbidden,Thread Group 1-9,text,false,,485,398,4,4,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,33,0,0
+1791260653900,79,QueryFlight,200,OK,Thread Group 1-2,text,true,,1068,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,79,0,0
+1791260653942,50,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791260653961,59,QueryFlight,200,OK,Thread Group 1-8,text,true,,1070,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791260653980,54,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,54,0,0
+1791260653993,50,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791260654020,38,BookFlight,200,OK,Thread Group 1-8,text,true,,575,475,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,38,0,0
+1791260654043,41,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791260654034,56,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791260654059,34,List Bookings,200,OK,Thread Group 1-8,text,true,,653,253,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4724@email.com,34,0,0
+1791260654090,30,List Bookings,200,OK,Thread Group 1-2,text,true,,479,253,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6865@email.com,30,0,0
+1791260654093,34,logout,200,OK,Thread Group 1-8,text,true,,520,258,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4724%40email.com,34,0,0
+1791260654085,45,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260654120,24,logout,200,OK,Thread Group 1-2,text,true,,520,258,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6865%40email.com,24,0,0
+1791260654128,31,Login,200,OK,Thread Group 1-8,text,true,,586,297,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791260654130,44,QueryFlight,200,OK,Thread Group 1-6,text,true,,1064,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260654145,44,Login,200,OK,Thread Group 1-2,text,true,,586,297,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,44,0,0
+1791260654159,38,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260654175,35,BookFlight,200,OK,Thread Group 1-6,text,true,,575,472,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,35,0,0
+1791260654189,34,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,34,0,0
+1791260654197,38,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260654211,32,List Bookings,200,OK,Thread Group 1-6,text,true,,652,252,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid338@email.com,32,0,0
+1791260654243,31,logout,200,OK,Thread Group 1-6,text,true,,520,257,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid338%40email.com,31,0,0
+1791260654223,55,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260654236,44,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260654274,26,Login,200,OK,Thread Group 1-6,text,true,,586,297,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,26,0,0
+1791260654278,52,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791260654301,29,View Profile Information,200,OK,Thread Group 1-6,text,true,,760,251,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8115@email.com,29,0,0
+1791260654281,58,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260654331,28,Update Customer,200,OK,Thread Group 1-6,text,true,,760,710,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8115@email.com,28,0,0
+1791260654339,53,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791260654330,69,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,69,0,0
+1791260654359,61,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791260654392,33,BookFlight,200,OK,Thread Group 1-8,text,true,,575,475,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,33,0,0
+1791260654426,28,List Bookings,200,OK,Thread Group 1-8,text,true,,653,253,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8806@email.com,28,0,0
+1791260654400,63,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,63,0,0
+1791260654454,25,logout,200,OK,Thread Group 1-8,text,true,,520,258,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8806%40email.com,25,0,0
+1791260654421,59,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791260654464,28,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,28,0,0
+1791260654480,28,Login,200,OK,Thread Group 1-8,text,true,,586,297,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,28,0,0
+1791260654481,37,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,37,0,0
+1791260654492,33,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2195@email.com,33,0,0
+1791260654508,35,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,35,0,0
+1791260654525,29,logout,200,OK,Thread Group 1-2,text,true,,520,258,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2195%40email.com,29,0,0
+1791260654519,59,QueryFlight,200,OK,Thread Group 1-6,text,true,,1065,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791260654554,29,Login,200,OK,Thread Group 1-2,text,true,,586,297,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,29,0,0
+1791260654543,43,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260654578,42,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260654586,43,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260654583,59,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791260654620,35,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,35,0,0
+1791260654642,31,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,31,0,0
+1791260654629,74,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,74,0,0
+1791260654674,30,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,30,0,0
+1791260654704,29,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,29,0,0
+1791260654703,32,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,32,0,0
+1791260654736,28,List Bookings,200,OK,Thread Group 1-8,text,true,,479,253,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5238@email.com,28,0,0
+1791260654734,45,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260654656,128,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8115@email.com,128,0,0
+1791260654764,23,logout,200,OK,Thread Group 1-8,text,true,,520,258,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5238%40email.com,23,0,0
+1791260654780,26,List Bookings,200,OK,Thread Group 1-2,text,true,,479,253,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7090@email.com,26,0,0
+1791260654787,32,Login,200,OK,Thread Group 1-8,text,true,,586,297,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791260654784,38,logout,200,OK,Thread Group 1-6,text,true,,520,258,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8115%40email.com,38,0,0
+1791260654806,31,logout,200,OK,Thread Group 1-2,text,true,,520,258,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7090%40email.com,31,0,0
+1791260654819,33,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,33,0,0
+1791260654822,30,Login,200,OK,Thread Group 1-6,text,true,,586,297,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,30,0,0
+1791260654838,31,Login,200,OK,Thread Group 1-2,text,true,,586,297,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791260654853,26,View Profile Information,200,OK,Thread Group 1-6,text,true,,760,251,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid3807@email.com,26,0,0
+1791260654853,49,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791260654880,28,Update Customer,200,OK,Thread Group 1-6,text,true,,760,710,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid3807@email.com,28,0,0
+1791260654870,43,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260654909,37,QueryFlight,200,OK,Thread Group 1-6,text,true,,1064,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,37,0,0
+1791260654902,47,QueryFlight,200,OK,Thread Group 1-8,text,true,,1067,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791260654913,40,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260654949,38,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260654947,45,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260654953,50,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791260654993,39,QueryFlight,200,OK,Thread Group 1-6,text,true,,1068,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260655003,49,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791260654988,94,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,94,0,0
+1791260655032,52,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791260655053,40,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260655083,34,BookFlight,200,OK,Thread Group 1-8,text,true,,575,475,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,33,0,0
+1791260655084,41,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791260655093,34,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,34,0,0
+1791260655117,29,List Bookings,200,OK,Thread Group 1-8,text,true,,653,253,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2565@email.com,29,0,0
+1791260655125,30,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,30,0,0
+1791260655128,34,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3063@email.com,34,0,0
+1791260655146,29,logout,200,OK,Thread Group 1-8,text,true,,520,258,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2565%40email.com,29,0,0
+1791260655156,31,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3807@email.com,31,0,0
+1791260655163,30,logout,200,OK,Thread Group 1-2,text,true,,520,258,3,3,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3063%40email.com,30,0,0
+1791260655175,33,Login,200,OK,Thread Group 1-8,text,true,,586,297,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791260655187,34,logout,200,OK,Thread Group 1-6,text,true,,520,258,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3807%40email.com,34,0,0
+1791260655222,33,Login,200,OK,Thread Group 1-6,text,true,,586,297,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791260655209,51,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791260655255,35,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,35,0,0
+1791260655260,35,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,35,0,0
+1791260655295,36,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,36,0,0
+1791260655290,44,QueryFlight,200,OK,Thread Group 1-6,text,true,,1066,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260655331,55,QueryFlight,200,OK,Thread Group 1-8,text,true,,1070,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260655334,59,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791260655387,42,QueryFlight,200,OK,Thread Group 1-8,text,true,,1068,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260655394,50,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791260655429,36,BookFlight,200,OK,Thread Group 1-8,text,true,,575,475,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,36,0,0
+1791260655444,42,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260655465,31,List Bookings,200,OK,Thread Group 1-8,text,true,,653,253,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9401@email.com,31,0,0
+1791260655487,31,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,31,0,0
+1791260655496,38,logout,200,OK,Thread Group 1-8,text,true,,520,258,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9401%40email.com,38,0,0
+1791260655518,34,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2370@email.com,34,0,0
+1791260655535,36,Login,200,OK,Thread Group 1-8,text,true,,586,297,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,36,0,0
+1791260655552,44,logout,200,OK,Thread Group 1-6,text,true,,520,258,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2370%40email.com,44,0,0
+1791260655572,31,View Profile Information,200,OK,Thread Group 1-8,text,true,,760,251,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid5377@email.com,31,0,0
+1791260655596,30,Login,200,OK,Thread Group 1-6,text,true,,586,297,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,29,0,0
+1791260655626,37,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,37,0,0
+1791260655603,81,Update Customer,200,OK,Thread Group 1-8,text,true,,760,710,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid5377@email.com,81,0,0
+1791260655663,55,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260655684,46,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791260655719,41,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791260655730,35,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,35,0,0
+1791260655761,39,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260655766,55,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791260655801,36,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,36,0,0
+1791260655821,44,QueryFlight,200,OK,Thread Group 1-8,text,true,,1067,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260655837,45,List Bookings,200,OK,Thread Group 1-6,text,true,,479,253,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6844@email.com,45,0,0
+1791260655865,38,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260655882,31,logout,200,OK,Thread Group 1-6,text,true,,520,258,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6844%40email.com,31,0,0
+1791260655903,30,List Bookings,200,OK,Thread Group 1-8,text,true,,479,253,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5377@email.com,30,0,0
+1791260655913,26,Login,200,OK,Thread Group 1-6,text,true,,586,297,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,26,0,0
+1791260655934,22,logout,200,OK,Thread Group 1-8,text,true,,520,258,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5377%40email.com,22,0,0
+1791260655957,28,Login,200,OK,Thread Group 1-8,text,true,,586,297,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,28,0,0
+1791260655939,66,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,66,0,0
+1791260655985,45,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260656006,47,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791260656030,39,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260656054,56,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791260656069,44,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260656110,41,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791260656114,48,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791260656151,53,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791260656163,60,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791260656204,27,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,27,0,0
+1791260656224,30,BookFlight,200,OK,Thread Group 1-8,text,true,,575,475,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,30,0,0
+1791260656231,30,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9258@email.com,30,0,0
+1791260656254,31,List Bookings,200,OK,Thread Group 1-8,text,true,,653,253,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9270@email.com,31,0,0
+1791260656261,29,logout,200,OK,Thread Group 1-6,text,true,,520,258,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9258%40email.com,29,0,0
+1791260656285,32,logout,200,OK,Thread Group 1-8,text,true,,520,258,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9270%40email.com,31,0,0
+1791260656291,28,Login,200,OK,Thread Group 1-6,text,true,,586,297,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,28,0,0
+1791260656317,30,Login,200,OK,Thread Group 1-8,text,true,,586,297,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,30,0,0
+1791260656320,31,View Profile Information,200,OK,Thread Group 1-6,text,true,,760,251,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid2258@email.com,31,0,0
+1791260656352,27,Update Customer,200,OK,Thread Group 1-6,text,true,,760,710,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid2258@email.com,27,0,0
+1791260656348,38,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260656380,40,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260656386,52,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791260656438,42,QueryFlight,200,OK,Thread Group 1-8,text,true,,1065,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260656420,65,QueryFlight,200,OK,Thread Group 1-6,text,true,,1067,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,65,0,0
+1791260656480,42,QueryFlight,200,OK,Thread Group 1-8,text,true,,1070,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260656485,39,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260656523,44,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260656524,54,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,54,0,0
+1791260656567,72,BookFlight,200,OK,Thread Group 1-8,text,true,,575,475,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,72,0,0
+1791260656639,26,List Bookings,200,OK,Thread Group 1-8,text,true,,653,253,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3556@email.com,26,0,0
+1791260656579,108,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,108,0,0
+1791260656665,25,logout,200,OK,Thread Group 1-8,text,true,,520,258,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3556%40email.com,25,0,0
+1791260656690,26,Login,200,OK,Thread Group 1-8,text,true,,586,297,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,26,0,0
+1791260656687,58,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,58,0,0
+1791260656717,46,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791260656745,34,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2258@email.com,34,0,0
+1791260656763,42,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260656780,28,logout,200,OK,Thread Group 1-6,text,true,,520,258,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2258%40email.com,28,0,0
+1791260656806,39,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260656809,41,Login,200,OK,Thread Group 1-6,text,true,,586,296,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,41,0,0
+1791260656850,38,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260656845,73,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,73,0,0
+1791260656919,31,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,31,0,0
+1791260656889,74,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,74,0,0
+1791260656950,31,List Bookings,200,OK,Thread Group 1-8,text,true,,479,253,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5819@email.com,30,0,0
+1791260656963,38,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260656981,26,logout,200,OK,Thread Group 1-8,text,true,,520,258,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5819%40email.com,26,0,0
+1791260657007,33,Login,200,OK,Thread Group 1-8,text,true,,586,297,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791260657001,42,QueryFlight,200,OK,Thread Group 1-6,text,true,,1067,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260657041,28,View Profile Information,200,OK,Thread Group 1-8,text,true,,760,251,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid9816@email.com,28,0,0
+1791260657044,38,QueryFlight,200,OK,Thread Group 1-6,text,true,,1065,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791260657069,35,Update Customer,200,OK,Thread Group 1-8,text,true,,760,710,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid9816@email.com,35,0,0
+1791260657083,27,BookFlight,200,OK,Thread Group 1-6,text,true,,575,472,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,27,0,0
+1791260657110,31,List Bookings,200,OK,Thread Group 1-6,text,true,,652,252,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid979@email.com,31,0,0
+1791260657104,59,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791260657142,31,logout,200,OK,Thread Group 1-6,text,true,,520,257,2,2,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid979%40email.com,31,0,0
+1791260657164,42,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791260657207,41,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791260657248,39,QueryFlight,200,OK,Thread Group 1-8,text,true,,1070,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791260657288,43,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791260657331,30,List Bookings,200,OK,Thread Group 1-8,text,true,,479,253,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9816@email.com,30,0,0
+1791260657362,25,logout,200,OK,Thread Group 1-8,text,true,,520,258,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9816%40email.com,25,0,0
+1791260657387,34,Login,200,OK,Thread Group 1-8,text,true,,586,297,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,34,0,0
+1791260657422,60,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791260657482,40,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791260657522,59,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791260657582,45,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791260657627,51,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791260657679,100,BookFlight,200,OK,Thread Group 1-8,text,true,,575,475,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,100,0,0
+1791260657779,31,List Bookings,200,OK,Thread Group 1-8,text,true,,653,253,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2872@email.com,31,0,0
+1791260657810,27,logout,200,OK,Thread Group 1-8,text,true,,520,258,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2872%40email.com,27,0,0
+1791260657837,29,Login,200,OK,Thread Group 1-8,text,true,,586,294,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,29,0,0
+1791260657866,34,QueryFlight,200,OK,Thread Group 1-8,text,true,,1069,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,34,0,0
+1791260657901,44,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791260657945,34,QueryFlight,200,OK,Thread Group 1-8,text,true,,685,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,34,0,0
+1791260657980,62,QueryFlight,200,OK,Thread Group 1-8,text,true,,1067,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791260658043,36,QueryFlight,200,OK,Thread Group 1-8,text,true,,1064,454,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,36,0,0
+1791260658080,29,BookFlight,200,OK,Thread Group 1-8,text,true,,575,470,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,29,0,0
+1791260658109,31,List Bookings,200,OK,Thread Group 1-8,text,true,,650,250,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid0@email.com,31,0,0
+1791260658140,27,logout,200,OK,Thread Group 1-8,text,true,,520,255,1,1,https://rk7z2v5tyc.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid0%40email.com,27,0,0

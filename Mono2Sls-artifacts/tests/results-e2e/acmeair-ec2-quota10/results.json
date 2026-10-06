@@ -1,0 +1,1022 @@
+{
+  "monolith": {
+    "variant": "monolith",
+    "where": "EC2 t3.small us-east-1a (Node 22 + MongoDB 4.4, same box)",
+    "loader": "Database Finished Loading",
+    "counts": {
+      "Customers": 10000,
+      "Flights": 1970,
+      "FlightSegments": 394,
+      "Airports": 14,
+      "_": 0
+    },
+    "passes": [
+      {
+        "pass": 1,
+        "started": 1791258138.3433232,
+        "ended": 1791258160.3069108,
+        "samples": 1856,
+        "errors": 0,
+        "throughput_per_s": 199.68,
+        "all": {
+          "p50": 2.0,
+          "p90": 4.0,
+          "p99": 6.0
+        },
+        "labels": {
+          "Login": {
+            "n": 200,
+            "errors": 0,
+            "codes": {
+              "200": 200
+            },
+            "p50": 2.0,
+            "p90": 3.0,
+            "p99": 5.0
+          },
+          "QueryFlight": {
+            "n": 1000,
+            "errors": 0,
+            "codes": {
+              "200": 1000
+            },
+            "p50": 3.0,
+            "p90": 4.0,
+            "p99": 7.0
+          },
+          "BookFlight": {
+            "n": 156,
+            "errors": 0,
+            "codes": {
+              "200": 156
+            },
+            "p50": 2.0,
+            "p90": 3.0,
+            "p99": 4.0
+          },
+          "List Bookings": {
+            "n": 200,
+            "errors": 0,
+            "codes": {
+              "200": 200
+            },
+            "p50": 2.0,
+            "p90": 2.0,
+            "p99": 6.0
+          },
+          "logout": {
+            "n": 200,
+            "errors": 0,
+            "codes": {
+              "200": 200
+            },
+            "p50": 1.0,
+            "p90": 2.0,
+            "p99": 5.0
+          },
+          "View Profile Information": {
+            "n": 50,
+            "errors": 0,
+            "codes": {
+              "200": 50
+            },
+            "p50": 2.0,
+            "p90": 2.0,
+            "p99": 2.0
+          },
+          "Update Customer": {
+            "n": 50,
+            "errors": 0,
+            "codes": {
+              "200": 50
+            },
+            "p50": 2.0,
+            "p90": 3.0,
+            "p99": 12.0
+          }
+        }
+      },
+      {
+        "pass": 2,
+        "started": 1791258174.714463,
+        "ended": 1791258195.167867,
+        "samples": 1856,
+        "errors": 0,
+        "throughput_per_s": 201.28,
+        "all": {
+          "p50": 2.0,
+          "p90": 4.0,
+          "p99": 7.0
+        },
+        "labels": {
+          "Login": {
+            "n": 200,
+            "errors": 0,
+            "codes": {
+              "200": 200
+            },
+            "p50": 2.0,
+            "p90": 3.0,
+            "p99": 4.0
+          },
+          "QueryFlight": {
+            "n": 1000,
+            "errors": 0,
+            "codes": {
+              "200": 1000
+            },
+            "p50": 2.0,
+            "p90": 5.0,
+            "p99": 7.0
+          },
+          "BookFlight": {
+            "n": 156,
+            "errors": 0,
+            "codes": {
+              "200": 156
+            },
+            "p50": 2.0,
+            "p90": 3.0,
+            "p99": 4.0
+          },
+          "List Bookings": {
+            "n": 200,
+            "errors": 0,
+            "codes": {
+              "200": 200
+            },
+            "p50": 2.0,
+            "p90": 2.0,
+            "p99": 6.0
+          },
+          "logout": {
+            "n": 200,
+            "errors": 0,
+            "codes": {
+              "200": 200
+            },
+            "p50": 1.0,
+            "p90": 2.0,
+            "p99": 5.0
+          },
+          "View Profile Information": {
+            "n": 50,
+            "errors": 0,
+            "codes": {
+              "200": 50
+            },
+            "p50": 2.0,
+            "p90": 2.0,
+            "p99": 2.0
+          },
+          "Update Customer": {
+            "n": 50,
+            "errors": 0,
+            "codes": {
+              "200": 50
+            },
+            "p50": 2.0,
+            "p90": 2.0,
+            "p99": 5.0
+          }
+        }
+      }
+    ],
+    "server_time": {
+      "GET /rest/api/bookings/byuser/:user": {
+        "n": 400,
+        "p50_ms": 1.0,
+        "p90_ms": 1.22
+      },
+      "GET /rest/api/customer/byid/:user": {
+        "n": 100,
+        "p50_ms": 0.95,
+        "p90_ms": 1.16
+      },
+      "GET /rest/api/login/logout": {
+        "n": 400,
+        "p50_ms": 0.67,
+        "p90_ms": 0.84
+      },
+      "POST /rest/api/bookings/bookflights": {
+        "n": 312,
+        "p50_ms": 1.23,
+        "p90_ms": 1.49
+      },
+      "POST /rest/api/customer/byid/:user": {
+        "n": 100,
+        "p50_ms": 1.13,
+        "p90_ms": 1.37
+      },
+      "POST /rest/api/flights/queryflights": {
+        "n": 2000,
+        "p50_ms": 2.16,
+        "p90_ms": 3.44
+      },
+      "POST /rest/api/login": {
+        "n": 400,
+        "p50_ms": 1.19,
+        "p90_ms": 1.52
+      }
+    },
+    "morgan_lines": "3712",
+    "counts_after": {
+      "Bookings": "312",
+      "Sessions": "0"
+    },
+    "cost_usd": {
+      "ec2_during_passes": 0.000328,
+      "ec2_per_hour": 0.0208
+    }
+  },
+  "v0": {
+    "variant": "v0",
+    "ref": "v0",
+    "commit": "9fff1aa",
+    "where": "API Gateway + Lambda + DynamoDB, us-east-1",
+    "architecture": "arm64",
+    "loader": "200 6.947600s\nDatabase Finished Loading",
+    "counts": {
+      "Customers": 10000,
+      "Flights": 1970,
+      "FlightSegments": 394,
+      "Airports": 14,
+      "_": 0
+    },
+    "passes": [
+      {
+        "pass": 1,
+        "started": 1791259278.3616228,
+        "ended": 1791259308.3935084,
+        "samples": 907,
+        "errors": 242,
+        "throughput_per_s": 54.77,
+        "all": {
+          "p50": 37.0,
+          "p90": 67.0,
+          "p99": 776.0
+        },
+        "labels": {
+          "Login": {
+            "n": 101,
+            "errors": 17,
+            "codes": {
+              "200": 84,
+              "500": 17
+            },
+            "p50": 33.0,
+            "p90": 57.0,
+            "p99": 825.0
+          },
+          "QueryFlight": {
+            "n": 505,
+            "errors": 144,
+            "codes": {
+              "200": 361,
+              "500": 119,
+              "403": 25
+            },
+            "p50": 44.0,
+            "p90": 71.0,
+            "p99": 353.0
+          },
+          "View Profile Information": {
+            "n": 25,
+            "errors": 9,
+            "codes": {
+              "200": 16,
+              "500": 9
+            },
+            "p50": 30.0,
+            "p90": 132.0,
+            "p99": 786.0
+          },
+          "BookFlight": {
+            "n": 65,
+            "errors": 13,
+            "codes": {
+              "200": 52,
+              "500": 13
+            },
+            "p50": 35.0,
+            "p90": 70.0,
+            "p99": 744.0
+          },
+          "Update Customer": {
+            "n": 25,
+            "errors": 6,
+            "codes": {
+              "200": 19,
+              "500": 5,
+              "403": 1
+            },
+            "p50": 34.0,
+            "p90": 63.0,
+            "p99": 808.0
+          },
+          "List Bookings": {
+            "n": 93,
+            "errors": 22,
+            "codes": {
+              "200": 71,
+              "500": 22
+            },
+            "p50": 32.0,
+            "p90": 47.0,
+            "p99": 707.0
+          },
+          "logout": {
+            "n": 93,
+            "errors": 31,
+            "codes": {
+              "200": 62,
+              "500": 31
+            },
+            "p50": 28.0,
+            "p90": 38.0,
+            "p99": 786.0
+          }
+        }
+      },
+      {
+        "pass": 2,
+        "started": 1791259318.6252882,
+        "ended": 1791259346.880981,
+        "samples": 1339,
+        "errors": 141,
+        "throughput_per_s": 80.11,
+        "all": {
+          "p50": 38.0,
+          "p90": 57.0,
+          "p99": 114.0
+        },
+        "labels": {
+          "Login": {
+            "n": 147,
+            "errors": 12,
+            "codes": {
+              "200": 135,
+              "500": 12
+            },
+            "p50": 34.0,
+            "p90": 42.0,
+            "p99": 143.0
+          },
+          "QueryFlight": {
+            "n": 735,
+            "errors": 97,
+            "codes": {
+              "200": 638,
+              "500": 74,
+              "403": 23
+            },
+            "p50": 44.0,
+            "p90": 63.0,
+            "p99": 117.0
+          },
+          "List Bookings": {
+            "n": 141,
+            "errors": 9,
+            "codes": {
+              "200": 132,
+              "500": 9
+            },
+            "p50": 31.0,
+            "p90": 39.0,
+            "p99": 85.0
+          },
+          "logout": {
+            "n": 141,
+            "errors": 13,
+            "codes": {
+              "200": 128,
+              "500": 13
+            },
+            "p50": 33.0,
+            "p90": 39.0,
+            "p99": 99.0
+          },
+          "View Profile Information": {
+            "n": 37,
+            "errors": 0,
+            "codes": {
+              "200": 37
+            },
+            "p50": 32.0,
+            "p90": 36.0,
+            "p99": 104.0
+          },
+          "Update Customer": {
+            "n": 37,
+            "errors": 1,
+            "codes": {
+              "200": 36,
+              "500": 1
+            },
+            "p50": 33.0,
+            "p90": 36.0,
+            "p99": 39.0
+          },
+          "BookFlight": {
+            "n": 101,
+            "errors": 9,
+            "codes": {
+              "200": 92,
+              "500": 9
+            },
+            "p50": 33.0,
+            "p90": 41.0,
+            "p99": 84.0
+          }
+        }
+      }
+    ],
+    "metrics_per_pass": [
+      {
+        "functions": {
+          "BookingsByCustomerFunction": {
+            "invocations": 203,
+            "cold": 4,
+            "warm_p50_ms": 9.8,
+            "warm_p90_ms": 20.1,
+            "init_p50_ms": 302.2,
+            "max_memory_mb": 110
+          },
+          "BookingsCreateFunction": {
+            "invocations": 144,
+            "cold": 3,
+            "warm_p50_ms": 11.5,
+            "warm_p90_ms": 22.0,
+            "init_p50_ms": 317.4,
+            "max_memory_mb": 108
+          },
+          "ConfigCountAirportsFunction": {
+            "invocations": 1,
+            "cold": 1,
+            "warm_p50_ms": null,
+            "warm_p90_ms": null,
+            "init_p50_ms": 333.6,
+            "max_memory_mb": 101
+          },
+          "ConfigCountBookingsFunction": {
+            "invocations": 1,
+            "cold": 1,
+            "warm_p50_ms": null,
+            "warm_p90_ms": null,
+            "init_p50_ms": 320.5,
+            "max_memory_mb": 99
+          },
+          "ConfigCountFlightSegmentsFunction": {
+            "invocations": 1,
+            "cold": 1,
+            "warm_p50_ms": null,
+            "warm_p90_ms": null,
+            "init_p50_ms": 316.0,
+            "max_memory_mb": 100
+          },
+          "ConfigCountSessionsFunction": {
+            "invocations": 1,
+            "cold": 1,
+            "warm_p50_ms": null,
+            "warm_p90_ms": null,
+            "init_p50_ms": 313.1,
+            "max_memory_mb": 101
+          },
+          "CustomerGetFunction": {
+            "invocations": 53,
+            "cold": 1,
+            "warm_p50_ms": 9.7,
+            "warm_p90_ms": 20.9,
+            "init_p50_ms": 303.4,
+            "max_memory_mb": 104
+          },
+          "CustomerUpdateFunction": {
+            "invocations": 56,
+            "cold": 1,
+            "warm_p50_ms": 11.3,
+            "warm_p90_ms": 22.1,
+            "init_p50_ms": 309.6,
+            "max_memory_mb": 104
+          },
+          "FlightsQueryFunction": {
+            "invocations": 1047,
+            "cold": 6,
+            "warm_p50_ms": 25.2,
+            "warm_p90_ms": 46.6,
+            "init_p50_ms": 307.2,
+            "max_memory_mb": 116
+          },
+          "LoginCreateSessionFunction": {
+            "invocations": 219,
+            "cold": 3,
+            "warm_p50_ms": 12.1,
+            "warm_p90_ms": 21.0,
+            "init_p50_ms": 315.8,
+            "max_memory_mb": 107
+          },
+          "SessionLogoutFunction": {
+            "invocations": 190,
+            "cold": 5,
+            "warm_p50_ms": 7.4,
+            "warm_p90_ms": 9.5,
+            "init_p50_ms": 306.7,
+            "max_memory_mb": 108
+          }
+        },
+        "invocations": 1916,
+        "lambda_gb_seconds": 28.898,
+        "rru": 1506.5,
+        "wru": 12982.0
+      },
+      {
+        "functions": {
+          "BookingsByCustomerFunction": {
+            "invocations": 132,
+            "cold": 0,
+            "warm_p50_ms": 9.2,
+            "warm_p90_ms": 20.0,
+            "init_p50_ms": null,
+            "max_memory_mb": 110
+          },
+          "BookingsCreateFunction": {
+            "invocations": 92,
+            "cold": 0,
+            "warm_p50_ms": 11.1,
+            "warm_p90_ms": 17.8,
+            "init_p50_ms": null,
+            "max_memory_mb": 108
+          },
+          "ConfigCountBookingsFunction": {
+            "invocations": 1,
+            "cold": 1,
+            "warm_p50_ms": null,
+            "warm_p90_ms": null,
+            "init_p50_ms": 320.5,
+            "max_memory_mb": 99
+          },
+          "ConfigCountSessionsFunction": {
+            "invocations": 1,
+            "cold": 1,
+            "warm_p50_ms": null,
+            "warm_p90_ms": null,
+            "init_p50_ms": 313.1,
+            "max_memory_mb": 101
+          },
+          "CustomerGetFunction": {
+            "invocations": 37,
+            "cold": 0,
+            "warm_p50_ms": 9.4,
+            "warm_p90_ms": 16.5,
+            "init_p50_ms": null,
+            "max_memory_mb": 104
+          },
+          "CustomerUpdateFunction": {
+            "invocations": 36,
+            "cold": 0,
+            "warm_p50_ms": 11.2,
+            "warm_p90_ms": 14.9,
+            "init_p50_ms": null,
+            "max_memory_mb": 104
+          },
+          "FlightsQueryFunction": {
+            "invocations": 661,
+            "cold": 0,
+            "warm_p50_ms": 24.5,
+            "warm_p90_ms": 44.7,
+            "init_p50_ms": null,
+            "max_memory_mb": 116
+          },
+          "LoginCreateSessionFunction": {
+            "invocations": 135,
+            "cold": 0,
+            "warm_p50_ms": 11.7,
+            "warm_p90_ms": 19.4,
+            "init_p50_ms": null,
+            "max_memory_mb": 107
+          },
+          "SessionLogoutFunction": {
+            "invocations": 128,
+            "cold": 0,
+            "warm_p50_ms": 7.3,
+            "warm_p90_ms": 9.4,
+            "init_p50_ms": null,
+            "max_memory_mb": 108
+          }
+        },
+        "invocations": 1223,
+        "lambda_gb_seconds": 13.771,
+        "rru": 1506.5,
+        "wru": 12982.0
+      }
+    ],
+    "metrics": {
+      "invocations": 3139,
+      "lambda_gb_seconds": 42.669,
+      "rru": 3013.0,
+      "wru": 25964.0
+    },
+    "counts_after": {
+      "Bookings": "144",
+      "Sessions": "29"
+    },
+    "cost_usd": {
+      "lambda_duration": 0.00056892,
+      "lambda_requests": 0.0006278,
+      "dynamodb": 0.01660413,
+      "api_gateway": 0.0109865,
+      "total": 0.02878735
+    }
+  },
+  "opt": {
+    "variant": "opt",
+    "ref": "HEAD",
+    "commit": "474d8a9",
+    "where": "API Gateway + Lambda + DynamoDB, us-east-1",
+    "architecture": "arm64",
+    "loader": "200 7.136121s\nDatabase Finished Loading",
+    "counts": {
+      "Customers": 10000,
+      "Flights": 1970,
+      "FlightSegments": 394,
+      "Airports": 14,
+      "_": 0
+    },
+    "passes": [
+      {
+        "pass": 1,
+        "started": 1791260636.7294474,
+        "ended": 1791260662.452441,
+        "samples": 867,
+        "errors": 85,
+        "throughput_per_s": 59.76,
+        "all": {
+          "p50": 40.0,
+          "p90": 69.0,
+          "p99": 697.0
+        },
+        "labels": {
+          "Login": {
+            "n": 97,
+            "errors": 7,
+            "codes": {
+              "200": 90,
+              "500": 7
+            },
+            "p50": 33.0,
+            "p90": 51.0,
+            "p99": 671.0
+          },
+          "QueryFlight": {
+            "n": 485,
+            "errors": 53,
+            "codes": {
+              "200": 432,
+              "500": 23,
+              "403": 30
+            },
+            "p50": 48.0,
+            "p90": 74.0,
+            "p99": 136.0
+          },
+          "View Profile Information": {
+            "n": 24,
+            "errors": 5,
+            "codes": {
+              "200": 19,
+              "403": 3,
+              "500": 2
+            },
+            "p50": 31.0,
+            "p90": 50.0,
+            "p99": 819.0
+          },
+          "Update Customer": {
+            "n": 24,
+            "errors": 5,
+            "codes": {
+              "200": 19,
+              "403": 4,
+              "500": 1
+            },
+            "p50": 34.0,
+            "p90": 54.0,
+            "p99": 606.0
+          },
+          "List Bookings": {
+            "n": 90,
+            "errors": 5,
+            "codes": {
+              "200": 85,
+              "500": 5
+            },
+            "p50": 34.0,
+            "p90": 47.0,
+            "p99": 800.0
+          },
+          "logout": {
+            "n": 90,
+            "errors": 5,
+            "codes": {
+              "200": 85,
+              "500": 5
+            },
+            "p50": 32.0,
+            "p90": 44.0,
+            "p99": 661.0
+          },
+          "BookFlight": {
+            "n": 57,
+            "errors": 5,
+            "codes": {
+              "200": 52,
+              "500": 5
+            },
+            "p50": 35.0,
+            "p90": 59.0,
+            "p99": 742.0
+          }
+        }
+      },
+      {
+        "pass": 2,
+        "started": 1791260667.9652355,
+        "ended": 1791260694.3185432,
+        "samples": 1317,
+        "errors": 101,
+        "throughput_per_s": 82.64,
+        "all": {
+          "p50": 37.0,
+          "p90": 56.0,
+          "p99": 121.0
+        },
+        "labels": {
+          "Login": {
+            "n": 145,
+            "errors": 8,
+            "codes": {
+              "200": 137,
+              "500": 8
+            },
+            "p50": 32.0,
+            "p90": 48.0,
+            "p99": 170.0
+          },
+          "QueryFlight": {
+            "n": 725,
+            "errors": 65,
+            "codes": {
+              "200": 660,
+              "500": 54,
+              "403": 11
+            },
+            "p50": 42.0,
+            "p90": 61.0,
+            "p99": 126.0
+          },
+          "BookFlight": {
+            "n": 95,
+            "errors": 6,
+            "codes": {
+              "200": 89,
+              "500": 6
+            },
+            "p50": 34.0,
+            "p90": 48.0,
+            "p99": 122.0
+          },
+          "List Bookings": {
+            "n": 140,
+            "errors": 7,
+            "codes": {
+              "200": 133,
+              "500": 7
+            },
+            "p50": 32.0,
+            "p90": 44.0,
+            "p99": 118.0
+          },
+          "logout": {
+            "n": 140,
+            "errors": 9,
+            "codes": {
+              "200": 131,
+              "500": 9
+            },
+            "p50": 30.0,
+            "p90": 38.0,
+            "p99": 47.0
+          },
+          "View Profile Information": {
+            "n": 36,
+            "errors": 3,
+            "codes": {
+              "200": 33,
+              "500": 3
+            },
+            "p50": 30.0,
+            "p90": 37.0,
+            "p99": 100.0
+          },
+          "Update Customer": {
+            "n": 36,
+            "errors": 3,
+            "codes": {
+              "200": 33,
+              "500": 3
+            },
+            "p50": 30.0,
+            "p90": 38.0,
+            "p99": 60.0
+          }
+        }
+      }
+    ],
+    "metrics_per_pass": [
+      {
+        "functions": {
+          "BookingsByCustomerFunction": {
+            "invocations": 218,
+            "cold": 3,
+            "warm_p50_ms": 10.5,
+            "warm_p90_ms": 21.3,
+            "init_p50_ms": 312.3,
+            "max_memory_mb": 107
+          },
+          "BookingsCreateFunction": {
+            "invocations": 141,
+            "cold": 2,
+            "warm_p50_ms": 12.3,
+            "warm_p90_ms": 23.6,
+            "init_p50_ms": 320.3,
+            "max_memory_mb": 106
+          },
+          "ConfigCountAirportsFunction": {
+            "invocations": 1,
+            "cold": 1,
+            "warm_p50_ms": null,
+            "warm_p90_ms": null,
+            "init_p50_ms": 243.7,
+            "max_memory_mb": 99
+          },
+          "ConfigCountBookingsFunction": {
+            "invocations": 1,
+            "cold": 1,
+            "warm_p50_ms": null,
+            "warm_p90_ms": null,
+            "init_p50_ms": 302.8,
+            "max_memory_mb": 99
+          },
+          "ConfigCountSessionsFunction": {
+            "invocations": 1,
+            "cold": 1,
+            "warm_p50_ms": null,
+            "warm_p90_ms": null,
+            "init_p50_ms": 317.2,
+            "max_memory_mb": 101
+          },
+          "CustomerGetFunction": {
+            "invocations": 55,
+            "cold": 1,
+            "warm_p50_ms": 9.4,
+            "warm_p90_ms": 14.3,
+            "init_p50_ms": 323.3,
+            "max_memory_mb": 105
+          },
+          "CustomerUpdateFunction": {
+            "invocations": 56,
+            "cold": 1,
+            "warm_p50_ms": 9.8,
+            "warm_p90_ms": 11.7,
+            "init_p50_ms": 195.2,
+            "max_memory_mb": 104
+          },
+          "FlightsQueryFunction": {
+            "invocations": 1133,
+            "cold": 5,
+            "warm_p50_ms": 24.1,
+            "warm_p90_ms": 45.9,
+            "init_p50_ms": 313.8,
+            "max_memory_mb": 117
+          },
+          "LoginCreateSessionFunction": {
+            "invocations": 227,
+            "cold": 2,
+            "warm_p50_ms": 10.1,
+            "warm_p90_ms": 20.4,
+            "init_p50_ms": 285.8,
+            "max_memory_mb": 111
+          },
+          "SessionLogoutFunction": {
+            "invocations": 216,
+            "cold": 3,
+            "warm_p50_ms": 6.2,
+            "warm_p90_ms": 8.4,
+            "init_p50_ms": 254.3,
+            "max_memory_mb": 106
+          }
+        },
+        "invocations": 2049,
+        "lambda_gb_seconds": 27.578,
+        "rru": 1561.0,
+        "wru": 13011.0
+      },
+      {
+        "functions": {
+          "BookingsByCustomerFunction": {
+            "invocations": 133,
+            "cold": 0,
+            "warm_p50_ms": 10.7,
+            "warm_p90_ms": 21.8,
+            "init_p50_ms": null,
+            "max_memory_mb": 107
+          },
+          "BookingsCreateFunction": {
+            "invocations": 89,
+            "cold": 0,
+            "warm_p50_ms": 12.0,
+            "warm_p90_ms": 20.5,
+            "init_p50_ms": null,
+            "max_memory_mb": 106
+          },
+          "ConfigCountBookingsFunction": {
+            "invocations": 1,
+            "cold": 1,
+            "warm_p50_ms": null,
+            "warm_p90_ms": null,
+            "init_p50_ms": 302.8,
+            "max_memory_mb": 99
+          },
+          "ConfigCountSessionsFunction": {
+            "invocations": 1,
+            "cold": 1,
+            "warm_p50_ms": null,
+            "warm_p90_ms": null,
+            "init_p50_ms": 317.2,
+            "max_memory_mb": 101
+          },
+          "CustomerGetFunction": {
+            "invocations": 33,
+            "cold": 0,
+            "warm_p50_ms": 9.3,
+            "warm_p90_ms": 10.0,
+            "init_p50_ms": null,
+            "max_memory_mb": 105
+          },
+          "CustomerUpdateFunction": {
+            "invocations": 33,
+            "cold": 0,
+            "warm_p50_ms": 9.7,
+            "warm_p90_ms": 10.4,
+            "init_p50_ms": null,
+            "max_memory_mb": 104
+          },
+          "FlightsQueryFunction": {
+            "invocations": 671,
+            "cold": 0,
+            "warm_p50_ms": 21.9,
+            "warm_p90_ms": 42.2,
+            "init_p50_ms": null,
+            "max_memory_mb": 117
+          },
+          "LoginCreateSessionFunction": {
+            "invocations": 137,
+            "cold": 0,
+            "warm_p50_ms": 9.9,
+            "warm_p90_ms": 20.4,
+            "init_p50_ms": null,
+            "max_memory_mb": 111
+          },
+          "SessionLogoutFunction": {
+            "invocations": 131,
+            "cold": 0,
+            "warm_p50_ms": 5.9,
+            "warm_p90_ms": 7.2,
+            "init_p50_ms": null,
+            "max_memory_mb": 106
+          }
+        },
+        "invocations": 1229,
+        "lambda_gb_seconds": 13.088,
+        "rru": 1561.0,
+        "wru": 13011.0
+      }
+    ],
+    "metrics": {
+      "invocations": 3278,
+      "lambda_gb_seconds": 40.666,
+      "rru": 3122.0,
+      "wru": 26022.0
+    },
+    "counts_after": {
+      "Bookings": "141",
+      "Sessions": "11"
+    },
+    "cost_usd": {
+      "lambda_duration": 0.00054222,
+      "lambda_requests": 0.0006556,
+      "dynamodb": 0.016654,
+      "api_gateway": 0.011473,
+      "total": 0.02932482
+    }
+  }
+}

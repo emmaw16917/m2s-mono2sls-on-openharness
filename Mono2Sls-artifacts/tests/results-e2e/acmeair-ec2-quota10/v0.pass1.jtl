@@ -1,0 +1,908 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1791259285362,1481,Login,200,OK,Thread Group 1-1,text,true,,586,296,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,1480,0,504
+1791259286226,825,Login,200,OK,Thread Group 1-2,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,825,0,37
+1791259287217,78,Login,200,OK,Thread Group 1-3,text,true,,586,296,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,78,0,22
+1791259286850,817,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,817,0,0
+1791259287675,74,QueryFlight,200,OK,Thread Group 1-1,text,true,,685,454,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,74,0,0
+1791259287750,102,QueryFlight,200,OK,Thread Group 1-1,text,true,,1066,454,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,102,0,0
+1791259287053,806,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,806,0,0
+1791259287860,70,QueryFlight,200,OK,Thread Group 1-2,text,true,,1070,454,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,70,0,0
+1791259287854,86,QueryFlight,200,OK,Thread Group 1-1,text,true,,1065,454,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,86,0,0
+1791259287941,67,QueryFlight,200,OK,Thread Group 1-1,text,true,,1068,454,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,67,0,0
+1791259287931,110,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,110,0,0
+1791259287296,786,View Profile Information,200,OK,Thread Group 1-3,text,true,,759,250,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid827@email.com,786,0,0
+1791259288042,61,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791259288104,61,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791259288215,68,Login,200,OK,Thread Group 1-4,text,true,,586,297,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,68,0,25
+1791259288285,74,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,74,0,0
+1791259288360,48,QueryFlight,200,OK,Thread Group 1-4,text,true,,1070,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259288409,55,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791259288465,55,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791259288524,45,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259288009,797,BookFlight,200,OK,Thread Group 1-1,text,true,,575,474,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,797,0,0
+1791259288085,808,Update Customer,200,OK,Thread Group 1-3,text,true,,759,708,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid827@email.com,807,0,0
+1791259288166,744,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,743,0,0
+1791259288894,66,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,66,0,0
+1791259288961,44,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259289006,44,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259289051,48,QueryFlight,200,OK,Thread Group 1-3,text,true,,1067,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259289100,83,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,83,0,0
+1791259288570,644,BookFlight,200,OK,Thread Group 1-4,text,true,,575,475,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,644,0,0
+1791259289223,53,Login,200,OK,Thread Group 1-5,text,true,,586,297,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,53,0,20
+1791259289277,53,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791259289331,56,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791259289388,51,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791259289440,49,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259288807,707,List Bookings,200,OK,Thread Group 1-1,text,true,,652,252,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid635@email.com,707,0,0
+1791259289489,50,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791259289540,40,List Bookings,200,OK,Thread Group 1-5,text,true,,479,253,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7748@email.com,40,0,0
+1791259288910,701,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8042@email.com,701,0,0
+1791259289184,691,List Bookings,200,OK,Thread Group 1-3,text,true,,479,252,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid827@email.com,691,0,0
+1791259289215,740,List Bookings,200,OK,Thread Group 1-4,text,true,,653,253,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6775@email.com,740,0,0
+1791259289515,776,logout,200,OK,Thread Group 1-1,text,true,,520,257,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid635%40email.com,776,0,0
+1791259290220,92,Login,200,OK,Thread Group 1-6,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,92,0,21
+1791259290295,57,Login,200,OK,Thread Group 1-1,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,57,0,0
+1791259290313,51,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791259289581,786,logout,200,OK,Thread Group 1-5,text,true,,520,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7748%40email.com,786,0,0
+1791259290352,55,View Profile Information,200,OK,Thread Group 1-1,text,true,,760,251,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid1824@email.com,55,0,0
+1791259290368,44,Login,200,OK,Thread Group 1-5,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,44,0,0
+1791259290365,54,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,54,0,0
+1791259289612,833,logout,200,OK,Thread Group 1-2,text,true,,520,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8042%40email.com,833,0,0
+1791259290408,51,Update Customer,200,OK,Thread Group 1-1,text,true,,760,710,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid1824@email.com,51,0,0
+1791259290413,51,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791259290420,52,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791259290446,32,Login,200,OK,Thread Group 1-2,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791259290465,45,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259290460,77,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,77,0,0
+1791259290473,71,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,71,0,0
+1791259290478,80,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,80,0,0
+1791259290511,73,QueryFlight,200,OK,Thread Group 1-5,text,true,,1067,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,73,0,0
+1791259290538,53,QueryFlight,200,OK,Thread Group 1-1,text,true,,1065,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791259289955,662,logout,200,OK,Thread Group 1-4,text,true,,520,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6775%40email.com,662,0,0
+1791259290544,84,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,84,0,0
+1791259289876,755,logout,200,OK,Thread Group 1-3,text,true,,520,257,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid827%40email.com,755,0,0
+1791259290559,74,QueryFlight,200,OK,Thread Group 1-2,text,true,,1068,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,74,0,0
+1791259290619,37,Login,200,OK,Thread Group 1-4,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,37,0,0
+1791259290629,44,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,44,0,0
+1791259290633,47,QueryFlight,200,OK,Thread Group 1-2,text,true,,1070,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791259290632,51,Login,200,OK,Thread Group 1-3,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,51,0,0
+1791259290674,42,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7209@email.com,42,0,0
+1791259290657,62,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791259290683,41,View Profile Information,200,OK,Thread Group 1-3,text,true,,760,251,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid6422@email.com,41,0,0
+1791259290681,54,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,54,0,0
+1791259290717,38,logout,200,OK,Thread Group 1-6,text,true,,520,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7209%40email.com,37,0,0
+1791259290720,51,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791259290724,49,Update Customer,200,OK,Thread Group 1-3,text,true,,760,710,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid6422@email.com,49,0,0
+1791259290736,48,QueryFlight,200,OK,Thread Group 1-2,text,true,,1070,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259290756,46,Login,200,OK,Thread Group 1-6,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,46,0,0
+1791259290771,56,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791259290774,57,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,57,0,0
+1791259290784,63,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,63,0,0
+1791259290803,60,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791259290828,59,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791259290847,46,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7944@email.com,46,0,0
+1791259290835,64,QueryFlight,200,OK,Thread Group 1-3,text,true,,1067,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,64,0,0
+1791259290864,64,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,64,0,0
+1791259290894,37,logout,200,OK,Thread Group 1-2,text,true,,520,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7944%40email.com,37,0,0
+1791259290888,74,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,74,0,0
+1791259290899,71,QueryFlight,200,OK,Thread Group 1-3,text,true,,1068,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,71,0,0
+1791259290933,44,Login,200,OK,Thread Group 1-2,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,44,0,0
+1791259290963,50,BookFlight,200,OK,Thread Group 1-4,text,true,,575,475,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,50,0,0
+1791259290971,48,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259290978,61,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791259291013,58,List Bookings,200,OK,Thread Group 1-4,text,true,,653,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6679@email.com,58,0,0
+1791259291020,51,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791259291040,61,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791259291071,34,logout,200,OK,Thread Group 1-4,text,true,,520,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6679%40email.com,34,0,0
+1791259291071,61,BookFlight,200,OK,Thread Group 1-3,text,true,,575,475,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,61,0,0
+1791259290592,548,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,548,0,0
+1791259291102,50,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791259291106,50,Login,200,OK,Thread Group 1-4,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,50,0,0
+1791259291142,45,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259291133,60,List Bookings,200,OK,Thread Group 1-3,text,true,,653,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6422@email.com,60,0,0
+1791259291152,48,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259291187,43,QueryFlight,200,OK,Thread Group 1-1,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259290588,643,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,643,0,0
+1791259291194,44,logout,200,OK,Thread Group 1-3,text,true,,520,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6422%40email.com,44,0,0
+1791259291157,84,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,84,0,0
+1791259291201,42,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259291235,37,List Bookings,200,OK,Thread Group 1-1,text,true,,479,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1824@email.com,37,0,0
+1791259291239,34,Login,200,OK,Thread Group 1-3,text,true,,586,297,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,34,0,0
+1791259291216,64,Login,200,OK,Thread Group 1-7,text,true,,586,297,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,64,0,24
+1791259291244,47,List Bookings,200,OK,Thread Group 1-2,text,true,,479,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5654@email.com,47,0,0
+1791259291241,58,QueryFlight,200,OK,Thread Group 1-4,text,true,,1064,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791259291273,28,logout,200,OK,Thread Group 1-1,text,true,,520,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1824%40email.com,28,0,0
+1791259291292,28,logout,200,OK,Thread Group 1-2,text,true,,520,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5654%40email.com,28,0,0
+1791259291280,45,View Profile Information,200,OK,Thread Group 1-7,text,true,,760,251,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid3432@email.com,45,0,0
+1791259291302,36,Login,200,OK,Thread Group 1-1,text,true,,586,297,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,36,0,0
+1791259291300,58,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791259291231,129,QueryFlight,200,OK,Thread Group 1-5,text,true,,1067,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,129,0,0
+1791259291274,93,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,93,0,0
+1791259291321,48,Login,200,OK,Thread Group 1-2,text,true,,586,297,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,48,0,0
+1791259291325,48,Update Customer,200,OK,Thread Group 1-7,text,true,,760,710,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid3432@email.com,48,0,0
+1791259291339,56,QueryFlight,200,OK,Thread Group 1-1,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791259291361,39,BookFlight,200,OK,Thread Group 1-5,text,true,,575,474,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,39,0,0
+1791259291367,39,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791259291359,47,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791259291374,61,QueryFlight,200,OK,Thread Group 1-7,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791259291401,47,List Bookings,200,OK,Thread Group 1-5,text,true,,653,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7970@email.com,47,0,0
+1791259291370,79,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,79,0,0
+1791259291407,64,QueryFlight,200,OK,Thread Group 1-4,text,true,,1070,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,64,0,0
+1791259291395,85,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,85,0,0
+1791259291407,73,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,73,0,0
+1791259291437,50,QueryFlight,200,OK,Thread Group 1-7,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791259291449,38,logout,200,OK,Thread Group 1-5,text,true,,520,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7970%40email.com,38,0,0
+1791259291471,41,BookFlight,200,OK,Thread Group 1-4,text,true,,575,475,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,41,0,0
+1791259291488,32,Login,200,OK,Thread Group 1-5,text,true,,586,297,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791259291487,37,QueryFlight,200,OK,Thread Group 1-7,text,true,,1064,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,37,0,0
+1791259291481,47,QueryFlight,200,OK,Thread Group 1-3,text,true,,1066,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791259291480,52,QueryFlight,200,OK,Thread Group 1-1,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791259291513,41,List Bookings,200,OK,Thread Group 1-4,text,true,,653,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6628@email.com,41,0,0
+1791259291450,114,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,114,0,0
+1791259290929,642,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,642,0,0
+1791259291528,56,QueryFlight,200,OK,Thread Group 1-3,text,true,,1070,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791259291520,65,View Profile Information,200,OK,Thread Group 1-5,text,true,,760,251,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid4922@email.com,65,0,0
+1791259291533,61,QueryFlight,200,OK,Thread Group 1-1,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791259291555,40,logout,200,OK,Thread Group 1-4,text,true,,520,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6628%40email.com,40,0,0
+1791259291525,82,QueryFlight,200,OK,Thread Group 1-7,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,82,0,0
+1791259291572,51,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791259291584,41,BookFlight,200,OK,Thread Group 1-3,text,true,,575,475,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,41,0,0
+1791259291596,32,Login,200,OK,Thread Group 1-4,text,true,,586,297,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791259291586,68,Update Customer,200,OK,Thread Group 1-5,text,true,,760,710,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid4922@email.com,67,0,0
+1791259291595,59,QueryFlight,200,OK,Thread Group 1-1,text,true,,1068,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791259291628,36,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,36,0,0
+1791259291608,59,QueryFlight,200,OK,Thread Group 1-7,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791259291564,106,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,106,0,0
+1791259291625,62,List Bookings,200,OK,Thread Group 1-3,text,true,,653,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7517@email.com,62,0,0
+1791259291654,39,BookFlight,200,OK,Thread Group 1-1,text,true,,575,475,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,39,0,0
+1791259291624,75,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,75,0,0
+1791259291654,53,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791259291667,45,BookFlight,200,OK,Thread Group 1-7,text,true,,575,475,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,45,0,0
+1791259291665,52,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791259291687,37,logout,200,OK,Thread Group 1-3,text,true,,520,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7517%40email.com,37,0,0
+1791259291694,33,List Bookings,200,OK,Thread Group 1-1,text,true,,653,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2585@email.com,33,0,0
+1791259291712,15,List Bookings,500,Internal Server Error,Thread Group 1-7,text,false,,582,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3432@email.com,15,0,0
+1791259291671,64,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,64,0,0
+1791259291700,36,List Bookings,200,OK,Thread Group 1-6,text,true,,479,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4957@email.com,36,0,0
+1791259291707,38,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791259291729,18,logout,500,Internal Server Error,Thread Group 1-7,text,false,,582,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3432%40email.com,18,0,0
+1791259291728,24,logout,500,Internal Server Error,Thread Group 1-1,text,false,,582,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2585%40email.com,24,0,0
+1791259291725,33,Login,200,OK,Thread Group 1-3,text,true,,586,297,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791259291746,18,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259291737,29,logout,200,OK,Thread Group 1-6,text,true,,520,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4957%40email.com,29,0,0
+1791259291718,53,QueryFlight,200,OK,Thread Group 1-4,text,true,,1066,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791259291758,22,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,22,0,0
+1791259291735,48,QueryFlight,200,OK,Thread Group 1-2,text,true,,1067,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259291748,42,Login,200,OK,Thread Group 1-7,text,true,,586,352,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,42,0,0
+1791259291755,41,Login,200,OK,Thread Group 1-1,text,true,,586,353,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,41,0,0
+1791259291791,14,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259291769,41,Login,200,OK,Thread Group 1-6,text,true,,586,297,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,41,0,0
+1791259291772,47,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791259291765,62,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791259291783,47,BookFlight,200,OK,Thread Group 1-2,text,true,,575,474,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,47,0,0
+1791259291782,59,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791259291797,47,View Profile Information,200,OK,Thread Group 1-1,text,true,,760,251,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid1110@email.com,47,0,0
+1791259291806,52,QueryFlight,200,OK,Thread Group 1-7,text,true,,1068,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791259291843,22,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,22,0,0
+1791259291811,55,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791259291831,41,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9364@email.com,41,0,0
+1791259291858,20,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791259291819,60,QueryFlight,200,OK,Thread Group 1-4,text,true,,1070,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791259291867,21,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791259291829,61,QueryFlight,200,OK,Thread Group 1-5,text,true,,1070,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791259291844,51,Update Customer,200,OK,Thread Group 1-1,text,true,,760,710,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid1110@email.com,51,0,0
+1791259291872,29,logout,200,OK,Thread Group 1-2,text,true,,520,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9364%40email.com,29,0,0
+1791259291865,42,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259291889,19,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791259291892,34,BookFlight,200,OK,Thread Group 1-5,text,true,,575,475,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,34,0,0
+1791259291880,50,BookFlight,200,OK,Thread Group 1-4,text,true,,575,475,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,50,0,0
+1791259291911,24,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,24,0,0
+1791259291902,41,Login,200,OK,Thread Group 1-2,text,true,,586,297,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,41,0,0
+1791259291926,17,List Bookings,500,Internal Server Error,Thread Group 1-5,text,false,,582,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4922@email.com,17,0,0
+1791259291879,66,QueryFlight,200,OK,Thread Group 1-7,text,true,,1068,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,66,0,0
+1791259291912,46,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791259291931,34,List Bookings,200,OK,Thread Group 1-4,text,true,,653,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5823@email.com,34,0,0
+1791259291944,21,logout,500,Internal Server Error,Thread Group 1-5,text,false,,582,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4922%40email.com,21,0,0
+1791259291958,20,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791259291895,83,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,83,0,0
+1791259291966,19,Login,500,Internal Server Error,Thread Group 1-5,text,false,,582,353,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,19,0,0
+1791259291936,49,List Bookings,200,OK,Thread Group 1-3,text,true,,479,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9310@email.com,49,0,0
+1791259291965,27,logout,200,OK,Thread Group 1-4,text,true,,520,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5823%40email.com,27,0,0
+1791259291944,48,QueryFlight,200,OK,Thread Group 1-2,text,true,,1070,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259291985,21,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791259291946,71,QueryFlight,200,OK,Thread Group 1-7,text,true,,1068,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,71,0,0
+1791259291986,33,logout,200,OK,Thread Group 1-3,text,true,,520,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9310%40email.com,33,0,0
+1791259291992,33,Login,200,OK,Thread Group 1-4,text,true,,586,297,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791259292008,18,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259291979,49,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259292027,15,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259292029,13,QueryFlight,500,Internal Server Error,Thread Group 1-1,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,13,0,0
+1791259292026,17,View Profile Information,500,Internal Server Error,Thread Group 1-4,text,false,,582,251,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid2968@email.com,17,0,0
+1791259292018,31,BookFlight,200,OK,Thread Group 1-7,text,true,,575,474,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,31,0,0
+1791259292020,29,Login,200,OK,Thread Group 1-3,text,true,,586,297,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,29,0,0
+1791259291993,57,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,57,0,0
+1791259291978,76,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,76,0,0
+1791259292044,18,Update Customer,500,Internal Server Error,Thread Group 1-4,text,false,,582,431,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid2968@email.com,18,0,0
+1791259292051,19,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791259292054,22,List Bookings,500,Internal Server Error,Thread Group 1-6,text,false,,582,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8625@email.com,22,0,0
+1791259292049,34,List Bookings,200,OK,Thread Group 1-7,text,true,,652,252,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid835@email.com,34,0,0
+1791259292044,43,QueryFlight,200,OK,Thread Group 1-1,text,true,,1067,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259292077,16,logout,500,Internal Server Error,Thread Group 1-6,text,false,,582,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8625%40email.com,16,0,0
+1791259292050,52,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791259292043,62,QueryFlight,200,OK,Thread Group 1-5,text,true,,1068,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791259292083,26,logout,500,Internal Server Error,Thread Group 1-7,text,false,,582,257,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid835%40email.com,26,0,0
+1791259292071,44,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259292094,30,Login,200,OK,Thread Group 1-6,text,true,,586,352,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,30,0,0
+1791259292116,17,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791259292063,73,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,73,0,0
+1791259292087,61,QueryFlight,200,OK,Thread Group 1-1,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791259292110,39,Login,200,OK,Thread Group 1-7,text,true,,586,353,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,39,0,0
+1791259292134,16,BookFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,475,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,16,0,0
+1791259292102,48,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259292148,21,BookFlight,500,Internal Server Error,Thread Group 1-1,text,false,,582,475,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,21,0,0
+1791259292151,21,List Bookings,500,Internal Server Error,Thread Group 1-2,text,false,,582,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7492@email.com,21,0,0
+1791259292136,50,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791259292124,64,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,64,0,0
+1791259292151,38,QueryFlight,200,OK,Thread Group 1-7,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791259292173,17,logout,500,Internal Server Error,Thread Group 1-2,text,false,,582,258,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7492%40email.com,17,0,0
+1791259292152,43,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259292105,93,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,93,0,0
+1791259292190,14,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259292170,39,List Bookings,200,OK,Thread Group 1-1,text,true,,479,253,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1110@email.com,39,0,0
+1791259292189,21,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791259292191,22,Login,500,Internal Server Error,Thread Group 1-2,text,false,,582,353,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,22,0,0
+1791259292213,26,View Profile Information,500,Internal Server Error,Thread Group 1-2,text,false,,582,251,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid5698@email.com,26,0,0
+1791259292197,18,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791259292199,43,BookFlight,200,OK,Thread Group 1-5,text,true,,575,475,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,43,0,0
+1791259292209,44,logout,200,OK,Thread Group 1-1,text,true,,520,258,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1110%40email.com,44,0,0
+1791259292187,66,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,66,0,0
+1791259292209,53,QueryFlight,200,OK,Thread Group 1-7,text,true,,1068,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791259292211,53,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791259292254,16,Login,500,Internal Server Error,Thread Group 1-1,text,false,,582,297,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,16,0,0
+1791259292243,31,List Bookings,200,OK,Thread Group 1-5,text,true,,653,253,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1081@email.com,31,0,0
+1791259292239,35,Update Customer,500,Internal Server Error,Thread Group 1-2,text,false,,582,431,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid5698@email.com,35,0,0
+1791259292264,19,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791259292212,72,Login,500,Internal Server Error,Thread Group 1-8,text,false,,582,297,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,72,0,54
+1791259292271,20,QueryFlight,403,Forbidden,Thread Group 1-1,text,false,,485,398,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791259292276,21,logout,500,Internal Server Error,Thread Group 1-5,text,false,,582,258,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1081%40email.com,21,0,0
+1791259292241,58,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791259292262,40,QueryFlight,200,OK,Thread Group 1-7,text,true,,1069,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259292292,15,QueryFlight,500,Internal Server Error,Thread Group 1-1,text,false,,582,398,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259292285,25,QueryFlight,403,Forbidden,Thread Group 1-8,text,false,,485,398,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,25,0,0
+1791259292299,15,BookFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,475,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,15,0,0
+1791259292303,13,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,13,0,0
+1791259292253,70,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,70,0,0
+1791259292307,22,QueryFlight,403,Forbidden,Thread Group 1-1,text,false,,485,398,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,22,0,0
+1791259292298,32,Login,200,OK,Thread Group 1-5,text,true,,586,353,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791259292284,48,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259292311,23,QueryFlight,403,Forbidden,Thread Group 1-8,text,false,,485,398,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,23,0,0
+1791259292317,24,BookFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,475,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,24,0,0
+1791259292274,71,QueryFlight,200,OK,Thread Group 1-2,text,true,,1070,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,71,0,0
+1791259292314,33,List Bookings,200,OK,Thread Group 1-3,text,true,,479,253,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3242@email.com,33,0,0
+1791259292330,24,QueryFlight,403,Forbidden,Thread Group 1-1,text,false,,485,398,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,24,0,0
+1791259292333,24,BookFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,474,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,24,0,0
+1791259292334,23,QueryFlight,403,Forbidden,Thread Group 1-8,text,false,,485,398,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,23,0,0
+1791259292346,22,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,22,0,0
+1791259292330,42,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259292348,27,logout,200,OK,Thread Group 1-3,text,true,,520,258,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3242%40email.com,27,0,0
+1791259292358,20,QueryFlight,500,Internal Server Error,Thread Group 1-8,text,false,,582,398,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791259292354,25,QueryFlight,403,Forbidden,Thread Group 1-1,text,false,,485,398,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,25,0,0
+1791259292358,23,List Bookings,500,Internal Server Error,Thread Group 1-6,text,false,,582,252,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid511@email.com,23,0,0
+1791259292342,43,List Bookings,200,OK,Thread Group 1-7,text,true,,479,253,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7657@email.com,43,0,0
+1791259292368,20,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,8,8,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791259292373,20,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791259292381,18,logout,500,Internal Server Error,Thread Group 1-6,text,false,,582,257,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid511%40email.com,18,0,0
+1791259292323,75,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,75,0,0
+1791259292378,21,QueryFlight,403,Forbidden,Thread Group 1-8,text,false,,485,398,7,7,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791259292375,32,Login,200,OK,Thread Group 1-3,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791259292388,21,logout,500,Internal Server Error,Thread Group 1-7,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7657%40email.com,21,0,0
+1791259292394,19,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791259292399,19,List Bookings,500,Internal Server Error,Thread Group 1-4,text,false,,582,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2968@email.com,19,0,0
+1791259292399,21,Login,500,Internal Server Error,Thread Group 1-6,text,false,,582,351,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,21,0,0
+1791259292407,18,View Profile Information,500,Internal Server Error,Thread Group 1-3,text,false,,582,251,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid6924@email.com,18,0,0
+1791259292418,14,logout,500,Internal Server Error,Thread Group 1-4,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2968%40email.com,14,0,0
+1791259292389,49,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259292420,20,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791259292410,31,Login,200,OK,Thread Group 1-7,text,true,,586,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791259292425,20,Update Customer,500,Internal Server Error,Thread Group 1-3,text,false,,582,431,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid6924@email.com,20,0,0
+1791259292439,16,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,16,0,0
+1791259292441,19,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791259292414,51,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791259292433,36,Login,200,OK,Thread Group 1-4,text,true,,586,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,36,0,0
+1791259292446,24,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,24,0,0
+1791259292455,15,List Bookings,500,Internal Server Error,Thread Group 1-2,text,false,,582,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5698@email.com,15,0,0
+1791259292460,14,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259292440,41,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791259292466,17,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791259292469,17,QueryFlight,500,Internal Server Error,Thread Group 1-4,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791259292471,17,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,16,0,0
+1791259292471,22,logout,500,Internal Server Error,Thread Group 1-2,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5698%40email.com,22,0,0
+1791259292482,14,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259292489,13,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,13,0,0
+1791259292483,20,List Bookings,500,Internal Server Error,Thread Group 1-5,text,false,,582,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2243@email.com,20,0,0
+1791259292494,20,Login,500,Internal Server Error,Thread Group 1-2,text,false,,582,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,20,0,0
+1791259292497,21,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791259292474,48,QueryFlight,200,OK,Thread Group 1-7,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259292503,23,logout,500,Internal Server Error,Thread Group 1-5,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2243%40email.com,23,0,0
+1791259292514,18,View Profile Information,500,Internal Server Error,Thread Group 1-2,text,false,,582,251,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid2172@email.com,18,0,0
+1791259292519,19,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791259292523,19,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791259292507,40,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259292486,63,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,63,0,0
+1791259292527,36,Login,200,OK,Thread Group 1-5,text,true,,586,352,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,36,0,0
+1791259292532,32,Update Customer,200,OK,Thread Group 1-2,text,true,,479,431,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid2172@email.com,32,0,0
+1791259292539,33,List Bookings,200,OK,Thread Group 1-6,text,true,,479,251,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid28@email.com,32,0,0
+1791259292542,42,QueryFlight,200,OK,Thread Group 1-7,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259292572,18,logout,500,Internal Server Error,Thread Group 1-6,text,false,,582,256,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid28%40email.com,18,0,0
+1791259292564,33,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,33,0,0
+1791259292550,50,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791259292591,15,Login,500,Internal Server Error,Thread Group 1-6,text,false,,582,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,15,0,0
+1791259292547,63,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,63,0,0
+1791259292563,47,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791259292598,18,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259292607,18,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259292584,43,List Bookings,200,OK,Thread Group 1-7,text,true,,479,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9478@email.com,43,0,0
+1791259292610,26,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,26,0,0
+1791259292600,36,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,36,0,0
+1791259292611,27,List Bookings,200,OK,Thread Group 1-3,text,true,,479,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6924@email.com,27,0,0
+1791259292627,18,logout,500,Internal Server Error,Thread Group 1-7,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9478%40email.com,18,0,0
+1791259292637,15,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259292637,18,QueryFlight,500,Internal Server Error,Thread Group 1-4,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259292617,39,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791259292628,33,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,33,0,0
+1791259292646,16,Login,500,Internal Server Error,Thread Group 1-7,text,false,,582,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,16,0,0
+1791259292639,29,logout,200,OK,Thread Group 1-3,text,true,,520,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6924%40email.com,29,0,0
+1791259292656,15,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259292653,23,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,23,0,0
+1791259292655,39,List Bookings,200,OK,Thread Group 1-4,text,true,,479,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid9145@email.com,39,0,0
+1791259292677,20,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791259292662,41,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791259292669,37,Login,200,OK,Thread Group 1-3,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,37,0,0
+1791259292694,13,logout,500,Internal Server Error,Thread Group 1-4,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid9145%40email.com,13,0,0
+1791259292698,13,List Bookings,500,Internal Server Error,Thread Group 1-5,text,false,,582,252,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid713@email.com,13,0,0
+1791259292671,45,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259292704,17,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791259292706,18,View Profile Information,500,Internal Server Error,Thread Group 1-3,text,false,,582,251,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8671@email.com,18,0,0
+1791259292711,17,logout,500,Internal Server Error,Thread Group 1-5,text,false,,582,257,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid713%40email.com,17,0,0
+1791259292722,21,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791259292709,40,Login,200,OK,Thread Group 1-4,text,true,,586,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,40,0,0
+1791259292717,37,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,37,0,0
+1791259292725,30,Update Customer,200,OK,Thread Group 1-3,text,true,,479,431,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8671@email.com,30,0,0
+1791259292744,17,BookFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,475,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,17,0,0
+1791259292662,105,QueryFlight,200,OK,Thread Group 1-7,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,105,0,0
+1791259292729,38,Login,200,OK,Thread Group 1-5,text,true,,586,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,38,0,0
+1791259292749,20,QueryFlight,500,Internal Server Error,Thread Group 1-4,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791259292754,16,List Bookings,500,Internal Server Error,Thread Group 1-2,text,false,,582,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2172@email.com,16,0,0
+1791259292756,18,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259292767,18,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259292770,17,logout,500,Internal Server Error,Thread Group 1-2,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2172%40email.com,17,0,0
+1791259292773,15,QueryFlight,500,Internal Server Error,Thread Group 1-4,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259292761,32,List Bookings,200,OK,Thread Group 1-6,text,true,,479,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2930@email.com,32,0,0
+1791259292786,16,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,16,0,0
+1791259292794,16,logout,500,Internal Server Error,Thread Group 1-6,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2930%40email.com,16,0,0
+1791259292774,42,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259292767,52,QueryFlight,200,OK,Thread Group 1-7,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791259292788,32,Login,200,OK,Thread Group 1-2,text,true,,586,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791259292812,18,Login,500,Internal Server Error,Thread Group 1-6,text,false,,582,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,18,0,0
+1791259292816,19,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791259292791,56,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791259292831,20,View Profile Information,500,Internal Server Error,Thread Group 1-6,text,false,,582,251,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid4833@email.com,20,0,0
+1791259292803,50,QueryFlight,200,OK,Thread Group 1-5,text,true,,1065,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791259292837,19,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791259292848,13,QueryFlight,500,Internal Server Error,Thread Group 1-4,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,13,0,0
+1791259292821,45,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259292857,18,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259292851,29,Update Customer,200,OK,Thread Group 1-6,text,true,,479,431,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid4833@email.com,29,0,0
+1791259292820,88,QueryFlight,200,OK,Thread Group 1-7,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,88,0,0
+1791259292876,36,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,36,0,0
+1791259292860,59,QueryFlight,200,OK,Thread Group 1-3,text,true,,1070,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791259292909,17,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791259292867,59,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791259292862,70,QueryFlight,200,OK,Thread Group 1-4,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,70,0,0
+1791259292913,20,List Bookings,500,Internal Server Error,Thread Group 1-5,text,false,,582,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5609@email.com,20,0,0
+1791259292927,14,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259292927,17,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791259292932,18,List Bookings,500,Internal Server Error,Thread Group 1-4,text,false,,582,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4054@email.com,18,0,0
+1791259292920,36,BookFlight,200,OK,Thread Group 1-3,text,true,,575,475,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,36,0,0
+1791259292942,15,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259292945,17,BookFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,475,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,17,0,0
+1791259292933,36,logout,200,OK,Thread Group 1-5,text,true,,520,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5609%40email.com,36,0,0
+1791259292950,20,logout,500,Internal Server Error,Thread Group 1-4,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4054%40email.com,20,0,0
+1791259292957,21,List Bookings,500,Internal Server Error,Thread Group 1-3,text,false,,582,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8671@email.com,21,0,0
+1791259292962,18,List Bookings,500,Internal Server Error,Thread Group 1-7,text,false,,582,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4575@email.com,18,0,0
+1791259292979,17,logout,500,Internal Server Error,Thread Group 1-3,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8671%40email.com,17,0,0
+1791259292970,34,Login,200,OK,Thread Group 1-4,text,true,,586,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,34,0,0
+1791259292958,49,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259292969,41,Login,200,OK,Thread Group 1-5,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,41,0,0
+1791259292980,34,logout,200,OK,Thread Group 1-7,text,true,,520,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4575%40email.com,34,0,0
+1791259293014,18,Login,500,Internal Server Error,Thread Group 1-7,text,false,,582,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,18,0,0
+1791259292997,39,Login,200,OK,Thread Group 1-3,text,true,,586,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,39,0,0
+1791259293007,40,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,40,0,0
+1791259293004,47,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791259293011,43,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259293033,24,View Profile Information,500,Internal Server Error,Thread Group 1-7,text,false,,582,195,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8878@email.com,24,0,0
+1791259293054,15,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259293051,20,QueryFlight,500,Internal Server Error,Thread Group 1-4,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791259293047,32,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8763@email.com,32,0,0
+1791259293036,49,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259293057,33,Update Customer,403,Forbidden,Thread Group 1-7,text,false,,485,375,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8878@email.com,33,0,0
+1791259293079,22,logout,500,Internal Server Error,Thread Group 1-2,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8763%40email.com,22,0,0
+1791259293091,18,QueryFlight,403,Forbidden,Thread Group 1-7,text,false,,485,398,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259293072,41,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791259293070,48,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259293087,40,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259293114,14,QueryFlight,500,Internal Server Error,Thread Group 1-4,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259293111,18,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,398,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259293102,41,Login,200,OK,Thread Group 1-2,text,true,,586,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,41,0,0
+1791259293130,24,QueryFlight,403,Forbidden,Thread Group 1-7,text,false,,485,398,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,24,0,0
+1791259293119,37,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,37,0,0
+1791259293143,16,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,16,0,0
+1791259293159,15,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259293128,48,QueryFlight,200,OK,Thread Group 1-3,text,true,,1067,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259293155,23,QueryFlight,403,Forbidden,Thread Group 1-7,text,false,,485,398,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,23,0,0
+1791259293129,49,QueryFlight,200,OK,Thread Group 1-4,text,true,,1065,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259293179,21,QueryFlight,500,Internal Server Error,Thread Group 1-7,text,false,,582,398,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791259293156,47,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791259293179,36,BookFlight,200,OK,Thread Group 1-4,text,true,,575,473,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,36,0,0
+1791259293175,46,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791259293216,15,List Bookings,500,Internal Server Error,Thread Group 1-4,text,false,,582,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8914@email.com,15,0,0
+1791259292881,353,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,353,0,0
+1791259293204,37,List Bookings,200,OK,Thread Group 1-5,text,true,,479,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4125@email.com,37,0,0
+1791259293232,19,logout,500,Internal Server Error,Thread Group 1-4,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8914%40email.com,19,0,0
+1791259293242,15,logout,500,Internal Server Error,Thread Group 1-5,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4125%40email.com,15,0,0
+1791259293177,81,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,81,0,0
+1791259293221,40,QueryFlight,200,OK,Thread Group 1-2,text,true,,1070,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259293212,52,Login,200,OK,Thread Group 1-9,text,true,,586,296,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,52,0,19
+1791259293260,16,Login,500,Internal Server Error,Thread Group 1-5,text,false,,582,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,16,0,0
+1791259293261,18,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259293252,35,Login,200,OK,Thread Group 1-4,text,true,,586,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,35,0,0
+1791259293276,17,View Profile Information,500,Internal Server Error,Thread Group 1-5,text,false,,582,251,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid3173@email.com,17,0,0
+1791259293262,39,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791259293280,27,BookFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,474,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,27,0,0
+1791259293264,47,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791259293293,30,Update Customer,200,OK,Thread Group 1-5,text,true,,479,431,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid3173@email.com,30,0,0
+1791259293234,92,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,92,0,0
+1791259293301,28,List Bookings,200,OK,Thread Group 1-2,text,true,,479,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6073@email.com,28,0,0
+1791259293307,32,List Bookings,200,OK,Thread Group 1-3,text,true,,479,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7964@email.com,32,0,0
+1791259293324,14,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259293311,38,QueryFlight,200,OK,Thread Group 1-9,text,true,,1065,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791259293326,25,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,25,0,0
+1791259293339,14,logout,500,Internal Server Error,Thread Group 1-3,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7964%40email.com,14,0,0
+1791259293329,28,logout,200,OK,Thread Group 1-2,text,true,,520,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6073%40email.com,28,0,0
+1791259293340,18,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259293288,75,QueryFlight,200,OK,Thread Group 1-4,text,true,,1067,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,75,0,0
+1791259293359,17,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791259293353,31,Login,200,OK,Thread Group 1-3,text,true,,586,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791259293357,37,Login,200,OK,Thread Group 1-2,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,37,0,0
+1791259293385,14,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259293352,50,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791259293350,55,QueryFlight,200,OK,Thread Group 1-9,text,true,,1070,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791259293394,15,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259293401,15,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259293410,16,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,16,0,0
+1791259293364,63,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,63,0,0
+1791259293377,51,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791259293403,43,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259293427,19,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791259293406,42,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259293417,38,QueryFlight,200,OK,Thread Group 1-3,text,true,,1064,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791259293447,17,List Bookings,500,Internal Server Error,Thread Group 1-6,text,false,,582,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4833@email.com,17,0,0
+1791259293428,45,QueryFlight,200,OK,Thread Group 1-4,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259293456,17,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791259293429,55,QueryFlight,200,OK,Thread Group 1-5,text,true,,1070,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791259293473,15,QueryFlight,500,Internal Server Error,Thread Group 1-4,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259293473,17,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791259293447,44,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259293465,27,logout,200,OK,Thread Group 1-6,text,true,,520,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4833%40email.com,27,0,0
+1791259293448,55,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791259293490,18,BookFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,473,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,18,0,0
+1791259293485,31,BookFlight,200,OK,Thread Group 1-5,text,true,,575,475,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,31,0,0
+1791259293503,17,BookFlight,500,Internal Server Error,Thread Group 1-9,text,false,,582,474,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,17,0,0
+1791259293493,32,Login,200,OK,Thread Group 1-6,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791259293491,43,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259293489,49,QueryFlight,200,OK,Thread Group 1-4,text,true,,1070,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259293508,31,List Bookings,200,OK,Thread Group 1-3,text,true,,479,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4650@email.com,31,0,0
+1791259293520,20,List Bookings,500,Internal Server Error,Thread Group 1-9,text,false,,582,252,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid265@email.com,20,0,0
+1791259293516,30,List Bookings,200,OK,Thread Group 1-5,text,true,,653,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3173@email.com,30,0,0
+1791259293539,12,logout,500,Internal Server Error,Thread Group 1-3,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4650%40email.com,12,0,0
+1791259293540,16,logout,500,Internal Server Error,Thread Group 1-9,text,false,,582,257,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid265%40email.com,16,0,0
+1791259293539,26,BookFlight,200,OK,Thread Group 1-4,text,true,,575,475,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,26,0,0
+1791259293526,41,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791259293535,33,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,33,0,0
+1791259293552,17,Login,500,Internal Server Error,Thread Group 1-3,text,false,,582,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,17,0,0
+1791259293557,16,Login,500,Internal Server Error,Thread Group 1-9,text,false,,582,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,16,0,0
+1791259293546,29,logout,200,OK,Thread Group 1-5,text,true,,520,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3173%40email.com,29,0,0
+1791259293568,19,List Bookings,500,Internal Server Error,Thread Group 1-2,text,false,,582,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3288@email.com,19,0,0
+1791259293574,21,QueryFlight,500,Internal Server Error,Thread Group 1-9,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791259293566,32,List Bookings,200,OK,Thread Group 1-4,text,true,,653,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7896@email.com,32,0,0
+1791259293567,37,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,37,0,0
+1791259293587,18,logout,500,Internal Server Error,Thread Group 1-2,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3288%40email.com,18,0,0
+1791259293576,32,Login,200,OK,Thread Group 1-5,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791259293569,44,View Profile Information,200,OK,Thread Group 1-3,text,true,,760,251,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid6166@email.com,44,0,0
+1791259293605,18,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259293599,26,logout,200,OK,Thread Group 1-4,text,true,,520,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7896%40email.com,26,0,0
+1791259293613,19,Update Customer,500,Internal Server Error,Thread Group 1-3,text,false,,582,710,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid6166@email.com,19,0,0
+1791259293606,29,Login,200,OK,Thread Group 1-2,text,true,,586,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,29,0,0
+1791259293624,14,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259293595,50,QueryFlight,200,OK,Thread Group 1-9,text,true,,1066,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791259293608,43,QueryFlight,200,OK,Thread Group 1-5,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259293640,14,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259293626,31,Login,200,OK,Thread Group 1-4,text,true,,586,297,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791259293636,39,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791259293632,53,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791259293657,29,View Profile Information,200,OK,Thread Group 1-4,text,true,,760,251,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid7928@email.com,29,0,0
+1791259293655,32,List Bookings,200,OK,Thread Group 1-6,text,true,,479,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6253@email.com,32,0,0
+1791259293676,15,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259293651,48,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259293687,14,logout,500,Internal Server Error,Thread Group 1-6,text,false,,582,258,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6253%40email.com,14,0,0
+1791259293687,29,Update Customer,200,OK,Thread Group 1-4,text,true,,760,710,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid7928@email.com,29,0,0
+1791259293646,73,QueryFlight,200,OK,Thread Group 1-9,text,true,,1068,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,73,0,0
+1791259293702,18,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259293692,40,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259293717,17,QueryFlight,500,Internal Server Error,Thread Group 1-4,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791259293702,34,Login,200,OK,Thread Group 1-6,text,true,,586,353,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,34,0,0
+1791259293720,21,QueryFlight,500,Internal Server Error,Thread Group 1-9,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791259293685,61,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,61,0,0
+1791259293732,15,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259293735,18,QueryFlight,500,Internal Server Error,Thread Group 1-4,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259293747,18,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259293721,44,QueryFlight,200,OK,Thread Group 1-5,text,true,,1066,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259293754,23,QueryFlight,500,Internal Server Error,Thread Group 1-4,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,23,0,0
+1791259293747,39,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791259293736,52,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791259293766,30,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,30,0,0
+1791259293778,19,QueryFlight,500,Internal Server Error,Thread Group 1-4,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791259293767,44,QueryFlight,200,OK,Thread Group 1-5,text,true,,685,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259293796,16,List Bookings,500,Internal Server Error,Thread Group 1-2,text,false,,582,253,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6777@email.com,16,0,0
+1791259293799,14,QueryFlight,500,Internal Server Error,Thread Group 1-4,text,false,,582,454,6,6,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259293787,42,QueryFlight,200,OK,Thread Group 1-3,text,true,,1070,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259293811,20,List Bookings,500,Internal Server Error,Thread Group 1-5,text,false,,582,253,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8513@email.com,20,0,0
+1791259293789,53,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791259293812,31,logout,200,OK,Thread Group 1-2,text,true,,520,258,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6777%40email.com,31,0,0
+1791259293829,15,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259293842,17,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,17,0,0
+1791259293831,30,logout,200,OK,Thread Group 1-5,text,true,,520,258,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8513%40email.com,30,0,0
+1791259293742,128,QueryFlight,500,Internal Server Error,Thread Group 1-9,text,false,,582,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,128,0,0
+1791259293860,14,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259293862,14,Login,500,Internal Server Error,Thread Group 1-5,text,false,,582,297,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,14,0,0
+1791259293844,33,Login,200,OK,Thread Group 1-2,text,true,,586,297,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791259293845,35,BookFlight,200,OK,Thread Group 1-3,text,true,,575,475,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,35,0,0
+1791259293871,19,BookFlight,500,Internal Server Error,Thread Group 1-9,text,false,,582,475,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,19,0,0
+1791259293877,21,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791259293876,24,QueryFlight,403,Forbidden,Thread Group 1-5,text,false,,485,398,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,24,0,0
+1791259293876,24,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,24,0,0
+1791259293881,34,List Bookings,200,OK,Thread Group 1-3,text,true,,653,253,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6166@email.com,34,0,0
+1791259293899,16,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,16,0,0
+1791259293902,15,BookFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,475,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,15,0,0
+1791259293890,34,List Bookings,200,OK,Thread Group 1-9,text,true,,479,253,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1913@email.com,34,0,0
+1791259293901,25,QueryFlight,403,Forbidden,Thread Group 1-5,text,false,,485,398,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,25,0,0
+1791259293917,14,List Bookings,500,Internal Server Error,Thread Group 1-6,text,false,,582,253,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3302@email.com,14,0,0
+1791259293915,28,logout,200,OK,Thread Group 1-3,text,true,,520,258,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6166%40email.com,28,0,0
+1791259293924,20,logout,500,Internal Server Error,Thread Group 1-9,text,false,,582,258,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1913%40email.com,20,0,0
+1791259293931,20,logout,500,Internal Server Error,Thread Group 1-6,text,false,,582,258,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3302%40email.com,20,0,0
+1791259293927,25,QueryFlight,403,Forbidden,Thread Group 1-5,text,false,,485,398,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,25,0,0
+1791259293915,46,QueryFlight,200,OK,Thread Group 1-2,text,true,,685,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791259293952,20,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,398,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791259293943,31,Login,200,OK,Thread Group 1-3,text,true,,586,297,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791259293951,30,Login,200,OK,Thread Group 1-6,text,true,,586,353,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,30,0,0
+1791259293974,19,View Profile Information,500,Internal Server Error,Thread Group 1-3,text,false,,582,251,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8265@email.com,19,0,0
+1791259293973,26,QueryFlight,500,Internal Server Error,Thread Group 1-5,text,false,,582,398,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,26,0,0
+1791259293981,19,QueryFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,19,0,0
+1791259293962,44,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259293993,19,Update Customer,500,Internal Server Error,Thread Group 1-3,text,false,,582,431,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8265@email.com,19,0,0
+1791259294006,15,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259294012,36,QueryFlight,200,OK,Thread Group 1-3,text,true,,685,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,36,0,0
+1791259294001,52,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791259294022,33,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,33,0,0
+1791259294048,16,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,16,0,0
+1791259294064,14,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259294056,33,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1578@email.com,33,0,0
+1791259294053,46,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791259294090,19,logout,500,Internal Server Error,Thread Group 1-2,text,false,,582,258,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1578%40email.com,19,0,0
+1791259294078,47,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791259294110,31,Login,200,OK,Thread Group 1-2,text,true,,586,353,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791259294099,43,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259294142,21,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791259294163,15,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259294125,60,QueryFlight,200,OK,Thread Group 1-3,text,true,,1069,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,60,0,0
+1791259294143,45,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259294188,19,BookFlight,500,Internal Server Error,Thread Group 1-6,text,false,,582,475,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,19,0,0
+1791259294186,36,BookFlight,200,OK,Thread Group 1-3,text,true,,575,475,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,36,0,0
+1791259294179,53,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791259294207,30,List Bookings,200,OK,Thread Group 1-6,text,true,,479,253,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4134@email.com,30,0,0
+1791259293944,300,Login,200,OK,Thread Group 1-9,text,true,,586,353,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,300,0,0
+1791259294222,34,List Bookings,200,OK,Thread Group 1-3,text,true,,653,253,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8265@email.com,33,0,0
+1791259294237,31,logout,200,OK,Thread Group 1-6,text,true,,520,258,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4134%40email.com,31,0,0
+1791259294232,42,QueryFlight,200,OK,Thread Group 1-2,text,true,,1070,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259294215,70,Login,200,OK,Thread Group 1-10,text,true,,586,296,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,70,0,27
+1791259294256,35,logout,200,OK,Thread Group 1-3,text,true,,520,258,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8265%40email.com,35,0,0
+1791259294244,50,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791259294268,36,Login,200,OK,Thread Group 1-6,text,true,,586,297,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,36,0,0
+1791259294292,17,Login,500,Internal Server Error,Thread Group 1-3,text,false,,582,297,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,17,0,0
+1791259294285,30,View Profile Information,200,OK,Thread Group 1-10,text,true,,759,250,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid787@email.com,30,0,0
+1791259294310,13,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,398,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,13,0,0
+1791259294275,51,QueryFlight,200,OK,Thread Group 1-2,text,true,,1069,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791259294324,14,QueryFlight,500,Internal Server Error,Thread Group 1-3,text,false,,582,398,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,14,0,0
+1791259294294,44,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259294315,34,Update Customer,200,OK,Thread Group 1-10,text,true,,759,708,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid787@email.com,34,0,0
+1791259294304,45,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259294327,31,BookFlight,200,OK,Thread Group 1-2,text,true,,575,475,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,31,0,0
+1791259294339,23,QueryFlight,403,Forbidden,Thread Group 1-3,text,false,,485,398,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,23,0,0
+1791259294349,20,QueryFlight,500,Internal Server Error,Thread Group 1-10,text,false,,582,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791259294339,49,QueryFlight,200,OK,Thread Group 1-9,text,true,,1068,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259294358,32,List Bookings,200,OK,Thread Group 1-2,text,true,,653,253,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3451@email.com,32,0,0
+1791259294369,20,QueryFlight,500,Internal Server Error,Thread Group 1-10,text,false,,582,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,20,0,0
+1791259294349,42,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259294362,30,QueryFlight,403,Forbidden,Thread Group 1-3,text,false,,485,398,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,30,0,0
+1791259294391,15,QueryFlight,500,Internal Server Error,Thread Group 1-10,text,false,,582,454,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,15,0,0
+1791259294390,29,logout,200,OK,Thread Group 1-2,text,true,,520,258,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3451%40email.com,29,0,0
+1791259294393,34,QueryFlight,403,Forbidden,Thread Group 1-3,text,false,,485,398,5,5,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,34,0,0
+1791259294388,43,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259294420,15,Login,500,Internal Server Error,Thread Group 1-2,text,false,,582,296,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,15,0,0
+1791259294391,53,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791259294435,18,QueryFlight,403,Forbidden,Thread Group 1-2,text,false,,485,398,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,18,0,0
+1791259294407,62,QueryFlight,200,OK,Thread Group 1-10,text,true,,1069,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,62,0,0
+1791259294455,16,QueryFlight,500,Internal Server Error,Thread Group 1-2,text,false,,582,398,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,16,0,0
+1791259294432,58,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791259294445,49,QueryFlight,200,OK,Thread Group 1-6,text,true,,1067,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259294477,22,QueryFlight,403,Forbidden,Thread Group 1-2,text,false,,485,398,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,22,0,0
+1791259294490,19,List Bookings,500,Internal Server Error,Thread Group 1-9,text,false,,582,253,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6461@email.com,19,0,0
+1791259294469,41,QueryFlight,200,OK,Thread Group 1-10,text,true,,685,454,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791259294500,21,QueryFlight,403,Forbidden,Thread Group 1-2,text,false,,485,398,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791259294509,29,logout,200,OK,Thread Group 1-9,text,true,,520,258,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6461%40email.com,29,0,0
+1791259294521,23,QueryFlight,403,Forbidden,Thread Group 1-2,text,false,,485,398,4,4,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,23,0,0
+1791259294513,33,List Bookings,200,OK,Thread Group 1-10,text,true,,479,252,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid787@email.com,33,0,0
+1791259294495,72,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,72,0,0
+1791259294546,26,logout,200,OK,Thread Group 1-10,text,true,,520,257,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid787%40email.com,26,0,0
+1791259294538,42,Login,200,OK,Thread Group 1-9,text,true,,586,297,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,42,0,0
+1791259294573,14,Login,500,Internal Server Error,Thread Group 1-10,text,false,,582,297,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,14,0,0
+1791259294568,28,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,28,0,0
+1791259294587,21,QueryFlight,500,Internal Server Error,Thread Group 1-10,text,false,,582,398,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,21,0,0
+1791259294596,31,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7030@email.com,31,0,0
+1791259294609,23,QueryFlight,403,Forbidden,Thread Group 1-10,text,false,,485,398,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,23,0,0
+1791259294627,29,logout,200,OK,Thread Group 1-6,text,true,,520,258,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7030%40email.com,29,0,0
+1791259294633,31,QueryFlight,403,Forbidden,Thread Group 1-10,text,false,,485,398,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,31,0,0
+1791259294665,23,QueryFlight,403,Forbidden,Thread Group 1-10,text,false,,485,398,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,23,0,0
+1791259294581,133,View Profile Information,200,OK,Thread Group 1-9,text,true,,760,251,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid1047@email.com,133,0,0
+1791259294689,26,QueryFlight,403,Forbidden,Thread Group 1-10,text,false,,485,398,3,3,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,26,0,0
+1791259294714,34,Update Customer,200,OK,Thread Group 1-9,text,true,,760,710,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid1047@email.com,34,0,0
+1791259294657,120,Login,200,OK,Thread Group 1-6,text,true,,586,296,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,119,0,0
+1791259294749,58,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791259294777,42,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259294808,38,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791259294819,42,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259294846,45,QueryFlight,200,OK,Thread Group 1-9,text,true,,1064,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259294862,31,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,31,0,0
+1791259294892,43,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259294893,51,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791259294944,53,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791259294998,31,BookFlight,200,OK,Thread Group 1-6,text,true,,575,474,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,31,0,0
+1791259294936,103,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,103,0,0
+1791259295029,26,List Bookings,200,OK,Thread Group 1-6,text,true,,652,252,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid278@email.com,26,0,0
+1791259295039,31,BookFlight,200,OK,Thread Group 1-9,text,true,,575,475,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,30,0,0
+1791259295055,32,logout,200,OK,Thread Group 1-6,text,true,,520,257,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid278%40email.com,32,0,0
+1791259295070,28,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1047@email.com,28,0,0
+1791259295088,31,Login,200,OK,Thread Group 1-6,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791259295098,29,logout,200,OK,Thread Group 1-9,text,true,,520,258,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1047%40email.com,29,0,0
+1791259295127,35,Login,200,OK,Thread Group 1-9,text,true,,586,296,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,35,0,0
+1791259295119,50,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791259295163,27,View Profile Information,200,OK,Thread Group 1-9,text,true,,759,250,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid953@email.com,27,0,0
+1791259295169,50,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,50,0,0
+1791259295190,43,Update Customer,200,OK,Thread Group 1-9,text,true,,759,708,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid953@email.com,42,0,0
+1791259295220,47,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791259295233,45,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259295268,70,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,70,0,0
+1791259295279,88,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,88,0,0
+1791259295338,40,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259295368,31,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,31,0,0
+1791259295378,28,List Bookings,200,OK,Thread Group 1-6,text,true,,479,253,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8156@email.com,28,0,0
+1791259295406,30,logout,200,OK,Thread Group 1-6,text,true,,520,258,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8156%40email.com,30,0,0
+1791259295399,39,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791259295436,29,Login,200,OK,Thread Group 1-6,text,true,,586,296,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,29,0,0
+1791259295439,43,QueryFlight,200,OK,Thread Group 1-9,text,true,,1065,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259295483,35,BookFlight,200,OK,Thread Group 1-9,text,true,,575,472,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,35,0,0
+1791259295518,32,List Bookings,200,OK,Thread Group 1-9,text,true,,652,252,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid953@email.com,32,0,0
+1791259295550,31,logout,200,OK,Thread Group 1-9,text,true,,520,257,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid953%40email.com,31,0,0
+1791259295466,133,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,133,0,0
+1791259295582,32,Login,200,OK,Thread Group 1-9,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791259295600,48,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259295648,40,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259295688,37,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,37,0,0
+1791259295615,120,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,120,0,0
+1791259295725,33,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,33,0,0
+1791259295735,51,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791259295758,32,List Bookings,200,OK,Thread Group 1-6,text,true,,479,252,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid773@email.com,32,0,0
+1791259295790,26,logout,200,OK,Thread Group 1-6,text,true,,520,257,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid773%40email.com,26,0,0
+1791259295786,49,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259295817,31,Login,200,OK,Thread Group 1-6,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,31,0,0
+1791259295849,31,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,31,0,0
+1791259295835,52,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791259295881,30,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,30,0,0
+1791259295888,37,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,37,0,0
+1791259295925,30,List Bookings,200,OK,Thread Group 1-9,text,true,,479,253,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1576@email.com,30,0,0
+1791259295911,55,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791259295955,30,logout,200,OK,Thread Group 1-9,text,true,,520,258,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1576%40email.com,30,0,0
+1791259295966,48,QueryFlight,200,OK,Thread Group 1-6,text,true,,1067,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259295985,40,Login,200,OK,Thread Group 1-9,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,40,0,0
+1791259296014,38,QueryFlight,200,OK,Thread Group 1-6,text,true,,1064,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791259296052,39,BookFlight,200,OK,Thread Group 1-6,text,true,,575,473,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,39,0,0
+1791259296091,23,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1039@email.com,23,0,0
+1791259296114,42,logout,200,OK,Thread Group 1-6,text,true,,520,258,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1039%40email.com,42,0,0
+1791259296025,132,View Profile Information,200,OK,Thread Group 1-9,text,true,,760,251,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8328@email.com,132,0,0
+1791259296157,34,Update Customer,200,OK,Thread Group 1-9,text,true,,760,710,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid8328@email.com,34,0,0
+1791259296157,37,Login,200,OK,Thread Group 1-6,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,37,0,0
+1791259296191,40,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259296194,65,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,65,0,0
+1791259296232,43,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259296259,40,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259296276,49,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259296300,53,QueryFlight,200,OK,Thread Group 1-6,text,true,,1068,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,53,0,0
+1791259296325,43,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259296353,41,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791259296368,56,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791259296424,33,BookFlight,200,OK,Thread Group 1-9,text,true,,575,475,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,33,0,0
+1791259296394,73,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,73,0,0
+1791259296457,36,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid8328@email.com,36,0,0
+1791259296467,30,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,30,0,0
+1791259296494,30,logout,200,OK,Thread Group 1-9,text,true,,520,258,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid8328%40email.com,30,0,0
+1791259296498,30,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7216@email.com,30,0,0
+1791259296529,28,logout,200,OK,Thread Group 1-6,text,true,,520,258,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7216%40email.com,28,0,0
+1791259296524,37,Login,200,OK,Thread Group 1-9,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,37,0,0
+1791259296558,34,Login,200,OK,Thread Group 1-6,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,34,0,0
+1791259296561,34,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,34,0,0
+1791259296595,37,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,37,0,0
+1791259296592,40,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259296633,34,QueryFlight,200,OK,Thread Group 1-6,text,true,,1065,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,34,0,0
+1791259296632,56,QueryFlight,200,OK,Thread Group 1-9,text,true,,1066,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791259296668,56,QueryFlight,200,OK,Thread Group 1-6,text,true,,1070,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791259296689,67,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,67,0,0
+1791259296724,45,QueryFlight,200,OK,Thread Group 1-6,text,true,,1068,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259296769,42,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259296756,55,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791259296811,28,BookFlight,200,OK,Thread Group 1-9,text,true,,575,475,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,28,0,0
+1791259296839,29,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5051@email.com,29,0,0
+1791259296811,86,BookFlight,200,OK,Thread Group 1-6,text,true,,575,475,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,86,0,0
+1791259296868,38,logout,200,OK,Thread Group 1-9,text,true,,520,258,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5051%40email.com,38,0,0
+1791259296898,32,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1999@email.com,32,0,0
+1791259296906,32,Login,200,OK,Thread Group 1-9,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791259296930,35,logout,200,OK,Thread Group 1-6,text,true,,520,258,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1999%40email.com,35,0,0
+1791259296938,34,View Profile Information,200,OK,Thread Group 1-9,text,true,,760,251,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid3864@email.com,34,0,0
+1791259296965,33,Login,200,OK,Thread Group 1-6,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791259296972,63,Update Customer,200,OK,Thread Group 1-9,text,true,,760,710,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid3864@email.com,63,0,0
+1791259296998,48,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259297035,44,QueryFlight,200,OK,Thread Group 1-9,text,true,,1070,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259297046,58,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,58,0,0
+1791259297105,40,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259297079,79,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,79,0,0
+1791259297146,56,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791259297159,66,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,66,0,0
+1791259297203,40,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259297243,33,List Bookings,200,OK,Thread Group 1-6,text,true,,479,253,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1390@email.com,33,0,0
+1791259297225,54,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,54,0,0
+1791259297276,27,logout,200,OK,Thread Group 1-6,text,true,,520,258,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1390%40email.com,27,0,0
+1791259297279,59,QueryFlight,200,OK,Thread Group 1-9,text,true,,1065,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791259297304,35,Login,200,OK,Thread Group 1-6,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,35,0,0
+1791259297339,39,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791259297339,70,BookFlight,200,OK,Thread Group 1-9,text,true,,575,473,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,70,0,0
+1791259297378,44,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259297409,27,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3864@email.com,27,0,0
+1791259297436,25,logout,200,OK,Thread Group 1-9,text,true,,520,258,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3864%40email.com,25,0,0
+1791259297423,38,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791259297461,35,Login,200,OK,Thread Group 1-9,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,35,0,0
+1791259297462,39,QueryFlight,200,OK,Thread Group 1-6,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791259297496,42,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259297501,49,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259297550,29,List Bookings,200,OK,Thread Group 1-6,text,true,,479,253,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid6261@email.com,29,0,0
+1791259297539,43,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259297580,35,logout,200,OK,Thread Group 1-6,text,true,,520,258,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid6261%40email.com,35,0,0
+1791259297582,52,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791259297615,34,Login,200,OK,Thread Group 1-6,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,34,0,0
+1791259297650,28,View Profile Information,200,OK,Thread Group 1-6,text,true,,760,251,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid5486@email.com,28,0,0
+1791259297635,44,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259297679,52,Update Customer,200,OK,Thread Group 1-6,text,true,,760,710,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid5486@email.com,52,0,0
+1791259297679,59,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791259297732,46,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791259297778,40,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259297818,36,QueryFlight,200,OK,Thread Group 1-6,text,true,,685,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,36,0,0
+1791259297739,130,BookFlight,200,OK,Thread Group 1-9,text,true,,575,475,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,130,0,0
+1791259297854,35,QueryFlight,200,OK,Thread Group 1-6,text,true,,1067,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,35,0,0
+1791259297869,29,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7172@email.com,29,0,0
+1791259297889,38,QueryFlight,200,OK,Thread Group 1-6,text,true,,1065,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,37,0,0
+1791259297898,29,logout,200,OK,Thread Group 1-9,text,true,,520,258,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7172%40email.com,29,0,0
+1791259297927,30,Login,200,OK,Thread Group 1-9,text,true,,586,297,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,30,0,0
+1791259297927,42,BookFlight,200,OK,Thread Group 1-6,text,true,,575,473,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,42,0,0
+1791259297957,44,QueryFlight,200,OK,Thread Group 1-9,text,true,,1070,454,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259297969,35,List Bookings,200,OK,Thread Group 1-6,text,true,,653,253,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5486@email.com,35,0,0
+1791259298004,28,logout,200,OK,Thread Group 1-6,text,true,,520,258,2,2,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5486%40email.com,28,0,0
+1791259298002,40,QueryFlight,200,OK,Thread Group 1-9,text,true,,1068,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259298042,48,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259298091,67,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,67,0,0
+1791259298159,44,QueryFlight,200,OK,Thread Group 1-9,text,true,,1070,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259298203,33,BookFlight,200,OK,Thread Group 1-9,text,true,,575,475,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,33,0,0
+1791259298236,25,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5910@email.com,25,0,0
+1791259298261,25,logout,200,OK,Thread Group 1-9,text,true,,520,258,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5910%40email.com,25,0,0
+1791259298287,32,Login,200,OK,Thread Group 1-9,text,true,,586,297,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791259298319,51,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791259298370,67,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,67,0,0
+1791259298437,51,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,51,0,0
+1791259298488,55,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791259298543,45,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259298588,35,BookFlight,200,OK,Thread Group 1-9,text,true,,575,475,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,34,0,0
+1791259298623,34,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid5127@email.com,34,0,0
+1791259298657,22,logout,200,OK,Thread Group 1-9,text,true,,520,258,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid5127%40email.com,22,0,0
+1791259298680,29,Login,200,OK,Thread Group 1-9,text,true,,586,296,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,29,0,0
+1791259298710,48,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,48,0,0
+1791259298758,35,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,35,0,0
+1791259298793,46,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791259298839,39,QueryFlight,200,OK,Thread Group 1-9,text,true,,1067,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791259298878,40,QueryFlight,200,OK,Thread Group 1-9,text,true,,1065,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,40,0,0
+1791259298919,33,BookFlight,200,OK,Thread Group 1-9,text,true,,575,472,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,33,0,0
+1791259298952,29,List Bookings,200,OK,Thread Group 1-9,text,true,,652,252,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid596@email.com,29,0,0
+1791259298981,29,logout,200,OK,Thread Group 1-9,text,true,,520,257,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid596%40email.com,29,0,0
+1791259299010,28,Login,200,OK,Thread Group 1-9,text,true,,586,297,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,28,0,0
+1791259299038,31,View Profile Information,200,OK,Thread Group 1-9,text,true,,760,251,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid3399@email.com,31,0,0
+1791259299069,37,Update Customer,200,OK,Thread Group 1-9,text,true,,760,710,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid3399@email.com,37,0,0
+1791259299106,41,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791259299147,40,QueryFlight,200,OK,Thread Group 1-9,text,true,,1068,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791259299187,39,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791259299227,41,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791259299268,44,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259299312,34,BookFlight,200,OK,Thread Group 1-9,text,true,,575,475,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,34,0,0
+1791259299347,38,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3399@email.com,38,0,0
+1791259299386,29,logout,200,OK,Thread Group 1-9,text,true,,520,258,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3399%40email.com,29,0,0
+1791259299415,32,Login,200,OK,Thread Group 1-9,text,true,,586,297,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,32,0,0
+1791259299447,56,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,56,0,0
+1791259299504,44,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,44,0,0
+1791259299548,86,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,86,0,0
+1791259299634,55,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791259299689,99,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,99,0,0
+1791259299788,38,BookFlight,200,OK,Thread Group 1-9,text,true,,575,475,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,38,0,0
+1791259299826,35,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid2828@email.com,35,0,0
+1791259299861,28,logout,200,OK,Thread Group 1-9,text,true,,520,258,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid2828%40email.com,28,0,0
+1791259299890,27,Login,200,OK,Thread Group 1-9,text,true,,586,297,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,27,0,0
+1791259299918,37,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,37,0,0
+1791259299955,70,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,70,0,0
+1791259300025,46,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259300071,41,QueryFlight,200,OK,Thread Group 1-9,text,true,,1067,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,41,0,0
+1791259300112,38,QueryFlight,200,OK,Thread Group 1-9,text,true,,1064,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,38,0,0
+1791259300150,36,BookFlight,200,OK,Thread Group 1-9,text,true,,575,473,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,36,0,0
+1791259300187,29,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid7347@email.com,29,0,0
+1791259300216,32,logout,200,OK,Thread Group 1-9,text,true,,520,258,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid7347%40email.com,32,0,0
+1791259300249,27,Login,200,OK,Thread Group 1-9,text,true,,586,296,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,27,0,0
+1791259300276,69,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,69,0,0
+1791259300345,42,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,42,0,0
+1791259300387,54,QueryFlight,200,OK,Thread Group 1-9,text,true,,1070,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,54,0,0
+1791259300441,43,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259300484,45,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259300529,35,BookFlight,200,OK,Thread Group 1-9,text,true,,575,474,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,35,0,0
+1791259300564,29,List Bookings,200,OK,Thread Group 1-9,text,true,,652,252,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid354@email.com,29,0,0
+1791259300593,28,logout,200,OK,Thread Group 1-9,text,true,,520,257,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid354%40email.com,28,0,0
+1791259300621,29,Login,200,OK,Thread Group 1-9,text,true,,586,297,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,29,0,0
+1791259300651,32,View Profile Information,200,OK,Thread Group 1-9,text,true,,760,251,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid4262@email.com,32,0,0
+1791259300683,37,Update Customer,200,OK,Thread Group 1-9,text,true,,760,710,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/customer/byid/uid4262@email.com,37,0,0
+1791259300721,52,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,52,0,0
+1791259300774,43,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259300817,49,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259300866,45,QueryFlight,200,OK,Thread Group 1-9,text,true,,1070,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,45,0,0
+1791259300911,59,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,59,0,0
+1791259300970,26,BookFlight,200,OK,Thread Group 1-9,text,true,,575,475,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,26,0,0
+1791259300997,31,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid4262@email.com,31,0,0
+1791259301029,25,logout,200,OK,Thread Group 1-9,text,true,,520,258,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid4262%40email.com,25,0,0
+1791259301055,28,Login,200,OK,Thread Group 1-9,text,true,,586,297,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,28,0,0
+1791259301084,47,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,47,0,0
+1791259301131,46,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,46,0,0
+1791259301177,49,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259301226,43,QueryFlight,200,OK,Thread Group 1-9,text,true,,1066,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,43,0,0
+1791259301269,39,QueryFlight,200,OK,Thread Group 1-9,text,true,,1064,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,39,0,0
+1791259301309,34,BookFlight,200,OK,Thread Group 1-9,text,true,,575,473,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,34,0,0
+1791259301343,38,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid3212@email.com,38,0,0
+1791259301381,32,logout,200,OK,Thread Group 1-9,text,true,,520,258,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid3212%40email.com,32,0,0
+1791259301414,33,Login,200,OK,Thread Group 1-9,text,true,,586,297,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login,33,0,0
+1791259301447,55,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,55,0,0
+1791259301502,49,QueryFlight,200,OK,Thread Group 1-9,text,true,,685,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259301552,66,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,66,0,0
+1791259301618,160,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,160,0,0
+1791259301778,49,QueryFlight,200,OK,Thread Group 1-9,text,true,,1069,454,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/flights/queryflights,49,0,0
+1791259301828,39,BookFlight,200,OK,Thread Group 1-9,text,true,,575,475,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/bookflights,39,0,0
+1791259301868,30,List Bookings,200,OK,Thread Group 1-9,text,true,,653,253,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/bookings/byuser/uid1639@email.com,30,0,0
+1791259301898,25,logout,200,OK,Thread Group 1-9,text,true,,520,258,1,1,https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev/rest/api/login/logout?login=uid1639%40email.com,25,0,0

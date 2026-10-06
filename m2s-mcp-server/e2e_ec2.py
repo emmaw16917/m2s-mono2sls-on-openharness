@@ -69,7 +69,7 @@ Resources:
   Sg:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      GroupDescription: m2s e2e acmeair (no inbound from outside; loadgen -> monolith 9080 only)
+      GroupDescription: m2s e2e acmeair - no inbound from outside, loadgen to monolith 9080 only
       VpcId: !Ref Vpc
   SgSelf:
     Type: AWS::EC2::SecurityGroupIngress
