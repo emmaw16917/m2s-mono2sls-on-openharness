@@ -36,6 +36,23 @@ def depth_of(calls):
     return max(dp) if dp else 0
 
 
+def calibrated_path(calls, profile):
+    """depth_of's chains, each call weighted by its operation's round trip from
+    latency_profile (perf-rules/latency-profile.json) instead of a fixed latency."""
+    if not profile:
+        return None
+    ops = profile.get("ops_ms") or {}
+    w = lambda c: ops.get(c["op"], profile.get("default_ms", 10))  # noqa: E731
+    cs = sorted(calls, key=lambda c: c["start"])
+    dp = [w(c) for c in cs]
+    for i in range(len(cs)):
+        for j in range(i):
+            if cs[j]["end"] <= cs[i]["start"] + 0.5:
+                dp[i] = max(dp[i], dp[j] + w(cs[i]))
+    unc = sorted({c["op"] for c in cs if c["op"] not in ops})
+    return {"ms": round(max(dp), 2) if dp else 0, "uncalibrated_ops": unc}
+
+
 class Context:
     aws_request_id = "perf"
     function_name = "perf"
@@ -87,6 +104,7 @@ def main():
         "calls": len(calls),
         "call_ops": [f"{c['op']}:{c.get('table') or ''}" for c in calls],
         "depth": depth_of(calls),
+        "network_ms_cal": calibrated_path(calls, job.get("latency_profile")),
         "conflicts": sum(1 for c in calls if c.get("conflict")),
         "rru": sum(c.get("rru", 0) for c in calls), "wru": sum(c.get("wru", 0) for c in calls),
         "sqs_requests": sum(c.get("sqs_requests", 0) for c in calls),

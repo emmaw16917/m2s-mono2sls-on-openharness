@@ -46,6 +46,7 @@ WORK = Path("D:/tmp/m2s-e2e")  # short path: sam build breaks on Windows MAX_PAT
 REGION = "us-east-1"
 PRICES = json.loads((Path(__file__).resolve().parent / "perf-rules" / "prices.json").read_text(encoding="utf-8"))
 API_GW_REST_PER_REQUEST = 3.5e-06  # REST API, first tier (us-east-1)
+API_GW_HTTP_PER_REQUEST = 1.0e-06  # HTTP API, first tier (us-east-1)
 SAM = shutil.which("sam") or "sam"
 NPX = shutil.which("npx") or "npx"
 NODE = shutil.which("node") or "node"
@@ -274,7 +275,8 @@ def environment_value(template: Path, variant: str) -> str:
     allowed = param.get("AllowedValues") or []
     if not allowed:
         return f"e2e{variant}"
-    return allowed[min(["v0", "opt"].index(variant) if variant in ("v0", "opt") else 0, len(allowed) - 1)]
+    order = ["v0", "opt", "v0-http"]  # distinct table names for every variant
+    return allowed[min(order.index(variant) if variant in order else 0, len(allowed) - 1)]
 
 
 def _retry(fn, attempts: int = 6, wait: float = 10):
@@ -399,9 +401,18 @@ def serverless_config(app: dict, target: str, outputs: dict, resources: dict) ->
     return cfg
 
 
-def collect_metrics(resources: dict, started: float, ended: float, raw_dir: Path | None = None) -> dict:
+def collect_metrics(resources: dict, started: float, ended: float, raw_dir: Path | None = None,
+                    until: float | None = None) -> dict:
     """Lambda REPORT lines from each function's log group, and DynamoDB
-    consumed capacity per table, for the test window."""
+    consumed capacity per table and per GSI, for the test window.
+
+    REPORT lines count only when written in [started, until): `until`
+    defaults to ended + 60 s and must not reach into the next pass, or that
+    pass's invocations get counted twice. DynamoDB metrics only exist per
+    minute, so capacity is the sum over the whole minutes [floor(started),
+    floor(ended)]: the caller has to keep other traffic (loader, count
+    checks, the next pass) out of those minutes -- see e2e_ec2.minute_gap."""
+    until = ended + 60 if until is None else until
     logs = boto3.client("logs", region_name=REGION)
     cw = boto3.client("cloudwatch", region_name=REGION)
     time.sleep(90)  # REPORT lines and CloudWatch metrics arrive late
@@ -411,14 +422,18 @@ def collect_metrics(resources: dict, started: float, ended: float, raw_dir: Path
         if r["type"] != "AWS::Lambda::Function":
             continue
         group = f"/aws/lambda/{r['physical']}"
-        reports, raw = [], []
-        kwargs = {"logGroupName": group, "startTime": int(started * 1000) - 5000, "endTime": int(ended * 1000) + 120000}
+        reports, raw, seen = [], [], set()
+        kwargs = {"logGroupName": group, "startTime": int(started * 1000), "endTime": int(until * 1000)}
         try:
             for page in logs.get_paginator("filter_log_events").paginate(**kwargs):
                 for e in page["events"]:
                     raw.append(f"{e['timestamp']}\t{e.get('logStreamName', '')}\t{e['message'].rstrip()}")
                     if not e["message"].startswith("REPORT"):
                         continue
+                    rid = e["message"].split()[2] if len(e["message"].split()) > 2 else e["eventId"]
+                    if rid in seen:
+                        continue
+                    seen.add(rid)
                     m = rx.search(e["message"])
                     if m:
                         reports.append({"duration": float(m[1]), "billed": int(m[2]), "memory": int(m[3]), "max_memory": int(m[4]),
@@ -434,7 +449,7 @@ def collect_metrics(resources: dict, started: float, ended: float, raw_dir: Path
             for page in logs.get_paginator("describe_log_groups").paginate(logGroupNamePrefix=f"API-Gateway-Execution-Logs_{api}/"):
                 for g in page["logGroups"]:
                     lines = [f"{e['timestamp']}\t{e['message'].rstrip()}" for pg in logs.get_paginator("filter_log_events").paginate(
-                        logGroupName=g["logGroupName"], startTime=int(started * 1000) - 5000, endTime=int(ended * 1000) + 120000) for e in pg["events"]]
+                        logGroupName=g["logGroupName"], startTime=int(started * 1000), endTime=int(until * 1000)) for e in pg["events"]]
                     (raw_dir / "logs").mkdir(parents=True, exist_ok=True)
                     (raw_dir / "logs" / ("apigw-execution-" + g["logGroupName"].split("/")[-1] + ".log")).write_text("\n".join(lines) + "\n", encoding="utf-8")
     # API Gateway access logs and any other log groups the stack owns
@@ -445,23 +460,29 @@ def collect_metrics(resources: dict, started: float, ended: float, raw_dir: Path
             lines = []
             try:
                 for page in logs.get_paginator("filter_log_events").paginate(
-                        logGroupName=r["physical"], startTime=int(started * 1000) - 5000, endTime=int(ended * 1000) + 120000):
+                        logGroupName=r["physical"], startTime=int(started * 1000), endTime=int(until * 1000)):
                     lines += [f"{e['timestamp']}\t{e['message'].rstrip()}" for e in page["events"]]
             except logs.exceptions.ResourceNotFoundException:
                 pass
             (raw_dir / "logs").mkdir(parents=True, exist_ok=True)
             (raw_dir / "logs" / f"{logical}.log").write_text("\n".join(lines) + "\n", encoding="utf-8")
     tables = {}
+    m0, m1 = int(started // 60 * 60), int(ended // 60 * 60) + 60  # whole minutes the pass touches
     for logical, r in resources.items():
         if r["type"] != "AWS::DynamoDB::Table":
             continue
-        t = {}
-        for metric in ("ConsumedReadCapacityUnits", "ConsumedWriteCapacityUnits"):
-            pts = cw.get_metric_statistics(Namespace="AWS/DynamoDB", MetricName=metric, Dimensions=[{"Name": "TableName", "Value": r["physical"]}],
-                                           StartTime=started - 60, EndTime=ended + 300, Period=60, Statistics=["Sum"])["Datapoints"]
-            t[metric] = sum(p["Sum"] for p in pts)
-            t[metric + "_datapoints"] = sorted(({"time": p["Timestamp"].isoformat(), "sum": p["Sum"]} for p in pts), key=lambda x: x["time"])
-        tables[logical] = t
+        base = [{"Name": "TableName", "Value": r["physical"]}]
+        # GSI capacity is published under its own dimension, not in the table's figure
+        gsis = sorted({d["Value"] for mt in cw.list_metrics(Namespace="AWS/DynamoDB", Dimensions=base)["Metrics"]
+                       for d in mt["Dimensions"] if d["Name"] == "GlobalSecondaryIndexName"})
+        for target, dims in [(logical, base)] + [(f"{logical}/{g}", base + [{"Name": "GlobalSecondaryIndexName", "Value": g}]) for g in gsis]:
+            t = {}
+            for metric in ("ConsumedReadCapacityUnits", "ConsumedWriteCapacityUnits"):
+                pts = cw.get_metric_statistics(Namespace="AWS/DynamoDB", MetricName=metric, Dimensions=dims,
+                                               StartTime=m0, EndTime=m1, Period=60, Statistics=["Sum"])["Datapoints"]
+                t[metric] = sum(p["Sum"] for p in pts)
+                t[metric + "_datapoints"] = sorted(({"time": p["Timestamp"].isoformat(), "sum": p["Sum"]} for p in pts), key=lambda x: x["time"])
+            tables[target] = t
     return {"functions": fns, "tables": tables}
 
 
@@ -485,11 +506,13 @@ def summarize_metrics(m: dict) -> dict:
     return {"functions": per_fn, "invocations": int(invocations), "lambda_gb_seconds": round(gb_s, 3), "rru": rru, "wru": wru}
 
 
-def cost(summary: dict, arch: str) -> dict:
+def cost(summary: dict, arch: str, api_requests: int | None = None, api_price: float = API_GW_REST_PER_REQUEST) -> dict:
+    """api_requests: client requests that went through API Gateway; defaults
+    to the Lambda invocation count (which also counts non-HTTP invokes)."""
     gb = PRICES["lambda_gb_second_arm64"] if arch == "arm64" else PRICES["lambda_gb_second"]
     c = {"lambda_duration": summary["lambda_gb_seconds"] * gb, "lambda_requests": summary["invocations"] * PRICES["lambda_request"],
          "dynamodb": summary["rru"] * PRICES["dynamodb_read_request_unit"] + summary["wru"] * PRICES["dynamodb_write_request_unit"],
-         "api_gateway": summary["invocations"] * API_GW_REST_PER_REQUEST}
+         "api_gateway": (summary["invocations"] if api_requests is None else api_requests) * api_price}
     c["total"] = sum(c.values())
     return {k: round(v, 8) for k, v in c.items()}
 

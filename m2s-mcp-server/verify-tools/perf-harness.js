@@ -1,7 +1,7 @@
 'use strict';
 // Proxy metrics for one handler + one benchmark event, in local Node.
 //   node perf-harness.js <job.json>
-// job: {fn_dir, handler, env, event, fixtures_path, depth_latency_ms, cpu_warmup, cpu_reps}
+// job: {fn_dir, handler, env, event, fixtures_path, depth_latency_ms, cpu_warmup, cpu_reps, latency_profile}
 // Prints one line "@@M2S@@<json>":
 //   valid run (latency = depth_latency_ms, the second invocation -- warm):
 //   status/error, calls, sequential depth, capacity units; warm run
@@ -29,6 +29,20 @@ function depthOf(calls) {
   return cs.length ? Math.max(...dp) : 0;
 }
 
+// Calibrated critical path: the same dependency chains as depthOf, each call
+// weighted by its operation's round trip from latency_profile (perf-rules/
+// latency-profile.json) instead of a fixed latency. Returns the ms and the
+// ops that had no calibrated value.
+function calibratedPath(calls, profile) {
+  if (!profile) return null;
+  const w = (c) => (profile.ops_ms || {})[c.op] ?? profile.default_ms ?? 10;
+  const cs = calls.slice().sort((a, b) => a.start - b.start);
+  const dp = cs.map(w);
+  for (let i = 0; i < cs.length; i++) for (let j = 0; j < i; j++) if (cs[j].end <= cs[i].start + 0.5) dp[i] = Math.max(dp[i], dp[j] + w(cs[i]));
+  const unc = [...new Set(cs.filter((c) => !((profile.ops_ms || {})[c.op] !== undefined)).map((c) => c.op))];
+  return { ms: cs.length ? +Math.max(...dp).toFixed(2) : 0, uncalibrated_ops: unc };
+}
+
 (async () => {
   if (!shim.patched.length) return out({ error: { type: 'M2SPerf', message: 'perf-shim found no @smithy/node-http-handler under ' + job.fn_dir } });
   const dot = job.handler.lastIndexOf('.');
@@ -52,6 +66,7 @@ function depthOf(calls) {
     calls: calls.length,
     call_ops: calls.map((c) => c.op + ':' + (c.table || '')),
     depth: depthOf(calls),
+    network_ms_cal: calibratedPath(calls, job.latency_profile),
     conflicts: calls.filter((c) => c.conflict).length,
     rru: sum('rru'), wru: sum('wru'), sqs_requests: sum('sqs_requests'),
   };

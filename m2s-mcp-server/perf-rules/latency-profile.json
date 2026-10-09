@@ -1,0 +1,14 @@
+{
+  "_note": "Per-operation DynamoDB round trip (ms) for perf.py's calibrated critical-path estimate (network_ms_cal). Not used by any verdict: verdicts stay on the fixed-latency RIE runs; this only sizes the expected warm-time effect of a change. Derived 2026-10-09 from real AWS warm Lambda REPORT medians (acmeair-a1 v0/opt, us-east-1, arm64 512MB, Node 22, SDK v3, same-region, ~2k invocations each pass 2) by subtracting an assumed ~2 ms non-network handler time and solving the per-function call sequences: logout=Delete 6.8, customer-get=Get+Get 9.3, customer-update=Get+Update 10.5, bookings-by-customer=Get+Query(GSI) 9.9, login=Get+Put 11.2 (bookings-create one-way = Get+Put 11.1 cross-checks). Evidence grade E: the 2 ms base is assumed (0.5-2.5 ms moves each value by about 1 ms), item sizes were small (<1 KB, Query returned <=20 items). Ops listed under uncalibrated fall back to default_ms and are reported as such. Replace with direct measurements (a calibration Lambda timing each op) when an AWS run is next available.",
+  "source": "Mono2Sls-artifacts/tests/results-e2e/acmeair-ec2 (commit 4adc9a7 data), 2026-10-09",
+  "region_scope": "client Lambda and table in the same region",
+  "ops_ms": {
+    "GetItem": 3.7,
+    "Query": 4.2,
+    "PutItem": 5.5,
+    "DeleteItem": 4.8,
+    "UpdateItem": 4.8
+  },
+  "default_ms": 10,
+  "uncalibrated": ["Scan", "BatchGetItem", "BatchWriteItem", "TransactGetItems", "TransactWriteItems", "SendMessage", "SendMessageBatch"]
+}

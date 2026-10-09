@@ -108,6 +108,8 @@ cd /opt && rm -rf acmeair && git clone -q {repo} acmeair && cd acmeair && git ch
 """
 
 SETUP_MONOLITH = SETUP_COMMON + """
+sed -i 's/"MAX_DAYS_TO_SCHEDULE_FLIGHTS" *: *[0-9]*/"MAX_DAYS_TO_SCHEDULE_FLIGHTS" : {flight_days}/' loader/loader-settings.json
+grep MAX_DAYS loader/loader-settings.json
 docker rm -f mongo app >/dev/null 2>&1 || true
 docker run -d --name mongo --network host mongo:4.4 >/dev/null
 # the app reads settings.json: port 9080, contextRoot /rest/api, mongo 127.0.0.1, useDevLogger (morgan dev) true
@@ -205,11 +207,19 @@ def fetch(bucket: str, key: str, dest: Path) -> Path:
     return dest
 
 
+def minute_gap() -> None:
+    """Sleep into the next wall-clock minute (+2 s). DynamoDB capacity metrics
+    only exist per minute, so the loader, the count checks and each pass must
+    sit in minutes of their own for e2e_aws.collect_metrics to separate them."""
+    time.sleep(62 - time.time() % 60)
+
+
 def jmeter_passes(infra: dict, variant: str, host: str, port: int, ctx: str, protocol: str, threads: int, loops: int,
                   out_dir: Path, log: Path) -> list[dict]:
     passes = []
     for n in (1, 2):
         key = f"{variant}.pass{n}"
+        minute_gap()
         started = time.time()
         run(infra["LoadGenId"], JMETER.format(host=host, port=port, ctx=ctx, protocol=protocol, threads=threads, loops=loops,
                                               bucket=infra["Bucket"], key=key), log)
@@ -217,6 +227,7 @@ def jmeter_passes(infra: dict, variant: str, host: str, port: int, ctx: str, pro
         jtl = fetch(infra["Bucket"], f"{key}.jtl", out_dir / f"{key}.jtl")
         fetch(infra["Bucket"], f"{key}.jmeter.log", out_dir / f"{key}.jmeter.log")
         passes.append({"pass": n, "started": started, "ended": ended, **e2e_jmeter.summarize_jtl(jtl)})
+    minute_gap()  # keep the after-run count checks out of the last pass's minute
     return passes
 
 
@@ -232,9 +243,9 @@ def monolith_server_times(text: str) -> dict:
             for k, v in sorted(by.items())}
 
 
-def run_monolith(infra: dict, out_dir: Path, threads: int, loops: int, customers: int) -> dict:
+def run_monolith(infra: dict, out_dir: Path, threads: int, loops: int, customers: int, flight_days: int) -> dict:
     log = out_dir / "monolith.log"
-    out = run(infra["MonolithId"], SETUP_MONOLITH.format(repo=REPO_URL, commit=REPO_COMMIT), log, timeout=1800)
+    out = run(infra["MonolithId"], SETUP_MONOLITH.format(repo=REPO_URL, commit=REPO_COMMIT, flight_days=flight_days), log, timeout=1800)
     if "READY" not in out:
         raise RuntimeError("monolith did not start")
     base = f"http://{infra['MonolithIp']}:9080/rest/api"
@@ -255,10 +266,68 @@ def run_monolith(infra: dict, out_dir: Path, threads: int, loops: int, customers
             "cost_usd": {"ec2_during_passes": round(hours * EC2_PRICE_T3_SMALL, 6), "ec2_per_hour": EC2_PRICE_T3_SMALL}}
 
 
+ACCESS_LOG_FORMAT = "$context.requestId $context.status $context.responseLatency $context.integrationLatency"
+
+
+def prepare_variant(src: Path, variant: str, flight_days: int) -> None:
+    """Edits to the exported copy (never the workspace): the loader's flight
+    days (the driver books return dates 6-12 days out, so fewer than 13 days
+    makes every booking one-way), an access log that records the gateway's
+    own latencies, and for v0-http the REST API swapped for an HTTP API with
+    payload format 1.0 (the REST proxy event shape, so handlers are unchanged)."""
+    for f in src.glob("lambdas/*/loader-load/loader/loader-settings.json"):
+        f.write_text(re.sub(r'("MAX_DAYS_TO_SCHEDULE_FLIGHTS"\s*:\s*)\d+', rf"\g<1>{flight_days}", f.read_text(encoding="utf-8")), encoding="utf-8")
+    t = (src / "template.yaml").read_text(encoding="utf-8")
+    t, n = re.subn(r"(AccessLogSetting:\n\s+DestinationArn: !GetAtt ApiLogGroup.Arn\n\s+Format: ).*", rf"\g<1>'{ACCESS_LOG_FORMAT}'", t)
+    assert n == 1, "access log format not found"
+    if variant.endswith("-http"):
+        a, b = t.index("  AcmeAirApi:\n"), t.index("\n  # Companion for the Api's AccessLogSetting")
+        t = t[:a] + f"""  AcmeAirApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      # e2e A/B variant (e2e_ec2.prepare_variant): HTTP API, $default stage,
+      # same CORS answer as the REST API's Cors block.
+      CorsConfiguration:
+        AllowOrigins: ['*']
+        AllowHeaders: ['*']
+        AllowMethods: [GET, POST, PUT, DELETE, OPTIONS]
+      AccessLogSettings:
+        DestinationArn: !GetAtt ApiLogGroup.Arn
+        Format: '{ACCESS_LOG_FORMAT}'
+""" + t[b:]
+        t, n1 = re.subn(r"Type: Api\n", "Type: HttpApi\n", t)
+        t, n2 = re.subn(r"( +)RestApiId: !Ref AcmeAirApi\n", r"\1ApiId: !Ref AcmeAirApi\n\1PayloadFormatVersion: '1.0'\n", t)
+        t, n3 = re.subn(r" +Auth:\n +Authorizer: NONE\n", "", t)
+        t, n4 = re.subn(r"(execute-api\.\$\{AWS::Region\}\.amazonaws\.com)/\$\{Stage\}", r"\1", t)
+        assert n1 == n2 == n3 and n1 > 0 and n4 == 1, (n1, n2, n3, n4)
+    (src / "template.yaml").write_text(t, encoding="utf-8")
+
+
+def gateway_latency(access_log: Path) -> dict | None:
+    """p50/p90 of the access log's responseLatency (time inside API Gateway,
+    request in to response out) and integrationLatency (the Lambda call as
+    the gateway sees it, invoke overhead included) -- see ACCESS_LOG_FORMAT."""
+    if not access_log.exists():
+        return None
+    resp, integ = [], []
+    for line in access_log.read_text(encoding="utf-8").splitlines():
+        f = line.split("\t", 1)[-1].split()
+        if len(f) >= 4 and f[2].isdigit() and f[3].isdigit():
+            resp.append(int(f[2]))
+            integ.append(int(f[3]))
+    if not resp:
+        return None
+    q = lambda xs, p: sorted(xs)[int(p * (len(xs) - 1))]  # noqa: E731
+    gw = [a - b for a, b in zip(resp, integ)]
+    return {"n": len(resp), "response_p50": q(resp, .5), "response_p90": q(resp, .9), "integration_p50": q(integ, .5),
+            "integration_p90": q(integ, .9), "gateway_own_p50": q(gw, .5), "gateway_own_p90": q(gw, .9)}
+
+
 def run_serverless(infra: dict, variant: str, ref: str, workspace: str, out_dir: Path, threads: int, loops: int,
-                   customers: int, keep: bool) -> dict:
+                   customers: int, keep: bool, flight_days: int = 13) -> dict:
     log = out_dir / f"{variant}.log"
     src = e2e_aws.export_variant(RUNS / workspace, ref, e2e_aws.WORK / f"{APP}-{variant}")
+    prepare_variant(src, variant, flight_days)
     stack = f"m2s-e2e-{APP}-{variant}"
     try:
         stack, outputs, resources = e2e_aws.deploy(APP, variant, src, log)
@@ -282,7 +351,7 @@ def run_serverless(infra: dict, variant: str, ref: str, workspace: str, out_dir:
                      f"s=$(curl -s -m 900 -o /tmp/load.out -w '%{{http_code}} %{{time_total}}s' '{base}/loader/load?numCustomers={customers}'); "
                      "case \"$s\" in 403*) sleep 15;; *) break;; esac; done; echo \"$s\"; head -c 200 /tmp/load.out", log, timeout=1800)
         run(infra["LoadGenId"], f"for i in $(seq 1 120); do c=$(curl -s {base}/config/countCustomers); f=$(curl -s {base}/config/countFlights); "
-            f"[ \"$c\" = \"{customers}\" ] && [ \"$f\" -gt 0 ] 2>/dev/null && sleep 20 && echo $c $f && exit 0; sleep 10; done; exit 1", log, timeout=1500)
+            f"[ \"$c\" = \"{customers}\" ] && [ \"$f\" -gt 0 ] 2>/dev/null && [ \"$f\" = \"$prev\" ] && echo $c $f && exit 0; prev=$f; sleep 20; done; exit 1", log, timeout=1500)
         counts = json.loads(run(infra["LoadGenId"], "printf '{' ; for k in Customers Flights FlightSegments Airports; do "
                                 f"printf '\"%s\":%s,' $k $(curl -sf {base}/config/count$k); done; printf '\"_\":0}}'", log))
         passes = jmeter_passes(infra, variant, u.netloc, 443, stage, "https", threads, loops, out_dir, log)
@@ -291,8 +360,10 @@ def run_serverless(infra: dict, variant: str, ref: str, workspace: str, out_dir:
         raw_dir.mkdir(exist_ok=True)
         (raw_dir / "stack.json").write_text(json.dumps({"stack": stack, "outputs": outputs, "resources": resources}, indent=2), encoding="utf-8")
         per_pass = []
-        for p in passes:
-            m = e2e_aws.collect_metrics(resources, p["started"], p["ended"], raw_dir / f"pass{p['pass']}")
+        for i, p in enumerate(passes):
+            # REPORT lines up to the next pass's start (or 60 s on), never into it
+            until = passes[i + 1]["started"] if i + 1 < len(passes) else p["ended"] + 60
+            m = e2e_aws.collect_metrics(resources, p["started"], p["ended"], raw_dir / f"pass{p['pass']}", until=until)
             per_pass.append(e2e_aws.summarize_metrics(m))
         arch = "arm64" if re.search(r"Architectures:\s*\n\s*-\s*arm64", (src / "template.yaml").read_text(encoding="utf-8")) else "x86_64"
         total = {"invocations": sum(s["invocations"] for s in per_pass),
@@ -302,7 +373,9 @@ def run_serverless(infra: dict, variant: str, ref: str, workspace: str, out_dir:
                 "where": "API Gateway + Lambda + DynamoDB, us-east-1", "architecture": arch, "loader": loaded.strip()[:200],
                 "counts": counts, "passes": passes, "metrics_per_pass": per_pass, "metrics": total,
                 "counts_after": {"Bookings": after[0] if after else None, "Sessions": after[1] if len(after) > 1 else None},
-                "cost_usd": e2e_aws.cost(total, arch)}
+                "cost_usd": e2e_aws.cost(total, arch, api_requests=sum(p["samples"] for p in passes),
+                                         api_price=e2e_aws.API_GW_HTTP_PER_REQUEST if variant.endswith("-http") else e2e_aws.API_GW_REST_PER_REQUEST),
+                "gateway_latency": gateway_latency(raw_dir / f"pass{passes[-1]['pass']}" / "logs" / "ApiLogGroup.log")}
     finally:
         if not keep and e2e_aws.stack_exists(stack):
             e2e_aws.delete(stack, log)
@@ -314,11 +387,11 @@ def _fmt(x):
 
 def report(results: dict, out_dir: Path, threads: int, loops: int) -> None:
     (out_dir / "report.json").write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
-    vs = [v for v in ("monolith", "v0", "opt") if v in results and not results[v].get("error")]
+    vs = [v for v in ("monolith", "v0", "v0-http", "opt") if v in results and not results[v].get("error")]
     md = ["# acmeair: official JMeter workload, same region (us-east-1)", "",
           f"Load generator: EC2 t3.small in us-east-1a running acmeair-driver AcmeAir.jmx ({threads} threads x {loops} loops), "
           "two passes per variant (pass 1 cold, pass 2 warm). Monolith: EC2 t3.small, same AZ. Serverless: API Gateway + Lambda + DynamoDB.", ""]
-    for v in ("monolith", "v0", "opt"):
+    for v in ("monolith", "v0", "v0-http", "opt"):
         if results.get(v, {}).get("error"):
             md.append(f"- **{v}: error** {results[v]['error'][:300]}")
     md += ["", "## End-to-end (client = load generator)", "",
@@ -349,6 +422,16 @@ def report(results: dict, out_dir: Path, threads: int, loops: int) -> None:
             md.append(f"| {fn} | {x['invocations']} | {x['cold']} | {_fmt(x['warm_p50_ms'])} | {_fmt(x['warm_p90_ms'])} | {_fmt(x['init_p50_ms'])} |")
         c1 = sum(x["cold"] for x in results[v]["metrics_per_pass"][0]["functions"].values())
         md.append(f"\nCold starts in pass 1: {c1}.")
+    gl = [(v, results[v].get("gateway_latency")) for v in vs if v != "monolith" and results[v].get("gateway_latency")]
+    if gl:
+        md += ["", "## Where the time goes, warm pass (p50 ms)", "",
+               "End-to-end from the load generator; API Gateway response latency (request in to response out) and integration latency "
+               "(the Lambda call, invoke overhead included) from the access log; Lambda Duration from REPORT.", "",
+               "| variant | end-to-end | in API Gateway | of which integration | gateway's own (response - integration) | outside the gateway (e2e - response) |",
+               "|---|---|---|---|---|---|"]
+        for v, g in gl:
+            e2e = results[v]["passes"][-1]["all"]["p50"]
+            md.append(f"| {v} | {e2e} | {g['response_p50']} | {g['integration_p50']} | {g['gateway_own_p50']} | {round(e2e - g['response_p50'], 1)} |")
     md += ["", "## Cost and data", "", "| variant | invocations | Lambda GB-s | RRU | WRU | cost USD (both passes) | per 1k requests |",
            "|---|---|---|---|---|---|---|"]
     for v in vs:
@@ -367,15 +450,17 @@ def report(results: dict, out_dir: Path, threads: int, loops: int) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    ap.add_argument("--only", choices=["monolith", "v0", "opt"], action="append")
+    ap.add_argument("--only", choices=list(("monolith", "v0", "v0-http", "opt")), action="append")
     ap.add_argument("--workspace", default="acmeair-a1")
     ap.add_argument("--v0-ref", default="v0")
     ap.add_argument("--threads", type=int, default=10)
     ap.add_argument("--loops", type=int, default=20)
     ap.add_argument("--customers", type=int, default=10000)
     ap.add_argument("--keep-infra", action="store_true")
+    ap.add_argument("--flight-days", type=int, default=13, help="loader MAX_DAYS_TO_SCHEDULE_FLIGHTS (>=13 for round trips)")
+    ap.add_argument("--out-name", default="acmeair-ec2", help="results-e2e/<name>")
     args = ap.parse_args()
-    out_dir = TESTS / "results-e2e" / "acmeair-ec2"
+    out_dir = TESTS / "results-e2e" / args.out_name
     out_dir.mkdir(parents=True, exist_ok=True)
     log = out_dir / "infra.log"
     path = out_dir / "results.json"
@@ -384,12 +469,12 @@ def main() -> None:
         infra = infra_up(log)
         if "READY" not in run(infra["LoadGenId"], SETUP_LOADGEN.format(repo=REPO_URL, commit=REPO_COMMIT), log, timeout=1800):
             raise RuntimeError("load generator setup failed")
-        for v in args.only or ["monolith", "v0", "opt"]:
+        for v in args.only or list(("monolith", "v0", "v0-http", "opt")):
             print(f"== {v}", flush=True)
             try:
-                results[v] = run_monolith(infra, out_dir, args.threads, args.loops, args.customers) if v == "monolith" else \
-                    run_serverless(infra, v, args.v0_ref if v == "v0" else "HEAD", args.workspace, out_dir, args.threads,
-                                   args.loops, args.customers, False)
+                results[v] = run_monolith(infra, out_dir, args.threads, args.loops, args.customers, args.flight_days) if v == "monolith" else \
+                    run_serverless(infra, v, args.v0_ref if v.startswith("v0") else "HEAD", args.workspace, out_dir, args.threads,
+                                   args.loops, args.customers, False, args.flight_days)
             except Exception as exc:  # noqa: BLE001
                 results[v] = {"variant": v, "error": str(exc)[:2000]}
             path.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -397,7 +482,7 @@ def main() -> None:
     finally:
         if not args.keep_infra:
             infra_down(log)
-    report({v: results[v] for v in ("monolith", "v0", "opt") if v in results}, out_dir, args.threads, args.loops)
+    report({v: results[v] for v in ("monolith", "v0", "v0-http", "opt") if v in results}, out_dir, args.threads, args.loops)
 
 
 if __name__ == "__main__":

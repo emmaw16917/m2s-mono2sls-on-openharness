@@ -58,6 +58,9 @@ MULTI_LATENCIES = [0, 5, 15]
 # every realistic latency is clearly better, 0 ms is reported as a reference
 # and does not decide (user ruling 2026-09-30).
 REALISTIC_LATENCIES = [5, 10, 15]
+# Per-operation round trips calibrated on real AWS; sizes a change's effect
+# (network_ms_cal), never decides a verdict.
+LATENCY_PROFILE = Path(__file__).resolve().parent / "perf-rules" / "latency-profile.json"
 # "CPU in a reasonable range" for that rule: candidate warm CPU median at
 # most this many times the baseline median.
 CPU_RATIO_LIMIT = 2.0
@@ -200,6 +203,7 @@ def _harness(model: Model, build_dir: Path, b: dict[str, Any], work: Path) -> di
     fx = _fixture_file(model, b, work / f"{b['id']}.fixtures.json")
     job = {"fn_dir": str(build_dir / fn["logical"]), "handler": fn["handler"], "env": fn["env"], "event": _event(model, b),
            "fixtures_path": str(fx), "depth_latency_ms": SCREEN_LATENCY, "cpu_warmup": 30, "cpu_reps": 300,
+           "latency_profile": json.loads(LATENCY_PROFILE.read_text(encoding="utf-8")) if LATENCY_PROFILE.exists() else None,
            "layer_dirs": [str(d / "python") for d in _layer_dirs(build_dir, fn)]}
     jp = work / f"{b['id']}.harness.json"
     jp.write_text(json.dumps(job), encoding="utf-8")
@@ -216,6 +220,18 @@ def _harness(model: Model, build_dir: Path, b: dict[str, Any], work: Path) -> di
     if not line:
         raise VerifyError(f"perf-harness produced no result for {b['id']}: {p.stderr[-2000:]}")
     return json.loads(line[7:])
+
+
+def _calibrated_estimate(proxies: dict[str, Any]) -> dict[str, Any] | None:
+    """Expected warm network time per invocation on real AWS (same region),
+    from latency-profile.json. Sizing only: the RIE runs still decide."""
+    b, c = (proxies.get(k, {}).get("network_ms_cal") for k in ("base", "cand"))
+    if not b or not c:
+        return None
+    return {"base_ms": b["ms"], "cand_ms": c["ms"], "delta_ms": round(c["ms"] - b["ms"], 2),
+            "uncalibrated_ops": sorted(set(b["uncalibrated_ops"]) | set(c["uncalibrated_ops"])),
+            "note": "critical-path DynamoDB round trips only (no CPU, no API Gateway/Lambda invoke ~16-21 ms per request); "
+                    "evidence grade E, see perf-rules/latency-profile.json"}
 
 
 def _valid(m: dict[str, Any]) -> str | None:
@@ -248,7 +264,8 @@ def run_proxy_metrics(workspace: str, functions: list[str] | None = None, benchm
         m["data_volume"] = b["data_volume"]
         res[b["id"]] = m
     return {"status": "OK", "version": ref or "working tree", "benchmarks": res,
-            "note": "calls/depth at 10ms fixed latency; warm_cpu = wall time per invocation at 0 latency (median of 300, "
+            "note": "calls/depth at 10ms fixed latency; network_ms_cal = the same call chains weighted by the per-operation "
+                    "round trips of perf-rules/latency-profile.json (real-AWS calibrated, sizing only); warm_cpu = wall time per invocation at 0 latency (median of 300, "
                     "local Node, or local Python 3.12 with Lambda's boto3 for Python functions); "
                     "capacity units estimated from request/response sizes; no 1MB pagination or FilterExpression in the shim"}
 
@@ -520,6 +537,7 @@ def _judge(ws: Path, model: Model, builds: dict[str, Path], b: dict[str, Any], b
                                    "reference_0ms": warm_dir.get("0ms"), "warm_cpu_ratio": cpu_ratio,
                                    "cpu_ratio_limit": CPU_RATIO_LIMIT, "cost_latency": f"{SCREEN_LATENCY}ms" if f"{SCREEN_LATENCY}ms" in rie else f"{lat_list[0]}ms"},
         "proxies": {"base": proxies["base"], "cand": proxies["cand"], "direction": pdir},
+        "calibrated_estimate": _calibrated_estimate(proxies),
         "rie": {k: {"base": brief(v["base"]), "cand": brief(v["cand"])} for k, v in rie.items()},
         "init_ms": {"base": init_b, "cand": init_c},
         "cost_usd_per_invocation": {"base": cost_b, "cand": cost_c},
