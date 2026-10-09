@@ -1,0 +1,5 @@
+1791537624703	2026/10/09/[$LATEST]97d49decc13b486a993d1be7e20ee266	INIT_START Runtime Version: nodejs:22.mainline.v122	Runtime Version ARN: arn:aws:lambda:us-east-1::runtime:775dab0d220a0b97f3ec34fe1692d7a07b5d13049153b00f03204c9543bd69e4
+1791537624898	2026/10/09/[$LATEST]97d49decc13b486a993d1be7e20ee266	START RequestId: 18656b9f-d269-454c-b26f-6ffdfa273a95 Version: $LATEST
+1791537625066	2026/10/09/[$LATEST]97d49decc13b486a993d1be7e20ee266	END RequestId: 18656b9f-d269-454c-b26f-6ffdfa273a95
+1791537625066	2026/10/09/[$LATEST]97d49decc13b486a993d1be7e20ee266	REPORT RequestId: 18656b9f-d269-454c-b26f-6ffdfa273a95	Duration: 167.08 ms	Billed Duration: 360 ms	Memory Size: 512 MB	Max Memory Used: 101 MB	Init Duration: 192.81 ms	
+XRAY TraceId: 1-6ac8b1d8-076d4a4963cefa0673fba8ad	SegmentId: 7915d11dbd7172be	Sampled: true

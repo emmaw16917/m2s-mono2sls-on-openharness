@@ -1,0 +1,2145 @@
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\login-create-session runtime: nodejs22.x architecture: arm64 functions: LoginCreateSessionFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\session-logout runtime: nodejs22.x architecture: arm64 functions: SessionLogoutFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\customer-get runtime: nodejs22.x architecture: arm64 functions: CustomerGetFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\customer-update runtime: nodejs22.x architecture: arm64 functions: CustomerUpdateFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\bookings-create runtime: nodejs22.x architecture: arm64 functions: BookingsCreateFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\bookings-cancel runtime: nodejs22.x architecture: arm64 functions: BookingsCancelFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\bookings-by-customer runtime: nodejs22.x architecture: arm64 functions: BookingsByCustomerFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\flights-query runtime: nodejs22.x architecture: arm64 functions: FlightsQueryFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-runtime runtime: nodejs22.x architecture: arm64 functions: ConfigRuntimeFunction
+package.json file not found. Continuing the build without dependencies.
+ Running NodejsNpmBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-data-services runtime: nodejs22.x architecture: arm64 functions: ConfigDataServicesFunction
+package.json file not found. Continuing the build without dependencies.
+ Running NodejsNpmBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-active-data-service runtime: nodejs22.x architecture: arm64 functions: ConfigActiveDataServiceFunction
+package.json file not found. Continuing the build without dependencies.
+ Running NodejsNpmBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-count-bookings runtime: nodejs22.x architecture: arm64 functions: ConfigCountBookingsFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-count-customers runtime: nodejs22.x architecture: arm64 functions: ConfigCountCustomersFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-count-sessions runtime: nodejs22.x architecture: arm64 functions: ConfigCountSessionsFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-count-flights runtime: nodejs22.x architecture: arm64 functions: ConfigCountFlightsFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-count-flight-segments runtime: nodejs22.x architecture: arm64 functions: ConfigCountFlightSegmentsFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-count-airports runtime: nodejs22.x architecture: arm64 functions: ConfigCountAirportsFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\loader-load runtime: nodejs22.x architecture: arm64 functions: LoaderLoadFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\loader-query-configured-customers runtime: nodejs22.x architecture: arm64 functions: LoaderQueryConfiguredCustomersFunction
+package.json file not found. Continuing the build without dependencies.
+ Running NodejsNpmBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\checkstatus runtime: nodejs22.x architecture: arm64 functions: CheckstatusFunction
+package.json file not found. Continuing the build without dependencies.
+ Running NodejsNpmBuilder:CopySource
+
+Build Succeeded
+
+Built Artifacts  : .aws-sam\build
+Built Template   : .aws-sam\build\template.yaml
+
+Commands you can use next
+=========================
+[*] Validate SAM template: sam validate
+[*] Invoke Function: sam local invoke
+[*] Test Function in the Cloud: sam sync --stack-name {{stack-name}} --watch
+[*] Deploy: sam deploy --guided
+
+SAM CLI update available (1.166.2); (1.160.1 installed)
+To download: https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html
+
+$ C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.EXE build
+
+	Managed S3 bucket: aws-sam-cli-managed-default-samclisourcebucket-34ra6c785sxm
+	Auto resolution of buckets can be turned off by setting resolve_s3=False
+	To use a specific S3 bucket, set --s3-bucket=<bucket_name>
+	Above settings can be stored in samconfig.toml
+	Uploading to b66f88c55ab4817ba1acedc7f708dd44  1048576 / 2735441  (38.33%)	Uploading to b66f88c55ab4817ba1acedc7f708dd44  2097152 / 2735441  (76.67%)	Uploading to b66f88c55ab4817ba1acedc7f708dd44  2735441 / 2735441  (100.00%)
+	Uploading to a90b04dd845c2ede97264f5cf12b35e9  1048576 / 2734495  (38.35%)	Uploading to a90b04dd845c2ede97264f5cf12b35e9  2097152 / 2734495  (76.69%)	Uploading to a90b04dd845c2ede97264f5cf12b35e9  2734495 / 2734495  (100.00%)
+	Uploading to d1f49b37500e428edb9865fd1d485752  1048576 / 2734887  (38.34%)	Uploading to d1f49b37500e428edb9865fd1d485752  2097152 / 2734887  (76.68%)	Uploading to d1f49b37500e428edb9865fd1d485752  2734887 / 2734887  (100.00%)
+	Uploading to 70b399f08e04c7f47fc4cb672237842b  1048576 / 2735381  (38.33%)	Uploading to 70b399f08e04c7f47fc4cb672237842b  2097152 / 2735381  (76.67%)	Uploading to 70b399f08e04c7f47fc4cb672237842b  2735381 / 2735381  (100.00%)
+	Uploading to 0f1a9a6be624fd597417031dd190debb  1048576 / 2735303  (38.33%)	Uploading to 0f1a9a6be624fd597417031dd190debb  2097152 / 2735303  (76.67%)	Uploading to 0f1a9a6be624fd597417031dd190debb  2735303 / 2735303  (100.00%)
+	Uploading to b381969a941aba6cc5e27ccaad64c2ab  1048576 / 2735035  (38.34%)	Uploading to b381969a941aba6cc5e27ccaad64c2ab  2097152 / 2735035  (76.68%)	Uploading to b381969a941aba6cc5e27ccaad64c2ab  2735035 / 2735035  (100.00%)
+	Uploading to 3a9c9eb30abae77ea2008871d6152e0b  1048576 / 2735247  (38.34%)	Uploading to 3a9c9eb30abae77ea2008871d6152e0b  2097152 / 2735247  (76.67%)	Uploading to 3a9c9eb30abae77ea2008871d6152e0b  2735247 / 2735247  (100.00%)
+	Uploading to 80e752b9df7ad86b84de25823e6b1c84  1048576 / 2736324  (38.32%)	Uploading to 80e752b9df7ad86b84de25823e6b1c84  2097152 / 2736324  (76.64%)	Uploading to 80e752b9df7ad86b84de25823e6b1c84  2736324 / 2736324  (100.00%)
+	Uploading to 2ccca7f358806bdb897aa982ddb605f3  654 / 654  (100.00%)
+	Uploading to af5b27a94c78f0308649e9945a4e12b7  649 / 649  (100.00%)
+	Uploading to 6d33abb2e012795558c8a38939b794f6  624 / 624  (100.00%)
+	Uploading to 1e65400af3a452991ce601ac1931012e  1048576 / 2733943  (38.35%)	Uploading to 1e65400af3a452991ce601ac1931012e  2097152 / 2733943  (76.71%)	Uploading to 1e65400af3a452991ce601ac1931012e  2733943 / 2733943  (100.00%)
+	Uploading to 00cb1fee1f5e20d694b617555bd8651a  1048576 / 2733940  (38.35%)	Uploading to 00cb1fee1f5e20d694b617555bd8651a  2097152 / 2733940  (76.71%)	Uploading to 00cb1fee1f5e20d694b617555bd8651a  2733940 / 2733940  (100.00%)
+	Uploading to 645d7bd3dd420d02ab68ca15ae42c218  1048576 / 2733975  (38.35%)	Uploading to 645d7bd3dd420d02ab68ca15ae42c218  2097152 / 2733975  (76.71%)	Uploading to 645d7bd3dd420d02ab68ca15ae42c218  2733975 / 2733975  (100.00%)
+	Uploading to ea738d9f7716eb5aac6f9152fde5b8b6  1048576 / 2733960  (38.35%)	Uploading to ea738d9f7716eb5aac6f9152fde5b8b6  2097152 / 2733960  (76.71%)	Uploading to ea738d9f7716eb5aac6f9152fde5b8b6  2733960 / 2733960  (100.00%)
+	Uploading to 060842d786eef0098bcee7b7c247ff1f  1048576 / 2733961  (38.35%)	Uploading to 060842d786eef0098bcee7b7c247ff1f  2097152 / 2733961  (76.71%)	Uploading to 060842d786eef0098bcee7b7c247ff1f  2733961 / 2733961  (100.00%)
+	Uploading to 58d35a05603ff901bd0be744a12afaac  1048576 / 2733972  (38.35%)	Uploading to 58d35a05603ff901bd0be744a12afaac  2097152 / 2733972  (76.71%)	Uploading to 58d35a05603ff901bd0be744a12afaac  2733972 / 2733972  (100.00%)
+	Uploading to 884030d6c5047520908029a16afe6d14  1048576 / 2738951  (38.28%)	Uploading to 884030d6c5047520908029a16afe6d14  2097152 / 2738951  (76.57%)	Uploading to 884030d6c5047520908029a16afe6d14  2738951 / 2738951  (100.00%)
+	Uploading to 87247508f8ba920e0d97a54ebfd646c1  1225 / 1225  (100.00%)
+	Uploading to 50a71b2b34d0877909afef897f7a5203  802 / 802  (100.00%)
+
+	Deploying with following values
+	===============================
+	Stack name                   : m2s-e2e-acmeair-v0
+	Region                       : us-east-1
+	Confirm changeset            : False
+	Disable rollback             : False
+	Deployment s3 bucket         : aws-sam-cli-managed-default-samclisourcebucket-34ra6c785sxm
+	Capabilities                 : ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
+	Parameter overrides          : {"Environment": "e2ev0"}
+	Signing Profiles             : {}
+
+Initiating deployment
+=====================
+
+
+	File with same data already exists at 3d170df2c924017e5e67fd72476e3776.template, skipping upload
+
+
+Waiting for changeset to be created..
+
+CloudFormation stack changeset
+-------------------------------------------------------------------------------------------------
+Operation                LogicalResourceId        ResourceType             Replacement            
+-------------------------------------------------------------------------------------------------
++ Add                    AcmeAirApiDeployment7c   AWS::ApiGateway::Deplo   N/A                    
+                         6db85a73                 yment                                           
++ Add                    AcmeAirApiStage          AWS::ApiGateway::Stage   N/A                    
++ Add                    AcmeAirApi               AWS::ApiGateway::RestA   N/A                    
+                                                  pi                                              
++ Add                    AirportCodeMappingTabl   AWS::DynamoDB::Table     N/A                    
+                         e                                                                        
++ Add                    ApiLogGroup              AWS::Logs::LogGroup      N/A                    
++ Add                    BookingTable             AWS::DynamoDB::Table     N/A                    
++ Add                    BookingsByCustomerFunc   AWS::Lambda::Permissio   N/A                    
+                         tionGetBookingsByUserP   n                                               
+                         ermissionStage                                                           
++ Add                    BookingsByCustomerFunc   AWS::IAM::Role           N/A                    
+                         tionRole                                                                 
++ Add                    BookingsByCustomerFunc   AWS::Lambda::Function    N/A                    
+                         tion                                                                     
++ Add                    BookingsCancelFunction   AWS::Lambda::Permissio   N/A                    
+                         PostCancelBookingPermi   n                                               
+                         ssionStage                                                               
++ Add                    BookingsCancelFunction   AWS::IAM::Role           N/A                    
+                         Role                                                                     
++ Add                    BookingsCancelFunction   AWS::Lambda::Function    N/A                    
++ Add                    BookingsCreateFunction   AWS::Lambda::Permissio   N/A                    
+                         PostBookFlightsPermiss   n                                               
+                         ionStage                                                                 
++ Add                    BookingsCreateFunction   AWS::IAM::Role           N/A                    
+                         Role                                                                     
++ Add                    BookingsCreateFunction   AWS::Lambda::Function    N/A                    
++ Add                    CheckstatusFunctionGet   AWS::Lambda::Permissio   N/A                    
+                         CheckstatusPermissionS   n                                               
+                         tage                                                                     
++ Add                    CheckstatusFunctionRol   AWS::IAM::Role           N/A                    
+                         e                                                                        
++ Add                    CheckstatusFunction      AWS::Lambda::Function    N/A                    
++ Add                    ConfigActiveDataServic   AWS::Lambda::Permissio   N/A                    
+                         eFunctionGetConfigActi   n                                               
+                         veDataServicePermissio                                                   
+                         nStage                                                                   
++ Add                    ConfigActiveDataServic   AWS::IAM::Role           N/A                    
+                         eFunctionRole                                                            
++ Add                    ConfigActiveDataServic   AWS::Lambda::Function    N/A                    
+                         eFunction                                                                
++ Add                    ConfigCountAirportsFun   AWS::Lambda::Permissio   N/A                    
+                         ctionGetCountAirportsP   n                                               
+                         ermissionStage                                                           
++ Add                    ConfigCountAirportsFun   AWS::IAM::Role           N/A                    
+                         ctionRole                                                                
++ Add                    ConfigCountAirportsFun   AWS::Lambda::Function    N/A                    
+                         ction                                                                    
++ Add                    ConfigCountBookingsFun   AWS::Lambda::Permissio   N/A                    
+                         ctionGetCountBookingsP   n                                               
+                         ermissionStage                                                           
++ Add                    ConfigCountBookingsFun   AWS::IAM::Role           N/A                    
+                         ctionRole                                                                
++ Add                    ConfigCountBookingsFun   AWS::Lambda::Function    N/A                    
+                         ction                                                                    
++ Add                    ConfigCountCustomersFu   AWS::Lambda::Permissio   N/A                    
+                         nctionGetCountCustomer   n                                               
+                         sPermissionStage                                                         
++ Add                    ConfigCountCustomersFu   AWS::IAM::Role           N/A                    
+                         nctionRole                                                               
++ Add                    ConfigCountCustomersFu   AWS::Lambda::Function    N/A                    
+                         nction                                                                   
++ Add                    ConfigCountFlightSegme   AWS::Lambda::Permissio   N/A                    
+                         ntsFunctionGetCountFli   n                                               
+                         ghtSegmentsPermissionS                                                   
+                         tage                                                                     
++ Add                    ConfigCountFlightSegme   AWS::IAM::Role           N/A                    
+                         ntsFunctionRole                                                          
++ Add                    ConfigCountFlightSegme   AWS::Lambda::Function    N/A                    
+                         ntsFunction                                                              
++ Add                    ConfigCountFlightsFunc   AWS::Lambda::Permissio   N/A                    
+                         tionGetCountFlightsPer   n                                               
+                         missionStage                                                             
++ Add                    ConfigCountFlightsFunc   AWS::IAM::Role           N/A                    
+                         tionRole                                                                 
++ Add                    ConfigCountFlightsFunc   AWS::Lambda::Function    N/A                    
+                         tion                                                                     
++ Add                    ConfigCountSessionsFun   AWS::Lambda::Permissio   N/A                    
+                         ctionGetCountSessionsP   n                                               
+                         ermissionStage                                                           
++ Add                    ConfigCountSessionsFun   AWS::IAM::Role           N/A                    
+                         ctionRole                                                                
++ Add                    ConfigCountSessionsFun   AWS::Lambda::Function    N/A                    
+                         ction                                                                    
++ Add                    ConfigDataServicesFunc   AWS::Lambda::Permissio   N/A                    
+                         tionGetConfigDataServi   n                                               
+                         cesPermissionStage                                                       
++ Add                    ConfigDataServicesFunc   AWS::IAM::Role           N/A                    
+                         tionRole                                                                 
++ Add                    ConfigDataServicesFunc   AWS::Lambda::Function    N/A                    
+                         tion                                                                     
++ Add                    ConfigRuntimeFunctionG   AWS::Lambda::Permissio   N/A                    
+                         etConfigRuntimePermiss   n                                               
+                         ionStage                                                                 
++ Add                    ConfigRuntimeFunctionR   AWS::IAM::Role           N/A                    
+                         ole                                                                      
++ Add                    ConfigRuntimeFunction    AWS::Lambda::Function    N/A                    
++ Add                    CustomerGetFunctionGet   AWS::Lambda::Permissio   N/A                    
+                         CustomerByIdPermission   n                                               
+                         Stage                                                                    
++ Add                    CustomerGetFunctionRol   AWS::IAM::Role           N/A                    
+                         e                                                                        
++ Add                    CustomerGetFunction      AWS::Lambda::Function    N/A                    
++ Add                    CustomerSessionTable     AWS::DynamoDB::Table     N/A                    
++ Add                    CustomerTable            AWS::DynamoDB::Table     N/A                    
++ Add                    CustomerUpdateFunction   AWS::Lambda::Permissio   N/A                    
+                         PostCustomerByIdPermis   n                                               
+                         sionStage                                                                
++ Add                    CustomerUpdateFunction   AWS::IAM::Role           N/A                    
+                         Role                                                                     
++ Add                    CustomerUpdateFunction   AWS::Lambda::Function    N/A                    
++ Add                    FlightSegmentTable       AWS::DynamoDB::Table     N/A                    
++ Add                    FlightTable              AWS::DynamoDB::Table     N/A                    
++ Add                    FlightsQueryFunctionPo   AWS::Lambda::Permissio   N/A                    
+                         stQueryFlightsPermissi   n                                               
+                         onStage                                                                  
++ Add                    FlightsQueryFunctionRo   AWS::IAM::Role           N/A                    
+                         le                                                                       
++ Add                    FlightsQueryFunction     AWS::Lambda::Function    N/A                    
++ Add                    LoaderLoadFunctionGetL   AWS::Lambda::Permissio   N/A                    
+                         oaderLoadPermissionSta   n                                               
+                         ge                                                                       
++ Add                    LoaderLoadFunctionRole   AWS::IAM::Role           N/A                    
++ Add                    LoaderLoadFunction       AWS::Lambda::Function    N/A                    
++ Add                    LoaderQueryConfiguredC   AWS::Lambda::Permissio   N/A                    
+                         ustomersFunctionGetLoa   n                                               
+                         derQueryPermissionStag                                                   
+                         e                                                                        
++ Add                    LoaderQueryConfiguredC   AWS::IAM::Role           N/A                    
+                         ustomersFunctionRole                                                     
++ Add                    LoaderQueryConfiguredC   AWS::Lambda::Function    N/A                    
+                         ustomersFunction                                                         
++ Add                    LoginCreateSessionFunc   AWS::Lambda::Permissio   N/A                    
+                         tionPostLoginPermissio   n                                               
+                         nStage                                                                   
++ Add                    LoginCreateSessionFunc   AWS::IAM::Role           N/A                    
+                         tionRole                                                                 
++ Add                    LoginCreateSessionFunc   AWS::Lambda::Function    N/A                    
+                         tion                                                                     
++ Add                    SessionLogoutFunctionG   AWS::Lambda::Permissio   N/A                    
+                         etLogoutPermissionStag   n                                               
+                         e                                                                        
++ Add                    SessionLogoutFunctionR   AWS::IAM::Role           N/A                    
+                         ole                                                                      
++ Add                    SessionLogoutFunction    AWS::Lambda::Function    N/A                    
+-------------------------------------------------------------------------------------------------
+
+
+Changeset created successfully. arn:aws:cloudformation:us-east-1:882112174488:changeSet/samcli-deploy1791259135/bed5ec46-a76f-4a8d-80f0-35e64b780728
+
+
+2026-10-06 11:59:11 - Waiting for stack create/update to complete
+
+CloudFormation events from stack operations (refresh every 5.0 seconds)
+-------------------------------------------------------------------------------------------------
+ResourceStatus           ResourceType             LogicalResourceId        ResourceStatusReason   
+-------------------------------------------------------------------------------------------------
+CREATE_IN_PROGRESS       AWS::CloudFormation::S   m2s-e2e-acmeair-v0       User Initiated         
+                         tack                                                                     
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoaderQueryConfiguredC   -                      
+                                                  ustomersFunctionRole                            
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigActiveDataServic   -                      
+                                                  eFunctionRole                                   
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigDataServicesFunc   -                      
+                                                  tionRole                                        
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     BookingTable             -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigRuntimeFunctionR   -                      
+                                                  ole                                             
+CREATE_IN_PROGRESS       AWS::IAM::Role           CheckstatusFunctionRol   -                      
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     FlightSegmentTable       -                      
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     FlightTable              -                      
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     CustomerTable            -                      
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     CustomerSessionTable     -                      
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     AirportCodeMappingTabl   -                      
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigActiveDataServic   Resource creation      
+                                                  eFunctionRole            Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoaderQueryConfiguredC   Resource creation      
+                                                  ustomersFunctionRole     Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigDataServicesFunc   Resource creation      
+                                                  tionRole                 Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigRuntimeFunctionR   Resource creation      
+                                                  ole                      Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           CheckstatusFunctionRol   Resource creation      
+                                                  e                        Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     BookingTable             Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     FlightSegmentTable       Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     FlightTable              Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     CustomerTable            Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     AirportCodeMappingTabl   Resource creation      
+                                                  e                        Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     CustomerSessionTable     Resource creation      
+                                                                           Initiated              
+CREATE_COMPLETE          AWS::DynamoDB::Table     CustomerTable            -                      
+CREATE_COMPLETE          AWS::DynamoDB::Table     AirportCodeMappingTabl   -                      
+                                                  e                                               
+CREATE_COMPLETE          AWS::DynamoDB::Table     CustomerSessionTable     -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountCustomersFu   -                      
+                                                  nctionRole                                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountAirportsFun   -                      
+                                                  ctionRole                                       
+CREATE_IN_PROGRESS       AWS::IAM::Role           SessionLogoutFunctionR   -                      
+                                                  ole                                             
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountSessionsFun   -                      
+                                                  ctionRole                                       
+CREATE_IN_PROGRESS       AWS::IAM::Role           CustomerGetFunctionRol   -                      
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoginCreateSessionFunc   -                      
+                                                  tionRole                                        
+CREATE_IN_PROGRESS       AWS::IAM::Role           CustomerUpdateFunction   -                      
+                                                  Role                                            
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountAirportsFun   Resource creation      
+                                                  ctionRole                Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           SessionLogoutFunctionR   Resource creation      
+                                                  ole                      Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountSessionsFun   Resource creation      
+                                                  ctionRole                Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoginCreateSessionFunc   Resource creation      
+                                                  tionRole                 Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           CustomerGetFunctionRol   Resource creation      
+                                                  e                        Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountCustomersFu   Resource creation      
+                                                  nctionRole               Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           CustomerUpdateFunction   Resource creation      
+                                                  Role                     Initiated              
+CREATE_COMPLETE          AWS::IAM::Role           ConfigActiveDataServic   -                      
+                                                  eFunctionRole                                   
+CREATE_COMPLETE          AWS::IAM::Role           LoaderQueryConfiguredC   -                      
+                                                  ustomersFunctionRole                            
+CREATE_COMPLETE          AWS::IAM::Role           ConfigDataServicesFunc   -                      
+                                                  tionRole                                        
+CREATE_COMPLETE          AWS::IAM::Role           ConfigRuntimeFunctionR   -                      
+                                                  ole                                             
+CREATE_COMPLETE          AWS::IAM::Role           CheckstatusFunctionRol   -                      
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigActiveDataServic   -                      
+                                                  eFunction                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoaderQueryConfiguredC   -                      
+                                                  ustomersFunction                                
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigDataServicesFunc   -                      
+                                                  tion                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CheckstatusFunction      -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigRuntimeFunction    -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigActiveDataServic   Resource creation      
+                                                  eFunction                Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoaderQueryConfiguredC   Resource creation      
+                                                  ustomersFunction         Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CheckstatusFunction      Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigDataServicesFunc   Resource creation      
+                                                  tion                     Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigRuntimeFunction    Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigActiveDataServic   Eventual consistency   
+CONFIGURATION_COMPLETE                            eFunction                check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    LoaderQueryConfiguredC   Eventual consistency   
+CONFIGURATION_COMPLETE                            ustomersFunction         check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    CheckstatusFunction      Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigDataServicesFunc   Eventual consistency   
+CONFIGURATION_COMPLETE                            tion                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigRuntimeFunction    Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::DynamoDB::Table     BookingTable             -                      
+CREATE_COMPLETE          AWS::DynamoDB::Table     FlightTable              -                      
+CREATE_COMPLETE          AWS::DynamoDB::Table     FlightSegmentTable       -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsByCustomerFunc   -                      
+                                                  tionRole                                        
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsCreateFunction   -                      
+                                                  Role                                            
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountBookingsFun   -                      
+                                                  ctionRole                                       
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsCancelFunction   -                      
+                                                  Role                                            
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountFlightsFunc   -                      
+                                                  tionRole                                        
+CREATE_IN_PROGRESS       AWS::IAM::Role           FlightsQueryFunctionRo   -                      
+                                                  le                                              
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountFlightSegme   -                      
+                                                  ntsFunctionRole                                 
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoaderLoadFunctionRole   -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsByCustomerFunc   Resource creation      
+                                                  tionRole                 Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsCreateFunction   Resource creation      
+                                                  Role                     Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountBookingsFun   Resource creation      
+                                                  ctionRole                Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsCancelFunction   Resource creation      
+                                                  Role                     Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountFlightsFunc   Resource creation      
+                                                  tionRole                 Initiated              
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigActiveDataServic   -                      
+                                                  eFunction                                       
+CREATE_IN_PROGRESS       AWS::IAM::Role           FlightsQueryFunctionRo   Resource creation      
+                                                  le                       Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoaderLoadFunctionRole   Resource creation      
+                                                                           Initiated              
+CREATE_COMPLETE          AWS::Lambda::Function    CheckstatusFunction      -                      
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigDataServicesFunc   -                      
+                                                  tion                                            
+CREATE_COMPLETE          AWS::Lambda::Function    LoaderQueryConfiguredC   -                      
+                                                  ustomersFunction                                
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountFlightSegme   Resource creation      
+                                                  ntsFunctionRole          Initiated              
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigRuntimeFunction    -                      
+CREATE_COMPLETE          AWS::IAM::Role           ConfigCountAirportsFun   -                      
+                                                  ctionRole                                       
+CREATE_COMPLETE          AWS::IAM::Role           SessionLogoutFunctionR   -                      
+                                                  ole                                             
+CREATE_COMPLETE          AWS::IAM::Role           ConfigCountSessionsFun   -                      
+                                                  ctionRole                                       
+CREATE_COMPLETE          AWS::IAM::Role           LoginCreateSessionFunc   -                      
+                                                  tionRole                                        
+CREATE_COMPLETE          AWS::IAM::Role           CustomerGetFunctionRol   -                      
+                                                  e                                               
+CREATE_COMPLETE          AWS::IAM::Role           CustomerUpdateFunction   -                      
+                                                  Role                                            
+CREATE_COMPLETE          AWS::IAM::Role           ConfigCountCustomersFu   -                      
+                                                  nctionRole                                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountAirportsFun   -                      
+                                                  ction                                           
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountSessionsFun   -                      
+                                                  ction                                           
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoginCreateSessionFunc   -                      
+                                                  tion                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    SessionLogoutFunction    -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CustomerGetFunction      -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CustomerUpdateFunction   -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountCustomersFu   -                      
+                                                  nction                                          
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountAirportsFun   Resource creation      
+                                                  ction                    Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoginCreateSessionFunc   Resource creation      
+                                                  tion                     Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountSessionsFun   Resource creation      
+                                                  ction                    Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CustomerUpdateFunction   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CustomerGetFunction      Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    SessionLogoutFunction    Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigCountAirportsFun   Eventual consistency   
+CONFIGURATION_COMPLETE                            ction                    check initiated        
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountCustomersFu   Resource creation      
+                                                  nction                   Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    LoginCreateSessionFunc   Eventual consistency   
+CONFIGURATION_COMPLETE                            tion                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigCountSessionsFun   Eventual consistency   
+CONFIGURATION_COMPLETE                            ction                    check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    CustomerUpdateFunction   Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    CustomerGetFunction      Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    SessionLogoutFunction    Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigCountCustomersFu   Eventual consistency   
+CONFIGURATION_COMPLETE                            nction                   check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigCountAirportsFun   -                      
+                                                  ction                                           
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigCountSessionsFun   -                      
+                                                  ction                                           
+CREATE_COMPLETE          AWS::Lambda::Function    LoginCreateSessionFunc   -                      
+                                                  tion                                            
+CREATE_COMPLETE          AWS::Lambda::Function    CustomerUpdateFunction   -                      
+CREATE_COMPLETE          AWS::Lambda::Function    CustomerGetFunction      -                      
+CREATE_COMPLETE          AWS::Lambda::Function    SessionLogoutFunction    -                      
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigCountCustomersFu   -                      
+                                                  nction                                          
+CREATE_COMPLETE          AWS::IAM::Role           BookingsCreateFunction   -                      
+                                                  Role                                            
+CREATE_COMPLETE          AWS::IAM::Role           ConfigCountFlightsFunc   -                      
+                                                  tionRole                                        
+CREATE_COMPLETE          AWS::IAM::Role           ConfigCountBookingsFun   -                      
+                                                  ctionRole                                       
+CREATE_COMPLETE          AWS::IAM::Role           BookingsCancelFunction   -                      
+                                                  Role                                            
+CREATE_COMPLETE          AWS::IAM::Role           BookingsByCustomerFunc   -                      
+                                                  tionRole                                        
+CREATE_COMPLETE          AWS::IAM::Role           FlightsQueryFunctionRo   -                      
+                                                  le                                              
+CREATE_COMPLETE          AWS::IAM::Role           LoaderLoadFunctionRole   -                      
+CREATE_COMPLETE          AWS::IAM::Role           ConfigCountFlightSegme   -                      
+                                                  ntsFunctionRole                                 
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountFlightsFunc   -                      
+                                                  tion                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountBookingsFun   -                      
+                                                  ction                                           
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsCreateFunction   -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsCancelFunction   -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsByCustomerFunc   -                      
+                                                  tion                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    FlightsQueryFunction     -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoaderLoadFunction       -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountFlightSegme   -                      
+                                                  ntsFunction                                     
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountFlightsFunc   Resource creation      
+                                                  tion                     Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsCancelFunction   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountBookingsFun   Resource creation      
+                                                  ction                    Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    FlightsQueryFunction     Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsCreateFunction   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoaderLoadFunction       Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsByCustomerFunc   Resource creation      
+                                                  tion                     Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountFlightSegme   Resource creation      
+                                                  ntsFunction              Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BookingsCancelFunction   Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigCountFlightsFunc   Eventual consistency   
+CONFIGURATION_COMPLETE                            tion                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigCountBookingsFun   Eventual consistency   
+CONFIGURATION_COMPLETE                            ction                    check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    FlightsQueryFunction     Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BookingsCreateFunction   Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    LoaderLoadFunction       Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BookingsByCustomerFunc   Eventual consistency   
+CONFIGURATION_COMPLETE                            tion                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigCountFlightSegme   Eventual consistency   
+CONFIGURATION_COMPLETE                            ntsFunction              check initiated        
+CREATE_IN_PROGRESS       AWS::ApiGateway::RestA   AcmeAirApi               -                      
+                         pi                                                                       
+CREATE_IN_PROGRESS       AWS::ApiGateway::RestA   AcmeAirApi               Resource creation      
+                         pi                                                Initiated              
+CREATE_COMPLETE          AWS::Lambda::Function    BookingsCancelFunction   -                      
+CREATE_COMPLETE          AWS::Lambda::Function    FlightsQueryFunction     -                      
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigCountFlightsFunc   -                      
+                                                  tion                                            
+CREATE_COMPLETE          AWS::ApiGateway::RestA   AcmeAirApi               -                      
+                         pi                                                                       
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigCountBookingsFun   -                      
+                                                  ction                                           
+CREATE_COMPLETE          AWS::Lambda::Function    LoaderLoadFunction       -                      
+CREATE_COMPLETE          AWS::Lambda::Function    BookingsCreateFunction   -                      
+CREATE_COMPLETE          AWS::Lambda::Function    BookingsByCustomerFunc   -                      
+                                                  tion                                            
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigCountFlightSegme   -                      
+                                                  ntsFunction                                     
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigDataServicesFunc   -                      
+                         n                        tionGetConfigDataServi                          
+                                                  cesPermissionStage                              
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoginCreateSessionFunc   -                      
+                         n                        tionPostLoginPermissio                          
+                                                  nStage                                          
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigRuntimeFunctionG   -                      
+                         n                        etConfigRuntimePermiss                          
+                                                  ionStage                                        
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   FlightsQueryFunctionPo   -                      
+                         n                        stQueryFlightsPermissi                          
+                                                  onStage                                         
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CheckstatusFunctionGet   -                      
+                         n                        CheckstatusPermissionS                          
+                                                  tage                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountSessionsFun   -                      
+                         n                        ctionGetCountSessionsP                          
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Logs::LogGroup      ApiLogGroup              -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsCancelFunction   -                      
+                         n                        PostCancelBookingPermi                          
+                                                  ssionStage                                      
+CREATE_IN_PROGRESS       AWS::ApiGateway::Deplo   AcmeAirApiDeployment7c   -                      
+                         yment                    6db85a73                                        
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoaderLoadFunctionGetL   -                      
+                         n                        oaderLoadPermissionSta                          
+                                                  ge                                              
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountFlightSegme   -                      
+                         n                        ntsFunctionGetCountFli                          
+                                                  ghtSegmentsPermissionS                          
+                                                  tage                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoaderQueryConfiguredC   -                      
+                         n                        ustomersFunctionGetLoa                          
+                                                  derQueryPermissionStag                          
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountBookingsFun   -                      
+                         n                        ctionGetCountBookingsP                          
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CustomerUpdateFunction   -                      
+                         n                        PostCustomerByIdPermis                          
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsCreateFunction   -                      
+                         n                        PostBookFlightsPermiss                          
+                                                  ionStage                                        
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigActiveDataServic   -                      
+                         n                        eFunctionGetConfigActi                          
+                                                  veDataServicePermissio                          
+                                                  nStage                                          
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CustomerGetFunctionGet   -                      
+                         n                        CustomerByIdPermission                          
+                                                  Stage                                           
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountCustomersFu   -                      
+                         n                        nctionGetCountCustomer                          
+                                                  sPermissionStage                                
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsByCustomerFunc   -                      
+                         n                        tionGetBookingsByUserP                          
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountFlightsFunc   -                      
+                         n                        tionGetCountFlightsPer                          
+                                                  missionStage                                    
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   SessionLogoutFunctionG   -                      
+                         n                        etLogoutPermissionStag                          
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountAirportsFun   -                      
+                         n                        ctionGetCountAirportsP                          
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoginCreateSessionFunc   Resource creation      
+                         n                        tionPostLoginPermissio   Initiated              
+                                                  nStage                                          
+CREATE_IN_PROGRESS       AWS::Logs::LogGroup      ApiLogGroup              Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsCreateFunction   Resource creation      
+                         n                        PostBookFlightsPermiss   Initiated              
+                                                  ionStage                                        
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigActiveDataServic   Resource creation      
+                         n                        eFunctionGetConfigActi   Initiated              
+                                                  veDataServicePermissio                          
+                                                  nStage                                          
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CustomerUpdateFunction   Resource creation      
+                         n                        PostCustomerByIdPermis   Initiated              
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   FlightsQueryFunctionPo   Resource creation      
+                         n                        stQueryFlightsPermissi   Initiated              
+                                                  onStage                                         
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsCancelFunction   Resource creation      
+                         n                        PostCancelBookingPermi   Initiated              
+                                                  ssionStage                                      
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsByCustomerFunc   Resource creation      
+                         n                        tionGetBookingsByUserP   Initiated              
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CheckstatusFunctionGet   Resource creation      
+                         n                        CheckstatusPermissionS   Initiated              
+                                                  tage                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigDataServicesFunc   Resource creation      
+                         n                        tionGetConfigDataServi   Initiated              
+                                                  cesPermissionStage                              
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigRuntimeFunctionG   Resource creation      
+                         n                        etConfigRuntimePermiss   Initiated              
+                                                  ionStage                                        
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountFlightSegme   Resource creation      
+                         n                        ntsFunctionGetCountFli   Initiated              
+                                                  ghtSegmentsPermissionS                          
+                                                  tage                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountCustomersFu   Resource creation      
+                         n                        nctionGetCountCustomer   Initiated              
+                                                  sPermissionStage                                
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountSessionsFun   Resource creation      
+                         n                        ctionGetCountSessionsP   Initiated              
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountAirportsFun   Resource creation      
+                         n                        ctionGetCountAirportsP   Initiated              
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   SessionLogoutFunctionG   Resource creation      
+                         n                        etLogoutPermissionStag   Initiated              
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CustomerGetFunctionGet   Resource creation      
+                         n                        CustomerByIdPermission   Initiated              
+                                                  Stage                                           
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoaderQueryConfiguredC   Resource creation      
+                         n                        ustomersFunctionGetLoa   Initiated              
+                                                  derQueryPermissionStag                          
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountFlightsFunc   Resource creation      
+                         n                        tionGetCountFlightsPer   Initiated              
+                                                  missionStage                                    
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountBookingsFun   Resource creation      
+                         n                        ctionGetCountBookingsP   Initiated              
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoaderLoadFunctionGetL   Resource creation      
+                         n                        oaderLoadPermissionSta   Initiated              
+                                                  ge                                              
+CREATE_COMPLETE          AWS::Lambda::Permissio   BookingsCreateFunction   -                      
+                         n                        PostBookFlightsPermiss                          
+                                                  ionStage                                        
+CREATE_COMPLETE          AWS::Lambda::Permissio   LoginCreateSessionFunc   -                      
+                         n                        tionPostLoginPermissio                          
+                                                  nStage                                          
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigActiveDataServic   -                      
+                         n                        eFunctionGetConfigActi                          
+                                                  veDataServicePermissio                          
+                                                  nStage                                          
+CREATE_COMPLETE          AWS::Lambda::Permissio   FlightsQueryFunctionPo   -                      
+                         n                        stQueryFlightsPermissi                          
+                                                  onStage                                         
+CREATE_COMPLETE          AWS::Lambda::Permissio   BookingsCancelFunction   -                      
+                         n                        PostCancelBookingPermi                          
+                                                  ssionStage                                      
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigDataServicesFunc   -                      
+                         n                        tionGetConfigDataServi                          
+                                                  cesPermissionStage                              
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigRuntimeFunctionG   -                      
+                         n                        etConfigRuntimePermiss                          
+                                                  ionStage                                        
+CREATE_COMPLETE          AWS::Lambda::Permissio   CheckstatusFunctionGet   -                      
+                         n                        CheckstatusPermissionS                          
+                                                  tage                                            
+CREATE_COMPLETE          AWS::Lambda::Permissio   BookingsByCustomerFunc   -                      
+                         n                        tionGetBookingsByUserP                          
+                                                  ermissionStage                                  
+CREATE_COMPLETE          AWS::Lambda::Permissio   CustomerUpdateFunction   -                      
+                         n                        PostCustomerByIdPermis                          
+                                                  sionStage                                       
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigCountCustomersFu   -                      
+                         n                        nctionGetCountCustomer                          
+                                                  sPermissionStage                                
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigCountSessionsFun   -                      
+                         n                        ctionGetCountSessionsP                          
+                                                  ermissionStage                                  
+CREATE_COMPLETE          AWS::Lambda::Permissio   SessionLogoutFunctionG   -                      
+                         n                        etLogoutPermissionStag                          
+                                                  e                                               
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigCountAirportsFun   -                      
+                         n                        ctionGetCountAirportsP                          
+                                                  ermissionStage                                  
+CREATE_COMPLETE          AWS::Lambda::Permissio   CustomerGetFunctionGet   -                      
+                         n                        CustomerByIdPermission                          
+                                                  Stage                                           
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigCountBookingsFun   -                      
+                         n                        ctionGetCountBookingsP                          
+                                                  ermissionStage                                  
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigCountFlightsFunc   -                      
+                         n                        tionGetCountFlightsPer                          
+                                                  missionStage                                    
+CREATE_COMPLETE          AWS::Lambda::Permissio   LoaderQueryConfiguredC   -                      
+                         n                        ustomersFunctionGetLoa                          
+                                                  derQueryPermissionStag                          
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::ApiGateway::Deplo   AcmeAirApiDeployment7c   Resource creation      
+                         yment                    6db85a73                 Initiated              
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigCountFlightSegme   -                      
+                         n                        ntsFunctionGetCountFli                          
+                                                  ghtSegmentsPermissionS                          
+                                                  tage                                            
+CREATE_COMPLETE          AWS::Lambda::Permissio   LoaderLoadFunctionGetL   -                      
+                         n                        oaderLoadPermissionSta                          
+                                                  ge                                              
+CREATE_COMPLETE          AWS::ApiGateway::Deplo   AcmeAirApiDeployment7c   -                      
+                         yment                    6db85a73                                        
+CREATE_IN_PROGRESS -     AWS::Logs::LogGroup      ApiLogGroup              Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Logs::LogGroup      ApiLogGroup              -                      
+CREATE_IN_PROGRESS       AWS::ApiGateway::Stage   AcmeAirApiStage          -                      
+CREATE_IN_PROGRESS       AWS::ApiGateway::Stage   AcmeAirApiStage          Resource creation      
+                                                                           Initiated              
+CREATE_COMPLETE          AWS::ApiGateway::Stage   AcmeAirApiStage          -                      
+CREATE_COMPLETE          AWS::CloudFormation::S   m2s-e2e-acmeair-v0       -                      
+                         tack                                                                     
+-------------------------------------------------------------------------------------------------
+
+CloudFormation outputs from deployed stack
+-------------------------------------------------------------------------------------------------
+Outputs                                                                                         
+-------------------------------------------------------------------------------------------------
+Key                 CustomerTableName                                                           
+Description         Customer profiles (login credentials, countCustomers, loader seeding).      
+Value               acmeair-dev-customer                                                        
+
+Key                 ApiUrl                                                                      
+Description         Root URL of the REST API stage. Every endpoint of the monolith hangs under  
+its /rest/api contextRoot, e.g. <ApiUrl>/rest/api/login.
+                                       
+Value               https://18gutzxgjf.execute-api.us-east-1.amazonaws.com/dev                  
+
+Key                 BookingTableName                                                            
+Description         Booking records; its customerId-index GSI serves GET                        
+/rest/api/bookings/byuser/{user}.                                                               
+Value               acmeair-dev-booking                                                         
+
+Key                 CustomerSessionTableName                                                    
+Description         Self-managed session rows behind the sessionid cookie (login writes,        
+protected handlers read, logout deletes).                                                       
+Value               acmeair-dev-customerSession                                                 
+
+Key                 FlightTableName                                                             
+Description         Flight instances; their flightSegmentId-scheduledDepartureTime-index GSI    
+serves queryflights.                                                                            
+Value               acmeair-dev-flight                                                          
+
+Key                 FlightSegmentTableName                                                      
+Description         Flight segment definitions; their originPort-destPort-index GSI serves      
+queryflights.                                                                                   
+Value               acmeair-dev-flightSegment                                                   
+
+Key                 AirportCodeMappingTableName                                                 
+Description         Airport code to airport name mapping (loader seeded, countAirports counts   
+it).                                                                                            
+Value               acmeair-dev-airportCodeMapping                                              
+-------------------------------------------------------------------------------------------------
+
+
+Successfully created/updated stack - m2s-e2e-acmeair-v0 in us-east-1
+
+
+$ C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.EXE deploy --stack-name m2s-e2e-acmeair-v0 --region us-east-1 --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --parameter-overrides Environment=e2ev0
+--- i-01ef58e0847401892 Success
+200 6.947600s
+Database Finished Loading
+--- i-01ef58e0847401892 Success
+10000 1970
+
+--- i-01ef58e0847401892 Success
+{"Customers":10000,"Flights":1970,"FlightSegments":394,"Airports":14,"_":0}
+--- i-01ef58e0847401892 Success
+summary =    907 in 00:00:17 =   54.0/s Avg:    56 Min:    12 Max:  1481 Err:   242 (26.68%)
+Tidying up ...    @ October 6, 2026 4:01:41 AM UTC (1791259301927)
+... end of run
+Oct 06, 2026 4:01:23 AM java.util.prefs.FileSystemPreferences$1 run
+INFO: Created user preferences directory.
+java.lang.NullPointerException
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.processJSonString(UpdateCustomerFunction.java:84)
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.execute(UpdateCustomerFunction.java:52)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:138)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:113)
+	at org.apache.jmeter.testelement.property.FunctionProperty.getStringValue(FunctionProperty.java:100)
+	at org.apache.jmeter.testelement.AbstractTestElement.getPropertyAsString(AbstractTestElement.java:280)
+	at org.apache.jmeter.config.Argument.getValue(Argument.java:145)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:249)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:230)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.setupHttpEntityEnclosingRequestData(HTTPHC4Impl.java:1653)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.handleMethod(HTTPHC4Impl.java:890)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.sample(HTTPHC4Impl.java:645)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerProxy.sample(HTTPSamplerProxy.java:66)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1301)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1290)
+	at org.apache.jmeter.threads.JMeterThread.doSampling(JMeterThread.java:651)
+	at org.apache.jmeter.threads.JMeterThread.executeSamplePackage(JMeterThread.java:570)
+	at org.apache.jmeter.threads.JMeterThread.processSampler(JMeterThread.java:501)
+	at org.apache.jmeter.threads.JMeterThread.run(JMeterThread.java:268)
+	at java.lang.Thread.run(Thread.java:748)
+java.lang.NullPointerException
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.processJSonString(UpdateCustomerFunction.java:84)
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.execute(UpdateCustomerFunction.java:52)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:138)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:113)
+	at org.apache.jmeter.testelement.property.FunctionProperty.getStringValue(FunctionProperty.java:100)
+	at org.apache.jmeter.testelement.AbstractTestElement.getPropertyAsString(AbstractTestElement.java:280)
+	at org.apache.jmeter.config.Argument.getValue(Argument.java:145)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:249)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:230)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.setupHttpEntityEnclosingRequestData(HTTPHC4Impl.java:1653)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.handleMethod(HTTPHC4Impl.java:890)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.sample(HTTPHC4Impl.java:645)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerProxy.sample(HTTPSamplerProxy.java:66)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1301)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1290)
+	at org.apache.jmeter.threads.JMeterThread.doSampling(JMeterThread.java:651)
+	at org.apache.jmeter.threads.JMeterThread.executeSamplePackage(JMeterThread.java:570)
+	at org.apache.jmeter.threads.JMeterThread.processSampler(JMeterThread.java:501)
+	at org.apache.jmeter.threads.JMeterThread.run(JMeterThread.java:268)
+	at java.lang.Thread.run(Thread.java:748)
+java.lang.NullPointerException
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.processJSonString(UpdateCustomerFunction.java:84)
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.execute(UpdateCustomerFunction.java:52)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:138)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:113)
+	at org.apache.jmeter.testelement.property.FunctionProperty.getStringValue(FunctionProperty.java:100)
+	at org.apache.jmeter.testelement.AbstractTestElement.getPropertyAsString(AbstractTestElement.java:280)
+	at org.apache.jmeter.config.Argument.getValue(Argument.java:145)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:249)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:230)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.setupHttpEntityEnclosingRequestData(HTTPHC4Impl.java:1653)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.handleMethod(HTTPHC4Impl.java:890)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.sample(HTTPHC4Impl.java:645)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerProxy.sample(HTTPSamplerProxy.java:66)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1301)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1290)
+	at org.apache.jmeter.threads.JMeterThread.doSampling(JMeterThread.java:651)
+	at org.apache.jmeter.threads.JMeterThread.executeSamplePackage(JMeterThread.java:570)
+	at org.apache.jmeter.threads.JMeterThread.processSampler(JMeterThread.java:501)
+	at org.apache.jmeter.threads.JMeterThread.run(JMeterThread.java:268)
+	at java.lang.Thread.run(Thread.java:748)
+java.lang.NullPointerException
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.processJSonString(UpdateCustomerFunction.java:84)
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.execute(UpdateCustomerFunction.java:52)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:138)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:113)
+	at org.apache.jmeter.testelement.property.FunctionProperty.getStringValue(FunctionProperty.java:100)
+	at org.apache.jmeter.testelement.AbstractTestElement.getPropertyAsString(AbstractTestElement.java:280)
+	at org.apache.jmeter.config.Argument.getValue(Argument.java:145)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:249)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:230)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.setupHttpEntityEnclosingRequestData(HTTPHC4Impl.java:1653)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.handleMethod(HTTPHC4Impl.java:890)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.sample(HTTPHC4Impl.java:645)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerProxy.sample(HTTPSamplerProxy.java:66)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1301)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1290)
+	at org.apache.jmeter.threads.JMeterThread.doSampling(JMeterThread.java:651)
+	at org.apache.jmeter.threads.JMeterThread.executeSamplePackage(JMeterThread.java:570)
+	at org.apache.jmeter.threads.JMeterThread.processSampler(JMeterThread.java:501)
+	at org.apache.jmeter.threads.JMeterThread.run(JMeterThread.java:268)
+	at java.lang.Thread.run(Thread.java:748)
+java.lang.NullPointerException
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.processJSonString(UpdateCustomerFunction.java:84)
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.execute(UpdateCustomerFunction.java:52)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:138)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:113)
+	at org.apache.jmeter.testelement.property.FunctionProperty.getStringValue(FunctionProperty.java:100)
+	at org.apache.jmeter.testelement.AbstractTestElement.getPropertyAsString(AbstractTestElement.java:280)
+	at org.apache.jmeter.config.Argument.getValue(Argument.java:145)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:249)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:230)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.setupHttpEntityEnclosingRequestData(HTTPHC4Impl.java:1653)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.handleMethod(HTTPHC4Impl.java:890)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.sample(HTTPHC4Impl.java:645)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerProxy.sample(HTTPSamplerProxy.java:66)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1301)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1290)
+	at org.apache.jmeter.threads.JMeterThread.doSampling(JMeterThread.java:651)
+	at org.apache.jmeter.threads.JMeterThread.executeSamplePackage(JMeterThread.java:570)
+	at org.apache.jmeter.threads.JMeterThread.processSampler(JMeterThread.java:501)
+	at org.apache.jmeter.threads.JMeterThread.run(JMeterThread.java:268)
+	at java.lang.Thread.run(Thread.java:748)
+java.lang.NullPointerException
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.processJSonString(UpdateCustomerFunction.java:84)
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.execute(UpdateCustomerFunction.java:52)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:138)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:113)
+	at org.apache.jmeter.testelement.property.FunctionProperty.getStringValue(FunctionProperty.java:100)
+	at org.apache.jmeter.testelement.AbstractTestElement.getPropertyAsString(AbstractTestElement.java:280)
+	at org.apache.jmeter.config.Argument.getValue(Argument.java:145)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:249)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:230)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.setupHttpEntityEnclosingRequestData(HTTPHC4Impl.java:1653)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.handleMethod(HTTPHC4Impl.java:890)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.sample(HTTPHC4Impl.java:645)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerProxy.sample(HTTPSamplerProxy.java:66)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1301)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1290)
+	at org.apache.jmeter.threads.JMeterThread.doSampling(JMeterThread.java:651)
+	at org.apache.jmeter.threads.JMeterThread.executeSamplePackage(JMeterThread.java:570)
+	at org.apache.jmeter.threads.JMeterThread.processSampler(JMeterThread.java:501)
+	at org.apache.jmeter.threads.JMeterThread.run(JMeterThread.java:268)
+	at java.lang.Thread.run(Thread.java:748)
+java.lang.NullPointerException
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.processJSonString(UpdateCustomerFunction.java:84)
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.execute(UpdateCustomerFunction.java:52)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:138)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:113)
+	at org.apache.jmeter.testelement.property.FunctionProperty.getStringValue(FunctionProperty.java:100)
+	at org.apache.jmeter.testelement.AbstractTestElement.getPropertyAsString(AbstractTestElement.java:280)
+	at org.apache.jmeter.config.Argument.getValue(Argument.java:145)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:249)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:230)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.setupHttpEntityEnclosingRequestData(HTTPHC4Impl.java:1653)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.handleMethod(HTTPHC4Impl.java:890)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.sample(HTTPHC4Impl.java:645)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerProxy.sample(HTTPSamplerProxy.java:66)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1301)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1290)
+	at org.apache.jmeter.threads.JMeterThread.doSampling(JMeterThread.java:651)
+	at org.apache.jmeter.threads.JMeterThread.executeSamplePackage(JMeterThread.java:570)
+	at org.apache.jmeter.threads.JMeterThread.processSampler(JMeterThread.java:501)
+	at org.apache.jmeter.threads.JMeterThread.run(JMeterThread.java:268)
+	at java.lang.Thread.run(Thread.java:748)
+java.lang.NullPointerException
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.processJSonString(UpdateCustomerFunction.java:84)
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.execute(UpdateCustomerFunction.java:52)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:138)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:113)
+	at org.apache.jmeter.testelement.property.FunctionProperty.getStringValue(FunctionProperty.java:100)
+	at org.apache.jmeter.testelement.AbstractTestElement.getPropertyAsString(AbstractTestElement.java:280)
+	at org.apache.jmeter.config.Argument.getValue(Argument.java:145)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:249)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:230)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.setupHttpEntityEnclosingRequestData(HTTPHC4Impl.java:1653)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.handleMethod(HTTPHC4Impl.java:890)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.sample(HTTPHC4Impl.java:645)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerProxy.sample(HTTPSamplerProxy.java:66)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1301)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1290)
+	at org.apache.jmeter.threads.JMeterThread.doSampling(JMeterThread.java:651)
+	at org.apache.jmeter.threads.JMeterThread.executeSamplePackage(JMeterThread.java:570)
+	at org.apache.jmeter.threads.JMeterThread.processSampler(JMeterThread.java:501)
+	at org.apache.jmeter.threads.JMeterThread.run(JMeterThread.java:268)
+	at java.lang.Thread.run(Thread.java:748)
+java.lang.NullPointerException
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.processJSonString(UpdateCustomerFunction.java:84)
+	at com.acmeair.jmeter.functions.UpdateCustomerFunction.execute(UpdateCustomerFunction.java:52)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:138)
+	at org.apache.jmeter.engine.util.CompoundVariable.execute(CompoundVariable.java:113)
+	at org.apache.jmeter.testelement.property.FunctionProperty.getStringValue(FunctionProperty.java:100)
+	at org.apache.jmeter.testelement.AbstractTestElement.getPropertyAsString(AbstractTestElement.java:280)
+	at org.apache.jmeter.config.Argument.getValue(Argument.java:145)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:249)
+	at org.apache.jmeter.protocol.http.util.HTTPArgument.getEncodedValue(HTTPArgument.java:230)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.setupHttpEntityEnclosingRequestData(HTTPHC4Impl.java:1653)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.handleMethod(HTTPHC4Impl.java:890)
+	at org.apache.jmeter.protocol.http.sampler.HTTPHC4Impl.sample(HTTPHC4Impl.java:645)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerProxy.sample(HTTPSamplerProxy.java:66)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1301)
+	at org.apache.jmeter.protocol.http.sampler.HTTPSamplerBase.sample(HTTPSamplerBase.java:1290)
+	at org.apache.jmeter.threads.JMeterThread.doSampling(JMeterThread.java:651)
+	at org.apache.jmeter.threads.JMeterThread.executeSamplePackage(JMeterThread.java:570)
+	at org.apache.jmeter.threads.JMeterThread.processSampler(JMeterThread.java:501)
+	at org.apache.jmeter.threads.JMeterThread.run(JMeterThread.java:268)
+	at java.lang.Thread.run(Thread.java:748)
+
+--- i-01ef58e0847401892 Success
+summary =   1339 in 00:00:17 =   78.9/s Avg:    40 Min:    11 Max:   610 Err:   141 (10.53%)
+Tidying up ...    @ October 6, 2026 4:02:20 AM UTC (1791259340913)
+... end of run
+Oct 06, 2026 4:02:02 AM java.util.prefs.FileSystemPreferences$1 run
+INFO: Created user preferences directory.
+
+--- i-01ef58e0847401892 Success
+144 29
+
+	- Deleting S3 object with key b66f88c55ab4817ba1acedc7f708dd44
+	- Deleting S3 object with key a90b04dd845c2ede97264f5cf12b35e9
+	- Deleting S3 object with key d1f49b37500e428edb9865fd1d485752
+	- Deleting S3 object with key 70b399f08e04c7f47fc4cb672237842b
+	- Deleting S3 object with key 0f1a9a6be624fd597417031dd190debb
+	- Deleting S3 object with key b381969a941aba6cc5e27ccaad64c2ab
+	- Deleting S3 object with key 3a9c9eb30abae77ea2008871d6152e0b
+	- Deleting S3 object with key 80e752b9df7ad86b84de25823e6b1c84
+	- Deleting S3 object with key 2ccca7f358806bdb897aa982ddb605f3
+	- Deleting S3 object with key af5b27a94c78f0308649e9945a4e12b7
+	- Deleting S3 object with key 6d33abb2e012795558c8a38939b794f6
+	- Deleting S3 object with key 1e65400af3a452991ce601ac1931012e
+	- Deleting S3 object with key 00cb1fee1f5e20d694b617555bd8651a
+	- Deleting S3 object with key 645d7bd3dd420d02ab68ca15ae42c218
+	- Deleting S3 object with key ea738d9f7716eb5aac6f9152fde5b8b6
+	- Deleting S3 object with key 060842d786eef0098bcee7b7c247ff1f
+	- Deleting S3 object with key 58d35a05603ff901bd0be744a12afaac
+	- Deleting S3 object with key 884030d6c5047520908029a16afe6d14
+	- Deleting S3 object with key 87247508f8ba920e0d97a54ebfd646c1
+	- Deleting S3 object with key 50a71b2b34d0877909afef897f7a5203
+	- Could not find and delete the S3 object with the key c9a835be4afd26591e4b50d4acba151d.template
+	- Deleting Cloudformation stack m2s-e2e-acmeair-v0
+
+Deleted successfully
+
+$ C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.EXE delete --stack-name m2s-e2e-acmeair-v0 --region us-east-1 --no-prompts
+deleted retained AWS::DynamoDB::Table acmeair-dev-airportCodeMapping
+deleted retained AWS::DynamoDB::Table acmeair-dev-booking
+deleted retained AWS::DynamoDB::Table acmeair-dev-customerSession
+deleted retained AWS::DynamoDB::Table acmeair-dev-customer
+deleted retained AWS::DynamoDB::Table acmeair-dev-flightSegment
+deleted retained AWS::DynamoDB::Table acmeair-dev-flight
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-BookingsByCustomerFunction-MAtCUmaFIogd
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-BookingsCreateFunction-8zJNZ8hHJ2R1
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-ConfigCountAirportsFunction-IodzRbeNrOoq
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-ConfigCountBookingsFunction-Z83frgBQGOuo
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-ConfigCountCustomersFunction-rZdwIPxSuXnU
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-ConfigCountFlightSegmentsFuncti-i3MDOgDv83Mc
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-ConfigCountFlightsFunction-eOmwE9spZbZA
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-ConfigCountSessionsFunction-M8ISakYReI5O
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-CustomerGetFunction-SAifGhuaWHkP
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-CustomerUpdateFunction-3br7d4pXJenY
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-FlightsQueryFunction-CdUqcWMU3Z1I
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-LoaderLoadFunction-F5pZjo7Vyj1I
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-LoginCreateSessionFunction-extopKWAcAse
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-SessionLogoutFunction-0adZLbG0eZQJ
+
+$ sam build
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\login-create-session runtime: nodejs22.x architecture: arm64 functions: LoginCreateSessionFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\session-logout runtime: nodejs22.x architecture: arm64 functions: SessionLogoutFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\customer-get runtime: nodejs22.x architecture: arm64 functions: CustomerGetFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\customer-update runtime: nodejs22.x architecture: arm64 functions: CustomerUpdateFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\bookings-create runtime: nodejs22.x architecture: arm64 functions: BookingsCreateFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\bookings-cancel runtime: nodejs22.x architecture: arm64 functions: BookingsCancelFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\bookings-by-customer runtime: nodejs22.x architecture: arm64 functions: BookingsByCustomerFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\flights-query runtime: nodejs22.x architecture: arm64 functions: FlightsQueryFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-runtime runtime: nodejs22.x architecture: arm64 functions: ConfigRuntimeFunction
+package.json file not found. Continuing the build without dependencies.
+ Running NodejsNpmBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-data-services runtime: nodejs22.x architecture: arm64 functions: ConfigDataServicesFunction
+package.json file not found. Continuing the build without dependencies.
+ Running NodejsNpmBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-active-data-service runtime: nodejs22.x architecture: arm64 functions: ConfigActiveDataServiceFunction
+package.json file not found. Continuing the build without dependencies.
+ Running NodejsNpmBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-count-bookings runtime: nodejs22.x architecture: arm64 functions: ConfigCountBookingsFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-count-customers runtime: nodejs22.x architecture: arm64 functions: ConfigCountCustomersFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-count-sessions runtime: nodejs22.x architecture: arm64 functions: ConfigCountSessionsFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-count-flights runtime: nodejs22.x architecture: arm64 functions: ConfigCountFlightsFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-count-flight-segments runtime: nodejs22.x architecture: arm64 functions: ConfigCountFlightSegmentsFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\config-count-airports runtime: nodejs22.x architecture: arm64 functions: ConfigCountAirportsFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\loader-load runtime: nodejs22.x architecture: arm64 functions: LoaderLoadFunction
+ Running NodejsNpmBuilder:NpmPack
+ Running NodejsNpmBuilder:CopyNpmrcAndLockfile
+ Running NodejsNpmBuilder:CopySource
+ Running NodejsNpmBuilder:NpmInstall
+ Running NodejsNpmBuilder:NpmTest
+ Running NodejsNpmBuilder:CleanUpNpmrc
+ Running NodejsNpmBuilder:LockfileCleanUp
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\loader-query-configured-customers runtime: nodejs22.x architecture: arm64 functions: LoaderQueryConfiguredCustomersFunction
+package.json file not found. Continuing the build without dependencies.
+ Running NodejsNpmBuilder:CopySource
+Building codeuri: D:\tmp\m2s-e2e\acmeair-v0\output\lambdas\acmeair\checkstatus runtime: nodejs22.x architecture: arm64 functions: CheckstatusFunction
+package.json file not found. Continuing the build without dependencies.
+ Running NodejsNpmBuilder:CopySource
+
+Build Succeeded
+
+Built Artifacts  : .aws-sam\build
+Built Template   : .aws-sam\build\template.yaml
+
+Commands you can use next
+=========================
+[*] Validate SAM template: sam validate
+[*] Invoke Function: sam local invoke
+[*] Test Function in the Cloud: sam sync --stack-name {{stack-name}} --watch
+[*] Deploy: sam deploy --guided
+
+$ C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.EXE build
+
+	Managed S3 bucket: aws-sam-cli-managed-default-samclisourcebucket-34ra6c785sxm
+	Auto resolution of buckets can be turned off by setting resolve_s3=False
+	To use a specific S3 bucket, set --s3-bucket=<bucket_name>
+	Above settings can be stored in samconfig.toml
+	Uploading to d7c85103d00217c15a93494274f094f1  1048576 / 2735548  (38.33%)	Uploading to d7c85103d00217c15a93494274f094f1  2097152 / 2735548  (76.66%)	Uploading to d7c85103d00217c15a93494274f094f1  2735548 / 2735548  (100.00%)
+	Uploading to 0ca196d7ca0cd322d79d104c300382b3  1048576 / 2734602  (38.34%)	Uploading to 0ca196d7ca0cd322d79d104c300382b3  2097152 / 2734602  (76.69%)	Uploading to 0ca196d7ca0cd322d79d104c300382b3  2734602 / 2734602  (100.00%)
+	Uploading to dd82a33b028a332ed9732a9d4c996f22  1048576 / 2734994  (38.34%)	Uploading to dd82a33b028a332ed9732a9d4c996f22  2097152 / 2734994  (76.68%)	Uploading to dd82a33b028a332ed9732a9d4c996f22  2734994 / 2734994  (100.00%)
+	Uploading to 2d2253e1dc9a6c1be5a2c681d645ff13  1048576 / 2735488  (38.33%)	Uploading to 2d2253e1dc9a6c1be5a2c681d645ff13  2097152 / 2735488  (76.66%)	Uploading to 2d2253e1dc9a6c1be5a2c681d645ff13  2735488 / 2735488  (100.00%)
+	Uploading to bc73e9973c917e4960d2ae84b789fddd  1048576 / 2735410  (38.33%)	Uploading to bc73e9973c917e4960d2ae84b789fddd  2097152 / 2735410  (76.67%)	Uploading to bc73e9973c917e4960d2ae84b789fddd  2735410 / 2735410  (100.00%)
+	Uploading to 5a86268bca7f11804fe767634b8be851  1048576 / 2735142  (38.34%)	Uploading to 5a86268bca7f11804fe767634b8be851  2097152 / 2735142  (76.67%)	Uploading to 5a86268bca7f11804fe767634b8be851  2735142 / 2735142  (100.00%)
+	Uploading to eff8008c1d374e183e317b353ceb1134  1048576 / 2735354  (38.33%)	Uploading to eff8008c1d374e183e317b353ceb1134  2097152 / 2735354  (76.67%)	Uploading to eff8008c1d374e183e317b353ceb1134  2735354 / 2735354  (100.00%)
+	Uploading to c42906e43de383344f527557946dce64  1048576 / 2736431  (38.32%)	Uploading to c42906e43de383344f527557946dce64  2097152 / 2736431  (76.64%)	Uploading to c42906e43de383344f527557946dce64  2736431 / 2736431  (100.00%)
+	Uploading to 2ccca7f358806bdb897aa982ddb605f3  654 / 654  (100.00%)
+	Uploading to af5b27a94c78f0308649e9945a4e12b7  649 / 649  (100.00%)
+	Uploading to 6d33abb2e012795558c8a38939b794f6  624 / 624  (100.00%)
+	Uploading to 44e33c7b44933a7f0bae8e0b58304359  1048576 / 2734050  (38.35%)	Uploading to 44e33c7b44933a7f0bae8e0b58304359  2097152 / 2734050  (76.70%)	Uploading to 44e33c7b44933a7f0bae8e0b58304359  2734050 / 2734050  (100.00%)
+	Uploading to a6ead0afddafafbbf879e67e5554a289  1048576 / 2734047  (38.35%)	Uploading to a6ead0afddafafbbf879e67e5554a289  2097152 / 2734047  (76.71%)	Uploading to a6ead0afddafafbbf879e67e5554a289  2734047 / 2734047  (100.00%)
+	Uploading to a2144b31aa4a360b3fcc9a0f9d7fea91  1048576 / 2734082  (38.35%)	Uploading to a2144b31aa4a360b3fcc9a0f9d7fea91  2097152 / 2734082  (76.70%)	Uploading to a2144b31aa4a360b3fcc9a0f9d7fea91  2734082 / 2734082  (100.00%)
+	Uploading to 96506a6282c2e9910c7ed1077d67e64a  1048576 / 2734067  (38.35%)	Uploading to 96506a6282c2e9910c7ed1077d67e64a  2097152 / 2734067  (76.70%)	Uploading to 96506a6282c2e9910c7ed1077d67e64a  2734067 / 2734067  (100.00%)
+	Uploading to b05f6ae012bc95f49b165d965f915431  1048576 / 2734068  (38.35%)	Uploading to b05f6ae012bc95f49b165d965f915431  2097152 / 2734068  (76.70%)	Uploading to b05f6ae012bc95f49b165d965f915431  2734068 / 2734068  (100.00%)
+	Uploading to b480e38f9ed14db46fcca962924cf048  1048576 / 2734079  (38.35%)	Uploading to b480e38f9ed14db46fcca962924cf048  2097152 / 2734079  (76.70%)	Uploading to b480e38f9ed14db46fcca962924cf048  2734079 / 2734079  (100.00%)
+	Uploading to 3a257833a45ccce3ef751f7296adafb4  1048576 / 2739058  (38.28%)	Uploading to 3a257833a45ccce3ef751f7296adafb4  2097152 / 2739058  (76.56%)	Uploading to 3a257833a45ccce3ef751f7296adafb4  2739058 / 2739058  (100.00%)
+	Uploading to 87247508f8ba920e0d97a54ebfd646c1  1225 / 1225  (100.00%)
+	Uploading to 50a71b2b34d0877909afef897f7a5203  802 / 802  (100.00%)
+
+	Deploying with following values
+	===============================
+	Stack name                   : m2s-e2e-acmeair-v0
+	Region                       : us-east-1
+	Confirm changeset            : False
+	Disable rollback             : False
+	Deployment s3 bucket         : aws-sam-cli-managed-default-samclisourcebucket-34ra6c785sxm
+	Capabilities                 : ["CAPABILITY_IAM", "CAPABILITY_NAMED_IAM", "CAPABILITY_AUTO_EXPAND"]
+	Parameter overrides          : {"Environment": "e2ev0"}
+	Signing Profiles             : {}
+
+Initiating deployment
+=====================
+
+	Uploading to e7b7a8206a9995313a6d2d29b23b10d6.template  28685 / 28685  (100.00%)
+
+
+Waiting for changeset to be created..
+
+CloudFormation stack changeset
+-------------------------------------------------------------------------------------------------
+Operation                LogicalResourceId        ResourceType             Replacement            
+-------------------------------------------------------------------------------------------------
++ Add                    AcmeAirApiDeployment7c   AWS::ApiGateway::Deplo   N/A                    
+                         6db85a73                 yment                                           
++ Add                    AcmeAirApiStage          AWS::ApiGateway::Stage   N/A                    
++ Add                    AcmeAirApi               AWS::ApiGateway::RestA   N/A                    
+                                                  pi                                              
++ Add                    AirportCodeMappingTabl   AWS::DynamoDB::Table     N/A                    
+                         e                                                                        
++ Add                    ApiLogGroup              AWS::Logs::LogGroup      N/A                    
++ Add                    BookingTable             AWS::DynamoDB::Table     N/A                    
++ Add                    BookingsByCustomerFunc   AWS::Lambda::Permissio   N/A                    
+                         tionGetBookingsByUserP   n                                               
+                         ermissionStage                                                           
++ Add                    BookingsByCustomerFunc   AWS::IAM::Role           N/A                    
+                         tionRole                                                                 
++ Add                    BookingsByCustomerFunc   AWS::Lambda::Function    N/A                    
+                         tion                                                                     
++ Add                    BookingsCancelFunction   AWS::Lambda::Permissio   N/A                    
+                         PostCancelBookingPermi   n                                               
+                         ssionStage                                                               
++ Add                    BookingsCancelFunction   AWS::IAM::Role           N/A                    
+                         Role                                                                     
++ Add                    BookingsCancelFunction   AWS::Lambda::Function    N/A                    
++ Add                    BookingsCreateFunction   AWS::Lambda::Permissio   N/A                    
+                         PostBookFlightsPermiss   n                                               
+                         ionStage                                                                 
++ Add                    BookingsCreateFunction   AWS::IAM::Role           N/A                    
+                         Role                                                                     
++ Add                    BookingsCreateFunction   AWS::Lambda::Function    N/A                    
++ Add                    CheckstatusFunctionGet   AWS::Lambda::Permissio   N/A                    
+                         CheckstatusPermissionS   n                                               
+                         tage                                                                     
++ Add                    CheckstatusFunctionRol   AWS::IAM::Role           N/A                    
+                         e                                                                        
++ Add                    CheckstatusFunction      AWS::Lambda::Function    N/A                    
++ Add                    ConfigActiveDataServic   AWS::Lambda::Permissio   N/A                    
+                         eFunctionGetConfigActi   n                                               
+                         veDataServicePermissio                                                   
+                         nStage                                                                   
++ Add                    ConfigActiveDataServic   AWS::IAM::Role           N/A                    
+                         eFunctionRole                                                            
++ Add                    ConfigActiveDataServic   AWS::Lambda::Function    N/A                    
+                         eFunction                                                                
++ Add                    ConfigCountAirportsFun   AWS::Lambda::Permissio   N/A                    
+                         ctionGetCountAirportsP   n                                               
+                         ermissionStage                                                           
++ Add                    ConfigCountAirportsFun   AWS::IAM::Role           N/A                    
+                         ctionRole                                                                
++ Add                    ConfigCountAirportsFun   AWS::Lambda::Function    N/A                    
+                         ction                                                                    
++ Add                    ConfigCountBookingsFun   AWS::Lambda::Permissio   N/A                    
+                         ctionGetCountBookingsP   n                                               
+                         ermissionStage                                                           
++ Add                    ConfigCountBookingsFun   AWS::IAM::Role           N/A                    
+                         ctionRole                                                                
++ Add                    ConfigCountBookingsFun   AWS::Lambda::Function    N/A                    
+                         ction                                                                    
++ Add                    ConfigCountCustomersFu   AWS::Lambda::Permissio   N/A                    
+                         nctionGetCountCustomer   n                                               
+                         sPermissionStage                                                         
++ Add                    ConfigCountCustomersFu   AWS::IAM::Role           N/A                    
+                         nctionRole                                                               
++ Add                    ConfigCountCustomersFu   AWS::Lambda::Function    N/A                    
+                         nction                                                                   
++ Add                    ConfigCountFlightSegme   AWS::Lambda::Permissio   N/A                    
+                         ntsFunctionGetCountFli   n                                               
+                         ghtSegmentsPermissionS                                                   
+                         tage                                                                     
++ Add                    ConfigCountFlightSegme   AWS::IAM::Role           N/A                    
+                         ntsFunctionRole                                                          
++ Add                    ConfigCountFlightSegme   AWS::Lambda::Function    N/A                    
+                         ntsFunction                                                              
++ Add                    ConfigCountFlightsFunc   AWS::Lambda::Permissio   N/A                    
+                         tionGetCountFlightsPer   n                                               
+                         missionStage                                                             
++ Add                    ConfigCountFlightsFunc   AWS::IAM::Role           N/A                    
+                         tionRole                                                                 
++ Add                    ConfigCountFlightsFunc   AWS::Lambda::Function    N/A                    
+                         tion                                                                     
++ Add                    ConfigCountSessionsFun   AWS::Lambda::Permissio   N/A                    
+                         ctionGetCountSessionsP   n                                               
+                         ermissionStage                                                           
++ Add                    ConfigCountSessionsFun   AWS::IAM::Role           N/A                    
+                         ctionRole                                                                
++ Add                    ConfigCountSessionsFun   AWS::Lambda::Function    N/A                    
+                         ction                                                                    
++ Add                    ConfigDataServicesFunc   AWS::Lambda::Permissio   N/A                    
+                         tionGetConfigDataServi   n                                               
+                         cesPermissionStage                                                       
++ Add                    ConfigDataServicesFunc   AWS::IAM::Role           N/A                    
+                         tionRole                                                                 
++ Add                    ConfigDataServicesFunc   AWS::Lambda::Function    N/A                    
+                         tion                                                                     
++ Add                    ConfigRuntimeFunctionG   AWS::Lambda::Permissio   N/A                    
+                         etConfigRuntimePermiss   n                                               
+                         ionStage                                                                 
++ Add                    ConfigRuntimeFunctionR   AWS::IAM::Role           N/A                    
+                         ole                                                                      
++ Add                    ConfigRuntimeFunction    AWS::Lambda::Function    N/A                    
++ Add                    CustomerGetFunctionGet   AWS::Lambda::Permissio   N/A                    
+                         CustomerByIdPermission   n                                               
+                         Stage                                                                    
++ Add                    CustomerGetFunctionRol   AWS::IAM::Role           N/A                    
+                         e                                                                        
++ Add                    CustomerGetFunction      AWS::Lambda::Function    N/A                    
++ Add                    CustomerSessionTable     AWS::DynamoDB::Table     N/A                    
++ Add                    CustomerTable            AWS::DynamoDB::Table     N/A                    
++ Add                    CustomerUpdateFunction   AWS::Lambda::Permissio   N/A                    
+                         PostCustomerByIdPermis   n                                               
+                         sionStage                                                                
++ Add                    CustomerUpdateFunction   AWS::IAM::Role           N/A                    
+                         Role                                                                     
++ Add                    CustomerUpdateFunction   AWS::Lambda::Function    N/A                    
++ Add                    FlightSegmentTable       AWS::DynamoDB::Table     N/A                    
++ Add                    FlightTable              AWS::DynamoDB::Table     N/A                    
++ Add                    FlightsQueryFunctionPo   AWS::Lambda::Permissio   N/A                    
+                         stQueryFlightsPermissi   n                                               
+                         onStage                                                                  
++ Add                    FlightsQueryFunctionRo   AWS::IAM::Role           N/A                    
+                         le                                                                       
++ Add                    FlightsQueryFunction     AWS::Lambda::Function    N/A                    
++ Add                    LoaderLoadFunctionGetL   AWS::Lambda::Permissio   N/A                    
+                         oaderLoadPermissionSta   n                                               
+                         ge                                                                       
++ Add                    LoaderLoadFunctionRole   AWS::IAM::Role           N/A                    
++ Add                    LoaderLoadFunction       AWS::Lambda::Function    N/A                    
++ Add                    LoaderQueryConfiguredC   AWS::Lambda::Permissio   N/A                    
+                         ustomersFunctionGetLoa   n                                               
+                         derQueryPermissionStag                                                   
+                         e                                                                        
++ Add                    LoaderQueryConfiguredC   AWS::IAM::Role           N/A                    
+                         ustomersFunctionRole                                                     
++ Add                    LoaderQueryConfiguredC   AWS::Lambda::Function    N/A                    
+                         ustomersFunction                                                         
++ Add                    LoginCreateSessionFunc   AWS::Lambda::Permissio   N/A                    
+                         tionPostLoginPermissio   n                                               
+                         nStage                                                                   
++ Add                    LoginCreateSessionFunc   AWS::IAM::Role           N/A                    
+                         tionRole                                                                 
++ Add                    LoginCreateSessionFunc   AWS::Lambda::Function    N/A                    
+                         tion                                                                     
++ Add                    SessionLogoutFunctionG   AWS::Lambda::Permissio   N/A                    
+                         etLogoutPermissionStag   n                                               
+                         e                                                                        
++ Add                    SessionLogoutFunctionR   AWS::IAM::Role           N/A                    
+                         ole                                                                      
++ Add                    SessionLogoutFunction    AWS::Lambda::Function    N/A                    
+-------------------------------------------------------------------------------------------------
+
+
+Changeset created successfully. arn:aws:cloudformation:us-east-1:882112174488:changeSet/samcli-deploy1791529171/e0f28a92-5f25-48a7-a224-bb09ff6a76f7
+
+
+2026-10-09 14:59:47 - Waiting for stack create/update to complete
+
+CloudFormation events from stack operations (refresh every 5.0 seconds)
+-------------------------------------------------------------------------------------------------
+ResourceStatus           ResourceType             LogicalResourceId        ResourceStatusReason   
+-------------------------------------------------------------------------------------------------
+CREATE_IN_PROGRESS       AWS::CloudFormation::S   m2s-e2e-acmeair-v0       User Initiated         
+                         tack                                                                     
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     CustomerSessionTable     -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigDataServicesFunc   -                      
+                                                  tionRole                                        
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     FlightSegmentTable       -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigActiveDataServic   -                      
+                                                  eFunctionRole                                   
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     AirportCodeMappingTabl   -                      
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     BookingTable             -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           CheckstatusFunctionRol   -                      
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigRuntimeFunctionR   -                      
+                                                  ole                                             
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     FlightTable              -                      
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     CustomerTable            -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoaderQueryConfiguredC   -                      
+                                                  ustomersFunctionRole                            
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoaderQueryConfiguredC   Resource creation      
+                                                  ustomersFunctionRole     Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigActiveDataServic   Resource creation      
+                                                  eFunctionRole            Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigDataServicesFunc   Resource creation      
+                                                  tionRole                 Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           CheckstatusFunctionRol   Resource creation      
+                                                  e                        Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     BookingTable             Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     CustomerSessionTable     Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigRuntimeFunctionR   Resource creation      
+                                                  ole                      Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     CustomerTable            Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     FlightTable              Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     FlightSegmentTable       Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::DynamoDB::Table     AirportCodeMappingTabl   Resource creation      
+                                                  e                        Initiated              
+CREATE_COMPLETE          AWS::DynamoDB::Table     CustomerSessionTable     -                      
+CREATE_COMPLETE          AWS::DynamoDB::Table     AirportCodeMappingTabl   -                      
+                                                  e                                               
+CREATE_COMPLETE          AWS::DynamoDB::Table     CustomerTable            -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountSessionsFun   -                      
+                                                  ctionRole                                       
+CREATE_IN_PROGRESS       AWS::IAM::Role           SessionLogoutFunctionR   -                      
+                                                  ole                                             
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountAirportsFun   -                      
+                                                  ctionRole                                       
+CREATE_IN_PROGRESS       AWS::IAM::Role           CustomerUpdateFunction   -                      
+                                                  Role                                            
+CREATE_IN_PROGRESS       AWS::IAM::Role           CustomerGetFunctionRol   -                      
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoginCreateSessionFunc   -                      
+                                                  tionRole                                        
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountCustomersFu   -                      
+                                                  nctionRole                                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountSessionsFun   Resource creation      
+                                                  ctionRole                Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoginCreateSessionFunc   Resource creation      
+                                                  tionRole                 Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           SessionLogoutFunctionR   Resource creation      
+                                                  ole                      Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountAirportsFun   Resource creation      
+                                                  ctionRole                Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           CustomerGetFunctionRol   Resource creation      
+                                                  e                        Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountCustomersFu   Resource creation      
+                                                  nctionRole               Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           CustomerUpdateFunction   Resource creation      
+                                                  Role                     Initiated              
+CREATE_COMPLETE          AWS::IAM::Role           LoaderQueryConfiguredC   -                      
+                                                  ustomersFunctionRole                            
+CREATE_COMPLETE          AWS::IAM::Role           ConfigActiveDataServic   -                      
+                                                  eFunctionRole                                   
+CREATE_COMPLETE          AWS::IAM::Role           CheckstatusFunctionRol   -                      
+                                                  e                                               
+CREATE_COMPLETE          AWS::IAM::Role           ConfigDataServicesFunc   -                      
+                                                  tionRole                                        
+CREATE_COMPLETE          AWS::IAM::Role           ConfigRuntimeFunctionR   -                      
+                                                  ole                                             
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoaderQueryConfiguredC   -                      
+                                                  ustomersFunction                                
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigActiveDataServic   -                      
+                                                  eFunction                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigDataServicesFunc   -                      
+                                                  tion                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CheckstatusFunction      -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigRuntimeFunction    -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoaderQueryConfiguredC   Resource creation      
+                                                  ustomersFunction         Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigActiveDataServic   Resource creation      
+                                                  eFunction                Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigDataServicesFunc   Resource creation      
+                                                  tion                     Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CheckstatusFunction      Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigRuntimeFunction    Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    LoaderQueryConfiguredC   Eventual consistency   
+CONFIGURATION_COMPLETE                            ustomersFunction         check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigDataServicesFunc   Eventual consistency   
+CONFIGURATION_COMPLETE                            tion                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigActiveDataServic   Eventual consistency   
+CONFIGURATION_COMPLETE                            eFunction                check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    CheckstatusFunction      Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigRuntimeFunction    Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::DynamoDB::Table     BookingTable             -                      
+CREATE_COMPLETE          AWS::DynamoDB::Table     FlightTable              -                      
+CREATE_COMPLETE          AWS::DynamoDB::Table     FlightSegmentTable       -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsCreateFunction   -                      
+                                                  Role                                            
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsByCustomerFunc   -                      
+                                                  tionRole                                        
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountBookingsFun   -                      
+                                                  ctionRole                                       
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsCancelFunction   -                      
+                                                  Role                                            
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountFlightsFunc   -                      
+                                                  tionRole                                        
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountFlightSegme   -                      
+                                                  ntsFunctionRole                                 
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoaderLoadFunctionRole   -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           FlightsQueryFunctionRo   -                      
+                                                  le                                              
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsCreateFunction   Resource creation      
+                                                  Role                     Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountFlightSegme   Resource creation      
+                                                  ntsFunctionRole          Initiated              
+CREATE_COMPLETE          AWS::Lambda::Function    LoaderQueryConfiguredC   -                      
+                                                  ustomersFunction                                
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountFlightsFunc   Resource creation      
+                                                  tionRole                 Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsByCustomerFunc   Resource creation      
+                                                  tionRole                 Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           BookingsCancelFunction   Resource creation      
+                                                  Role                     Initiated              
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigDataServicesFunc   -                      
+                                                  tion                                            
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigActiveDataServic   -                      
+                                                  eFunction                                       
+CREATE_IN_PROGRESS       AWS::IAM::Role           ConfigCountBookingsFun   Resource creation      
+                                                  ctionRole                Initiated              
+CREATE_COMPLETE          AWS::Lambda::Function    CheckstatusFunction      -                      
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigRuntimeFunction    -                      
+CREATE_IN_PROGRESS       AWS::IAM::Role           LoaderLoadFunctionRole   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::IAM::Role           FlightsQueryFunctionRo   Resource creation      
+                                                  le                       Initiated              
+CREATE_COMPLETE          AWS::IAM::Role           ConfigCountSessionsFun   -                      
+                                                  ctionRole                                       
+CREATE_COMPLETE          AWS::IAM::Role           LoginCreateSessionFunc   -                      
+                                                  tionRole                                        
+CREATE_COMPLETE          AWS::IAM::Role           SessionLogoutFunctionR   -                      
+                                                  ole                                             
+CREATE_COMPLETE          AWS::IAM::Role           ConfigCountAirportsFun   -                      
+                                                  ctionRole                                       
+CREATE_COMPLETE          AWS::IAM::Role           CustomerGetFunctionRol   -                      
+                                                  e                                               
+CREATE_COMPLETE          AWS::IAM::Role           ConfigCountCustomersFu   -                      
+                                                  nctionRole                                      
+CREATE_COMPLETE          AWS::IAM::Role           CustomerUpdateFunction   -                      
+                                                  Role                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountSessionsFun   -                      
+                                                  ction                                           
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoginCreateSessionFunc   -                      
+                                                  tion                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    SessionLogoutFunction    -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountCustomersFu   -                      
+                                                  nction                                          
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CustomerGetFunction      -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountAirportsFun   -                      
+                                                  ction                                           
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CustomerUpdateFunction   -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountSessionsFun   Resource creation      
+                                                  ction                    Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    SessionLogoutFunction    Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountCustomersFu   Resource creation      
+                                                  nction                   Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CustomerGetFunction      Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountAirportsFun   Resource creation      
+                                                  ction                    Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoginCreateSessionFunc   Resource creation      
+                                                  tion                     Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    CustomerUpdateFunction   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigCountSessionsFun   Eventual consistency   
+CONFIGURATION_COMPLETE                            ction                    check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    SessionLogoutFunction    Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigCountCustomersFu   Eventual consistency   
+CONFIGURATION_COMPLETE                            nction                   check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    CustomerGetFunction      Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigCountAirportsFun   Eventual consistency   
+CONFIGURATION_COMPLETE                            ction                    check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    LoginCreateSessionFunc   Eventual consistency   
+CONFIGURATION_COMPLETE                            tion                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    CustomerUpdateFunction   Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigCountSessionsFun   -                      
+                                                  ction                                           
+CREATE_COMPLETE          AWS::Lambda::Function    SessionLogoutFunction    -                      
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigCountCustomersFu   -                      
+                                                  nction                                          
+CREATE_COMPLETE          AWS::Lambda::Function    CustomerGetFunction      -                      
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigCountAirportsFun   -                      
+                                                  ction                                           
+CREATE_COMPLETE          AWS::Lambda::Function    LoginCreateSessionFunc   -                      
+                                                  tion                                            
+CREATE_COMPLETE          AWS::Lambda::Function    CustomerUpdateFunction   -                      
+CREATE_COMPLETE          AWS::IAM::Role           BookingsCreateFunction   -                      
+                                                  Role                                            
+CREATE_COMPLETE          AWS::IAM::Role           ConfigCountFlightSegme   -                      
+                                                  ntsFunctionRole                                 
+CREATE_COMPLETE          AWS::IAM::Role           ConfigCountFlightsFunc   -                      
+                                                  tionRole                                        
+CREATE_COMPLETE          AWS::IAM::Role           BookingsByCustomerFunc   -                      
+                                                  tionRole                                        
+CREATE_COMPLETE          AWS::IAM::Role           BookingsCancelFunction   -                      
+                                                  Role                                            
+CREATE_COMPLETE          AWS::IAM::Role           ConfigCountBookingsFun   -                      
+                                                  ctionRole                                       
+CREATE_COMPLETE          AWS::IAM::Role           LoaderLoadFunctionRole   -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountFlightSegme   -                      
+                                                  ntsFunction                                     
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsCreateFunction   -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountFlightsFunc   -                      
+                                                  tion                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsByCustomerFunc   -                      
+                                                  tion                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsCancelFunction   -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountBookingsFun   -                      
+                                                  ction                                           
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoaderLoadFunction       -                      
+CREATE_COMPLETE          AWS::IAM::Role           FlightsQueryFunctionRo   -                      
+                                                  le                                              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsCreateFunction   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountFlightsFunc   Resource creation      
+                                                  tion                     Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountFlightSegme   Resource creation      
+                                                  ntsFunction              Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsByCustomerFunc   Resource creation      
+                                                  tion                     Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    FlightsQueryFunction     -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Function    BookingsCancelFunction   Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    ConfigCountBookingsFun   Resource creation      
+                                                  ction                    Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Function    LoaderLoadFunction       Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BookingsCreateFunction   Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigCountFlightsFunc   Eventual consistency   
+CONFIGURATION_COMPLETE                            tion                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigCountFlightSegme   Eventual consistency   
+CONFIGURATION_COMPLETE                            ntsFunction              check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BookingsCancelFunction   Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    BookingsByCustomerFunc   Eventual consistency   
+CONFIGURATION_COMPLETE                            tion                     check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    ConfigCountBookingsFun   Eventual consistency   
+CONFIGURATION_COMPLETE                            ction                    check initiated        
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    LoaderLoadFunction       Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS       AWS::Lambda::Function    FlightsQueryFunction     Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS -     AWS::Lambda::Function    FlightsQueryFunction     Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_IN_PROGRESS       AWS::ApiGateway::RestA   AcmeAirApi               -                      
+                         pi                                                                       
+CREATE_COMPLETE          AWS::Lambda::Function    BookingsCreateFunction   -                      
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigCountFlightsFunc   -                      
+                                                  tion                                            
+CREATE_COMPLETE          AWS::Lambda::Function    BookingsCancelFunction   -                      
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigCountFlightSegme   -                      
+                                                  ntsFunction                                     
+CREATE_COMPLETE          AWS::Lambda::Function    BookingsByCustomerFunc   -                      
+                                                  tion                                            
+CREATE_COMPLETE          AWS::Lambda::Function    ConfigCountBookingsFun   -                      
+                                                  ction                                           
+CREATE_IN_PROGRESS       AWS::ApiGateway::RestA   AcmeAirApi               Resource creation      
+                         pi                                                Initiated              
+CREATE_COMPLETE          AWS::Lambda::Function    LoaderLoadFunction       -                      
+CREATE_COMPLETE          AWS::ApiGateway::RestA   AcmeAirApi               -                      
+                         pi                                                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountFlightSegme   -                      
+                         n                        ntsFunctionGetCountFli                          
+                                                  ghtSegmentsPermissionS                          
+                                                  tage                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CustomerUpdateFunction   -                      
+                         n                        PostCustomerByIdPermis                          
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CheckstatusFunctionGet   -                      
+                         n                        CheckstatusPermissionS                          
+                                                  tage                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsByCustomerFunc   -                      
+                         n                        tionGetBookingsByUserP                          
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountAirportsFun   -                      
+                         n                        ctionGetCountAirportsP                          
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsCreateFunction   -                      
+                         n                        PostBookFlightsPermiss                          
+                                                  ionStage                                        
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoaderLoadFunctionGetL   -                      
+                         n                        oaderLoadPermissionSta                          
+                                                  ge                                              
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountCustomersFu   -                      
+                         n                        nctionGetCountCustomer                          
+                                                  sPermissionStage                                
+CREATE_IN_PROGRESS       AWS::ApiGateway::Deplo   AcmeAirApiDeployment7c   -                      
+                         yment                    6db85a73                                        
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   SessionLogoutFunctionG   -                      
+                         n                        etLogoutPermissionStag                          
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigActiveDataServic   -                      
+                         n                        eFunctionGetConfigActi                          
+                                                  veDataServicePermissio                          
+                                                  nStage                                          
+CREATE_IN_PROGRESS       AWS::Logs::LogGroup      ApiLogGroup              -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoaderQueryConfiguredC   -                      
+                         n                        ustomersFunctionGetLoa                          
+                                                  derQueryPermissionStag                          
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoginCreateSessionFunc   -                      
+                         n                        tionPostLoginPermissio                          
+                                                  nStage                                          
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountFlightsFunc   -                      
+                         n                        tionGetCountFlightsPer                          
+                                                  missionStage                                    
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CustomerGetFunctionGet   -                      
+                         n                        CustomerByIdPermission                          
+                                                  Stage                                           
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   FlightsQueryFunctionPo   -                      
+                         n                        stQueryFlightsPermissi                          
+                                                  onStage                                         
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsCancelFunction   -                      
+                         n                        PostCancelBookingPermi                          
+                                                  ssionStage                                      
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountBookingsFun   -                      
+                         n                        ctionGetCountBookingsP                          
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountSessionsFun   -                      
+                         n                        ctionGetCountSessionsP                          
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigRuntimeFunctionG   -                      
+                         n                        etConfigRuntimePermiss                          
+                                                  ionStage                                        
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigDataServicesFunc   -                      
+                         n                        tionGetConfigDataServi                          
+                                                  cesPermissionStage                              
+CREATE_COMPLETE          AWS::Lambda::Function    FlightsQueryFunction     -                      
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CheckstatusFunctionGet   Resource creation      
+                         n                        CheckstatusPermissionS   Initiated              
+                                                  tage                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsByCustomerFunc   Resource creation      
+                         n                        tionGetBookingsByUserP   Initiated              
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoaderLoadFunctionGetL   Resource creation      
+                         n                        oaderLoadPermissionSta   Initiated              
+                                                  ge                                              
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoginCreateSessionFunc   Resource creation      
+                         n                        tionPostLoginPermissio   Initiated              
+                                                  nStage                                          
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CustomerGetFunctionGet   Resource creation      
+                         n                        CustomerByIdPermission   Initiated              
+                                                  Stage                                           
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   SessionLogoutFunctionG   Resource creation      
+                         n                        etLogoutPermissionStag   Initiated              
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigActiveDataServic   Resource creation      
+                         n                        eFunctionGetConfigActi   Initiated              
+                                                  veDataServicePermissio                          
+                                                  nStage                                          
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountAirportsFun   Resource creation      
+                         n                        ctionGetCountAirportsP   Initiated              
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsCreateFunction   Resource creation      
+                         n                        PostBookFlightsPermiss   Initiated              
+                                                  ionStage                                        
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   CustomerUpdateFunction   Resource creation      
+                         n                        PostCustomerByIdPermis   Initiated              
+                                                  sionStage                                       
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   FlightsQueryFunctionPo   Resource creation      
+                         n                        stQueryFlightsPermissi   Initiated              
+                                                  onStage                                         
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigRuntimeFunctionG   Resource creation      
+                         n                        etConfigRuntimePermiss   Initiated              
+                                                  ionStage                                        
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   LoaderQueryConfiguredC   Resource creation      
+                         n                        ustomersFunctionGetLoa   Initiated              
+                                                  derQueryPermissionStag                          
+                                                  e                                               
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   BookingsCancelFunction   Resource creation      
+                         n                        PostCancelBookingPermi   Initiated              
+                                                  ssionStage                                      
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountCustomersFu   Resource creation      
+                         n                        nctionGetCountCustomer   Initiated              
+                                                  sPermissionStage                                
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountBookingsFun   Resource creation      
+                         n                        ctionGetCountBookingsP   Initiated              
+                                                  ermissionStage                                  
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigDataServicesFunc   Resource creation      
+                         n                        tionGetConfigDataServi   Initiated              
+                                                  cesPermissionStage                              
+CREATE_IN_PROGRESS       AWS::Logs::LogGroup      ApiLogGroup              Resource creation      
+                                                                           Initiated              
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountFlightSegme   Resource creation      
+                         n                        ntsFunctionGetCountFli   Initiated              
+                                                  ghtSegmentsPermissionS                          
+                                                  tage                                            
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountFlightsFunc   Resource creation      
+                         n                        tionGetCountFlightsPer   Initiated              
+                                                  missionStage                                    
+CREATE_IN_PROGRESS       AWS::Lambda::Permissio   ConfigCountSessionsFun   Resource creation      
+                         n                        ctionGetCountSessionsP   Initiated              
+                                                  ermissionStage                                  
+CREATE_COMPLETE          AWS::Lambda::Permissio   LoaderLoadFunctionGetL   -                      
+                         n                        oaderLoadPermissionSta                          
+                                                  ge                                              
+CREATE_COMPLETE          AWS::Lambda::Permissio   CheckstatusFunctionGet   -                      
+                         n                        CheckstatusPermissionS                          
+                                                  tage                                            
+CREATE_IN_PROGRESS       AWS::ApiGateway::Deplo   AcmeAirApiDeployment7c   Resource creation      
+                         yment                    6db85a73                 Initiated              
+CREATE_COMPLETE          AWS::Lambda::Permissio   LoginCreateSessionFunc   -                      
+                         n                        tionPostLoginPermissio                          
+                                                  nStage                                          
+CREATE_COMPLETE          AWS::Lambda::Permissio   BookingsByCustomerFunc   -                      
+                         n                        tionGetBookingsByUserP                          
+                                                  ermissionStage                                  
+CREATE_COMPLETE          AWS::Lambda::Permissio   CustomerGetFunctionGet   -                      
+                         n                        CustomerByIdPermission                          
+                                                  Stage                                           
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigActiveDataServic   -                      
+                         n                        eFunctionGetConfigActi                          
+                                                  veDataServicePermissio                          
+                                                  nStage                                          
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigRuntimeFunctionG   -                      
+                         n                        etConfigRuntimePermiss                          
+                                                  ionStage                                        
+CREATE_COMPLETE          AWS::Lambda::Permissio   BookingsCreateFunction   -                      
+                         n                        PostBookFlightsPermiss                          
+                                                  ionStage                                        
+CREATE_COMPLETE          AWS::Lambda::Permissio   BookingsCancelFunction   -                      
+                         n                        PostCancelBookingPermi                          
+                                                  ssionStage                                      
+CREATE_COMPLETE          AWS::Lambda::Permissio   SessionLogoutFunctionG   -                      
+                         n                        etLogoutPermissionStag                          
+                                                  e                                               
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigCountFlightSegme   -                      
+                         n                        ntsFunctionGetCountFli                          
+                                                  ghtSegmentsPermissionS                          
+                                                  tage                                            
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigCountAirportsFun   -                      
+                         n                        ctionGetCountAirportsP                          
+                                                  ermissionStage                                  
+CREATE_COMPLETE          AWS::Lambda::Permissio   LoaderQueryConfiguredC   -                      
+                         n                        ustomersFunctionGetLoa                          
+                                                  derQueryPermissionStag                          
+                                                  e                                               
+CREATE_COMPLETE          AWS::Lambda::Permissio   CustomerUpdateFunction   -                      
+                         n                        PostCustomerByIdPermis                          
+                                                  sionStage                                       
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigCountCustomersFu   -                      
+                         n                        nctionGetCountCustomer                          
+                                                  sPermissionStage                                
+CREATE_COMPLETE          AWS::Lambda::Permissio   FlightsQueryFunctionPo   -                      
+                         n                        stQueryFlightsPermissi                          
+                                                  onStage                                         
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigCountSessionsFun   -                      
+                         n                        ctionGetCountSessionsP                          
+                                                  ermissionStage                                  
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigCountBookingsFun   -                      
+                         n                        ctionGetCountBookingsP                          
+                                                  ermissionStage                                  
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigDataServicesFunc   -                      
+                         n                        tionGetConfigDataServi                          
+                                                  cesPermissionStage                              
+CREATE_COMPLETE          AWS::Lambda::Permissio   ConfigCountFlightsFunc   -                      
+                         n                        tionGetCountFlightsPer                          
+                                                  missionStage                                    
+CREATE_COMPLETE          AWS::ApiGateway::Deplo   AcmeAirApiDeployment7c   -                      
+                         yment                    6db85a73                                        
+CREATE_IN_PROGRESS -     AWS::Logs::LogGroup      ApiLogGroup              Eventual consistency   
+CONFIGURATION_COMPLETE                                                     check initiated        
+CREATE_COMPLETE          AWS::Logs::LogGroup      ApiLogGroup              -                      
+CREATE_IN_PROGRESS       AWS::ApiGateway::Stage   AcmeAirApiStage          -                      
+CREATE_IN_PROGRESS       AWS::ApiGateway::Stage   AcmeAirApiStage          Resource creation      
+                                                                           Initiated              
+CREATE_COMPLETE          AWS::ApiGateway::Stage   AcmeAirApiStage          -                      
+CREATE_COMPLETE          AWS::CloudFormation::S   m2s-e2e-acmeair-v0       -                      
+                         tack                                                                     
+-------------------------------------------------------------------------------------------------
+
+CloudFormation outputs from deployed stack
+-------------------------------------------------------------------------------------------------
+Outputs                                                                                         
+-------------------------------------------------------------------------------------------------
+Key                 CustomerTableName                                                           
+Description         Customer profiles (login credentials, countCustomers, loader seeding).      
+Value               acmeair-dev-customer                                                        
+
+Key                 ApiUrl                                                                      
+Description         Root URL of the REST API stage. Every endpoint of the monolith hangs under  
+its /rest/api contextRoot, e.g. <ApiUrl>/rest/api/login.
+                                       
+Value               https://6321tpxdwg.execute-api.us-east-1.amazonaws.com/dev                  
+
+Key                 BookingTableName                                                            
+Description         Booking records; its customerId-index GSI serves GET                        
+/rest/api/bookings/byuser/{user}.                                                               
+Value               acmeair-dev-booking                                                         
+
+Key                 CustomerSessionTableName                                                    
+Description         Self-managed session rows behind the sessionid cookie (login writes,        
+protected handlers read, logout deletes).                                                       
+Value               acmeair-dev-customerSession                                                 
+
+Key                 FlightTableName                                                             
+Description         Flight instances; their flightSegmentId-scheduledDepartureTime-index GSI    
+serves queryflights.                                                                            
+Value               acmeair-dev-flight                                                          
+
+Key                 FlightSegmentTableName                                                      
+Description         Flight segment definitions; their originPort-destPort-index GSI serves      
+queryflights.                                                                                   
+Value               acmeair-dev-flightSegment                                                   
+
+Key                 AirportCodeMappingTableName                                                 
+Description         Airport code to airport name mapping (loader seeded, countAirports counts   
+it).                                                                                            
+Value               acmeair-dev-airportCodeMapping                                              
+-------------------------------------------------------------------------------------------------
+
+
+Successfully created/updated stack - m2s-e2e-acmeair-v0 in us-east-1
+
+
+$ C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.EXE deploy --stack-name m2s-e2e-acmeair-v0 --region us-east-1 --resolve-s3 --no-confirm-changeset --no-fail-on-empty-changeset --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --parameter-overrides Environment=e2ev0
+--- i-0afab13286dc485d7 Success
+200 6.575602s
+Database Finished Loading
+--- i-0afab13286dc485d7 Success
+10000 1970
+
+--- i-0afab13286dc485d7 Success
+{"Customers":10000,"Flights":1970,"FlightSegments":394,"Airports":14,"_":0}
+--- i-0afab13286dc485d7 Success
+summary =   1830 in 00:00:17 =  106.4/s Avg:    53 Min:    23 Max:  1376 Err:     0 (0.00%)
+Tidying up ...    @ October 9, 2026 7:02:13 AM UTC (1791529333252)
+... end of run
+Oct 09, 2026 7:01:54 AM java.util.prefs.FileSystemPreferences$1 run
+INFO: Created user preferences directory.
+
+--- i-0afab13286dc485d7 Success
+summary =   1838 in 00:00:17 =  108.3/s Avg:    42 Min:    22 Max:   538 Err:     0 (0.00%)
+Tidying up ...    @ October 9, 2026 7:02:45 AM UTC (1791529365004)
+... end of run
+Oct 09, 2026 7:02:26 AM java.util.prefs.FileSystemPreferences$1 run
+INFO: Created user preferences directory.
+
+--- i-0afab13286dc485d7 Success
+268 0
+
+	- Deleting S3 object with key d7c85103d00217c15a93494274f094f1
+	- Deleting S3 object with key 0ca196d7ca0cd322d79d104c300382b3
+	- Deleting S3 object with key dd82a33b028a332ed9732a9d4c996f22
+	- Deleting S3 object with key 2d2253e1dc9a6c1be5a2c681d645ff13
+	- Deleting S3 object with key bc73e9973c917e4960d2ae84b789fddd
+	- Deleting S3 object with key 5a86268bca7f11804fe767634b8be851
+	- Deleting S3 object with key eff8008c1d374e183e317b353ceb1134
+	- Deleting S3 object with key c42906e43de383344f527557946dce64
+	- Deleting S3 object with key 2ccca7f358806bdb897aa982ddb605f3
+	- Deleting S3 object with key af5b27a94c78f0308649e9945a4e12b7
+	- Deleting S3 object with key 6d33abb2e012795558c8a38939b794f6
+	- Deleting S3 object with key 44e33c7b44933a7f0bae8e0b58304359
+	- Deleting S3 object with key a6ead0afddafafbbf879e67e5554a289
+	- Deleting S3 object with key a2144b31aa4a360b3fcc9a0f9d7fea91
+	- Deleting S3 object with key 96506a6282c2e9910c7ed1077d67e64a
+	- Deleting S3 object with key b05f6ae012bc95f49b165d965f915431
+	- Deleting S3 object with key b480e38f9ed14db46fcca962924cf048
+	- Deleting S3 object with key 3a257833a45ccce3ef751f7296adafb4
+	- Deleting S3 object with key 87247508f8ba920e0d97a54ebfd646c1
+	- Deleting S3 object with key 50a71b2b34d0877909afef897f7a5203
+	- Could not find and delete the S3 object with the key bb761f6459b0c8599f352e96754a318b.template
+	- Deleting Cloudformation stack m2s-e2e-acmeair-v0
+
+Deleted successfully
+
+$ C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.EXE delete --stack-name m2s-e2e-acmeair-v0 --region us-east-1 --no-prompts
+deleted retained AWS::DynamoDB::Table acmeair-dev-airportCodeMapping
+deleted retained AWS::DynamoDB::Table acmeair-dev-booking
+deleted retained AWS::DynamoDB::Table acmeair-dev-customerSession
+deleted retained AWS::DynamoDB::Table acmeair-dev-customer
+deleted retained AWS::DynamoDB::Table acmeair-dev-flightSegment
+deleted retained AWS::DynamoDB::Table acmeair-dev-flight
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-BookingsByCustomerFunction-7FDx7Kwq7rL5
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-BookingsCreateFunction-tw9uZG2bolCh
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-ConfigCountAirportsFunction-jG5zBqljE5HG
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-ConfigCountBookingsFunction-hy2fxx9UplPp
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-ConfigCountCustomersFunction-VlKsipErAQMQ
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-ConfigCountFlightSegmentsFuncti-6lukfPUHEKKq
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-ConfigCountFlightsFunction-cKj60h74Q0Qt
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-ConfigCountSessionsFunction-BclCr7I8dGJy
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-CustomerGetFunction-dIwlyaOVSk2Q
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-CustomerUpdateFunction-ltYdIFUb9Tsh
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-FlightsQueryFunction-HihT5UDdkuhU
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-LoaderLoadFunction-sp8LS9yG8tLa
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-LoginCreateSessionFunction-sIwCtGP3p9wm
+deleted retained AWS::Logs::LogGroup /aws/lambda/m2s-e2e-acmeair-v0-SessionLogoutFunction-uFmruft7j9qe

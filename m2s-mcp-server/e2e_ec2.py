@@ -268,10 +268,19 @@ def run_serverless(infra: dict, variant: str, ref: str, workspace: str, out_dir:
         if stage.endswith("/rest/api"):
             stage = stage[: -len("/rest/api")]
         base = f"https://{u.netloc}{stage}/rest/api"
+        # An edge-optimized REST API is served through CloudFront; until a new API
+        # has reached every edge node, some answer 403 ForbiddenException
+        # ("x-cache: Error from cloudfront") -- seen from the us-east-1 load
+        # generator for minutes after deploy (acmeair opt, 2026-10-09). One 200
+        # is not enough: require 30 in a row.
+        run(infra["LoadGenId"], f"ok=0; for i in $(seq 1 450); do if [ \"$(curl -s -o /dev/null -w '%{{http_code}}' {base}/checkstatus)\" = 200 ]; "
+            "then ok=$((ok+1)); [ $ok -ge 30 ] && echo UP after $i && exit 0; else ok=0; sleep 2; fi; done; exit 1", log, timeout=1200)
         # API Gateway ends a request after 29 s while the loader Lambda (300 s)
         # keeps writing: record what the client saw, then wait for the data
-        loaded = run(infra["LoadGenId"], f"curl -s -m 900 -o /tmp/load.out -w '%{{http_code}} %{{time_total}}s' "
-                     f"'{base}/loader/load?numCustomers={customers}'; echo; head -c 200 /tmp/load.out", log, timeout=1800)
+        # retried only on the CloudFront 403 (the request never reached the app)
+        loaded = run(infra["LoadGenId"], "for i in $(seq 1 20); do "
+                     f"s=$(curl -s -m 900 -o /tmp/load.out -w '%{{http_code}} %{{time_total}}s' '{base}/loader/load?numCustomers={customers}'); "
+                     "case \"$s\" in 403*) sleep 15;; *) break;; esac; done; echo \"$s\"; head -c 200 /tmp/load.out", log, timeout=1800)
         run(infra["LoadGenId"], f"for i in $(seq 1 120); do c=$(curl -s {base}/config/countCustomers); f=$(curl -s {base}/config/countFlights); "
             f"[ \"$c\" = \"{customers}\" ] && [ \"$f\" -gt 0 ] 2>/dev/null && sleep 20 && echo $c $f && exit 0; sleep 10; done; exit 1", log, timeout=1500)
         counts = json.loads(run(infra["LoadGenId"], "printf '{' ; for k in Customers Flights FlightSegments Airports; do "

@@ -1,0 +1,35 @@
+infra deleted
+infra up: {"Bucket": "m2s-e2e-acmeair-infra-results-vz4ewa4am11a", "LoadGenId": "i-01ef58e0847401892", "MonolithIp": "172.31.12.74", "MonolithId": "i-0804b49f88362d9ac"}
+--- i-01ef58e0847401892 Success
+READY
+Created symlink /etc/systemd/system/multi-user.target.wants/docker.service → /usr/lib/systemd/system/docker.service.
+
+infra deleted
+infra up: {"Bucket": "m2s-e2e-acmeair-infra-results-pwtp3niivden", "LoadGenId": "i-035981012e673e64b", "MonolithIp": "172.31.8.1", "MonolithId": "i-0b3010eb5c2656c72"}
+--- i-035981012e673e64b Success
+READY
+Created symlink /etc/systemd/system/multi-user.target.wants/docker.service → /usr/lib/systemd/system/docker.service.
+
+infra up: {"Bucket": "m2s-e2e-acmeair-infra-results-pwtp3niivden", "LoadGenId": "i-035981012e673e64b", "MonolithIp": "172.31.8.1", "MonolithId": "i-0b3010eb5c2656c72"}
+--- i-035981012e673e64b Failed
+
+infra deleted
+infra deleted
+infra up: {"Bucket": "m2s-e2e-acmeair-infra-results-vc6yk5oucc7x", "LoadGenId": "i-0afab13286dc485d7", "MonolithIp": "172.31.15.88", "MonolithId": "i-0ee57b2d8440fa496"}
+--- i-0afab13286dc485d7 Success
+READY
+Created symlink /etc/systemd/system/multi-user.target.wants/docker.service → /usr/lib/systemd/system/docker.service.
+
+infra deleted
+infra up: {"Bucket": "m2s-e2e-acmeair-infra-results-rok48ewave2v", "LoadGenId": "i-0f0483246eb530aa4", "MonolithIp": "172.31.2.254", "MonolithId": "i-04426c0ff5097dc38"}
+--- i-0f0483246eb530aa4 Success
+READY
+Created symlink /etc/systemd/system/multi-user.target.wants/docker.service → /usr/lib/systemd/system/docker.service.
+
+infra deleted
+infra up: {"Bucket": "m2s-e2e-acmeair-infra-results-fx1uawoalgqa", "LoadGenId": "i-0ceadb6cc7b89e401", "MonolithIp": "172.31.15.144", "MonolithId": "i-08f69cdede6301cec"}
+--- i-0ceadb6cc7b89e401 Success
+READY
+Created symlink /etc/systemd/system/multi-user.target.wants/docker.service → /usr/lib/systemd/system/docker.service.
+
+infra deleted

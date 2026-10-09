@@ -1,0 +1,120 @@
+2026-10-09 09:20:31,164 INFO o.a.j.u.JMeterUtils: Setting Locale to en_EN
+2026-10-09 09:20:31,191 INFO o.a.j.JMeter: Loading user properties from: /opt/apache-jmeter-5.5/bin/user.properties
+2026-10-09 09:20:31,192 INFO o.a.j.JMeter: Loading system properties from: /opt/apache-jmeter-5.5/bin/system.properties
+2026-10-09 09:20:31,192 INFO o.a.j.JMeter: Setting JMeter property: NUM_THREAD=10
+2026-10-09 09:20:31,192 INFO o.a.j.JMeter: Setting JMeter property: LOOP_COUNT=20
+2026-10-09 09:20:31,192 INFO o.a.j.JMeter: Setting JMeter property: PROTOCOL=https
+2026-10-09 09:20:31,193 INFO o.a.j.JMeter: Setting System property: usePureIDs=true
+2026-10-09 09:20:31,208 INFO o.a.j.JMeter: Copyright (c) 1998-2022 The Apache Software Foundation
+2026-10-09 09:20:31,208 INFO o.a.j.JMeter: Version 5.5
+2026-10-09 09:20:31,208 INFO o.a.j.JMeter: java.version=1.8.0_275
+2026-10-09 09:20:31,208 INFO o.a.j.JMeter: java.vm.name=OpenJDK 64-Bit Server VM
+2026-10-09 09:20:31,208 INFO o.a.j.JMeter: os.name=Linux
+2026-10-09 09:20:31,208 INFO o.a.j.JMeter: os.arch=amd64
+2026-10-09 09:20:31,208 INFO o.a.j.JMeter: os.version=6.18.51-120.163.amzn2023.x86_64
+2026-10-09 09:20:31,208 INFO o.a.j.JMeter: file.encoding=UTF-8
+2026-10-09 09:20:31,208 INFO o.a.j.JMeter: java.awt.headless=true
+2026-10-09 09:20:31,208 INFO o.a.j.JMeter: Max memory     =1073741824
+2026-10-09 09:20:31,209 INFO o.a.j.JMeter: Available Processors =2
+2026-10-09 09:20:31,217 INFO o.a.j.JMeter: Default Locale=English (EN)
+2026-10-09 09:20:31,218 INFO o.a.j.JMeter: JMeter  Locale=English (EN)
+2026-10-09 09:20:31,218 INFO o.a.j.JMeter: JMeterHome=/opt/apache-jmeter-5.5
+2026-10-09 09:20:31,218 INFO o.a.j.JMeter: user.dir  =/test
+2026-10-09 09:20:31,218 INFO o.a.j.JMeter: PWD       =/test
+2026-10-09 09:20:31,218 INFO o.a.j.JMeter: IP: 172.17.0.2 Name: a42ab27dc982 FullName: a42ab27dc982
+2026-10-09 09:20:31,241 INFO o.a.j.s.FileServer: Default base='/test'
+2026-10-09 09:20:31,242 INFO o.a.j.s.FileServer: Set new base='/test'
+2026-10-09 09:20:31,463 INFO o.a.j.s.SaveService: Testplan (JMX) version: 2.2. Testlog (JTL) version: 2.2
+2026-10-09 09:20:31,500 INFO o.a.j.s.SaveService: Using SaveService properties file encoding UTF-8
+2026-10-09 09:20:31,506 INFO o.a.j.s.SaveService: Using SaveService properties version 5.0
+2026-10-09 09:20:31,515 INFO o.a.j.s.SaveService: Loading file: AcmeAir.jmx
+2026-10-09 09:20:31,603 INFO o.a.j.p.h.c.CookieManager: Settings: Delete null: true Check: true Allow variable: true Save: false Prefix: COOKIE_
+2026-10-09 09:20:31,629 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for text/html is org.apache.jmeter.protocol.http.parser.LagartoBasedHtmlParser
+2026-10-09 09:20:31,629 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for application/xhtml+xml is org.apache.jmeter.protocol.http.parser.LagartoBasedHtmlParser
+2026-10-09 09:20:31,629 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for application/xml is org.apache.jmeter.protocol.http.parser.LagartoBasedHtmlParser
+2026-10-09 09:20:31,629 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for text/xml is org.apache.jmeter.protocol.http.parser.LagartoBasedHtmlParser
+2026-10-09 09:20:31,630 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for text/vnd.wap.wml is org.apache.jmeter.protocol.http.parser.RegexpHTMLParser
+2026-10-09 09:20:31,630 INFO o.a.j.p.h.s.HTTPSamplerBase: Parser for text/css is org.apache.jmeter.protocol.http.parser.CssParser
+2026-10-09 09:20:32,570 INFO o.a.j.JMeter: Creating summariser <summary>
+2026-10-09 09:20:32,590 INFO o.a.j.e.StandardJMeterEngine: Running the test!
+2026-10-09 09:20:32,590 INFO o.a.j.s.SampleEvent: List of sample_variables: []
+2026-10-09 09:20:32,591 INFO o.a.j.s.SampleEvent: List of sample_variables: []
+2026-10-09 09:20:32,598 INFO o.a.j.e.u.CompoundVariable: Note: Function class names must contain the string: '.functions.'
+2026-10-09 09:20:32,598 INFO o.a.j.e.u.CompoundVariable: Note: Function class names must not contain the string: '.gui.'
+2026-10-09 09:20:32,744 INFO o.a.j.JMeter: Running test (1791537632744)
+2026-10-09 09:20:32,824 INFO o.a.j.e.StandardJMeterEngine: Starting ThreadGroup: 1 : Thread Group
+2026-10-09 09:20:32,824 INFO o.a.j.e.StandardJMeterEngine: Starting 10 threads for group Thread Group.
+2026-10-09 09:20:32,824 INFO o.a.j.e.StandardJMeterEngine: Thread will continue on error
+2026-10-09 09:20:32,824 INFO o.a.j.t.ThreadGroup: Starting thread group... number=1 threads=10 ramp-up=10 delayedStart=false
+2026-10-09 09:20:32,846 INFO o.a.j.t.JMeterThread: Thread started: Thread Group 1-1
+2026-10-09 09:20:32,851 INFO o.a.j.s.FileServer: Stored: hosts.csv Alias: hosts.csv@218435868
+2026-10-09 09:20:32,879 INFO o.a.j.t.ThreadGroup: Started thread group number 1
+2026-10-09 09:20:32,879 INFO o.a.j.e.StandardJMeterEngine: All thread groups have been started
+2026-10-09 09:20:32,904 INFO o.a.j.p.h.s.HTTPHCAbstractImpl: Local host = a42ab27dc982
+2026-10-09 09:20:32,910 INFO o.a.j.p.h.s.HTTPHC4Impl: HTTP request retry count = 0
+2026-10-09 09:20:32,912 INFO o.a.j.s.SampleResult: Note: Sample TimeStamps are START times
+2026-10-09 09:20:32,912 INFO o.a.j.s.SampleResult: sampleresult.default.encoding is set to ISO-8859-1
+2026-10-09 09:20:32,912 INFO o.a.j.s.SampleResult: sampleresult.useNanoTime=true
+2026-10-09 09:20:32,912 INFO o.a.j.s.SampleResult: sampleresult.nanoThreadSleep=5000
+2026-10-09 09:20:33,026 INFO o.a.j.p.h.s.h.LazyLayeredConnectionSocketFactory: Setting up HTTPS TrustAll Socket Factory
+2026-10-09 09:20:33,039 INFO o.a.j.u.JsseSSLManager: Using default SSL protocol: TLS
+2026-10-09 09:20:33,039 INFO o.a.j.u.JsseSSLManager: SSL session context: per-thread
+2026-10-09 09:20:33,136 INFO o.a.j.u.SSLManager: JmeterKeyStore Location:  type JKS
+2026-10-09 09:20:33,142 INFO o.a.j.u.SSLManager: KeyStore created OK
+2026-10-09 09:20:33,142 WARN o.a.j.u.SSLManager: Keystore file not found, loading empty keystore
+2026-10-09 09:20:33,830 INFO o.a.j.t.JMeterThread: Thread started: Thread Group 1-2
+2026-10-09 09:20:33,831 INFO o.a.j.s.FileServer: Stored: hosts.csv Alias: hosts.csv@807394700
+2026-10-09 09:20:34,446 INFO o.a.j.r.Summariser: summary +      1 in 00:00:02 =    0.6/s Avg:  1456 Min:  1456 Max:  1456 Err:     0 (0.00%) Active: 2 Started: 2 Finished: 0
+2026-10-09 09:20:34,447 INFO o.a.j.s.FileServer: Stored: Airports2.csv
+2026-10-09 09:20:34,448 INFO o.a.j.s.FileServer: Stored: Airports.csv
+2026-10-09 09:20:34,839 INFO o.a.j.t.JMeterThread: Thread started: Thread Group 1-3
+2026-10-09 09:20:34,840 INFO o.a.j.s.FileServer: Stored: hosts.csv Alias: hosts.csv@201004651
+2026-10-09 09:20:35,841 INFO o.a.j.t.JMeterThread: Thread started: Thread Group 1-4
+2026-10-09 09:20:35,842 INFO o.a.j.s.FileServer: Stored: hosts.csv Alias: hosts.csv@468076849
+2026-10-09 09:20:36,836 INFO o.a.j.t.JMeterThread: Thread started: Thread Group 1-5
+2026-10-09 09:20:36,836 INFO o.a.j.s.FileServer: Stored: hosts.csv Alias: hosts.csv@1857504033
+2026-10-09 09:20:37,832 INFO o.a.j.t.JMeterThread: Thread started: Thread Group 1-6
+2026-10-09 09:20:37,833 INFO o.a.j.s.FileServer: Stored: hosts.csv Alias: hosts.csv@1039814874
+2026-10-09 09:20:38,827 INFO o.a.j.t.JMeterThread: Thread started: Thread Group 1-7
+2026-10-09 09:20:38,828 INFO o.a.j.s.FileServer: Stored: hosts.csv Alias: hosts.csv@282909609
+2026-10-09 09:20:39,832 INFO o.a.j.t.JMeterThread: Thread started: Thread Group 1-8
+2026-10-09 09:20:39,833 INFO o.a.j.s.FileServer: Stored: hosts.csv Alias: hosts.csv@299510483
+2026-10-09 09:20:40,828 INFO o.a.j.t.JMeterThread: Thread started: Thread Group 1-9
+2026-10-09 09:20:40,829 INFO o.a.j.s.FileServer: Stored: hosts.csv Alias: hosts.csv@1831131663
+2026-10-09 09:20:41,832 INFO o.a.j.t.JMeterThread: Thread started: Thread Group 1-10
+2026-10-09 09:20:41,833 INFO o.a.j.s.FileServer: Stored: hosts.csv Alias: hosts.csv@1021016112
+2026-10-09 09:20:46,197 INFO o.a.j.t.JMeterThread: Thread is done: Thread Group 1-4
+2026-10-09 09:20:46,197 INFO o.a.j.t.JMeterThread: Thread finished: Thread Group 1-4
+2026-10-09 09:20:46,363 INFO o.a.j.t.JMeterThread: Thread is done: Thread Group 1-2
+2026-10-09 09:20:46,363 INFO o.a.j.t.JMeterThread: Thread finished: Thread Group 1-2
+2026-10-09 09:20:46,687 INFO o.a.j.t.JMeterThread: Thread is done: Thread Group 1-3
+2026-10-09 09:20:46,688 INFO o.a.j.t.JMeterThread: Thread finished: Thread Group 1-3
+2026-10-09 09:20:46,924 INFO o.a.j.t.JMeterThread: Thread is done: Thread Group 1-1
+2026-10-09 09:20:46,925 INFO o.a.j.t.JMeterThread: Thread finished: Thread Group 1-1
+2026-10-09 09:20:47,100 INFO o.a.j.t.JMeterThread: Thread is done: Thread Group 1-5
+2026-10-09 09:20:47,100 INFO o.a.j.t.JMeterThread: Thread finished: Thread Group 1-5
+2026-10-09 09:20:47,196 INFO o.a.j.t.JMeterThread: Thread is done: Thread Group 1-6
+2026-10-09 09:20:47,196 INFO o.a.j.t.JMeterThread: Thread finished: Thread Group 1-6
+2026-10-09 09:20:47,477 INFO o.a.j.t.JMeterThread: Thread is done: Thread Group 1-7
+2026-10-09 09:20:47,477 INFO o.a.j.t.JMeterThread: Thread finished: Thread Group 1-7
+2026-10-09 09:20:48,841 INFO o.a.j.t.JMeterThread: Thread is done: Thread Group 1-8
+2026-10-09 09:20:48,841 INFO o.a.j.t.JMeterThread: Thread finished: Thread Group 1-8
+2026-10-09 09:20:49,369 INFO o.a.j.t.JMeterThread: Thread is done: Thread Group 1-9
+2026-10-09 09:20:49,369 INFO o.a.j.t.JMeterThread: Thread finished: Thread Group 1-9
+2026-10-09 09:20:50,107 INFO o.a.j.t.JMeterThread: Thread is done: Thread Group 1-10
+2026-10-09 09:20:50,107 INFO o.a.j.t.JMeterThread: Thread finished: Thread Group 1-10
+2026-10-09 09:20:50,107 INFO o.a.j.e.StandardJMeterEngine: Notifying test listeners of end of test
+2026-10-09 09:20:50,107 INFO o.a.j.s.FileServer: Close: hosts.csv@1857504033
+2026-10-09 09:20:50,107 INFO o.a.j.s.FileServer: Close: hosts.csv@1021016112
+2026-10-09 09:20:50,107 INFO o.a.j.s.FileServer: Close: Airports2.csv
+2026-10-09 09:20:50,108 INFO o.a.j.s.FileServer: Close: hosts.csv@468076849
+2026-10-09 09:20:50,108 INFO o.a.j.s.FileServer: Close: hosts.csv@218435868
+2026-10-09 09:20:50,108 INFO o.a.j.s.FileServer: Close: Airports.csv
+2026-10-09 09:20:50,108 INFO o.a.j.s.FileServer: Close: hosts.csv@201004651
+2026-10-09 09:20:50,108 INFO o.a.j.s.FileServer: Close: hosts.csv@282909609
+2026-10-09 09:20:50,108 INFO o.a.j.s.FileServer: Close: hosts.csv@299510483
+2026-10-09 09:20:50,108 INFO o.a.j.s.FileServer: Close: hosts.csv@1039814874
+2026-10-09 09:20:50,108 INFO o.a.j.s.FileServer: Close: hosts.csv@1831131663
+2026-10-09 09:20:50,108 INFO o.a.j.s.FileServer: Close: hosts.csv@807394700
+2026-10-09 09:20:50,108 INFO o.a.j.r.Summariser: summary +   1838 in 00:00:16 =  117.3/s Avg:    54 Min:    23 Max:   861 Err:     0 (0.00%) Active: 0 Started: 10 Finished: 10
+2026-10-09 09:20:50,109 INFO o.a.j.r.Summariser: summary =   1839 in 00:00:17 =  105.9/s Avg:    55 Min:    23 Max:  1456 Err:     0 (0.00%)
