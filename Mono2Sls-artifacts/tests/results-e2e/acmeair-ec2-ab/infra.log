@@ -1,0 +1,6 @@
+infra up: {"Bucket": "m2s-e2e-acmeair-infra-results-clizah9d1qct", "LoadGenId": "i-090689a9d95021359", "MonolithIp": "172.31.2.20", "MonolithId": "i-08c27a8e8b85b310f"}
+--- i-090689a9d95021359 Success
+READY
+Created symlink /etc/systemd/system/multi-user.target.wants/docker.service → /usr/lib/systemd/system/docker.service.
+
+infra deleted

@@ -1,0 +1,8 @@
+== monolith
+{"error": null, "cost_usd": {"ec2_during_passes": 0.000476, "ec2_per_hour": 0.0208}}
+== v0
+{"error": null, "cost_usd": {"lambda_duration": 0.00071278, "lambda_requests": 0.000748, "dynamodb": 0.00199625, "api_gateway": 0.013083, "total": 0.01654003}}
+== v0-http
+{"error": null, "cost_usd": {"lambda_duration": 0.00070716, "lambda_requests": 0.0007474, "dynamodb": 0.00197344, "api_gateway": 0.003735, "total": 0.007163}}
+== opt
+{"error": null, "cost_usd": {"lambda_duration": 0.00070603, "lambda_requests": 0.0007456, "dynamodb": 0.0019705, "api_gateway": 0.013041, "total": 0.01646313}}

@@ -437,6 +437,156 @@ E0 不需要 AWS，应该最先做：它决定本文结论是"bookstore 的特�
 
 ---
 
+## 10. acmeair 同区域实测之后的修订（2026-10-09）
+
+数据：`Mono2Sls-artifacts/tests/results-e2e/acmeair-ec2/`（commit `4adc9a7` 的那次运行），修正值在同目录的
+`corrected.md`。第二次 A/B（REST vs HTTP API，航班 13 天）见 §10.6。
+
+### 10.1 测量 harness 的三个 bug（已修）
+
+| bug | 后果 | 修法 |
+|---|---|---|
+| Lambda REPORT 窗口 `[started−5s, ended+120s]`，两个 pass 只隔约 4 秒 | pass 1 把 pass 2 的调用也算进去，调用次数和 GB-s 多出约 50% | `collect_metrics(until=下一个 pass 的开始)`，按 RequestId 去重 |
+| DynamoDB 窗口 `[started−60s, ended+300s]`，CloudWatch 只有分钟粒度 | 窗口互相重叠；loader 那一分钟的写入（约 1.2 万 WRU）和 harness 的 count Scan 被算进压测 | `e2e_ec2.minute_gap()`：loader、计数检查、每个 pass 各占独立的整分钟 |
+| 只读了表维度 | GSI 的读写（航班查询的两个 GSI，每个 pass 约 1800 RRU）完全漏掉 | 同时读取 `GlobalSecondaryIndexName` 维度 |
+
+修正后 v0 与 opt 每千次请求都是 **$0.0043**，其中 API Gateway REST 占 81%。原报告里“opt 更便宜”是假象。
+
+另外发现：这次压测里**所有 BookFlight 都是单程**。loader 只生成 5 天的航班，而 driver 的返程日期在第 6–12 天，
+查不到返程就改成单程。所以 opt 唯一在热路径上的改动（往返下单两次 PutItem 并行）一次都没执行。v0 与 opt 的
+差别是纯噪声。新的 harness 默认 `--flight-days 13`。
+
+### 10.2 端到端延迟的分解（X-Ray，warm pass2 中位数）
+
+| 段 | 耗时 |
+|---|---|
+| 客户端 + 边缘节点（edge-optimized 的 CloudFront 一跳） | 4–5ms |
+| API Gateway REST 自身（stage − Lambda 服务段） | 11–12ms |
+| Lambda 调用开销（Lambda 服务段 − 函数段） | 约 5ms |
+| 函数本身 | 其余（DynamoDB 往返为主，CPU 约 1ms） |
+
+这是 §6.3 要求的第一次真实分解。结论：
+- 去掉 CloudFront 一跳（REGIONAL）最多省 4–5ms，而且只对同区域客户端成立；
+- 网关和调用开销加起来约 16ms，是每个请求的固定成本，Lambda 内部优化碰不到它。
+
+### 10.3 按操作类型校准的延迟表
+
+`perf-rules/latency-profile.json`：GetItem 3.7、Query 4.2、PutItem 5.5、DeleteItem 4.8、UpdateItem 4.8（ms）。
+由 warm REPORT 中位数按各函数的调用序列反推，假设每个函数约 2ms 非网络时间。**证据等级 E**：
+
+- 这个假设每偏差 1ms，每项就偏差约 1ms；
+- Scan / Batch / Transact 未标定，回退到默认值，并在输出里标为 `uncalibrated`；
+- 返回数据较大的 Query 会被低估（flights-query 往返估算 22.5ms，实测 p50 24ms）。
+
+perf-harness（JS/Python）新增 `network_ms_cal`：沿用 depth 的依赖链，每次调用按操作类型取延迟。判决报告新增
+`calibrated_estimate`（base/cand/delta）。**它只估算量级，不参与判决**，判决仍然用固定延迟的 RIE 运行。
+
+在 acmeair 上，往返下单的并行改动估算 −5.5ms；原来 10ms 固定模型给的是 −11ms。
+
+升到 M 级的办法：下次上 AWS 时部署一个标定 Lambda，对每种操作在不同 item 大小、返回条数下各调用 N 次，直接计时。
+
+### 10.4 流水线设计改动（已定方向，未实现）
+
+**(a) 区分两种“失败即停止”，放宽 §6.2 的禁令**
+
+| 提前返回的类型 | 例子 | 能否改成并行 |
+|---|---|---|
+| `authz`：权限守卫 | session 不通过就不读业务表 | **不能**。未认证请求也会消耗读容量，被刷时成本放大，还有时序侧信道 |
+| `error_propagation`：错误传播 | 去程航段读取失败返回 500、不查回程 | **可以投机并行**，条件见下 |
+
+投机并行的条件（新规则 R1b）：
+1. 被提前发出的操作**全部是读**（Get / Query / Scan / BatchGet）；
+2. 在所有故障组合下，响应和写入集合与原来完全一致（H1 等价性检查在故障注入下比较“响应 + 写入集合”）；
+3. 多出的读只发生在失败路径上，报告里记录多出的 RRU。
+
+落地：
+- S0/S1 给每个提前返回标 `guard_kind`；
+- verifier 的 `sdk_calls.excludes` 只对 `authz` 强制，对 `error_propagation` 改成断言“不多发写操作”；
+- §6.2 的禁令改窄为“含写操作或属于 authz 守卫的，不能改成并行”。
+
+acmeair 收益估算：flights-query 往返 20.5 → 12.1ms（校准表），查询占全部请求的 54%。
+
+**(b) 有界旧数据：缓存从“作废”改为契约**
+
+- spec：单体的进程内缓存不再判为“实现轨迹，作废”，而是 `contract: bounded_staleness(entities, ttl)`。
+  单体本来就对外暴露了这个 TTL 内的旧数据。
+- 测试：这些实体在 TTL 内不断言“写完立刻读到”，或者在新的执行环境里断言。
+- 实现：模块级 TTL 缓存，缓存键照搬单体，包括对空结果的缓存，加条目上限和内存检查；冷启动时缓存为空。
+- 不默认用 DAX：要常驻集群和 VPC，违背 §2.3。
+- 收益要按缓存键的基数估：acmeair 的航段键只有 182 种，很快全部命中；航班键（航段 × 日期）约 2000 种，
+  分散在约 10 个执行环境里，短压测中多数会 miss。
+
+**(c) 实现轨迹降级为 `perf_hints`，不丢弃**
+
+- S0/S1 把判为实现轨迹、但有性能意图的条目（缓存、批处理、预取）记进 `perf_hints`，
+  例如 `{kind: cache, ttl: 20min, keys: …, source: routes/index.js:21}`。
+- 对正确性没有约束力，但传给 S3/S5 作为参考。
+- 单体里有缓存，本身就是“原系统接受旧数据”的强证据。
+
+**(d) 新规则 R7：参考数据缓存候选（即使单体没有缓存）**
+
+- 信号：静态分析找出“哪些函数写某张表”，结合请求比例里的读写比，识别“读多写极少、在热路径上”的表。
+- 只能自动发现，**不能自动应用**：能容忍多旧的数据是业务决定，输出 spec 放宽申请或 `pending_human`。
+
+**(e) API 类型提前到 S1 决定**
+
+- REGIONAL vs EDGE：取决于客户端在哪里，属于部署场景。在 blueprint 加 `clients: same_region | internet`。
+- REST vs HTTP API：在 blueprint 加 `api_type`，附适用性检查。用到以下任一 REST 独有功能时选 REST：
+  GatewayResponses、X-Ray Active tracing、直接挂 WAF、API key / 用量计划、请求校验、缓存、资源策略；
+  否则默认 HTTP API。
+- 放在 S1 的原因：HTTP API 的 payload 2.0 会改变事件格式（cookies 数组、`rawPath`、`requestContext.http`），
+  code-developer 和 verifier 要从一开始按目标格式写代码和测试。在 S5 再改等于重写所有 handler 和测试事件。
+- perf-optimizer 只出 advisory（新规则 R6）：静态检测“当前是 REST 且没用到 REST 独有功能”，附成本估算和
+  `e2e_ec2.py` A/B 的命令。
+
+**(f) 冷启动加权 p99**
+
+- 冷启动按函数算：m2s 把应用拆成 20 个函数，每个函数的流量都比整个应用稀疏得多。
+  config-count-* 这次每个只被调用 1 次，100% 冷启动。
+- 流量形态数据的来源，按可信度：
+  1. 单体的访问日志（nginx / ALB / morgan），作为 P0 的可选输入；
+  2. 现有监控里按端点的速率时间序列；
+  3. 压测脚本，只能给出请求比例；
+  4. 都没有时，并列报告一组标准场景：稀疏（每分钟 1 次）、稳定（N req/s）、突发（每 T 分钟 N 并发）、昼夜波动。
+- 这个判据也会影响“拆成多少个函数”的架构决定，不只是打包优化。
+
+### 10.5 对本文前面章节的修正
+
+1. §4.2 C1（HTTP API）：价格 −57%、端到端 −5ms，已由 §10.6 的 A/B 实测（M，L3 一次）。这一项的决定位置从 v2 / S5 改到 S1（§10.4 e）。
+2. §4.2 C3（缓存）：改为 §10.4 (b)–(d)。
+3. §5 的表“arm64、MemorySize 档位、SQS 参数、HTTP API：不测”：HTTP API 改为“S1 决定，L3 A/B 可选确认”。
+4. §6.3：第一次 E2E 分解已完成（§10.2）。
+5. §8 E3：已执行（§10.6）。
+
+### 10.6 REST vs HTTP API A/B（航班 13 天，往返订票会真实发生）
+
+数据：`Mono2Sls-artifacts/tests/results-e2e/acmeair-ec2-ab/report.md`（2026-10-09，`e2e_ec2.py --flight-days 13`，
+已用修好的 harness）。四个变体全部 0 错误，栈和 EC2 都已拆除。
+
+| 变体 | warm 端到端 p50 / p90 / p99 | API GW 自身 | 网关外（客户端 + 边缘） | 每千次请求 |
+|---|---|---|---|---|
+| monolith | 2 / 5 / 10 ms | — | — | $0.00013（EC2 不论忙闲都在计费） |
+| v0（REST，EDGE） | 41 / 61 / 138 ms | 4 ms | 6 ms | $0.00443 |
+| **v0-http**（同一份代码，HTTP API，payload 1.0） | **36 / 55 / 102 ms** | **1 ms** | **4 ms** | **$0.00192** |
+| opt（REST） | 41 / 60 / 142 ms | 4 ms | 6 ms | $0.00442 |
+
+“API GW 自身” = 访问日志的 `responseLatency − integrationLatency`；“网关外” = 端到端 − `responseLatency`。
+
+结论：
+1. **HTTP API：端到端 −5ms（−12%），每个请求类型都更快；成本 −57%。** 收益来自两处：网关自身少约 3ms，
+   去掉边缘一跳少约 2ms。Lambda Duration 两者相同。等级从 E 升为 **M（L3，一次 A/B）**。
+2. **修正 §10.2：** X-Ray 的“stage − Lambda 服务段 11–12ms”并不全是网关处理时间。访问日志显示 REST 网关
+   自身只有约 4ms；`integrationLatency`（中位 31ms）里除了函数执行，还包含较大的调用开销。端到端的大头仍然是
+   Lambda 调用链路 + DynamoDB 往返，换网关类型解决不了它。
+3. **opt 的往返下单并行这次真实执行了**（Bookings 约 580 条 / 约 340 次 BookFlight，大部分是往返）：
+   BookingsCreate warm p50 从 17.4–17.8ms 降到 13.4ms（−4ms）。§10.3 校准表估算 −5.5ms，原 10ms 模型估算 −11ms，
+   校准表更接近。端到端 BookFlight 39 → 37ms，落在噪声范围内；整体 p50 不变，因为 BookFlight 只占约 9% 的请求。
+4. 冷启动：每个变体 pass1 约 25–27 次，init 约 200–340ms，把 pass1 的 p99 推到 560–630ms。
+5. 成本：API Gateway REST 占 serverless 成本约 79%，换成 HTTP API 后约 52%。与单体 EC2（$0.0208/h）的
+   盈亏平衡点从约 4700 次/小时提高到约 10800 次/小时。
+
+---
+
 ## 附录 A：工具索引（`m2s-mcp-server/perf-tools/`）
 
 | 文件 | 层 | 用途 |
