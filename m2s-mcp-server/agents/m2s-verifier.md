@@ -107,6 +107,10 @@ model: inherit
     - `error_propagation`（只是传播错误，例如去程查询失败返回 500）：只用 `excludes` 断言后面的**写操作和发消息**没有发生，**不要**排除读。后面的读可能被 R1b 提前并行发出，结果被丢弃，外部效果不变。
     - 没标 `guard_kind` 的，按 `authz` 处理。
 - 响应体只断言规格里写明的字段和值。规格里标 `unknown` 的项不要断言。
+- **有 `bounded_staleness` 裁定的函数**（blueprint `metadata.spec_resolutions` 里带 `bounded_staleness` 的 SI，看 `applies_to`）：
+  - 工具会让这些函数的每个用例都在新的执行环境里运行，所以各用例的 fixture 照常写，不会互相串数据；
+  - 每个这样的函数至少写一个 `"repeat": 2` 的用例：同一个请求在同一个执行环境里连续调用两次，工具要求两次的结果完全一样。这条用例覆盖缓存命中的路径；
+  - **不要**断言"写完马上就能读到新值"，也不要对这些表的读写 `sdk_calls`（读次数会因为缓存而变）。
 - **数据模型转换**：blueprint 有 `data_model` 时，fixture 和 `expect.tables` 用的是**转换后**的表名、属性名（`field_mapping`）和类型（`type_mapping`，例如日期是 ISO-8601 字符串），而响应体用的是**单体的**字段名（例如仍然是 `_id`）。每个 `access_patterns` 里经过 GSI 的读，至少一个用例的 fixture 里放两条只有该字段不同的条目，断言只返回匹配的那条。
 - **全局响应头必须断言**：`analysis_report.json` 的 `global_middleware` 里每一项的 `headers`，是单体给**每个**响应加的头（例如 `CORS(app)` 的 `Access-Control-Allow-Origin: *`）。每个 API 函数至少有一个用例用 `expect.headers` 断言它们；值依赖请求的（例如回显 Origin），在请求里带上对应的头再断言。`run_validate(dry_run)` 的 GM3 会检查每个 API 函数都有。
 - 响应头同理，只断言规格明确要求的头（CORS 头、`Set-Cookie`、规格指定的 `Content-Type` 等），值里依赖部署参数的部分按规格写明的默认值断言。cookie 只断言规格规定的部分（例如 `contains: {"Set-Cookie": ["cartId=", "HttpOnly"]}`，名字和规格规定的属性写在同一个列表里），不要断言随机生成的值。规格要求某个头只有一个时，用 `count`。预检请求（`OPTIONS`）由 API Gateway 按模板 `Cors` 直接应答、不调用函数，工具不模拟，所以不要写成用例；规格对预检有要求时，留给 S4 的静态复核。

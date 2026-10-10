@@ -31,6 +31,7 @@ PROVENANCE_WINDOW = 2
 SPEC_FIELDS = ("handler_location", "auth", "request", "responses", "data_access", "business_rules")
 REQUEST_LOCATIONS = ("path_params", "query", "body", "headers")
 AUTH_CLASSES = ("required", "optional", "none", "unknown")
+PERF_INTENTS = ("cache", "batch", "prefetch")
 GUARD_KINDS = ("authz", "error_propagation")
 RESPONSE_KINDS = ("success", "error")
 RULE_KINDS = ("validation", "authorization", "data_scope", "side_effect", "error_handling", "computation", "other")
@@ -218,7 +219,7 @@ def _validate_field(files: _Files, field: str, value: Any, where: str, errors: l
             if not isinstance(item["repeated"], bool):
                 errors.append(f"{iw}: 'repeated' must be a boolean")
         elif field == "business_rules":
-            if not _keys_ok(item, {"rule", "kind", "source", "origin"}, {"id", "note", "class"}, iw, errors):
+            if not _keys_ok(item, {"rule", "kind", "source", "origin"}, {"id", "note", "class", "perf_intent"}, iw, errors):
                 continue
             if not isinstance(item["rule"], str) or not item["rule"].strip():
                 errors.append(f"{iw}: 'rule' must be a non-empty string")
@@ -226,6 +227,11 @@ def _validate_field(files: _Files, field: str, value: Any, where: str, errors: l
                 errors.append(f"{iw}: 'kind' must be one of {RULE_KINDS}")
             if "class" in item and item["class"] not in RULE_CLASSES:
                 errors.append(f"{iw}: 'class' must be one of {RULE_CLASSES}")
+            # perf_intent: the rule describes something the monolith does for
+            # speed (cache, batching, prefetch); the architect turns it into a
+            # perf hint instead of dropping it (PERF_OPTIMIZATION.md 10.4 (c)).
+            if "perf_intent" in item and item["perf_intent"] not in PERF_INTENTS:
+                errors.append(f"{iw}: 'perf_intent' must be one of {PERF_INTENTS}")
         else:
             errors.append(f"{where}: unknown spec field {field!r}")
             return

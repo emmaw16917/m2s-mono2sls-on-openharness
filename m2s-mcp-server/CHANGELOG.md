@@ -901,3 +901,18 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **按新规则**：acmeair-a1、bookstore-oh、todo-oh 都应选 http；airline-booking-c3 仍需 REST。
 - **测试**：新增 3 个，修改 1 个，共 187 passed。
 
+## 有界旧数据缓存、perf_hints、e2e 适配、延迟表 M 级标定（2026-10-10）
+
+依据 `PERF_OPTIMIZATION.md` §10.3、§10.4 (b)(c)。
+
+- **(c) perf_hints**：spec 业务规则可标 `perf_intent`；blueprint `metadata.perf_hints`（gate PH1）。
+- **(b) bounded_staleness**：
+  - SI 新字段 `bounded_staleness: {tables, ttl_seconds, evidence}`，必须是 `class: contract`（gate CT7）；
+  - verify.py：`Model.cached_tables`；这些函数每个用例前重启执行环境（controller `restart()`，RIE 用 `docker restart`，本地重启子进程）；用例新增 `repeat`，各次结果必须相同；H1 不比较被缓存表的读；
+  - `m2s_cov_handler.py` 在重启后先 `load()` 已有覆盖率数据；
+  - perf-optimizer 新规则 R8 及写法；verifier、architect、spec-annotator 说明更新。
+  - 集成测试：带模块级缓存的函数，两个用例给同一个键不同的数据。不隔离时第二个用例失败（读到第一个的值），隔离后通过。
+- **e2e 适配**：`e2e_ec2.prepare_variant` 识别原生 HTTP API 模板，只设置 `AccessLogSettings` 的格式；对原生 HTTP API 拒绝 `v0-http` 变体。
+- **延迟表 M 级**：`e2e_calibrate.py` + `e2e-tools/calibrate/`，一次性 AWS 标定，测完删栈；`latency-profile.json` 改为实测 p50（另存 p90 和旧的 E 级值）。`perf.py` 的说明文字改为读取表里的等级。这是人工运行的标定步骤，流水线本身不调用 AWS（§10.3 末尾的说明）。
+- **测试**：新增 6 个（CT7、PH1、缓存表的读、repeat、Model、缓存隔离集成测试）。
+

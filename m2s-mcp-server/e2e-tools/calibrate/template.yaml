@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: m2s latency calibration (temporary; e2e_calibrate.py deploys, measures and deletes it)
+Resources:
+  Table:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - {AttributeName: pk, AttributeType: S}
+        - {AttributeName: sk, AttributeType: S}
+        - {AttributeName: g, AttributeType: S}
+      KeySchema:
+        - {AttributeName: pk, KeyType: HASH}
+        - {AttributeName: sk, KeyType: RANGE}
+      GlobalSecondaryIndexes:
+        - IndexName: ByGroup
+          KeySchema: [{AttributeName: g, KeyType: HASH}]
+          Projection: {ProjectionType: ALL}
+  Queue:
+    Type: AWS::SQS::Queue
+  Fn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: fn/
+      Handler: index.handler
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      MemorySize: 512
+      Timeout: 300
+      Environment:
+        Variables:
+          TABLE: !Ref Table
+          QUEUE_URL: !Ref Queue
+      Policies:
+        - DynamoDBCrudPolicy: {TableName: !Ref Table}
+        - SQSSendMessagePolicy: {QueueName: !GetAtt Queue.QueueName}
+Outputs:
+  FunctionName: {Value: !Ref Fn}

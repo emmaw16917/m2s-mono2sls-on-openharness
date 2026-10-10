@@ -37,6 +37,8 @@ model: inherit
 | 架构改成 arm64（规则 R5），只改 `Globals.Function.Architectures` | ✅，条件见规则库 |
 | 其他配置类改动（MemorySize、SQS 参数），模板里的 `Handler`/`CodeUri`/事件定义，目录结构 | ❌ |
 | REST API 换成 HTTP API（规则 R6） | ❌，API 类型在 S1 决定；只写 advisory |
+| 函数里加模块级 TTL 缓存（规则 R8），只针对 `bounded_staleness` 裁定过的表 | ✅，条件见规则库 |
+| 对没有 `bounded_staleness` 裁定的表做缓存 | ❌ → 写进 advisories，附 `perf_hints` 或读写比数据 |
 
 不允许的改动如果被诊断出来，写进报告的 `advisories`，附上诊断数据。**不要去改。**
 
@@ -52,6 +54,8 @@ model: inherit
 | **R5** | `output/template.yaml` 的 `Globals.Function` 和各函数都没有 `Architectures: [arm64]`；运行时是 Python 或 Node.js | 在 `Globals.Function` 加一行 `Architectures: [arm64]`，**代码一行都不改**。判决只用 `run_config_verdict()`（设计文档 §3.7 的 A 档）：不跑验证、等价性和 RIE，本地 x86 跑不出架构差别。工具检查只改了这一项、gate(template)、sam build 和编译模块的架构标记，成本按单价算，正常结果是 `kept`；它判 `pending_human` 时不要自己改判。一个应用只做一次，作为单独的请求和提交 |
 
 | **R6**（只出 advisory） | `run_gate(phase="blueprint")` 报了 AT1 WARNING：blueprint 选了 `api_type: "rest"`，但没有用到任何 REST 独有功能 | **不改模板**。在 `advisories` 里写一条：现在的 REST、建议换成 HTTP API（payload 1.0）、请求单价差（$3.50 对 $1.00 每百万请求）乘以基准里的请求量、实测参考（acmeair 2026-10-09：p50 低约 5ms、每 1k 请求费用低 57%），以及验证办法：用 `m2s-mcp-server/e2e_ec2.py` 的 `v0-http` 变体做真实 A/B |
+
+| **R8** | blueprint 有接受的 `bounded_staleness` SI，`applies_to` 含这个函数；函数对这些表的读在热路径上（看基线的调用次数和 `perf_hints`） | 模块级 TTL 缓存，写法见下文"R8 的写法"。TTL 不超过 SI 的 `ttl_seconds`；缓存键和"是否缓存空结果"照抄 `perf_hints` 里单体的做法；只缓存这些表的读 |
 
 R4 **不适用**的情况，命中了也不改，在报告的 `rule_scan` 里写明原因：
 - 循环体里有 `break`，或者失败后停止处理后面的消息；
@@ -161,6 +165,51 @@ ret = return_f.result()
 - 只有**读**能提前。中间夹着写、发消息，或者后面的读依赖前面读到的值，都不适用；
 - 判决时 `run_equivalence` 要带 `speculative_reads=["<函数>"]`。工具只在基线返回了错误（不是 401/403）的用例上接受多出来的读，而且写操作、发出的消息、基线的每一次读都必须不变。结果里的 `extra_reads_total` 是多出来的读次数，写进 `evidence`，它就是失败路径上多付的读容量；
 - 改动行要被覆盖（`run_coverage`），所以失败路径要有用例。没有的话按 `blocked_by_coverage` 处理。
+
+## R8 的写法（有界旧数据的缓存）
+
+```js
+// [R8] Module-level TTL cache: one per execution environment, empty after a
+// cold start. bounded_staleness SI-x allows data up to TTL_MS old; keys and
+// caching of empty results copy the monolith (perf_hints PH-x, <source>).
+const TTL_MS = 600 * 1000;
+const MAX_ENTRIES = 10000;
+const cache = new Map();
+async function cached(key, load) {
+  const hit = cache.get(key);
+  if (hit && hit.expires > Date.now()) return hit.value;
+  const value = await load();                       // a failed load is not cached
+  cache.delete(key);
+  if (cache.size >= MAX_ENTRIES) cache.delete(cache.keys().next().value);   // oldest first
+  cache.set(key, { value, expires: Date.now() + TTL_MS });
+  return value;
+}
+// use: const flights = await cached(`${segmentId}-${dateMs}`, () => queryFlights(segmentId, dateMs));
+```
+
+```python
+# [R8] Module-level TTL cache (same rules as the JS version).
+import time
+_TTL_S, _MAX_ENTRIES, _cache = 600, 10000, {}
+
+
+def _cached(key, load):
+    hit = _cache.get(key)
+    if hit and hit[1] > time.monotonic():
+        return hit[0]
+    value = load()
+    _cache.pop(key, None)
+    if len(_cache) >= _MAX_ENTRIES:
+        _cache.pop(next(iter(_cache)))
+    _cache[key] = (value, time.monotonic() + _TTL_S)
+    return value
+```
+
+要点：
+- 调用方**不能修改**从缓存拿到的对象（例如在返回前往列表里加字段）。要改就先复制。验证线的 `repeat` 用例会抓到这种问题：第二次调用的结果会和第一次不同；
+- 不缓存失败：`load()` 抛出的异常照常往外传；
+- 基准要写清命中率假设：RIE 判决会用同一个事件反复调用，测到的是**全部命中**的情况。`data_volume` 和 `evidence` 里写明"结果是命中时的上限；线上命中率取决于缓存键的基数和执行环境数量"，引用 `perf_hints` 里的键基数；
+- `run_coverage` 要求改动行被覆盖：命中路径靠验证线的 `repeat` 用例覆盖。没有这样的用例时按 `blocked_by_coverage` 处理。
 
 ## Python 函数（`python3.12`）的写法
 
@@ -415,7 +464,7 @@ v0 是验收过的版本，所以用"和 v0 等不等价"来区分是代码的�
    "rule_scan": {"R1": {"hits": 1, "locations": ["output/lambdas/.../handler.js:47-77"]}, "R2": {"hits": 0, "locations": []}, "R3": {"hits": 0, "locations": []},
                  "R4": {"hits": 1, "locations": ["output/lambdas/.../handler.js:268-306"], "not_applicable": []},
                  "R1b": {"hits": 1, "locations": ["output/lambdas/flights-query/handler.js:31-44"], "not_applicable": []},
-                 "R6": {"hits": 0, "locations": []}}
+                 "R6": {"hits": 0, "locations": []}, "R8": {"hits": 1, "locations": ["output/lambdas/flights-query/handler.js:20-60"]}}
    ```
    每个 `changes[]` 都写 `fix_attempts`（0 或 1）；经过复核的写 `review`。`evidence` 放入相应工具返回的关键数据：代理指标前后对比、`rie` 各延迟下的结果、`init`、`cost`、`equivalence`、`regression`、`coverage_of_changed_lines`。`run_rie_verdict` 保存的完整结果在 `perf/verdicts/` 下，报告里写出文件路径即可。
 3. `mcp__m2s-server__update_ledger()`：它根据 `perf_report.json` 机械地更新仓库里的规则台账，不要手写台账。

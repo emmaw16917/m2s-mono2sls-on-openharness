@@ -117,6 +117,17 @@ class Model:
                                        if isinstance(r, dict) and r.get("class") == "implementation-trace"
                                        and str(r.get("origin", "")).startswith("perf-request") and r.get("ruling", "accepted") == "accepted"
                                        for f in r.get("applies_to") or []}
+        # Accepted bounded_staleness rulings (PERF_OPTIMIZATION.md 10.4 (b)):
+        # these functions may answer from a module-level cache for up to
+        # ttl_seconds, so (1) every case runs in a fresh execution environment
+        # (the cache must not carry one case's fixtures into the next) and
+        # (2) H1 (a) ignores their reads of the cached tables (a hit elides them).
+        self.cached_tables: dict[str, set[str]] = {}
+        for r in meta.get("spec_resolutions") or []:
+            bs = r.get("bounded_staleness") if isinstance(r, dict) and r.get("ruling", "accepted") == "accepted" else None
+            if isinstance(bs, dict):
+                for f in r.get("applies_to") or []:
+                    self.cached_tables.setdefault(f, set()).update(str(t) for t in bs.get("tables") or [])
         self.index_attributes = {a.get("name") for r in meta.get("spec_resolutions") or []
                                  if isinstance(r, dict) and r.get("ruling", "accepted") == "accepted"
                                  for a in ((r.get("data_model_change") or {}).get("new_attributes") or [])
@@ -358,7 +369,7 @@ def check_case(model: Model, case: dict[str, Any], with_template: bool) -> list[
     if "_load_error" in case:
         return [f"{where}: {case['_load_error']}"]
     errs: list[str] = []
-    allowed = {"id", "function", "kind", "title", "spec_refs", "request", "sqs", "fixtures", "faults", "expect", "note", "_file"}
+    allowed = {"id", "function", "kind", "title", "spec_refs", "request", "sqs", "fixtures", "faults", "expect", "note", "repeat", "_file"}
     extra = set(case) - allowed
     if extra:
         errs.append(f"{where}: unknown keys {sorted(extra)} (allowed: {sorted(allowed - {'_file'})})")
@@ -401,6 +412,8 @@ def check_case(model: Model, case: dict[str, Any], with_template: bool) -> list[
             errs += _name_err(model, where, "fixtures", t, "table", with_template)
             if not isinstance(items, list) or not all(isinstance(i, dict) for i in items):
                 errs.append(f"{where}: fixtures.{t} must be a list of items")
+    if "repeat" in case and not (isinstance(case["repeat"], int) and not isinstance(case["repeat"], bool) and 2 <= case["repeat"] <= 5):
+        errs.append(f"{where}: repeat must be an integer 2..5 (the same request that many times in one execution environment)")
     if "faults" in case:
         errs += _check_rules(model, where, case["faults"], with_template)
     errs += _check_expect(model, where, case.get("expect"), trigger, with_template)
@@ -817,7 +830,8 @@ def _run_controller(model: Model, build_dir: Path, runs: list[dict[str, Any]], c
     for name in fn_names:
         fn = model.functions[name]
         functions.append({"name": name, "dir": str(build_dir / fn["logical"]), "handler": fn["handler"], "env": fn["env"], "memory": fn["memory"],
-                          "runtime": fn.get("runtime", ""), "layers": [str(build_dir / ly) for ly in fn.get("layers", [])]})
+                          "runtime": fn.get("runtime", ""), "layers": [str(build_dir / ly) for ly in fn.get("layers", [])],
+                          "isolate_cases": bool(model.cached_tables.get(name))})
     has_py = any(f["runtime"].startswith("python") for f in functions)
     py = {"rie_image_python": PY_RIE_IMAGE, "python_exe": sys.executable}
     if has_py and coverage and mode == "rie":
@@ -856,6 +870,8 @@ def _prepare_runs(model: Model, cases: list[dict[str, Any]], faults_for: dict[st
         case_faults = [_resolve_rule(model, r) for r in c.get("faults") or []]
         run = {"id": c["id"], "run_key": c["id"], "function": c["function"], "event": event, "gateway_response": gw, "fixtures": fixtures,
                "faults": case_faults, "case_faults": case_faults}
+        if c.get("repeat"):
+            run["repeat"] = c["repeat"]
         runs.append(run)
     if faults_for:
         by_id = {r["id"]: r for r in runs}
@@ -957,6 +973,12 @@ def judge(model: Model, case: dict[str, Any], raw: dict[str, Any]) -> list[str]:
         return ["no alternative matched: " + " | ".join(f"[{i}] " + "; ".join(o) for i, o in enumerate(outs))]
     mism: list[str] = []
     result, error = raw.get("result"), raw.get("error")
+    # repeat: the same request again in the same execution environment (a
+    # cache hit) must answer exactly like the first time; the data did not change.
+    reps = raw.get("repeats") or []
+    for k, rr in enumerate(reps[1:], 2):
+        if normalize(rr.get("result")) != normalize(reps[0].get("result")) or (rr.get("error") or {}).get("type") != (reps[0].get("error") or {}).get("type"):
+            mism.append(f"repeat: invocation {k} answered differently from invocation 1: {json.dumps(rr.get('result') or rr.get('error'))[:300]}")
     if "error" in exp:
         if not error:
             mism.append(f"expected the handler to throw{(' ' + exp['error']['type']) if exp['error'].get('type') else ''}, it returned {json.dumps(result)[:300]}")
@@ -1191,7 +1213,7 @@ def _run_contract(model: "Model", raw: dict[str, Any]) -> int:
 
 
 def _observation(raw: dict[str, Any], contract: int = 1, ignore_attrs: set[str] | None = None,
-                 unordered: bool = False) -> dict[str, Any]:
+                 unordered: bool = False, cached_tables: set[str] | None = None) -> dict[str, Any]:
     """What H1 compares: (a) the multiset of calls that took effect -- faulted
     attempts and calls the backend rejected changed nothing, so retries do
     not count twice; (b) the externally visible outcome. Under contract 2 a
@@ -1199,6 +1221,8 @@ def _observation(raw: dict[str, Any], contract: int = 1, ignore_attrs: set[str] 
     the index and the key condition are how the implementation reads, and
     what it read shows in the outcome (b)."""
     effective = [c for c in raw.get("calls") or [] if not c.get("fault") and not c.get("backend_error")]
+    if cached_tables:
+        effective = [c for c in effective if not (c.get("op") in READ_OPS and c.get("table") in cached_tables)]
     if ignore_attrs:
         effective = [_strip_attrs(c, ignore_attrs) for c in effective]
 
@@ -1686,7 +1710,8 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
             return {"status": "FAIL", "error": f"{path.name} was recorded with runtime {old.get('runtime')!r}; a functions-filtered "
                     f"record with runtime {runtime!r} cannot be merged into it -- record all functions instead"}
         raws, infra = run_version(model, ws, None, "record")
-        obs = {k: _observation(r, _run_contract(model, r), model.index_attributes, r.get("function") in model.unordered_functions) for k, r in raws.items()}
+        obs = {k: _observation(r, _run_contract(model, r), model.index_attributes, r.get("function") in model.unordered_functions,
+                              {model.table_id(t) for t in model.cached_tables.get(r.get("function"), ())}) for k, r in raws.items()}
         scenarios = {k: {"description": v.get("description", ""), "function": v["function"], "cases": v["cases"], "rules": v["rules"]} for k, v in scen.items()}
         now = time.strftime("%Y-%m-%dT%H:%M:%S")
         doc = {"label": label, "runtime": runtime, "recorded_at": now, "scenarios": scenarios, "observations": obs, "infra_errors": infra,
@@ -1713,13 +1738,15 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
         base_root = export_ref(ws, baseline_ref)
         base_model = Model(base_root)
         base_raws, base_infra = run_version(base_model, base_root, None, "base")
-        base = {k: _observation(r, _run_contract(model, r), model.index_attributes, r.get("function") in model.unordered_functions) for k, r in base_raws.items()}
+        base = {k: _observation(r, _run_contract(model, r), model.index_attributes, r.get("function") in model.unordered_functions,
+                              {model.table_id(t) for t in model.cached_tables.get(r.get("function"), ())}) for k, r in base_raws.items()}
         pinned = {k: v["faults_applied"] for k, v in base.items()}
         # Stability check: the baseline run again with the same pinned faults;
         # runs whose two baseline observations differ are measurement noise,
         # not evidence against the change.
         again_raws, again_infra = run_version(base_model, base_root, pinned, "base2")
-        again = {k: _observation(r, _run_contract(model, r), model.index_attributes, r.get("function") in model.unordered_functions) for k, r in again_raws.items()}
+        again = {k: _observation(r, _run_contract(model, r), model.index_attributes, r.get("function") in model.unordered_functions,
+                              {model.table_id(t) for t in model.cached_tables.get(r.get("function"), ())}) for k, r in again_raws.items()}
         unstable = sorted(k for k in base if k in again and (base[k]["calls"] != again[k]["calls"] or base[k]["outcome"] != again[k]["outcome"]))
         base_infra = {**base_infra, **{f"rerun:{k}": v for k, v in again_infra.items()}}
         now_raws, infra = run_version(model, ws, pinned, "cand")
@@ -1732,7 +1759,8 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
         base = _read_json(path)["observations"]
         now_raws, infra = run_version(model, ws, None, "cand")
         baseline_desc = f"{path.relative_to(ws)} (stored; n-th-call fault rules, order-sensitive)"
-    obs = {k: _observation(r, _run_contract(model, r), model.index_attributes, r.get("function") in model.unordered_functions) for k, r in now_raws.items()}
+    obs = {k: _observation(r, _run_contract(model, r), model.index_attributes, r.get("function") in model.unordered_functions,
+                              {model.table_id(t) for t in model.cached_tables.get(r.get("function"), ())}) for k, r in now_raws.items()}
     diffs, spec_reads = [], []
     spec_fns = set(speculative_reads or [])
     for key, now in obs.items():

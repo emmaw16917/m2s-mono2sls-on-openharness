@@ -1133,3 +1133,34 @@ def test_at2_http_with_gateway_auth_needs_jwt_authorizer(tmp_path):
     assert _sev(gates.check_api_type_template(ws, t)) == [("AT2", "ERROR")]
     t["Resources"]["A"]["Properties"]["Auth"] = {"DefaultAuthorizer": "J", "Authorizers": {"J": {"JwtConfiguration": {"issuer": "i", "audience": ["a"]}}}}
     assert gates.check_api_type_template(ws, t) == []
+
+
+def _ct_ws(tmp_path, resolutions=None, hints=None):
+    (tmp_path / "storage").mkdir(exist_ok=True)
+    meta = {"verification_contract": 2, "spec_resolutions": resolutions or []}
+    if hints is not None:
+        meta["perf_hints"] = hints
+    bp = {"metadata": meta, "dynamodb_tables": [{"logical_name": "Flight"}],
+          "lambda_functions": [{"name": "flights-query", "trigger_type": "api"}]}
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    (tmp_path / "storage" / "analysis_report.json").write_text(json.dumps({"entry_points": []}), encoding="utf-8")
+    return tmp_path
+
+
+BS_OK = {"issue_id": "SI-9", "class": "contract", "applies_to": ["flights-query"],
+         "bounded_staleness": {"tables": ["Flight"], "ttl_seconds": 600, "evidence": "routes/index.js:459 ttl-lru-cache, flightDataCacheTTL"}}
+
+
+def test_ct7_bounded_staleness(tmp_path):
+    assert gates.check_contract(_ct_ws(tmp_path, [BS_OK])) == []
+    bad = {**BS_OK, "class": "implementation-trace", "targets": ["x"], "applies_to": ["nope"],
+           "bounded_staleness": {"tables": ["Nope"], "ttl_seconds": 0, "evidence": ""}}
+    ids = [f["description"] for f in gates.check_contract(_ct_ws(tmp_path, [bad])) if f["check_id"] == "CT7"]
+    assert len(ids) == 5
+
+
+def test_ph1_perf_hints(tmp_path):
+    ok = [{"kind": "cache", "source": "acmeair/routes/index.js:435", "applies_to": ["flights-query"], "ttl_seconds": 600}]
+    assert gates.check_contract(_ct_ws(tmp_path, hints=ok)) == []
+    bad = [{"kind": "memo", "source": "somewhere", "applies_to": ["x"]}, "str"]
+    assert [f["check_id"] for f in gates.check_contract(_ct_ws(tmp_path, hints=bad))] == ["PH1"] * 4

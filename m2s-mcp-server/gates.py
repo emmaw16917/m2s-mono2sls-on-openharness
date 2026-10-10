@@ -147,6 +147,72 @@ SI_CLASSES = {
 }
 
 
+PERF_HINT_KINDS = ("cache", "batch", "prefetch")
+
+
+def _check_bounded_staleness(r: dict[str, Any], bs: Any, blueprint: dict[str, Any]) -> list[dict[str, Any]]:
+    """CT7: a bounded_staleness ruling (PERF_OPTIMIZATION.md 10.4 (b)) is a
+    contract: for up to ttl_seconds these functions may answer with data of
+    these tables that is older than the latest write -- what the monolith's own
+    cache already exposed. It needs evidence (the monolith cache, or a human
+    decision) because it changes what tests may assert."""
+    sid = r.get("issue_id")
+    tables = {t.get("logical_name") for t in blueprint.get("dynamodb_tables") or [] if isinstance(t, dict)}
+    fns = {f.get("name") for f in blueprint.get("lambda_functions") or [] if isinstance(f, dict)}
+    errs = []
+    if r.get("class") != "contract":
+        errs.append(f"class must be 'contract' (bounded staleness is an observable promise), got {r.get('class')!r}")
+    if not isinstance(bs, dict):
+        errs.append("bounded_staleness must be an object {tables, ttl_seconds, evidence}")
+    else:
+        ttl = bs.get("ttl_seconds")
+        if not (isinstance(ttl, (int, float)) and not isinstance(ttl, bool) and ttl > 0):
+            errs.append("ttl_seconds must be a positive number")
+        ts = bs.get("tables")
+        if not (isinstance(ts, list) and ts):
+            errs.append("tables must be a non-empty list of dynamodb_tables logical_name")
+        else:
+            errs += [f"table {t!r} is not a dynamodb_tables logical_name" for t in ts if t not in tables]
+        if not str(bs.get("evidence") or "").strip():
+            errs.append("evidence is empty: cite the monolith cache (file:line and its TTL), or the human decision")
+    af = r.get("applies_to")
+    if not (isinstance(af, list) and af):
+        errs.append("applies_to must list the functions that may cache")
+    else:
+        errs += [f"applies_to {f!r} is not a lambda_functions name" for f in af if f not in fns]
+    return [_finding("CT7", "ERROR", f"spec_resolutions[{sid}].bounded_staleness: {e}", "blueprint.json") for e in errs]
+
+
+def _check_perf_hints(meta: dict[str, Any], blueprint: dict[str, Any]) -> list[dict[str, Any]]:
+    """PH1: metadata.perf_hints (PERF_OPTIMIZATION.md 10.4 (c)) -- what the
+    monolith did for performance (cache, batching, prefetch) that the spec
+    rules as an implementation trace. Not binding on correctness; S3/S5 read
+    them. Each needs a kind, a source in the monolith and the functions."""
+    hints = meta.get("perf_hints")
+    if hints is None:
+        return []
+    if not isinstance(hints, list):
+        return [_finding("PH1", "ERROR", "metadata.perf_hints must be a list.", "blueprint.json")]
+    fns = {f.get("name") for f in blueprint.get("lambda_functions") or [] if isinstance(f, dict)}
+    out = []
+    for i, h in enumerate(hints):
+        errs = []
+        if not isinstance(h, dict):
+            errs.append("must be an object")
+        else:
+            if h.get("kind") not in PERF_HINT_KINDS:
+                errs.append(f"kind must be one of {PERF_HINT_KINDS}")
+            if not re.search(r":\d+", str(h.get("source") or "")):
+                errs.append("source must point at the monolith code (file:line)")
+            af = h.get("applies_to")
+            if not (isinstance(af, list) and af and all(f in fns for f in af)):
+                errs.append("applies_to must list lambda_functions names")
+            if h.get("kind") == "cache" and not isinstance(h.get("ttl_seconds"), (int, float)):
+                errs.append("a cache hint needs ttl_seconds (the monolith's TTL; null is not allowed, write the default it runs with)")
+        out += [_finding("PH1", "ERROR", f"metadata.perf_hints[{i}]: {e}", "blueprint.json") for e in errs]
+    return out
+
+
 def check_contract(workspace: Path) -> list[dict[str, Any]]:
     """Contract testing (PIPELINE_REDESIGN.md section 3.6). A spec whose
     business rules carry a class is a contract-2 spec: the blueprint must say
@@ -194,6 +260,9 @@ def check_contract(workspace: Path) -> list[dict[str, Any]]:
                 findings.append(_finding("CT5", "ERROR", f"spec_resolutions[{r.get('issue_id')}].data_model_change needs table, index "
                                          "{name, keys: [{attribute, type: HASH|RANGE}], projection}, and for each new_attributes item "
                                          "a name and a backfill note.", "blueprint.json"))
+        bs = r.get("bounded_staleness")
+        if bs is not None:
+            findings += _check_bounded_staleness(r, bs, blueprint)
         if cls != "implementation-trace":
             continue
         t = r.get("targets")
@@ -202,6 +271,7 @@ def check_contract(workspace: Path) -> list[dict[str, Any]]:
                                      "'targets' (the spec items it rules on, e.g. 'POST /x#responses[6]').", "blueprint.json"))
         else:
             targets.update(t)
+    findings += _check_perf_hints(meta, blueprint)
     for ep in eps:
         for i, resp in enumerate(ep.get("responses") or []):
             ref = f"{ep.get('method')} {ep.get('path')}#responses[{i}]"

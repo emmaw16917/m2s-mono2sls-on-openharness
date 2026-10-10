@@ -485,7 +485,37 @@ perf-harness（JS/Python）新增 `network_ms_cal`：沿用 depth 的依赖链�
 
 升到 M 级的办法：下次上 AWS 时部署一个标定 Lambda，对每种操作在不同 item 大小、返回条数下各调用 N 次，直接计时。
 
-### 10.4 流水线设计改动（已定方向；(a)(e) 已于 2026-10-10 实现，其余未实现）
+**已升到 M 级（2026-10-10）**：`e2e_calibrate.py` 部署 `e2e-tools/calibrate`（arm64 / 512MB / nodejs22.x，运行时自带的
+SDK v3，同区域的表、GSI 和队列，约 1KB 的条目），5 轮 × 每种操作 100 次，取各轮 p50 的中位数，测完删栈。原始数据在
+`results-e2e/calibration/calibration-2026-10-10.json`。
+
+| 操作 | M 级 p50 | M 级 p90 | 原 E 级推算 |
+|---|---|---|---|
+| GetItem | 2.86 | 12.33 | 3.7 |
+| Query（主表 / GSI，返回 20 条） | 4.12 / 4.33 | 17.15 / 14.88 | 4.2 |
+| PutItem | 3.32 | 12.69 | 5.5 |
+| UpdateItem | 4.76 | 6.88 | 4.8 |
+| DeleteItem | 3.21 | 9.61 | 4.8 |
+| Scan（Limit 20） | 4.64 | 11.71 | 未标定 |
+| BatchGetItem / BatchWriteItem（10 条） | 4.38 / 4.99 | 10.0 / 6.74 | 未标定 |
+| TransactGetItems / TransactWriteItems（2 条） | 8.06 / 17.88 | 10.13 / 22.21 | 未标定 |
+| SendMessage / SendMessageBatch（10 条） | 7.03 / 13.99 | 11.44 / 29.36 | 未标定 |
+
+- E 级把 Put/Delete 高估了 1.6~2.2ms：反推时假设的 2ms 非网络时间，对写函数偏小；
+- 第 1 轮明显偏慢（Query 14ms），之后逐轮下降，说明新表、新连接有预热期；取中位数已经排除了它；
+- p90 是 p50 的 2~4 倍，所以估算只看 p50 会低估尾部。
+
+> **为什么这一项要用 AWS，和"本地改完再上 AWS"的设计并不冲突**
+>
+> 流水线本身从来不调用 AWS。所有判决（验证、等价性、覆盖率、RIE 判决）都在本地，用固定延迟模拟。延迟表只是一份
+> **静态输入**，和 `perf-rules/prices.json` 的单价一样：perf.py 用它估算"这个改动在真实 AWS 上大约快多少"，只出现在
+> `calibrated_estimate` 里，**不参与任何判决**。
+>
+> 区别在于这份输入只能在 AWS 上测出来：本机测不到 Lambda 到 DynamoDB 的真实往返。所以它是**人工、一次性**的标定步骤，
+> 不是流水线的一个阶段：换区域、换运行时或 SDK 大版本时，由人运行 `e2e_calibrate.py --write` 刷新一次（约 3 分钟，
+> 费用不到 0.01 美元）。不刷新时，流水线照常运行，用的是上一次的值。
+
+### 10.4 流水线设计改动（已定方向；(a)(b)(c)(e) 已于 2026-10-10 实现，(d)(f) 未实现）
 
 **(a) 区分两种“失败即停止”，放宽 §6.2 的禁令**
 
@@ -512,7 +542,7 @@ acmeair 收益估算：flights-query 往返 20.5 → 12.1ms（校准表），查
 > 基线的每一次读必须不变，多出的读次数记在 `extra_reads_total`。authz 的判定用状态码机械地做，不依赖标注。
 > 尚未在真实工作区上跑过一次 R1b。
 
-**(b) 有界旧数据：缓存从“作废”改为契约**
+**(b) 有界旧数据：缓存从“作废”改为契约**（已实现，见本节末尾）
 
 - spec：单体的进程内缓存不再判为“实现轨迹，作废”，而是 `contract: bounded_staleness(entities, ttl)`。
   单体本来就对外暴露了这个 TTL 内的旧数据。
@@ -522,7 +552,7 @@ acmeair 收益估算：flights-query 往返 20.5 → 12.1ms（校准表），查
 - 收益要按缓存键的基数估：acmeair 的航段键只有 182 种，很快全部命中；航班键（航段 × 日期）约 2000 种，
   分散在约 10 个执行环境里，短压测中多数会 miss。
 
-**(c) 实现轨迹降级为 `perf_hints`，不丢弃**
+**(c) 实现轨迹降级为 `perf_hints`，不丢弃**（已实现，见本节末尾）
 
 - S0/S1 把判为实现轨迹、但有性能意图的条目（缓存、批处理、预取）记进 `perf_hints`，
   例如 `{kind: cache, ttl: 20min, keys: …, source: routes/index.js:21}`。
@@ -563,6 +593,18 @@ acmeair 收益估算：flights-query 往返 20.5 → 12.1ms（校准表），查
 > `DefaultAuthorizer`；verify.py 按 API 类型生成数组 claim 的格式，HTTP API 的 401 按 CorsConfiguration 带 ACAO；
 > code-developer 只用 `sub`、两种数组格式都解析、不解析 `exp`/`iat`。按新规则，acmeair-a1、bookstore-oh、todo-oh 都
 > 应选 http；airline-booking-c3（回显 Origin 的 CORS 头）仍需 REST。
+
+> **(b)(c) 已实现（2026-10-10）**：
+> - S0：业务规则可以标 `perf_intent: cache | batch | prefetch`（provenance 校验取值）。
+> - S1：每条带 `perf_intent` 的规则在 `metadata.perf_hints` 里记一条（gate PH1 检查格式）；单体有缓存时，写一条
+>   `class: contract` 的 SI，带 `bounded_staleness: {tables, ttl_seconds, evidence}`（gate CT7 检查）。
+> - 验证线：这些函数的**每个用例都在新的执行环境里运行**（controller 在用例之间重启函数进程或 RIE 容器），否则上一个用例
+>   缓存的数据会串到下一个用例里。已用集成测试证实：不隔离时第二个用例读到了第一个用例缓存的值。用例新增
+>   `repeat: 2..5`，同一请求在同一个执行环境里连续调用，要求结果完全一样，用来覆盖命中路径、抓住"修改了缓存里的对象"
+>   这类错误。Python 覆盖率在进程重启后会累加，不再被覆盖。
+> - H1 等价性：这些函数对被缓存表的读不再比较，写操作、消息和返回值照常严格比较。
+> - S5：新规则 R8（模块级 TTL 缓存）和 JS/Python 写法；只能缓存有 `bounded_staleness` 裁定的表。RIE 判决反复用同一个
+>   事件，测到的是全部命中的上限，`evidence` 必须写明。
 
 **(f) 冷启动加权 p99**
 

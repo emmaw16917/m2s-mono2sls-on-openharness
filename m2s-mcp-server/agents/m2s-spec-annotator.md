@@ -52,7 +52,13 @@ model: inherit
    - `contract`：外部能观察到的效果，包括状态码、响应体、写了哪些条目、发了哪些消息、权限判定、失败时表处于什么状态。迁移后必须保持；
    - `implementation-trace`：单体**怎么做到的**，而不是做到了什么。例如"装饰器读一次 booking、service 再读一次"、"删除前自己再 Query 一次"、"先读配置再读订单"。迁移后的代码可以换一种做法。
 
-   判断标准：换一种写法（少读一次、换个顺序、两步合成一步），外部效果完全一样，那这条就是 `implementation-trace`。拿不准时标 `contract`，并在 `note` 里写明疑问，交给 architect 决定。
+   判断标准：换一种写法（少读一次、换个顺序、两步合成一步），外部效果完全一样，那这条就是 `implementation-trace`。
+
+   **为性能做的事要标 `perf_intent`**：单体为了快而做的缓存、批处理、预取，在对应规则上加 `"perf_intent": "cache" | "batch" | "prefetch"`，并且在规则里写清：
+   - 缓存：缓存了什么、缓存键怎么拼、TTL 和条目上限（读配置文件里的默认值）、是否也缓存空结果、写操作会不会让缓存失效；
+   - 批处理、预取：合并或提前做了哪些操作。
+
+   这些规则多半是 `implementation-trace`，但不会被丢掉：architect 会把它们记成 `perf_hints` 传给后面的阶段。注意缓存的**外部效果**：单体在 TTL 内可能返回旧数据，这一点要在 `note` 里写明，architect 据此决定是否给出 `bounded_staleness` 契约。拿不准时标 `contract`，并在 `note` 里写明疑问，交给 architect 决定。
 
    `responses` 里只由实现轨迹触发的那一臂，例如"**第二次**读不到 booking → 400"（第一次读不到是 404），在这一项上加 `"trace_arm": true`。只要有一项标了 `trace_arm`，architect 就必须对它做出裁定。
 

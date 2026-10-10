@@ -231,7 +231,14 @@ def _calibrated_estimate(proxies: dict[str, Any]) -> dict[str, Any] | None:
     return {"base_ms": b["ms"], "cand_ms": c["ms"], "delta_ms": round(c["ms"] - b["ms"], 2),
             "uncalibrated_ops": sorted(set(b["uncalibrated_ops"]) | set(c["uncalibrated_ops"])),
             "note": "critical-path DynamoDB round trips only (no CPU, no API Gateway/Lambda invoke ~16-21 ms per request); "
-                    "evidence grade E, see perf-rules/latency-profile.json"}
+                    f"evidence grade {_profile_grade()}, see perf-rules/latency-profile.json"}
+
+
+def _profile_grade() -> str:
+    try:
+        return json.loads(LATENCY_PROFILE.read_text(encoding="utf-8")).get("grade", "E")
+    except (OSError, ValueError):
+        return "?"
 
 
 def _valid(m: dict[str, Any]) -> str | None:

@@ -1,14 +1,49 @@
 {
-  "_note": "Per-operation DynamoDB round trip (ms) for perf.py's calibrated critical-path estimate (network_ms_cal). Not used by any verdict: verdicts stay on the fixed-latency RIE runs; this only sizes the expected warm-time effect of a change. Derived 2026-10-09 from real AWS warm Lambda REPORT medians (acmeair-a1 v0/opt, us-east-1, arm64 512MB, Node 22, SDK v3, same-region, ~2k invocations each pass 2) by subtracting an assumed ~2 ms non-network handler time and solving the per-function call sequences: logout=Delete 6.8, customer-get=Get+Get 9.3, customer-update=Get+Update 10.5, bookings-by-customer=Get+Query(GSI) 9.9, login=Get+Put 11.2 (bookings-create one-way = Get+Put 11.1 cross-checks). Evidence grade E: the 2 ms base is assumed (0.5-2.5 ms moves each value by about 1 ms), item sizes were small (<1 KB, Query returned <=20 items). Ops listed under uncalibrated fall back to default_ms and are reported as such. Replace with direct measurements (a calibration Lambda timing each op) when an AWS run is next available.",
-  "source": "Mono2Sls-artifacts/tests/results-e2e/acmeair-ec2 (commit 4adc9a7 data), 2026-10-09",
+  "_note": "Per-operation round trip (ms, p50) for perf.py's calibrated critical-path estimate (network_ms_cal). Sizing only, never a verdict: verdicts stay on the local fixed-latency RIE runs. Evidence grade M: measured by e2e_calibrate.py inside an arm64 512 MB nodejs22.x Lambda (runtime-bundled SDK v3, keep-alive) against a table and queue in the same region, ~1 KB items, Query/Scan/BatchGet return 10-20 items. The pipeline itself never calls AWS; refresh this file by hand when the region, runtime or SDK changes.",
+  "source": "Mono2Sls-artifacts/tests/results-e2e/calibration/calibration-2026-10-10.json",
+  "grade": "M",
   "region_scope": "client Lambda and table in the same region",
   "ops_ms": {
-    "GetItem": 3.7,
-    "Query": 4.2,
-    "PutItem": 5.5,
-    "DeleteItem": 4.8,
-    "UpdateItem": 4.8
+    "BatchGetItem": 4.38,
+    "BatchWriteItem": 4.99,
+    "DeleteItem": 3.21,
+    "GetItem": 2.86,
+    "PutItem": 3.32,
+    "Query": 4.12,
+    "Query@GSI": 4.33,
+    "Scan": 4.64,
+    "SendMessage": 7.03,
+    "SendMessageBatch": 13.99,
+    "TransactGetItems": 8.06,
+    "TransactWriteItems": 17.88,
+    "UpdateItem": 4.76
+  },
+  "ops_p90_ms": {
+    "BatchGetItem": 10,
+    "BatchWriteItem": 6.74,
+    "DeleteItem": 9.61,
+    "GetItem": 12.33,
+    "PutItem": 12.69,
+    "Query": 17.15,
+    "Query@GSI": 14.88,
+    "Scan": 11.71,
+    "SendMessage": 11.44,
+    "SendMessageBatch": 29.36,
+    "TransactGetItems": 10.13,
+    "TransactWriteItems": 22.21,
+    "UpdateItem": 6.88
   },
   "default_ms": 10,
-  "uncalibrated": ["Scan", "BatchGetItem", "BatchWriteItem", "TransactGetItems", "TransactWriteItems", "SendMessage", "SendMessageBatch"]
+  "uncalibrated": [],
+  "previous": {
+    "grade": "E",
+    "source": "Mono2Sls-artifacts/tests/results-e2e/acmeair-ec2 (commit 4adc9a7 data), 2026-10-09",
+    "ops_ms": {
+      "GetItem": 3.7,
+      "Query": 4.2,
+      "PutItem": 5.5,
+      "DeleteItem": 4.8,
+      "UpdateItem": 4.8
+    }
+  }
 }

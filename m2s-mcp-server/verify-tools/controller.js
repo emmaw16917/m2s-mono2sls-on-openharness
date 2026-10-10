@@ -463,6 +463,14 @@ class RieInvoker {
     }
     if (!job.keep_containers) { try { this.docker(['rm', '-f', this.name]); } catch (e) { /* ignore */ } }
   }
+  async restart() {
+    // A new runtime process in the same container (module state gone, /tmp
+    // kept): Node coverage snapshots stay in /tmp/m2s-cov, coverage.py loads
+    // its data file before measuring again.
+    if (job.coverage && !this.py) await sleep(600); // cov-flush writes every 200ms
+    this.docker(['restart', '-t', '1', this.name]);
+    await sleep(1000);
+  }
   logs() { try { return this.docker(['logs', this.name], { stdio: ['ignore', 'pipe', 'pipe'] }); } catch (e) { return ''; } }
 }
 
@@ -505,6 +513,12 @@ class LocalInvoker {
   async stop() {
     this.proc.stdin.end();
     await new Promise((r) => this.proc.on('exit', r));
+  }
+  async restart(covDir) {
+    const logs = this.stderr;
+    await this.stop();
+    await this.start(covDir);
+    this.stderr = logs;
   }
   logs() { return this.stderr; }
 }
@@ -593,9 +607,14 @@ async function convertCoverage(fn, covDir, reportDir) {
       results.functions[fn.name] = fres;
       continue;
     }
+    let first = true;
     for (const c of cases) {
       const rec = { id: c.id, function: fn.name, run_key: c.run_key };
       try {
+        // Functions with a bounded-staleness cache: every case starts in a
+        // fresh execution environment, so no case sees another's cached data.
+        if (fn.isolate_cases && !first) await inv.restart(covDir);
+        first = false;
         await resetTables(be, c.fixtures);
         ctx = { calls: [], messages: [], seen: {}, inflight: 0, last: Date.now(), returned: false,
                 rules: (c.faults || []).map((rule) => ({ rule, seen: 0, fired: 0 })) };
@@ -605,6 +624,11 @@ async function convertCoverage(fn, covDir, reportDir) {
         } else {
           const out = await inv.invoke(c.event);
           Object.assign(rec, out);
+          if (c.repeat) {
+            // The same request again in this execution environment (cache hits).
+            rec.repeats = [out];
+            for (let k = 1; k < c.repeat; k++) rec.repeats.push(await inv.invoke(c.event));
+          }
           // Work the handler abandoned (e.g. retries of a sibling request
           // after Promise.all rejected) keeps hitting the backend after it
           // returns. Keep the fault rules active and wait until it is quiet,

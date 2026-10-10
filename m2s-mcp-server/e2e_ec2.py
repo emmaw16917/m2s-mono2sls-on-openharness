@@ -278,8 +278,15 @@ def prepare_variant(src: Path, variant: str, flight_days: int) -> None:
     for f in src.glob("lambdas/*/loader-load/loader/loader-settings.json"):
         f.write_text(re.sub(r'("MAX_DAYS_TO_SCHEDULE_FLIGHTS"\s*:\s*)\d+', rf"\g<1>{flight_days}", f.read_text(encoding="utf-8")), encoding="utf-8")
     t = (src / "template.yaml").read_text(encoding="utf-8")
-    t, n = re.subn(r"(AccessLogSetting:\n\s+DestinationArn: !GetAtt ApiLogGroup.Arn\n\s+Format: ).*", rf"\g<1>'{ACCESS_LOG_FORMAT}'", t)
-    assert n == 1, "access log format not found"
+    # A workspace whose blueprint chose api_type "http" (gate AT1/AT2) already
+    # deploys an HTTP API (payload 1.0): only its access log format is set.
+    native_http = "AWS::Serverless::HttpApi" in t
+    if native_http and variant.endswith("-http"):
+        raise SystemExit(f"{variant}: the workspace already deploys an HTTP API; run v0/opt instead")
+    key = "AccessLogSettings" if native_http else "AccessLogSetting"
+    t, n = re.subn(rf"({key}:\n\s+DestinationArn: !GetAtt ApiLogGroup.Arn\n\s+Format: ).*", rf"\g<1>'{ACCESS_LOG_FORMAT}'", t)
+    if n != 1:
+        print(f"WARNING {variant}: no {key} -> ApiLogGroup with a Format; the gateway/Lambda split will be missing from the report")
     if variant.endswith("-http"):
         a, b = t.index("  AcmeAirApi:\n"), t.index("\n  # Companion for the Api's AccessLogSetting")
         t = t[:a] + f"""  AcmeAirApi:

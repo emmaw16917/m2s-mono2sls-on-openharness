@@ -26,6 +26,10 @@ _cov = coverage.Coverage(
     source=[_TASK_ROOT, "/opt/python"],
     omit=["*/m2s_cov_handler.py", "*/site-packages/*", "*/dist-packages/*"],
 )
+# A restarted runtime process (controller restart() before each case of a
+# cached function) adds to the data of the earlier ones instead of replacing it.
+if os.path.exists("/tmp/m2s-cov/.coverage"):
+    _cov.load()
 _cov.start()
 _mod, _, _fn = os.environ["M2S_REAL_HANDLER"].rpartition(".")
 try:

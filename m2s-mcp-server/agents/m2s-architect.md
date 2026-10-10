@@ -277,6 +277,31 @@ blueprint 里的每个判断都要能追溯到依据。用 `write_file` 写 `sto
 
    拿不准用哪个时：外部效果和单体一样 → `contract` 或 `implementation-trace`；外部效果和单体不一样 → `migration-change`；单体本身就没有明确行为 → `spec-gap`。
 
+## 单体的性能做法：`perf_hints` 和 `bounded_staleness`
+
+**`metadata.perf_hints`**：规格里每条带 `perf_intent` 的规则（单体为了快而做的缓存、批处理、预取），不管裁定成什么 `class`，都在这里记一条，交给 S3/S5 参考。它对正确性没有约束力。gate 的 PH1 检查格式：
+
+```json
+{"id": "PH-1", "kind": "cache", "source": "acmeair/routes/index.js:435", "applies_to": ["flights-query"],
+ "ttl_seconds": 600, "max_entries": 10000, "keys": "flightSegment._id + '-' + date.getTime()", "caches_empty_results": true,
+ "tables": ["FlightTable"], "note": "flightDataCacheTTL 默认 600 s（settings.json）"}
+```
+
+`kind` 取 `cache` / `batch` / `prefetch`；`cache` 必须写 `ttl_seconds`（单体默认配置下的值）。
+
+**`bounded_staleness` 契约**：单体有进程内缓存，就说明它在 TTL 内**已经**对外返回过旧数据，客户端本来就要接受这一点。这时不要把缓存判成"实现轨迹、作废"，而是写一条 `class: "contract"` 的 SI，允许迁移后的函数在同样的时限内返回旧数据：
+
+```json
+{"issue_id": "SI-9", "class": "contract", "applies_to": ["flights-query"],
+ "bounded_staleness": {"tables": ["FlightSegmentTable", "FlightTable"], "ttl_seconds": 600,
+                       "evidence": "acmeair/routes/index.js:21-22,435-490 ttl-lru-cache；settings.json flightDataCacheTTL=600"},
+ "decision": "这些表的数据在 600 s 内可以是旧的；其余行为不变", "rationale": "单体本身就有这个 TTL 内的旧数据"}
+```
+
+- `ttl_seconds` 不能超过单体的 TTL；
+- 只有单体确实有这个缓存、或者人明确同意时才写；单体没有缓存的表，不要自己发明旧数据窗口；
+- 效果：验证线对这些函数**每个用例都在新的执行环境里跑**，等价性检查不再比较它们对这些表的读；perf-optimizer 可以按规则 R8 加缓存。gate 的 CT7 检查格式。
+
 ## 裁定 S5 的 spec 放宽申请（CONTRACT_TESTING_PLAN.md §7）
 
 spawn prompt 写明"裁定 perf 申请"时，主 Agent 会给你若干条申请。每条包括：要放宽的规格条目、为什么认为它是实现轨迹、放宽后允许的外部结果、测出来的收益。不会给你用例或代码 diff，你也不要去找。

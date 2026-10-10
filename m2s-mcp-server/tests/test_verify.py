@@ -706,3 +706,96 @@ def test_rest_list_claim_is_comma_joined(ws):
     m = verify.Model(ws)
     ev, _ = verify.build_event(m, _case(request={"method": "GET", "path": "/api/books/b1", "identity": {"sub": "u1", "cognito:groups": ["staff", "admins"]}}))
     assert ev["requestContext"]["authorizer"]["claims"]["cognito:groups"] == "staff,admins"
+
+
+def test_observation_drops_reads_of_cached_tables():
+    raw = {"calls": [{"op": "Query", "table": "FlightTable"}, {"op": "GetItem", "table": "Other"}, {"op": "PutItem", "table": "FlightTable", "item": {}}],
+           "result": {"statusCode": 200}}
+    ops = [c["op"] for c in verify._observation(raw, 1, None, False, {"FlightTable"})["calls"]]
+    assert sorted(ops) == ["GetItem", "PutItem"]
+
+
+def test_repeat_must_answer_alike(ws):
+    case = _case(repeat=2)
+    assert verify.check_case(verify.Model(ws), case, with_template=True) == []
+    assert verify.check_case(verify.Model(ws), _case(repeat=9), with_template=True)
+    same = {"result": {"statusCode": 200, "body": "[1]"}}
+    raw = {**same, "calls": [], "repeats": [same, same]}
+    assert verify.judge(verify.Model(ws), _case(expect={"status": 200}), raw) == []
+    raw["repeats"] = [same, {"result": {"statusCode": 200, "body": "[2]"}}]
+    assert any("repeat" in m for m in verify.judge(verify.Model(ws), _case(expect={"status": 200}), raw))
+
+
+def test_model_cached_tables(ws):
+    bp = json.loads((ws / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    bp["metadata"] = {"spec_resolutions": [{"issue_id": "SI-1", "class": "contract", "applies_to": ["books-get"],
+                                            "bounded_staleness": {"tables": ["Books"], "ttl_seconds": 60, "evidence": "x:1"}}]}
+    (ws / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    assert verify.Model(ws).cached_tables == {"books-get": {"Books"}}
+
+
+CACHE_TEMPLATE = """
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  Items:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions: [{AttributeName: id, AttributeType: S}]
+      KeySchema: [{AttributeName: id, KeyType: HASH}]
+  ItemsGet:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: lambdas/items-get/
+      Handler: handler.handler
+      Runtime: nodejs22.x
+      Environment: {Variables: {TABLE: !Ref Items}}
+      Events:
+        Get: {Type: Api, Properties: {Path: "/items/{id}", Method: get}}
+"""
+CACHE_HANDLER = """
+const { DynamoDBClient, GetItemCommand } = require('@aws-sdk/client-dynamodb');
+const ddb = new DynamoDBClient({});
+const cache = new Map();               // module-level: lives as long as the execution environment
+exports.handler = async (event) => {
+  const id = event.pathParameters.id;
+  let hit = cache.get(id);
+  if (!hit) {
+    const r = await ddb.send(new GetItemCommand({ TableName: process.env.TABLE, Key: { id: { S: id } } }));
+    hit = r.Item ? r.Item.name.S : null;
+    cache.set(id, hit);
+  }
+  return hit ? { statusCode: 200, body: JSON.stringify({ name: hit }) } : { statusCode: 404, body: '{}' };
+};
+"""
+
+
+def test_integration_cached_function_isolated_per_case(tmp_path):
+    """Two cases seed the same key with different data: without a fresh
+    execution environment per case, the second would see the first's cache."""
+    sdk = REPO / "m2s-mcp-server" / "verify-tools" / "node_modules" / "@aws-sdk" / "client-dynamodb"
+    if not sdk.exists():
+        pytest.skip("verify-tools node_modules not installed")
+    ws = tmp_path / "cachews"
+    fn = ws / "output" / "lambdas" / "items-get"
+    fn.mkdir(parents=True)
+    (fn / "handler.js").write_text(CACHE_HANDLER, encoding="utf-8")
+    (fn / "package.json").write_text(json.dumps({"name": "items-get", "version": "1.0.0", "dependencies": {"@aws-sdk/client-dynamodb": "^3.600.0"}}), encoding="utf-8")
+    (ws / "output" / "template.yaml").write_text(CACHE_TEMPLATE, encoding="utf-8")
+    (ws / "storage").mkdir()
+    bp = {"lambda_functions": [{"name": "items-get", "trigger_type": "api", "entry_points": ["GET /items/{id}"]}],
+          "dynamodb_tables": [{"logical_name": "Items"}],
+          "metadata": {"spec_resolutions": [{"issue_id": "SI-1", "class": "contract", "applies_to": ["items-get"],
+                                             "bounded_staleness": {"tables": ["Items"], "ttl_seconds": 60, "evidence": "app.js:1"}}]}}
+    (ws / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    (ws / "storage" / "analysis_report.json").write_text(json.dumps({"entry_points": [{"method": "GET", "path": "/items/:id",
+                                                                       "responses": [{"status": 200}], "business_rules": [{"rule": "x"}]}]}), encoding="utf-8")
+    ev = ws / "verification" / "events" / "items-get"
+    ev.mkdir(parents=True)
+    for cid, name, extra in (("a", "first", {}), ("b", "second", {"repeat": 3})):
+        (ev / f"{cid}.json").write_text(json.dumps({"kind": "happy", "spec_refs": ["GET /items/:id#responses[0]"], **extra,
+                                                    "request": {"method": "GET", "path": "/items/k1"}, "fixtures": {"Items": [{"id": "k1", "name": name}]},
+                                                    "expect": {"status": 200, "body": {"subset": {"name": name}}}}), encoding="utf-8")
+    r = verify.run_validate(str(ws), mode="local")
+    assert r["status"] == "PASS", r
