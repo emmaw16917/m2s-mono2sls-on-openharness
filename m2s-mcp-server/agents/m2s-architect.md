@@ -82,10 +82,20 @@ REST 独有功能（`rest_features` 的取值）：
 
 | 取值 | 什么时候用到 |
 |---|---|
-| `cognito_authorizer` | 有任何 `auth: "required"` 的函数，或者 `cognito.enabled = true`。v1 只对 REST 建模了授权器的 claims（`requestContext.authorizer.claims`）。**gate 会自动推导这一项** |
-| `gateway_responses` | `global_middleware` 里有头（没被 `migration-change` 裁定去掉）：网关自己生成的 4xx/5xx 也要带这些头，HTTP API 没有 GatewayResponses。**gate 会自动推导这一项** |
+| `gateway_responses` | `global_middleware` 里有 `Access-Control-Allow-Origin: *` 以外的头（没被 `migration-change` 裁定去掉）：网关自己生成的 4xx/5xx 也要带这些头，HTTP API 没有 GatewayResponses。只有 `Access-Control-Allow-Origin: *` 时不算，HTTP API 的 `CorsConfiguration` 会给网关的 401 也加上它。**gate 会自动推导这一项** |
+| `cognito_user_pools_authorizer` | 明确要求**只接受 ID token**（例如客户端只发 ID token，而且不希望 access token 也能调用）。HTTP API 的 JWT 授权器两种 token 都接受 |
 | `xray_active_tracing` / `waf` / `api_keys_usage_plans` / `request_validation` / `caching` / `resource_policy` | 单体或需求里明确要求了对应能力 |
 | `edge_endpoint` | 客户端分布在多个地区，需要 EDGE 端点 |
+
+**Cognito 用户池两种 API 都支持**：REST 用 Cognito 授权器，HTTP API 用 JWT 授权器（issuer 指向用户池，audience 是 app client）。payload 1.0 下 Lambda 拿到的 claims 位置相同（`event.requestContext.authorizer.claims`），但有三处差异（2026-10-10 实测，`results-e2e/jwt-probe`）：
+
+| | REST Cognito 授权器 | HTTP API JWT 授权器 |
+|---|---|---|
+| `cognito:groups` 这类数组 claim | `"staff,admins"` | `"[staff admins]"` |
+| `exp`、`iat` | 日期字符串，例如 `"Sat Oct 10 03:36:23 UTC 2026"` | epoch 秒的字符串 |
+| access token | 拒绝（401） | 接受，但 claims 里没有 `email` 等用户属性 |
+
+选 HTTP API 且有鉴权时，在 `DECISIONS.md` 记一条：access token 也能调用。handler 读 claims 的方式见 m2s-code-developer。
 
 为什么默认 HTTP：同一应用的实测（acmeair，2026-10-09），HTTP API 的 p50 低约 5ms，每 1k 请求费用低 57%（$1.00 对 $3.50 每百万请求）。payload 1.0 下 Lambda 收到的事件和 REST 一样，handler 和测试都不用改。
 

@@ -236,7 +236,33 @@ MyApi:
 #         PayloadFormatVersion: '1.0'   # REQUIRED
 ```
 
-- No `GatewayResponses`, `Auth`, `TracingEnabled` or `EndpointConfiguration` (HTTP APIs are regional).
+- No `GatewayResponses`, `TracingEnabled` or `EndpointConfiguration` (HTTP APIs are regional).
+
+**With a Cognito user pool** (blueprint has `auth: "required"` functions): a JWT authorizer instead of
+the REST Cognito authorizer. Verified on AWS 2026-10-10 (`results-e2e/jwt-probe`): with payload 1.0 the
+claims are at `requestContext.authorizer.claims`, as on REST; `Authorization` works with or without
+`Bearer `; the CorsConfiguration puts `Access-Control-Allow-Origin: *` on the authorizer's 401.
+
+```yaml
+MyApi:
+  Type: AWS::Serverless::HttpApi
+  Properties:
+    CorsConfiguration: {AllowMethods: ['*'], AllowHeaders: ['*'], AllowOrigins: ['*']}
+    Auth:
+      DefaultAuthorizer: CognitoJwt
+      Authorizers:
+        CognitoJwt:
+          IdentitySource: $request.header.Authorization
+          JwtConfiguration:
+            issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
+            audience: [!Ref UserPoolClient]
+
+# Public route: same override as REST
+#   Events:
+#     Pub:
+#       Type: HttpApi
+#       Properties: {ApiId: !Ref MyApi, Path: /books, Method: get, PayloadFormatVersion: '1.0', Auth: {Authorizer: NONE}}
+```
 - Output URL: `!Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com"`.
 - The REST pattern's `ApiLogGroup` companion works unchanged.
 

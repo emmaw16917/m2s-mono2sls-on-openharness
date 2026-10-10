@@ -1091,11 +1091,16 @@ def test_at1_http_when_nothing_rest_only(tmp_path):
 
 
 def test_at1_rest_only_needs(tmp_path):
+    # Cognito and a plain 'ACAO: *' work on HTTP API (JWT authorizer, CorsConfiguration): AWS probe 2026-10-10
     for kw in ({"auth": "required"}, {"cognito": True}, {"headers": {"Access-Control-Allow-Origin": "*"}}):
         ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "x"}, **kw)
-        assert _sev(gates.check_api_type(ws)) == [("AT1", "ERROR")], kw
-        ws = _at_ws(tmp_path, {"api_type": "rest", "clients": "internet", "api_type_reason": "x"}, **kw)
-        assert gates.check_api_type(ws) == []
+        assert gates.check_api_type(ws) == [], kw
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "x"},
+                headers={"Access-Control-Allow-Origin": "<echo Origin>", "Vary": "Origin"})
+    assert _sev(gates.check_api_type(ws)) == [("AT1", "ERROR")]
+    ws = _at_ws(tmp_path, {"api_type": "rest", "clients": "internet", "api_type_reason": "x"},
+                headers={"X-Frame-Options": "DENY"})
+    assert gates.check_api_type(ws) == []
     ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "x", "rest_features": ["waf", "bogus"]})
     assert _sev(gates.check_api_type(ws)) == [("AT1", "ERROR")] * 2
 
@@ -1120,3 +1125,11 @@ def test_at2_template_matches_api_type(tmp_path):
     ws = _at_ws(tmp_path, {"type": "REST"})                                    # before AT1: not checked
     assert gates.check_api_type_template(ws, _at_template("rest")) == []
     assert gates.check_c7(ws, _at_template("http")) == []
+
+
+def test_at2_http_with_gateway_auth_needs_jwt_authorizer(tmp_path):
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "none"}, auth="required")
+    t = _at_template("http")
+    assert _sev(gates.check_api_type_template(ws, t)) == [("AT2", "ERROR")]
+    t["Resources"]["A"]["Properties"]["Auth"] = {"DefaultAuthorizer": "J", "Authorizers": {"J": {"JwtConfiguration": {"issuer": "i", "audience": ["a"]}}}}
+    assert gates.check_api_type_template(ws, t) == []

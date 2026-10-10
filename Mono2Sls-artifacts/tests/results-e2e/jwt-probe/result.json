@@ -1,0 +1,222 @@
+{
+  "http v1 id raw": {
+    "status": 200,
+    "cors_headers": {},
+    "authorizer": {
+      "claims": {
+        "aud": "7kfurohe6msmtbq18rkafmf9e1",
+        "auth_time": "1791599783",
+        "cognito:groups": "[staff admins]",
+        "cognito:username": "34780478-a061-7092-401e-71694a6973b7",
+        "email": "probe@example.com",
+        "email_verified": "true",
+        "event_id": "a0ea98df-c5fa-45e4-b31f-64146591960e",
+        "exp": "1791603383",
+        "iat": "1791599783",
+        "iss": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_nXEDDHZhh",
+        "jti": "75ec0104-6e9c-4700-a4de-368f63c7e31b",
+        "origin_jti": "b8c8fdf0-df91-48c4-a40b-8e1b7256810f",
+        "sub": "34780478-a061-7092-401e-71694a6973b7",
+        "token_use": "id"
+      },
+      "scopes": null
+    },
+    "body": null,
+    "version": "1.0"
+  },
+  "http v1 id bearer": {
+    "status": 200,
+    "cors_headers": {},
+    "authorizer": {
+      "claims": {
+        "aud": "7kfurohe6msmtbq18rkafmf9e1",
+        "auth_time": "1791599783",
+        "cognito:groups": "[staff admins]",
+        "cognito:username": "34780478-a061-7092-401e-71694a6973b7",
+        "email": "probe@example.com",
+        "email_verified": "true",
+        "event_id": "a0ea98df-c5fa-45e4-b31f-64146591960e",
+        "exp": "1791603383",
+        "iat": "1791599783",
+        "iss": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_nXEDDHZhh",
+        "jti": "75ec0104-6e9c-4700-a4de-368f63c7e31b",
+        "origin_jti": "b8c8fdf0-df91-48c4-a40b-8e1b7256810f",
+        "sub": "34780478-a061-7092-401e-71694a6973b7",
+        "token_use": "id"
+      },
+      "scopes": null
+    },
+    "body": null,
+    "version": "1.0"
+  },
+  "http v1 access raw": {
+    "status": 200,
+    "cors_headers": {},
+    "authorizer": {
+      "claims": {
+        "auth_time": "1791599783",
+        "client_id": "7kfurohe6msmtbq18rkafmf9e1",
+        "cognito:groups": "[staff admins]",
+        "event_id": "a0ea98df-c5fa-45e4-b31f-64146591960e",
+        "exp": "1791603383",
+        "iat": "1791599783",
+        "iss": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_nXEDDHZhh",
+        "jti": "21865b83-6179-419e-98b4-f11e32aa3d9b",
+        "origin_jti": "b8c8fdf0-df91-48c4-a40b-8e1b7256810f",
+        "scope": "aws.cognito.signin.user.admin",
+        "sub": "34780478-a061-7092-401e-71694a6973b7",
+        "token_use": "access",
+        "username": "34780478-a061-7092-401e-71694a6973b7"
+      },
+      "scopes": null
+    },
+    "body": null,
+    "version": "1.0"
+  },
+  "http v1 access bearer": {
+    "status": 200,
+    "cors_headers": {},
+    "authorizer": {
+      "claims": {
+        "auth_time": "1791599783",
+        "client_id": "7kfurohe6msmtbq18rkafmf9e1",
+        "cognito:groups": "[staff admins]",
+        "event_id": "a0ea98df-c5fa-45e4-b31f-64146591960e",
+        "exp": "1791603383",
+        "iat": "1791599783",
+        "iss": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_nXEDDHZhh",
+        "jti": "21865b83-6179-419e-98b4-f11e32aa3d9b",
+        "origin_jti": "b8c8fdf0-df91-48c4-a40b-8e1b7256810f",
+        "scope": "aws.cognito.signin.user.admin",
+        "sub": "34780478-a061-7092-401e-71694a6973b7",
+        "token_use": "access",
+        "username": "34780478-a061-7092-401e-71694a6973b7"
+      },
+      "scopes": null
+    },
+    "body": null,
+    "version": "1.0"
+  },
+  "http v2 id bearer": {
+    "status": 200,
+    "cors_headers": {},
+    "authorizer": {
+      "jwt": {
+        "claims": {
+          "aud": "7kfurohe6msmtbq18rkafmf9e1",
+          "auth_time": "1791599783",
+          "cognito:groups": "[staff admins]",
+          "cognito:username": "34780478-a061-7092-401e-71694a6973b7",
+          "email": "probe@example.com",
+          "email_verified": "true",
+          "event_id": "a0ea98df-c5fa-45e4-b31f-64146591960e",
+          "exp": "1791603383",
+          "iat": "1791599783",
+          "iss": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_nXEDDHZhh",
+          "jti": "75ec0104-6e9c-4700-a4de-368f63c7e31b",
+          "origin_jti": "b8c8fdf0-df91-48c4-a40b-8e1b7256810f",
+          "sub": "34780478-a061-7092-401e-71694a6973b7",
+          "token_use": "id"
+        },
+        "scopes": null
+      }
+    },
+    "body": null,
+    "version": "2.0"
+  },
+  "http v1 anon": {
+    "status": 401,
+    "cors_headers": {
+      "access-control-allow-origin": "*"
+    },
+    "authorizer": null,
+    "body": {
+      "message": "Unauthorized"
+    },
+    "version": null
+  },
+  "http v1 bad token": {
+    "status": 401,
+    "cors_headers": {
+      "access-control-allow-origin": "*"
+    },
+    "authorizer": null,
+    "body": {
+      "message": "Unauthorized"
+    },
+    "version": null
+  },
+  "http pub anon": {
+    "status": 200,
+    "cors_headers": {
+      "access-control-allow-origin": "*"
+    },
+    "authorizer": null,
+    "body": null,
+    "version": "1.0"
+  },
+  "http pub with token": {
+    "status": 200,
+    "cors_headers": {},
+    "authorizer": null,
+    "body": null,
+    "version": "1.0"
+  },
+  "rest v1 id raw": {
+    "status": 200,
+    "cors_headers": {},
+    "authorizer": {
+      "claims": {
+        "sub": "34780478-a061-7092-401e-71694a6973b7",
+        "cognito:groups": "staff,admins",
+        "email_verified": "true",
+        "iss": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_nXEDDHZhh",
+        "cognito:username": "34780478-a061-7092-401e-71694a6973b7",
+        "origin_jti": "b8c8fdf0-df91-48c4-a40b-8e1b7256810f",
+        "aud": "7kfurohe6msmtbq18rkafmf9e1",
+        "event_id": "a0ea98df-c5fa-45e4-b31f-64146591960e",
+        "token_use": "id",
+        "auth_time": "1791599783",
+        "exp": "Sat Oct 10 03:36:23 UTC 2026",
+        "iat": "Sat Oct 10 02:36:23 UTC 2026",
+        "jti": "75ec0104-6e9c-4700-a4de-368f63c7e31b",
+        "email": "probe@example.com"
+      }
+    },
+    "body": null,
+    "version": null
+  },
+  "rest v1 id bearer": {
+    "status": 200,
+    "cors_headers": {},
+    "authorizer": {
+      "claims": {
+        "sub": "34780478-a061-7092-401e-71694a6973b7",
+        "cognito:groups": "staff,admins",
+        "email_verified": "true",
+        "iss": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_nXEDDHZhh",
+        "cognito:username": "34780478-a061-7092-401e-71694a6973b7",
+        "origin_jti": "b8c8fdf0-df91-48c4-a40b-8e1b7256810f",
+        "aud": "7kfurohe6msmtbq18rkafmf9e1",
+        "event_id": "a0ea98df-c5fa-45e4-b31f-64146591960e",
+        "token_use": "id",
+        "auth_time": "1791599783",
+        "exp": "Sat Oct 10 03:36:23 UTC 2026",
+        "iat": "Sat Oct 10 02:36:23 UTC 2026",
+        "jti": "75ec0104-6e9c-4700-a4de-368f63c7e31b",
+        "email": "probe@example.com"
+      }
+    },
+    "body": null,
+    "version": null
+  },
+  "rest v1 access raw": {
+    "status": 401,
+    "cors_headers": {},
+    "authorizer": null,
+    "body": {
+      "message": "Unauthorized"
+    },
+    "version": null
+  }
+}

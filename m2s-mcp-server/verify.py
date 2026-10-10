@@ -203,6 +203,9 @@ class Model:
                     fn["sqs"].append(str(ep.get("Queue", "")).split(".")[0])
             self.functions[name] = fn
         self._index_gateway_responses(res)
+        self.http_api_cors_any = any(
+            "*" in ((((r.get("Properties") or {}).get("CorsConfiguration") or {}) if isinstance((r.get("Properties") or {}).get("CorsConfiguration"), dict) else {}).get("AllowOrigins") or [])
+            for r in res.values() if isinstance(r, dict) and r.get("Type") == "AWS::Serverless::HttpApi")
 
     def _index_gateway_responses(self, res: dict) -> None:
         """GatewayResponses of the Api (and Globals.Api): the headers API
@@ -572,6 +575,16 @@ def _path_match(pattern: str, path: str) -> dict[str, str] | None:
     return m.groupdict() if m else None
 
 
+def _claim(v: Any, http_api: bool) -> str:
+    """A claim value as the gateway hands it to the function: every claim is
+    a string; a list claim (cognito:groups) is 'a,b' on a REST Cognito
+    authorizer and '[a b]' on an HTTP API JWT authorizer (AWS probe
+    2026-10-10, results-e2e/jwt-probe). Handlers must parse both."""
+    if isinstance(v, list):
+        return "[" + " ".join(map(str, v)) + "]" if http_api else ",".join(map(str, v))
+    return str(v)
+
+
 def build_event(model: Model, case: dict[str, Any]) -> tuple[dict[str, Any] | None, dict[str, Any] | None]:
     """(lambda event, gateway_response). gateway_response is set when API
     Gateway itself would answer (anonymous request to an authorized route)."""
@@ -600,6 +613,14 @@ def build_event(model: Model, case: dict[str, Any]) -> tuple[dict[str, Any] | No
     r, path_params = route
     ident = req.get("identity")
     if r["authorized"] and not ident:
+        if r.get("http_api"):
+            # HTTP API: no GatewayResponses; a CorsConfiguration that allows
+            # '*' still puts Access-Control-Allow-Origin: * on the 401 when
+            # the request has an Origin (AWS probe 2026-10-10).
+            has_origin = any(k.lower() == "origin" for k in (req.get("headers") or {}))
+            cors = {"Access-Control-Allow-Origin": "*"} if has_origin and model.http_api_cors_any else {}
+            return None, {"statusCode": 401, "headers": {"Content-Type": "application/json", **cors},
+                          "body": json.dumps({"message": "Unauthorized"})}
         gw = getattr(model, "gateway_responses", {})
         spec = gw.get("UNAUTHORIZED") or gw.get("DEFAULT_4XX") or {}
         return None, {"statusCode": spec.get("status") or 401,
@@ -617,7 +638,7 @@ def build_event(model: Model, case: dict[str, Any]) -> tuple[dict[str, Any] | No
                           "requestId": "req-" + case["id"], "identity": {"sourceIp": "127.0.0.1"}, "accountId": ACCOUNT}
     if r["authorized"] and ident:
         claims = {"sub": ident["sub"], "cognito:username": ident.get("username", ident["sub"])}
-        claims.update({k: str(v) for k, v in ident.items() if k not in ("sub",)})
+        claims.update({k: _claim(v, bool(r.get("http_api"))) for k, v in ident.items() if k not in ("sub",)})
         rc["authorizer"] = {"claims": claims}
     version = {"version": "1.0"} if r.get("http_api") else {}
     return {**version, "resource": r["path"], "path": path, "httpMethod": method, "headers": headers or None,

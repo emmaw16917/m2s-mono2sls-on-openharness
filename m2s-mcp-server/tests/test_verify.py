@@ -677,3 +677,32 @@ def test_r1b_rejects_authz_success_writes_and_missing_reads():
     assert "successfully" in verify.speculative_extra_reads(_obs([R_SEG], 200), _obs([R_SEG, R_SEG2], 200))[1]
     assert "writes" in verify.speculative_extra_reads(_obs([R_SEG], 500), _obs([R_SEG, W], 500))[1]
     assert "missing" in verify.speculative_extra_reads(_obs([R_SEG, R_SEG2], 500), _obs([R_SEG2], 500))[1]
+
+
+def test_http_api_jwt_claims_and_401(ws):
+    tpl = TEMPLATE.replace("""    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Auth:
+        DefaultAuthorizer: CognitoAuth
+""", """    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration: {AllowOrigins: ['*']}
+      Auth:
+        DefaultAuthorizer: Jwt
+        Authorizers: {Jwt: {JwtConfiguration: {issuer: i, audience: [a]}}}
+""").replace("Type: Api\n", "Type: HttpApi\n").replace("RestApiId: !Ref Api,", "ApiId: !Ref Api, PayloadFormatVersion: '1.0',")
+    (ws / "output" / "template.yaml").write_text(tpl, encoding="utf-8")
+    m = verify.Model(ws)
+    ev, gw = verify.build_event(m, _case(request={"method": "GET", "path": "/api/books/b1", "identity": {"sub": "u1", "cognito:groups": ["staff", "admins"]}}))
+    assert ev["requestContext"]["authorizer"]["claims"]["cognito:groups"] == "[staff admins]"
+    ev, gw = verify.build_event(m, _case(request={"method": "GET", "path": "/api/books/b1", "identity": None, "headers": {"Origin": "https://x"}}))
+    assert gw["statusCode"] == 401 and gw["headers"]["Access-Control-Allow-Origin"] == "*"
+    ev, gw = verify.build_event(m, _case(request={"method": "GET", "path": "/api/books/b1", "identity": None}))
+    assert "Access-Control-Allow-Origin" not in gw["headers"]
+
+
+def test_rest_list_claim_is_comma_joined(ws):
+    m = verify.Model(ws)
+    ev, _ = verify.build_event(m, _case(request={"method": "GET", "path": "/api/books/b1", "identity": {"sub": "u1", "cognito:groups": ["staff", "admins"]}}))
+    assert ev["requestContext"]["authorizer"]["claims"]["cognito:groups"] == "staff,admins"

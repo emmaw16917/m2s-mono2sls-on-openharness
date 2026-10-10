@@ -236,6 +236,21 @@ def _contract_headers(workspace: Path) -> dict[str, list[str]]:
     return out
 
 
+def _contract_header_values(workspace: Path) -> dict[str, set[str]]:
+    """Like _contract_headers, with the values: {header name: {value, ...}}."""
+    try:
+        report = json.loads((workspace / "storage" / "analysis_report.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    names = _contract_headers(workspace)
+    out: dict[str, set[str]] = {}
+    for item in report.get("global_middleware") or []:
+        for name, value in ((item or {}).get("headers") or {}).items() if isinstance(item, dict) else ():
+            if name in names:
+                out.setdefault(name, set()).add(str(value))
+    return out
+
+
 def check_gm_code(workspace: Path) -> list[dict[str, Any]]:
     """GM1: every API function must set each app-wide response header itself
     (Lambda proxy integration: API Gateway adds nothing to the function's
@@ -311,11 +326,15 @@ def check_gm_template(workspace: Path, template: dict[str, Any]) -> list[dict[st
 # What only a REST API (AWS::Serverless::Api) offers; HTTP API is otherwise
 # the default: about 1/3.5 the request price and ~5 ms lower p50 (acmeair A/B,
 # 2026-10-09, section 10.6). Architects may declare any of these in
-# api_gateway.rest_features; the first two are also derived from the blueprint
-# and the spec.
+# api_gateway.rest_features; gateway_responses is also derived from the spec.
+# A Cognito user pool works on both: HTTP API uses a JWT authorizer, and with
+# payload format 1.0 the claims sit at requestContext.authorizer.claims as on
+# REST (AWS probe 2026-10-10, results-e2e/jwt-probe).
 REST_FEATURES = {
-    "cognito_authorizer": "a gateway Cognito authorizer: the v1 pipeline models its claims (requestContext.authorizer.claims) only for REST",
-    "gateway_responses": "app-wide headers on the gateway's own 4xx/5xx (GatewayResponses, GM2); HTTP API has no GatewayResponses",
+    "cognito_user_pools_authorizer": "REST's COGNITO_USER_POOLS authorizer specifically (accepts ID tokens only; an HTTP API JWT "
+                                     "authorizer also accepts access tokens)",
+    "gateway_responses": "app-wide headers other than 'Access-Control-Allow-Origin: *' on the gateway's own 4xx/5xx "
+                         "(GatewayResponses, GM2); an HTTP API CorsConfiguration adds only the CORS headers",
     "xray_active_tracing": "X-Ray active tracing on the API stage",
     "waf": "a WAF web ACL attached directly to the API",
     "api_keys_usage_plans": "API keys / usage plans",
@@ -338,13 +357,10 @@ def api_type_needs(workspace: Path, blueprint: dict[str, Any] | None = None) -> 
         except (OSError, json.JSONDecodeError):
             return {}
     needs: dict[str, str] = {}
-    cognito = blueprint.get("cognito") if isinstance(blueprint.get("cognito"), dict) else {}
-    required = [f.get("name") for f in blueprint.get("lambda_functions") or [] if isinstance(f, dict) and f.get("auth") == "required"]
-    if cognito.get("enabled") or required:
-        needs["cognito_authorizer"] = f"gateway auth required by {required[:5] or 'cognito.enabled'}"
-    headers = _contract_headers(workspace)
-    if headers:
-        needs["gateway_responses"] = f"global_middleware headers {sorted(headers)} must also be on the gateway's own errors"
+    headers = _contract_header_values(workspace)
+    beyond_cors = sorted(h for h, v in headers.items() if not (h.lower() == "access-control-allow-origin" and v == {"*"}))
+    if beyond_cors:
+        needs["gateway_responses"] = f"global_middleware headers {beyond_cors} must also be on the gateway's own errors"
     api = blueprint.get("api_gateway") if isinstance(blueprint.get("api_gateway"), dict) else {}
     for f in api.get("rest_features") or []:
         needs.setdefault(str(f), "declared in api_gateway.rest_features")
@@ -426,6 +442,21 @@ def check_api_type_template(workspace: Path, template: dict[str, Any]) -> list[d
                                      "the event format the handlers and tests were written for).", lid))
         elif t == "rest" and etype != "Api":
             findings.append(_finding("AT2", "ERROR", f"{lid}: event Type {etype} but blueprint api_type is 'rest'.", lid))
+    if t == "http":
+        try:
+            fns = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8")).get("lambda_functions") or []
+        except (OSError, json.JSONDecodeError, AttributeError):
+            fns = []
+        if any(isinstance(f, dict) and f.get("auth") == "required" for f in fns):
+            for lid, r in res.items():
+                if not isinstance(r, dict) or r.get("Type") != "AWS::Serverless::HttpApi":
+                    continue
+                auth = (r.get("Properties") or {}).get("Auth") or {}
+                default = (auth.get("Authorizers") or {}).get(str(auth.get("DefaultAuthorizer")))
+                if not isinstance(default, dict) or not isinstance(default.get("JwtConfiguration"), dict):
+                    findings.append(_finding("AT2", "ERROR", f"{lid}: blueprint has auth 'required' functions but the HttpApi has no "
+                                             "DefaultAuthorizer with JwtConfiguration (issuer = the user pool, audience = the app "
+                                             "client); see m2s-sam-kb 'HTTP API'.", lid))
     if t == "http" and "AWS::Serverless::Api" in kinds:
         findings.append(_finding("AT2", "ERROR", "blueprint api_type is 'http' but the template has an AWS::Serverless::Api (REST).", "template.yaml"))
     if t == "rest" and "AWS::Serverless::HttpApi" in kinds:

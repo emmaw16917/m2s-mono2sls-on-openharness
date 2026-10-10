@@ -886,3 +886,18 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
   - `run_equivalence(speculative_reads=[...])`：多出的读只在基线返回错误、且不是 401/403 的用例上接受；写操作、消息和基线的每一次读必须不变；结果给出 `speculative_reads` 和 `extra_reads_total`。
 - **测试**：新增 6 个（AT1 两个、AT2 一个、HttpApi 事件一个、R1b 判定两个），共 184 passed（不含集成测试）。
 - **未做**：R1b 和 HTTP API 都还没有在一次完整的流水线运行里用过；e2e_ec2.py 的 `v0-http` 变体仍然假设 v0 是 REST。
+
+## Cognito 应用也可以用 HTTP API（2026-10-10）
+
+- **实测**：临时栈 `m2s-jwt-probe`，同一个用户池同时挂 HTTP API JWT 授权器和 REST Cognito 授权器，各发 12 种请求。测完已删除，证据在 `Mono2Sls-artifacts/tests/results-e2e/jwt-probe/`。
+  - payload 1.0 下 claims 在 `requestContext.authorizer.claims`，和 REST 相同；
+  - 差异：`cognito:groups` 是 `"[staff admins]"`，REST 是 `"staff,admins"`；`exp`/`iat` 是 epoch 秒，REST 是日期字符串；HTTP API 接受 access token，REST 返回 401；
+  - `CorsConfiguration` 给授权器的 401 加了 `Access-Control-Allow-Origin: *`。
+- **改动**：
+  - AT1 不再从 Cognito 推导 REST；`gateway_responses` 只在有 `ACAO: *` 以外的全局头时推导；新增可选的 `cognito_user_pools_authorizer`（只接受 ID token 时用）；
+  - AT2：有 `auth: required` 函数的 HttpApi 必须有 JWT `DefaultAuthorizer`；
+  - verify.py：数组 claim 按 API 类型格式化（顺带修正 REST：以前是 Python 的 `str(list)`，现在是 `"a,b"`）；HTTP API 的匿名 401 在请求带 Origin、CorsConfiguration 允许 `*` 时带 ACAO；
+  - architect、code-developer、verifier、sam-engineer、sam-kb 相应更新。
+- **按新规则**：acmeair-a1、bookstore-oh、todo-oh 都应选 http；airline-booking-c3 仍需 REST。
+- **测试**：新增 3 个，修改 1 个，共 187 passed。
+

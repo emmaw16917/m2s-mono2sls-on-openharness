@@ -551,8 +551,18 @@ acmeair 收益估算：flights-query 往返 20.5 → 12.1ms（校准表），查
 > api_type_reason / rest_features`；gate(blueprint) AT1（`cognito_authorizer`、`gateway_responses` 两项由 blueprint
 > 和 spec 自动推导；选 http 却需要 REST 功能报 ERROR，选 rest 却不需要报 WARNING，即 R6）；gate(template) AT2
 > （HttpApi 事件必须 `PayloadFormatVersion: '1.0'`；rest + same_region 必须 REGIONAL）；verify.py 识别 HttpApi 事件；
-> sam-kb 加了 HTTP API 模式（`sam validate --lint` 通过）。v1 的限制：有 Cognito 授权器的应用一律 REST，因为验证线
-> 只对 REST 建模了 claims 的位置。
+> sam-kb 加了 HTTP API 模式（`sam validate --lint` 通过）。
+>
+> **Cognito 也支持 HTTP API（2026-10-10 实测后放开）**：临时栈 `m2s-jwt-probe`（同一个用户池，HTTP API JWT 授权器
+> 和 REST Cognito 授权器各一个，测完已删除，证据在 `results-e2e/jwt-probe/`）。payload 1.0 下 claims 在
+> `requestContext.authorizer.claims`，和 REST 相同（payload 2.0 在 `authorizer.jwt.claims`）；`Authorization` 带不带
+> `Bearer ` 都可以。差异有三处：`cognito:groups` 是 `"[a b]"`（REST 是 `"a,b"`）；`exp`/`iat` 是 epoch 秒（REST 是
+> 日期字符串）；HTTP API 也接受 access token（REST 返回 401）。另外 `CorsConfiguration` 会给授权器的 401 加上
+> `Access-Control-Allow-Origin: *`，所以只有 `ACAO: *` 一个全局头的应用也不再需要 REST。落地：AT1 不再从 Cognito
+> 推导 REST，`gateway_responses` 只在有 `ACAO: *` 以外的全局头时推导；AT2 要求有鉴权的 HttpApi 设 JWT
+> `DefaultAuthorizer`；verify.py 按 API 类型生成数组 claim 的格式，HTTP API 的 401 按 CorsConfiguration 带 ACAO；
+> code-developer 只用 `sub`、两种数组格式都解析、不解析 `exp`/`iat`。按新规则，acmeair-a1、bookstore-oh、todo-oh 都
+> 应选 http；airline-booking-c3（回显 Origin 的 CORS 头）仍需 REST。
 
 **(f) 冷启动加权 p99**
 

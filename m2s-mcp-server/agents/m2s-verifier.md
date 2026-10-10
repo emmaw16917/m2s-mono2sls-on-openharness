@@ -81,7 +81,7 @@ model: inherit
   - `path` 写具体路径（`/api/books/book-001`），路径参数由工具按模板匹配出来；
   - `query` 的值是字符串，或者字符串数组（同一参数传多次）；
   - `body` 写 JSON 对象，或者原样字符串（用来测非法 JSON）；
-  - `identity`：已登录用户写 `{"sub": ...}`（Cognito Sub），匿名请求写 `null`。**鉴权由 API Gateway 做**：路由配置了 Cognito authorizer 时，匿名请求由网关直接返回 401，不会调用函数。
+  - `identity`：已登录用户写 `{"sub": ...}`（Cognito Sub），匿名请求写 `null`。其他 claim 也可以写，数组类 claim（例如 `"cognito:groups": ["staff", "admins"]`）写成数组，工具会按 API 类型转成网关的格式（REST 是 `"staff,admins"`，HTTP API 是 `"[staff admins]"`）。**鉴权由 API Gateway 做**：路由配置了 Cognito authorizer 时，匿名请求由网关直接返回 401，不会调用函数。
 - SQS 消费者函数写 `sqs`：`{"records": [{"message_id": "m1", "body": {...}}, ...]}`。消息体格式按 blueprint 里生产者和消费者的约定写。
 - `faults`（可选）：这个用例运行时注入的故障，格式和故障场景的 `rules` 相同。**只有当规格或 blueprint 明确规定了故障下的行为时才写**（例如 architect 规定"事务冲突要在 handler 里重试"），`expect` 按那条规定写。其他故障只写成故障场景，只记录、不写预期。
 - `fixtures`：用例开始前各表里的条目，表名用 blueprint `dynamodb_tables[].logical_name`（例如 `Books`、`Cart`）。键名按 **blueprint 的表结构**写（迁移后可能改过名，例如 `customerId` → `userId`）。每个用例开始时所有表都会清空，再放入这些条目。

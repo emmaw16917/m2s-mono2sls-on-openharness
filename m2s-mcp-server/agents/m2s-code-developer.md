@@ -50,6 +50,12 @@ model: inherit
   - **Node.js**：代码放在 `layers/shared/nodejs/` 下，例如 `layers/shared/nodejs/shared.js`，模板的 `ContentUri` 指向 `layers/shared/nodejs/`。
 - 这两条由 gate 的 C13 检查。
 
+**从网关鉴权读用户身份**（blueprint 有 `auth: "required"` 的函数时）：只从 `event.requestContext.authorizer.claims` 读，REST 和 HTTP API（payload 1.0）都在这个位置。另外：
+- 用户 id 用 `sub`，不要用 `email`。HTTP API 也接受 access token，access token 里没有 `email`；
+- 数组类 claim（例如 `cognito:groups`）两种格式都要能解析：REST 是 `"a,b"`，HTTP API 是 `"[a b]"`。去掉首尾的 `[` `]`，再按逗号或空格切分；
+- 不要解析 `exp`、`iat`：两种 API 的格式不同，而且过期已经由网关检查过了。
+多个函数都要读身份时，把这段逻辑放进共享层。
+
 自检要点（Node.js 文件里没有 `import`/`export` 关键字、没有裸 `require('aws-sdk')`；依赖文件里没有 Python 运行时内置包 boto3/botocore/s3transfer/jmespath/urllib3；每个 handler 实际用到的环境变量名心里有数，方便后面排查 C4）——这些是给自己核对用的，不是可以跳过自查循环的理由。
 
 ## 自查循环（写完代码之后，不要跳过）

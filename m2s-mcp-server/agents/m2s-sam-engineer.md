@@ -48,7 +48,7 @@ model: inherit
 **S3a 禁止事项**：禁止读 `output/lambdas/` 或 `output/` 下任何 handler 代码——这一步纯粹基于 `blueprint.json` 设计共享基础设施，不需要看代码。禁止调用 `mcp__m2s-server__validate_sam`（`template.part1.yaml` 本身不是合法完整模板，验证会失败且没有意义）。
 
 **API 类型**（S3a 写 API 资源、S3b 写事件时）：按 blueprint 的 `api_gateway.api_type` 来写，不要自己换，gate(template) 的 AT2 会检查：
-- `"http"`：用 `m2s-sam-kb` 的 "API Gateway Pattern (HTTP API)"。资源是 `AWS::Serverless::HttpApi`；每个函数事件写 `Type: HttpApi`、`ApiId: !Ref <Api>`，**必须**加 `PayloadFormatVersion: '1.0'`。SAM 默认用 2.0，会改掉 handler 解析的事件格式。不写 `GatewayResponses`、`Auth`，也不写 `TracingEnabled`。
+- `"http"`：用 `m2s-sam-kb` 的 "API Gateway Pattern (HTTP API)"。资源是 `AWS::Serverless::HttpApi`；每个函数事件写 `Type: HttpApi`、`ApiId: !Ref <Api>`，**必须**加 `PayloadFormatVersion: '1.0'`。SAM 默认用 2.0，会改掉 handler 解析的事件格式。不写 `GatewayResponses`，也不写 `TracingEnabled`。有 `auth: "required"` 的函数时，按 sam-kb 写 JWT 授权器并设为 `DefaultAuthorizer`；`auth: "none"` 的事件照样加 `Auth: {Authorizer: NONE}`。
 - `"rest"`：用 "API Gateway Pattern (REST API)"。`clients` 是 `"same_region"` 时，在 Api 资源上加 `EndpointConfiguration: {Type: REGIONAL}`。
 
 **全局响应头**（S3a 写 Api 资源时）：`analysis_report.json` 的 `global_middleware` 里有 `headers` 时，除了 `Cors` 块（它只负责预检），还要在 `Globals.Api.GatewayResponses`（或 Api 资源的 `GatewayResponses`）里为 `DEFAULT_4XX` 和 `DEFAULT_5XX` 配上同样的头，值用单引号包起来，例如 `Access-Control-Allow-Origin: "'*'"`。授权器拒绝、限流这些由 API Gateway 自己返回的响应，单体也会带这些头。gate(template) 的 GM2 检查这一项。

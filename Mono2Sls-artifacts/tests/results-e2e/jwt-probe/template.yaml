@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: m2s probe - HTTP API JWT authorizer with Cognito (temporary)
+Resources:
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UsernameAttributes: [email]
+      Schema:
+        - {Name: email, AttributeDataType: String, Required: true, Mutable: true}
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows: [ALLOW_USER_PASSWORD_AUTH, ALLOW_REFRESH_TOKEN_AUTH]
+  Group:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: {UserPoolId: !Ref UserPool, GroupName: admins}
+  Group2:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties: {UserPoolId: !Ref UserPool, GroupName: staff}
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowMethods: ['*']
+        AllowHeaders: ['*']
+        AllowOrigins: ['*']
+      Auth:
+        DefaultAuthorizer: CognitoJwt
+        Authorizers:
+          CognitoJwt:
+            IdentitySource: $request.header.Authorization
+            JwtConfiguration:
+              issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
+              audience: [!Ref UserPoolClient]
+  RestApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      EndpointConfiguration: {Type: REGIONAL}
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt UserPool.Arn
+  Fn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: fn/
+      Handler: index.handler
+      Runtime: nodejs22.x
+      Architectures: [arm64]
+      Events:
+        V1:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: /v1, Method: get, PayloadFormatVersion: '1.0'}
+        V2:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: /v2, Method: get, PayloadFormatVersion: '2.0'}
+        Pub:
+          Type: HttpApi
+          Properties: {ApiId: !Ref HttpApi, Path: /pub, Method: get, PayloadFormatVersion: '1.0', Auth: {Authorizer: NONE}}
+        Rest:
+          Type: Api
+          Properties: {RestApiId: !Ref RestApi, Path: /v1, Method: get}
+Outputs:
+  HttpUrl: {Value: !Sub "https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com"}
+  RestUrl: {Value: !Sub "https://${RestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod"}
+  PoolId: {Value: !Ref UserPool}
+  ClientId: {Value: !Ref UserPoolClient}
