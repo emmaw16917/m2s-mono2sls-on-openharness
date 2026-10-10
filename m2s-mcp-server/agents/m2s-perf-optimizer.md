@@ -23,7 +23,9 @@ model: inherit
 | 函数内把**互相独立**的调用改成并行，用 `Promise.allSettled` 或等价写法，失败粒度保持在单条（单条消息）级别 | ✅ |
 | 去掉不必要的编解码或重复计算，返回值完全一致 | ✅ |
 | 依赖精简：删掉 `package.json` 里声明了、但代码没有引用的依赖 | ✅ |
-| 原代码遇到失败就停止 → 改成并行（执行的操作集合会变） | ❌ |
+| 原代码遇到失败就停止 → 改成并行，被提前的操作里**有写操作或发消息**（执行的操作集合会变） | ❌ |
+| 原代码遇到失败就停止 → 只把后面的**读**提前并行（规则 R1b），挡在中间的提前返回是 `error_propagation` | ✅，条件见规则库 |
+| 越过 `authz` 守卫（spec 的 `guard_kind: authz`，或者没标）提前读 | ❌ |
 | 把**事务**（`TransactWriteItems`）或条件写入改成并行，而这些写入可能改到同一个条目 | ❌，**只能按 R4 的方式做**。真实 DynamoDB 会让重叠的并发事务以 `TransactionConflict` 取消。验证和测量工具会模拟这一点，引入冲突的改动会被判不等价（H1 (c)）并回滚 |
 | 按条目键分波次并行（R4） | ✅，条件见规则库 |
 | 跨消息按 key 聚合写入（失败粒度变粗） | ❌ |
@@ -34,6 +36,7 @@ model: inherit
 | 冗余读被 spec 或测试规定成必经步骤（contract 1 应用，或者漏标的条目） | ❌，写申请（见"申请放宽 spec"一节） |
 | 架构改成 arm64（规则 R5），只改 `Globals.Function.Architectures` | ✅，条件见规则库 |
 | 其他配置类改动（MemorySize、SQS 参数），模板里的 `Handler`/`CodeUri`/事件定义，目录结构 | ❌ |
+| REST API 换成 HTTP API（规则 R6） | ❌，API 类型在 S1 决定；只写 advisory |
 
 不允许的改动如果被诊断出来，写进报告的 `advisories`，附上诊断数据。**不要去改。**
 
@@ -45,7 +48,10 @@ model: inherit
 | **R2** | 同一个请求体被重复解析（例如 `JSON.parse(event.body)` 出现多次） | 只解析一次 |
 | **R3** | `package.json`（Python 是 `requirements.txt`）里声明了、但没有任何 `require()`/`import` 引用的依赖 | 删掉这个依赖 |
 | **R4** | 批处理（典型是 SQS 消费者的 `for (const record of records)`）逐条 `await` 每条消息的处理；不同消息的写入**可能**改到同一个条目（事务、条件写入）；失败按单条处理（try/catch 后继续，或记进 `batchItemFailures`） | 按条目键分波次并行，写法见下文"R4 的写法"。同一波里的消息读写的条目两两不同，每个条目上的执行顺序与原来一致 |
+| **R1b** | 函数里有两段以上**串行的读**（Get / Query / Scan / BatchGet），中间隔着一个提前返回或抛异常，而这个提前返回在 spec 里是 `guard_kind: "error_propagation"`（只传播错误）。后面那次读的参数在前一步之前就能算出来，不依赖前面读到的结果 | 把这些读一起发出，再**按原来的顺序**检查结果：前面的失败或命中提前返回，就照原样返回或抛出，丢掉后面已经读到的结果。写法见下文"R1b 的写法"。被提前的只能是读。前面的提前返回是 `authz` 或没标 `guard_kind` 的，不适用 |
 | **R5** | `output/template.yaml` 的 `Globals.Function` 和各函数都没有 `Architectures: [arm64]`；运行时是 Python 或 Node.js | 在 `Globals.Function` 加一行 `Architectures: [arm64]`，**代码一行都不改**。判决只用 `run_config_verdict()`（设计文档 §3.7 的 A 档）：不跑验证、等价性和 RIE，本地 x86 跑不出架构差别。工具检查只改了这一项、gate(template)、sam build 和编译模块的架构标记，成本按单价算，正常结果是 `kept`；它判 `pending_human` 时不要自己改判。一个应用只做一次，作为单独的请求和提交 |
+
+| **R6**（只出 advisory） | `run_gate(phase="blueprint")` 报了 AT1 WARNING：blueprint 选了 `api_type: "rest"`，但没有用到任何 REST 独有功能 | **不改模板**。在 `advisories` 里写一条：现在的 REST、建议换成 HTTP API（payload 1.0）、请求单价差（$3.50 对 $1.00 每百万请求）乘以基准里的请求量、实测参考（acmeair 2026-10-09：p50 低约 5ms、每 1k 请求费用低 57%），以及验证办法：用 `m2s-mcp-server/e2e_ec2.py` 的 `v0-http` 变体做真实 A/B |
 
 R4 **不适用**的情况，命中了也不改，在报告的 `rule_scan` 里写明原因：
 - 循环体里有 `break`，或者失败后停止处理后面的消息；
@@ -114,6 +120,47 @@ exports.lambda_handler = async (event) => {
 - 同一个 `orderId`（或其他幂等键）重复出现的两条消息，标记条目的键相同，会自动排进不同的波次。所以键里**必须**包含幂等标记条目。
 - `batchItemFailures` 最后要按批内顺序排序，否则同一波里多条失败时，返回值的顺序会变，H1 (b) 会报不等价。
 - 键算错（漏了条目）时，并发的重叠请求会被冲突模拟拒绝，H1 (c) 会报出来。不要为了通过检查去改测试或基准。
+
+## R1b 的写法（投机读）
+
+去程失败就返回 500、不查回程，是 `error_propagation`。改成两次读一起发出，再按原来的顺序检查结果：
+
+```js
+// before
+const outbound = await getSegment(from, to);      // throws -> 500
+if (!outbound) return notFound();
+const ret = await getSegment(to, from);
+
+// after
+// [R1b] Both reads start together. Their results are checked in the original
+// order, so the outbound leg's error or early return still decides the answer;
+// the return leg's read is then discarded (an extra read on the failure path
+// only, never a write).
+const [outboundR, retR] = await Promise.allSettled([getSegment(from, to), getSegment(to, from)]);
+if (outboundR.status === "rejected") throw outboundR.reason;
+const outbound = outboundR.value;
+if (!outbound) return notFound();
+if (retR.status === "rejected") throw retR.reason;
+const ret = retR.value;
+```
+
+Python 用模块级的 `_POOL`（见下文 Python 一节），按原顺序取结果，`result()` 会原样抛出该次读的异常：
+
+```python
+# [R1b] Both reads start together; results are taken in the original order.
+outbound_f = _POOL.submit(get_segment, origin, dest)
+return_f = _POOL.submit(get_segment, dest, origin)
+outbound = outbound_f.result()          # raises as the sequential read did
+if not outbound:
+    return not_found()
+ret = return_f.result()
+```
+
+要点：
+- 用 `Promise.allSettled`，**不要**用 `Promise.all`：`Promise.all` 会以先失败的那个为准，两个都失败时，报出的错误可能和原来不同；
+- 只有**读**能提前。中间夹着写、发消息，或者后面的读依赖前面读到的值，都不适用；
+- 判决时 `run_equivalence` 要带 `speculative_reads=["<函数>"]`。工具只在基线返回了错误（不是 401/403）的用例上接受多出来的读，而且写操作、发出的消息、基线的每一次读都必须不变。结果里的 `extra_reads_total` 是多出来的读次数，写进 `evidence`，它就是失败路径上多付的读容量；
+- 改动行要被覆盖（`run_coverage`），所以失败路径要有用例。没有的话按 `blocked_by_coverage` 处理。
 
 ## Python 函数（`python3.12`）的写法
 
@@ -313,7 +360,7 @@ R4 的请求另加 `"guard_benchmarks": ["<热点基准 id>"]`，`constraints` �
 2. `mcp__m2s-server__run_gate(phase="final")` 必须 `PASS`。
 3. 验证线阶段 B，受影响的函数 = 改了代码的函数。**三项都要跑完**，不要第一项失败就停，分诊要用到全部结果：
    - `mcp__m2s-server__run_validate(functions=[...])`：要求 `PASS`。**只按函数跑，不要对未提交的候选版本跑全量**；
-   - `mcp__m2s-server__run_equivalence(mode="diff", functions=[...])`：要求 `EQUIVALENT`。它会重新运行 v0 和受检函数的全部用例，把故障固定在同一个操作上，对比 H1 的 (a)(b)(c)；
+   - `mcp__m2s-server__run_equivalence(mode="diff", functions=[...])`：要求 `EQUIVALENT`。它会重新运行 v0 和受检函数的全部用例，把故障固定在同一个操作上，对比 H1 的 (a)(b)(c)。R1b 的请求加 `speculative_reads=[...]`（同一批函数），其他请求不要加；
    - `mcp__m2s-server__run_coverage(functions=[...], changed_since="HEAD")`：要求 `changed_lines.all_covered` 为 true。
 4. 三项都通过，进入第 5 步。有任何一项没通过，按下面的"检查没通过时的分诊"处理。
 5. `mcp__m2s-server__run_rie_verdict(benchmark="<请求里的基准>")`。它按设计文档 §3 给出判决：
@@ -366,7 +413,9 @@ v0 是验收过的版本，所以用"和 v0 等不等价"来区分是代码的�
 2. 写 `WS/output/perf_report.json`，格式是设计文档 §9.3 的格式，外加：
    ```json
    "rule_scan": {"R1": {"hits": 1, "locations": ["output/lambdas/.../handler.js:47-77"]}, "R2": {"hits": 0, "locations": []}, "R3": {"hits": 0, "locations": []},
-                 "R4": {"hits": 1, "locations": ["output/lambdas/.../handler.js:268-306"], "not_applicable": []}}
+                 "R4": {"hits": 1, "locations": ["output/lambdas/.../handler.js:268-306"], "not_applicable": []},
+                 "R1b": {"hits": 1, "locations": ["output/lambdas/flights-query/handler.js:31-44"], "not_applicable": []},
+                 "R6": {"hits": 0, "locations": []}}
    ```
    每个 `changes[]` 都写 `fix_attempts`（0 或 1）；经过复核的写 `review`。`evidence` 放入相应工具返回的关键数据：代理指标前后对比、`rie` 各延迟下的结果、`init`、`cost`、`equivalence`、`regression`、`coverage_of_changed_lines`。`run_rie_verdict` 保存的完整结果在 `perf/verdicts/` 下，报告里写出文件路径即可。
 3. `mcp__m2s-server__update_ledger()`：它根据 `perf_report.json` 机械地更新仓库里的规则台账，不要手写台账。
@@ -426,6 +475,7 @@ REQ 来自 spec 放宽申请时（prompt 会写明，并给出 architect 的 SI 
 - 只写直接测得的量，例如"顺序深度 30→1、调用次数不变、热调用 Duration 的 5 轮中位数从 [x..y] 降到 [a..b]，范围不重叠"。**不写"预计线上提升 X ms / X%"**。
 - 并行化（R1、R4）的判决受模拟延迟模型的局限影响：并发数没有上限（设计文档 §2.1 第 2 项）。要在该改动的 `evidence` 里写明"结论只在并发不受限的条件下成立"。
 - R4 的 `evidence` 还要写明两个基准各自的条目重叠假设，以及守卫基准的结果（`guards`）。
+- R1b 的 `evidence` 写明：越过的是哪个提前返回（spec 里 `guard_kind` 的出处）、`run_equivalence` 的 `extra_reads_total`，以及"多出来的读只发生在失败路径上"。
 
 ## 工具
 

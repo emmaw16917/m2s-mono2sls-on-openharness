@@ -260,7 +260,7 @@ def run_coverage(functions: list[str] | None = None, mode: str = "auto", changed
 
 @mcp.tool()
 def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str] | None = None,
-                    runtime: str = "auto") -> str:
+                    runtime: str = "auto", speculative_reads: list[str] | None = None) -> str:
     """Fault-injection runs (verification/faults/*.json).
 
     Args:
@@ -277,11 +277,16 @@ def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str
             replaces just these functions' scenarios and observations in an
             existing baseline file (same runtime required) and keeps the rest.
         runtime: "auto", "rie" or "local".
+        speculative_reads: (diff, rule R1b) functions whose reads were moved
+            ahead of an error-propagation early return. H1 (a) then accepts
+            extra reads on runs the baseline answered with an error other
+            than 401/403, provided writes, messages and every baseline read
+            are unchanged; the extra reads are reported, not hidden.
 
     Returns: JSON string {status: RECORDED|EQUIVALENT|DIFFERENT|..., runs,
-        differences, infra_errors}.
+        differences, infra_errors[, speculative_reads, extra_reads_total]}.
     """
-    return _verify_call(verify.run_equivalence, mode, label, functions, runtime)
+    return _verify_call(verify.run_equivalence, mode, label, functions, runtime, speculative_reads=speculative_reads)
 
 
 @mcp.tool()

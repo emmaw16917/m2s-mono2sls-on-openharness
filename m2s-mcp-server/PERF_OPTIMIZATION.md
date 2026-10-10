@@ -485,7 +485,7 @@ perf-harness（JS/Python）新增 `network_ms_cal`：沿用 depth 的依赖链�
 
 升到 M 级的办法：下次上 AWS 时部署一个标定 Lambda，对每种操作在不同 item 大小、返回条数下各调用 N 次，直接计时。
 
-### 10.4 流水线设计改动（已定方向，未实现）
+### 10.4 流水线设计改动（已定方向；(a)(e) 已于 2026-10-10 实现，其余未实现）
 
 **(a) 区分两种“失败即停止”，放宽 §6.2 的禁令**
 
@@ -505,6 +505,12 @@ perf-harness（JS/Python）新增 `network_ms_cal`：沿用 depth 的依赖链�
 - §6.2 的禁令改窄为“含写操作或属于 authz 守卫的，不能改成并行”。
 
 acmeair 收益估算：flights-query 往返 20.5 → 12.1ms（校准表），查询占全部请求的 54%。
+
+> **已实现（2026-10-10）**：spec 的 `responses[].guard_kind`（provenance 校验取值）；verifier 对 `error_propagation`
+> 只排除写操作；perf-optimizer 的 §6.2 和规则 R1b（JS `Promise.allSettled` / Python `_POOL` 按原顺序取结果）；
+> `run_equivalence(speculative_reads=[...])`：只在基线返回非 401/403 错误的用例上接受多出来的读，写操作、消息和
+> 基线的每一次读必须不变，多出的读次数记在 `extra_reads_total`。authz 的判定用状态码机械地做，不依赖标注。
+> 尚未在真实工作区上跑过一次 R1b。
 
 **(b) 有界旧数据：缓存从“作废”改为契约**
 
@@ -538,6 +544,15 @@ acmeair 收益估算：flights-query 往返 20.5 → 12.1ms（校准表），查
   code-developer 和 verifier 要从一开始按目标格式写代码和测试。在 S5 再改等于重写所有 handler 和测试事件。
 - perf-optimizer 只出 advisory（新规则 R6）：静态检测“当前是 REST 且没用到 REST 独有功能”，附成本估算和
   `e2e_ec2.py` A/B 的命令。
+
+> **已实现（2026-10-10），与上面的设想有一处不同**：选 HTTP API 时固定用 **payload 1.0**。它给 Lambda 的事件和
+> REST 一样（10.6 的 A/B 就是这样跑的，handler 一行没改、0 错误），所以 handler 和测试都不用改；把 API 类型放在 S1
+> 的理由从"事件格式不同"变成"模板和部署场景在 S1 定"。实现：blueprint `api_gateway.api_type / clients /
+> api_type_reason / rest_features`；gate(blueprint) AT1（`cognito_authorizer`、`gateway_responses` 两项由 blueprint
+> 和 spec 自动推导；选 http 却需要 REST 功能报 ERROR，选 rest 却不需要报 WARNING，即 R6）；gate(template) AT2
+> （HttpApi 事件必须 `PayloadFormatVersion: '1.0'`；rest + same_region 必须 REGIONAL）；verify.py 识别 HttpApi 事件；
+> sam-kb 加了 HTTP API 模式（`sam validate --lint` 通过）。v1 的限制：有 Cognito 授权器的应用一律 REST，因为验证线
+> 只对 REST 建模了 claims 的位置。
 
 **(f) 冷启动加权 p99**
 

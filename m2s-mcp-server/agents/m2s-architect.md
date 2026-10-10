@@ -63,8 +63,33 @@ model: inherit
 
 - 有 `Auth` 标签：`cognito.enabled=true`，`user_pool_attributes` 从用户模型里提取（如 `["email", "name"]`），`password_policy` 给出合理的默认要求。**不要**创建 `post_confirmation` 触发器或任何 Cognito 触发的 Lambda。
 - **例外：单体自己管理会话**（登录端点自己校验密码、生成会话 id 存进自己的表或集合，再通过 cookie 或请求头发给客户端；受保护路由的中间件按这个 id 查表，例如 Acme Air 的 `checkForValidSessionCookie` 查 `customerSession`）。客户端（包括性能测试脚本）依赖的是这套登录和 cookie 契约，换成 Cognito 会改掉对外接口。这时**保留单体的机制**：`cognito.enabled=false`，`authorizer="None"`；会话集合照常迁成表，每个受保护函数自己按单体中间件的逻辑校验会话（读 cookie → `GetItem` 会话表 → 不存在或过期就返回单体的状态码），放进共用 layer；这些函数在 blueprint 里 `auth` 写 `"none"`（网关层不鉴权），并在 `notes` 里写"函数内校验会话，见 D-x"。在 `DECISIONS.md` 写一条决策说明为什么不用 Cognito。
-- `api_gateway.type = "REST"`，`cors = {allow_origins: ["*"], allow_methods: ["GET","POST","PUT","DELETE","OPTIONS"]}`。
+- `cors = {allow_origins: ["*"], allow_methods: ["GET","POST","PUT","DELETE","OPTIONS"]}`。API 类型见下一节。
 - `cognito.enabled == true` 时：`authorizer="Cognito"`、`authorizer_type="COGNITO_USER_POOLS"`、`user_pool_arn` 引用 Cognito User Pool、`token_validation="Automatic at API Gateway layer"`、`identity_source="Authorization header (Bearer token)"`；否则 `authorizer="None"`。
+
+## API 类型（`api_gateway.api_type`、`clients`）
+
+在这里定下来，不要留给后面的阶段：模板（S3）、测试事件（验证线）都按它来写，S5 再改等于全部重做。
+
+| 字段 | 取值 | 怎么定 |
+|---|---|---|
+| `api_type` | `"http"` 或 `"rest"` | **默认 `"http"`**（HTTP API，payload 格式 1.0）。只有用到下面任何一项 REST 独有功能时才选 `"rest"` |
+| `rest_features` | 数组，取值见下表 | 选 `"rest"` 时列出用到的功能 |
+| `api_type_reason` | 一句话 | 写选择的依据：列出用到的 REST 独有功能，没有就写 `"none"` |
+| `clients` | `"same_region"` 或 `"internet"` | 调用方在哪里：同区域的服务或压测机写 `same_region`，浏览器或分布在各地的客户端写 `internet`。不确定时写 `internet` |
+| `type` | 保留旧字段，写 `"HTTP"` 或 `"REST"`，和 `api_type` 一致 | |
+
+REST 独有功能（`rest_features` 的取值）：
+
+| 取值 | 什么时候用到 |
+|---|---|
+| `cognito_authorizer` | 有任何 `auth: "required"` 的函数，或者 `cognito.enabled = true`。v1 只对 REST 建模了授权器的 claims（`requestContext.authorizer.claims`）。**gate 会自动推导这一项** |
+| `gateway_responses` | `global_middleware` 里有头（没被 `migration-change` 裁定去掉）：网关自己生成的 4xx/5xx 也要带这些头，HTTP API 没有 GatewayResponses。**gate 会自动推导这一项** |
+| `xray_active_tracing` / `waf` / `api_keys_usage_plans` / `request_validation` / `caching` / `resource_policy` | 单体或需求里明确要求了对应能力 |
+| `edge_endpoint` | 客户端分布在多个地区，需要 EDGE 端点 |
+
+为什么默认 HTTP：同一应用的实测（acmeair，2026-10-09），HTTP API 的 p50 低约 5ms，每 1k 请求费用低 57%（$1.00 对 $3.50 每百万请求）。payload 1.0 下 Lambda 收到的事件和 REST 一样，handler 和测试都不用改。
+
+gate(blueprint) 的 AT1 检查：选了 `http` 但用到了 REST 独有功能，报 ERROR；选了 `rest` 却没有任何 REST 独有功能，报 WARNING。把选择和理由写进 `DECISIONS.md`。
 
 ## 每个 API Lambda 的 auth 字段怎么判
 

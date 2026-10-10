@@ -168,6 +168,7 @@ class Model:
                        if isinstance(r, dict) and r.get("Type") in ("AWS::Serverless::LayerVersion", "AWS::Lambda::LayerVersion")}
         glob_env = ((glob_fn.get("Environment", {}) or {}).get("Variables", {}) or {})
         glob_api_auth = (((self.template.get("Globals", {}) or {}).get("Api", {}) or {}).get("Auth", {}) or {})
+        glob_http_auth = (((self.template.get("Globals", {}) or {}).get("HttpApi", {}) or {}).get("Auth", {}) or {})
         for lid, r in res.items():
             if not isinstance(r, dict) or r.get("Type") != "AWS::Serverless::Function":
                 continue
@@ -192,9 +193,12 @@ class Model:
                 if not isinstance(ev, dict):
                     continue
                 ep = ev.get("Properties", {}) or {}
-                if ev.get("Type") == "Api":
+                if ev.get("Type") in ("Api", "HttpApi"):
+                    # HttpApi events carry PayloadFormatVersion '1.0' (gate AT2):
+                    # the same event as REST, plus "version": "1.0".
                     fn["api"].append({"path": ep.get("Path"), "method": str(ep.get("Method", "")).upper(),
-                                      "authorized": self._api_authorized(ep, glob_api_auth)})
+                                      "authorized": self._api_authorized(ep, glob_api_auth if ev["Type"] == "Api" else glob_http_auth),
+                                      "http_api": ev["Type"] == "HttpApi"})
                 elif ev.get("Type") == "SQS":
                     fn["sqs"].append(str(ep.get("Queue", "")).split(".")[0])
             self.functions[name] = fn
@@ -223,7 +227,7 @@ class Model:
         ev_auth = (ev_props.get("Auth") or {}).get("Authorizer")
         if ev_auth is not None:
             return str(ev_auth).upper() != "NONE"
-        api_id = ev_props.get("RestApiId")
+        api_id = ev_props.get("RestApiId") or ev_props.get("ApiId")
         api = (self.template.get("Resources", {}) or {}).get(str(api_id)) if api_id else None
         api_auth = ((api or {}).get("Properties", {}) or {}).get("Auth", {}) or glob_auth
         default = api_auth.get("DefaultAuthorizer")
@@ -615,7 +619,8 @@ def build_event(model: Model, case: dict[str, Any]) -> tuple[dict[str, Any] | No
         claims = {"sub": ident["sub"], "cognito:username": ident.get("username", ident["sub"])}
         claims.update({k: str(v) for k, v in ident.items() if k not in ("sub",)})
         rc["authorizer"] = {"claims": claims}
-    return {"resource": r["path"], "path": path, "httpMethod": method, "headers": headers or None,
+    version = {"version": "1.0"} if r.get("http_api") else {}
+    return {**version, "resource": r["path"], "path": path, "httpMethod": method, "headers": headers or None,
             "multiValueHeaders": {k: [v] for k, v in headers.items()} or None,
             "queryStringParameters": single or None, "multiValueQueryStringParameters": multi or None,
             "pathParameters": path_params or None, "stageVariables": None, "requestContext": rc,
@@ -1554,8 +1559,48 @@ def _summarize_coverage(final_json: Path, logical: Path, own: dict[str, set[str]
             "files": files, "excluded_files": excluded, "uncovered": uncovered}
 
 
+def _is_read(c: dict[str, Any]) -> bool:
+    return c.get("op") in READ_OPS or c.get("op") == "@read"
+
+
+def _status(outcome: dict[str, Any]) -> int | None:
+    r = outcome.get("result")
+    return r.get("statusCode") if isinstance(r, dict) and isinstance(r.get("statusCode"), int) else None
+
+
+def speculative_extra_reads(before: dict[str, Any], now: dict[str, Any]) -> tuple[list[dict], str | None]:
+    """R1b (PERF_OPTIMIZATION.md 10.4 (a)): reads moved ahead of an
+    error-propagation early return run on the failure path too. H1 (a) then
+    accepts the candidate's calls when (1) the calls other than reads are the
+    same multiset, (2) every baseline read is still made, (3) only reads are
+    extra, and (4) the baseline answered with an error that is not an
+    authorization denial: 401/403 mean an authz guard, whose reads must stay
+    behind it (unauthenticated callers would read, and pay for, data).
+    Returns (extra reads, None) or ([], reason it is not acceptable)."""
+    enc = lambda c: json.dumps(c, sort_keys=True)
+    b_other = sorted(enc(c) for c in before["calls"] if not _is_read(c))
+    n_other = sorted(enc(c) for c in now["calls"] if not _is_read(c))
+    if b_other != n_other:
+        return [], "the writes / messages differ"
+    b_reads = [enc(c) for c in before["calls"] if _is_read(c)]
+    n_reads = [enc(c) for c in now["calls"] if _is_read(c)]
+    rest = list(n_reads)
+    for r in b_reads:
+        if r not in rest:
+            return [], "a baseline read is missing"
+        rest.remove(r)
+    status = _status(before["outcome"])
+    failed = before["outcome"].get("error") is not None or (status is not None and status >= 400)
+    if not failed:
+        return [], "extra reads on a run the baseline answered successfully"
+    if status in (401, 403):
+        return [], f"extra reads behind an authorization denial ({status}): authz guards keep their reads sequential"
+    return [json.loads(r) for r in rest], None
+
+
 def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", functions: list[str] | None = None,
-                    runtime: str = "auto", baseline_ref: str | None = "v0") -> dict[str, Any]:
+                    runtime: str = "auto", baseline_ref: str | None = "v0",
+                    speculative_reads: list[str] | None = None) -> dict[str, Any]:
     """record: run every fault scenario on the working tree and store the
     observations as verification/fault_baseline_<label>.json.
 
@@ -1568,7 +1613,12 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
     visible outcome (return value / thrown error / batchItemFailures /
     messages / table state); (c): no emulated transaction conflicts where
     the baseline had none. Without a workspace repo it falls back to the
-    stored baseline file and the original n-th-call rules."""
+    stored baseline file and the original n-th-call rules.
+
+    speculative_reads: functions changed under rule R1b. For their runs H1 (a)
+    tolerates extra reads on error-propagation failure paths (see
+    speculative_extra_reads); they are listed in the result's
+    speculative_reads with their count, the extra RRU the change costs."""
     if mode not in ("record", "diff"):
         raise VerifyError("mode must be 'record' or 'diff'")
     ws = Path(workspace)
@@ -1662,7 +1712,8 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
         now_raws, infra = run_version(model, ws, None, "cand")
         baseline_desc = f"{path.relative_to(ws)} (stored; n-th-call fault rules, order-sensitive)"
     obs = {k: _observation(r, _run_contract(model, r), model.index_attributes, r.get("function") in model.unordered_functions) for k, r in now_raws.items()}
-    diffs = []
+    diffs, spec_reads = [], []
+    spec_fns = set(speculative_reads or [])
     for key, now in obs.items():
         before = base.get(key)
         if key in unstable:
@@ -1671,7 +1722,12 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
             diffs.append({"run": key, "h1": "n/a", "detail": "not in baseline (new scenario or case)"})
             continue
         if now["calls"] != before["calls"]:
-            diffs.append({"run": key, "h1": "a", "detail": "different multiset of calls that took effect", "baseline": before["calls"], "now": now["calls"]})
+            extra, why = speculative_extra_reads(before, now) if now_raws[key].get("function") in spec_fns else ([], None)
+            if extra:
+                spec_reads.append({"run": key, "extra_reads": extra, "baseline_status": _status(before["outcome"])})
+            else:
+                diffs.append({"run": key, "h1": "a", "detail": "different multiset of calls that took effect" + (f" (R1b not applicable: {why})" if why else ""),
+                              "baseline": before["calls"], "now": now["calls"]})
         if now["outcome"] != before["outcome"]:
             diffs.append({"run": key, "h1": "b", "detail": "different externally visible outcome", "baseline": before["outcome"], "now": now["outcome"]})
         if now.get("conflicts", 0) and not before.get("conflicts", 0):
@@ -1684,5 +1740,6 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
     return {"status": "EQUIVALENT" if not h1 and not infra else "DIFFERENT" if h1 else "INFRA_ERROR", "runtime": runtime,
             "baseline": baseline_desc, "runs": len(obs), "differences": diffs, "infra_errors": infra,
             "unstable_in_baseline": unstable,
+            **({"speculative_reads": spec_reads, "extra_reads_total": sum(len(x["extra_reads"]) for x in spec_reads)} if spec_fns else {}),
             "note": ("runs listed in unstable_in_baseline gave different results in two runs of the baseline itself; "
                      "they are excluded from the verdict, so the change is NOT verified on them") if unstable else ""}

@@ -304,6 +304,144 @@ def check_gm_template(workspace: Path, template: dict[str, Any]) -> list[dict[st
     return findings
 
 
+# ---------------------------------------------------------------------------
+# AT1/AT2 - API type chosen at S1 (PERF_OPTIMIZATION.md section 10.4 (e))
+# ---------------------------------------------------------------------------
+
+# What only a REST API (AWS::Serverless::Api) offers; HTTP API is otherwise
+# the default: about 1/3.5 the request price and ~5 ms lower p50 (acmeair A/B,
+# 2026-10-09, section 10.6). Architects may declare any of these in
+# api_gateway.rest_features; the first two are also derived from the blueprint
+# and the spec.
+REST_FEATURES = {
+    "cognito_authorizer": "a gateway Cognito authorizer: the v1 pipeline models its claims (requestContext.authorizer.claims) only for REST",
+    "gateway_responses": "app-wide headers on the gateway's own 4xx/5xx (GatewayResponses, GM2); HTTP API has no GatewayResponses",
+    "xray_active_tracing": "X-Ray active tracing on the API stage",
+    "waf": "a WAF web ACL attached directly to the API",
+    "api_keys_usage_plans": "API keys / usage plans",
+    "request_validation": "request validators / models",
+    "caching": "API Gateway stage caching",
+    "resource_policy": "a resource policy (IP or VPC restrictions)",
+    "edge_endpoint": "an EDGE-optimized endpoint (clients spread across regions)",
+}
+API_TYPES = ("http", "rest")
+API_CLIENTS = ("same_region", "internet")
+
+
+def api_type_needs(workspace: Path, blueprint: dict[str, Any] | None = None) -> dict[str, str]:
+    """The REST-only features this application needs: derived from the
+    blueprint (gateway auth) and the spec (app-wide headers), plus those the
+    architect declared in api_gateway.rest_features. {feature: why}."""
+    if blueprint is None:
+        try:
+            blueprint = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+    needs: dict[str, str] = {}
+    cognito = blueprint.get("cognito") if isinstance(blueprint.get("cognito"), dict) else {}
+    required = [f.get("name") for f in blueprint.get("lambda_functions") or [] if isinstance(f, dict) and f.get("auth") == "required"]
+    if cognito.get("enabled") or required:
+        needs["cognito_authorizer"] = f"gateway auth required by {required[:5] or 'cognito.enabled'}"
+    headers = _contract_headers(workspace)
+    if headers:
+        needs["gateway_responses"] = f"global_middleware headers {sorted(headers)} must also be on the gateway's own errors"
+    api = blueprint.get("api_gateway") if isinstance(blueprint.get("api_gateway"), dict) else {}
+    for f in api.get("rest_features") or []:
+        needs.setdefault(str(f), "declared in api_gateway.rest_features")
+    return needs
+
+
+def check_api_type(workspace: Path) -> list[dict[str, Any]]:
+    """AT1 (gate(blueprint)): api_gateway.api_type is decided at S1, because
+    the template follows from it and S2/S3/verification are written against
+    it. 'http' (HTTP API with payload format 1.0: the same event as REST, so
+    handlers and tests do not change) unless a REST-only feature is needed.
+    'rest' without any such need is a WARNING: the R6 advisory."""
+    try:
+        blueprint = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []  # B0 reports it
+    api = blueprint.get("api_gateway")
+    if not isinstance(api, dict):
+        return []
+    if not any(isinstance(f, dict) and f.get("trigger_type") == "api" for f in blueprint.get("lambda_functions") or []):
+        return []
+    findings = []
+    t, clients = api.get("api_type"), api.get("clients")
+    if t not in API_TYPES:
+        findings.append(_finding("AT1", "ERROR", f"api_gateway.api_type must be one of {list(API_TYPES)} (got {t!r}); decide it at S1, "
+                                 "see m2s-architect 'API 类型'.", "blueprint.json"))
+    if clients not in API_CLIENTS:
+        findings.append(_finding("AT1", "ERROR", f"api_gateway.clients must be one of {list(API_CLIENTS)} (got {clients!r}): where the "
+                                 "callers run decides REGIONAL vs EDGE.", "blueprint.json"))
+    if not str(api.get("api_type_reason") or "").strip():
+        findings.append(_finding("AT1", "ERROR", "api_gateway.api_type_reason is empty: name the REST-only features needed, or 'none'.",
+                                 "blueprint.json"))
+    unknown = [f for f in api.get("rest_features") or [] if f not in REST_FEATURES]
+    if unknown:
+        findings.append(_finding("AT1", "ERROR", f"api_gateway.rest_features {unknown} unknown; use {sorted(REST_FEATURES)}.", "blueprint.json"))
+    needs = api_type_needs(workspace, blueprint)
+    if t == "http" and needs:
+        findings.append(_finding("AT1", "ERROR", "api_type 'http' but the application needs REST-only features: "
+                                 + "; ".join(f"{k} ({REST_FEATURES.get(k, k)}: {v})" for k, v in needs.items()), "blueprint.json"))
+    if t == "rest" and not needs:
+        findings.append(_finding("AT1", "WARNING", "api_type 'rest' but no REST-only feature is needed (R6): HTTP API costs $1.00 vs "
+                                 "$3.50 per million requests and was ~5 ms faster at p50 (PERF_OPTIMIZATION.md 10.6).", "blueprint.json"))
+    if clients == "same_region" and "edge_endpoint" in needs:
+        findings.append(_finding("AT1", "ERROR", "clients 'same_region' contradicts rest_features 'edge_endpoint'.", "blueprint.json"))
+    return findings
+
+
+def _api_events(template: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]]:
+    out = []
+    for lid, r in (template.get("Resources", {}) or {}).items():
+        if not isinstance(r, dict) or r.get("Type") != "AWS::Serverless::Function":
+            continue
+        for ev in ((r.get("Properties", {}) or {}).get("Events", {}) or {}).values():
+            if isinstance(ev, dict) and ev.get("Type") in API_EVENT_TYPES:
+                out.append((lid, ev["Type"], ev.get("Properties", {}) or {}))
+    return out
+
+
+def check_api_type_template(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
+    """AT2 (gate(template)): the template implements blueprint api_type.
+    http: AWS::Serverless::HttpApi only, every event Type HttpApi with
+    PayloadFormatVersion '1.0' (SAM defaults to 2.0, which changes the event
+    the handlers parse). rest: no HttpApi; clients same_region -> REGIONAL."""
+    try:
+        api = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8")).get("api_gateway") or {}
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return []
+    t = api.get("api_type")
+    if t not in API_TYPES:
+        return []  # workspaces from before AT1, or AT1 already failed
+    res = template.get("Resources", {}) or {}
+    kinds = {r.get("Type") for r in res.values() if isinstance(r, dict)}
+    findings = []
+    for lid, etype, props in _api_events(template):
+        if t == "http" and etype != "HttpApi":
+            findings.append(_finding("AT2", "ERROR", f"{lid}: event Type {etype} but blueprint api_type is 'http' (use Type: HttpApi).", lid))
+        elif t == "http" and str(props.get("PayloadFormatVersion", "")) != "1.0":
+            findings.append(_finding("AT2", "ERROR", f"{lid}: HttpApi event needs PayloadFormatVersion: '1.0' (SAM's default 2.0 changes "
+                                     "the event format the handlers and tests were written for).", lid))
+        elif t == "rest" and etype != "Api":
+            findings.append(_finding("AT2", "ERROR", f"{lid}: event Type {etype} but blueprint api_type is 'rest'.", lid))
+    if t == "http" and "AWS::Serverless::Api" in kinds:
+        findings.append(_finding("AT2", "ERROR", "blueprint api_type is 'http' but the template has an AWS::Serverless::Api (REST).", "template.yaml"))
+    if t == "rest" and "AWS::Serverless::HttpApi" in kinds:
+        findings.append(_finding("AT2", "ERROR", "blueprint api_type is 'rest' but the template has an AWS::Serverless::HttpApi.", "template.yaml"))
+    if t == "rest" and api.get("clients") == "same_region":
+        for lid, r in res.items():
+            if isinstance(r, dict) and r.get("Type") == "AWS::Serverless::Api":
+                ep = (r.get("Properties") or {}).get("EndpointConfiguration")
+                ep_type = ep.get("Type") if isinstance(ep, dict) else ep
+                if str(ep_type or "EDGE").upper() != "REGIONAL":
+                    findings.append(_finding("AT2", "ERROR", f"{lid}: clients 'same_region' but EndpointConfiguration is "
+                                             f"{ep_type or 'EDGE (default)'}; set Type: REGIONAL (an EDGE API routes same-region "
+                                             "callers through CloudFront).", lid))
+    return findings
+
+
 DM_VIA = {"GetItem", "Query", "PutItem", "UpdateItem", "DeleteItem", "Scan", "BatchWriteItem", "TransactWriteItems"}
 DM_KEYED = {"GetItem", "UpdateItem", "DeleteItem"}  # need the full primary key
 
@@ -796,6 +934,9 @@ def _normalize_path(path: str) -> str:
     return re.sub(r"(:([A-Za-z0-9_]+)|\{([A-Za-z0-9_]+)\}|<([A-Za-z0-9_]+:)?[A-Za-z0-9_]+>)", "{param}", path)
 
 
+API_EVENT_TYPES = ("Api", "HttpApi")  # REST and HTTP API (payload 1.0) events
+
+
 def check_c7(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
     blueprint_path = workspace / "storage" / "blueprint.json"
@@ -818,7 +959,7 @@ def check_c7(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
         if not isinstance(resource, dict) or resource.get("Type") != "AWS::Serverless::Function":
             continue
         for event in ((resource.get("Properties", {}) or {}).get("Events", {}) or {}).values():
-            if not isinstance(event, dict) or event.get("Type") != "Api":
+            if not isinstance(event, dict) or event.get("Type") not in API_EVENT_TYPES:
                 continue
             props = event.get("Properties", {}) or {}
             method = str(props.get("Method", "")).upper()
@@ -877,7 +1018,7 @@ def check_c7b(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]
         if not isinstance(resource, dict) or resource.get("Type") != "AWS::Serverless::Function":
             continue
         for event in ((resource.get("Properties", {}) or {}).get("Events", {}) or {}).values():
-            if not isinstance(event, dict) or event.get("Type") != "Api":
+            if not isinstance(event, dict) or event.get("Type") not in API_EVENT_TYPES:
                 continue
             props = event.get("Properties", {}) or {}
             method = str(props.get("Method", "")).upper()
@@ -1374,7 +1515,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
     severe = False
 
     if phase == "blueprint":
-        checks = check_b0(ws) + check_contract(ws) + check_dm(ws)
+        checks = check_b0(ws) + check_contract(ws) + check_dm(ws) + check_api_type(ws)
         severe = any(f["severity"] == "ERROR" for f in checks)
 
     elif phase == "code":
@@ -1415,6 +1556,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c13(ws, template)
                 + check_gm_code(ws)
                 + check_gm_template(ws, template)
+                + check_api_type_template(ws, template)
             )
             suspects = {
                 "C4": suspects_c4_env(ws, template),

@@ -102,6 +102,10 @@ model: inherit
 - `sdk_calls` 只在规格能确定时使用。例如：不应该写某张表（`excludes: [{table: "Orders"}]`）；403 时不应该读别人的数据（`excludes: [{op: "GetItem", table: "Payment"}]`）。**不要断言具体用 GetItem 还是 Query**——规格只说读哪张表，实现可以选不同的操作。
   - blueprint 的 `metadata.verification_contract` 是 2 时，工具强制要求：`includes` 只能写写操作和发消息（PutItem / UpdateItem / DeleteItem / BatchWriteItem / TransactWriteItems / SendMessage(Batch)），不能用 `total`。读了几次这类信息，想留给人看的话，写进 `expect.trace`（内容随意，只记录、不判定）。
   - `excludes` 仍然可以写读操作：它断言的是"不该访问"，属于权限或数据范围契约。
+  - **提前返回的错误响应看 `guard_kind`**（spec 的 `responses[].guard_kind`）：
+    - `authz`（权限守卫，例如 session 无效返回 401/403）：用 `excludes` 断言被它挡住的读写**都**没有发生，读操作也要写进去；
+    - `error_propagation`（只是传播错误，例如去程查询失败返回 500）：只用 `excludes` 断言后面的**写操作和发消息**没有发生，**不要**排除读。后面的读可能被 R1b 提前并行发出，结果被丢弃，外部效果不变。
+    - 没标 `guard_kind` 的，按 `authz` 处理。
 - 响应体只断言规格里写明的字段和值。规格里标 `unknown` 的项不要断言。
 - **数据模型转换**：blueprint 有 `data_model` 时，fixture 和 `expect.tables` 用的是**转换后**的表名、属性名（`field_mapping`）和类型（`type_mapping`，例如日期是 ISO-8601 字符串），而响应体用的是**单体的**字段名（例如仍然是 `_id`）。每个 `access_patterns` 里经过 GSI 的读，至少一个用例的 fixture 里放两条只有该字段不同的条目，断言只返回匹配的那条。
 - **全局响应头必须断言**：`analysis_report.json` 的 `global_middleware` 里每一项的 `headers`，是单体给**每个**响应加的头（例如 `CORS(app)` 的 `Access-Control-Allow-Origin: *`）。每个 API 函数至少有一个用例用 `expect.headers` 断言它们；值依赖请求的（例如回显 Origin），在请求里带上对应的头再断言。`run_validate(dry_run)` 的 GM3 会检查每个 API 函数都有。

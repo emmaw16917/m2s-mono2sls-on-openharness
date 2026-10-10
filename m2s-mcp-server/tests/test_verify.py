@@ -636,3 +636,44 @@ def test_unordered_result_compares_arrays_as_multisets(ws):
     assert verify._observation(a, unordered=True)["outcome"] == verify._observation(b, unordered=True)["outcome"]
     assert verify._observation(a, unordered=True)["outcome"] != verify._observation(c, unordered=True)["outcome"]
     assert verify._observation(a)["outcome"] != verify._observation(b)["outcome"]  # default: order is part of the contract
+
+
+def test_http_api_payload_1_event(ws):
+    tpl = TEMPLATE.replace("""  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      Auth:
+        DefaultAuthorizer: CognitoAuth
+""", """  Api:
+    Type: AWS::Serverless::HttpApi
+""").replace("Type: Api\n", "Type: HttpApi\n").replace("RestApiId: !Ref Api,", "ApiId: !Ref Api, PayloadFormatVersion: '1.0',")
+    (ws / "output" / "template.yaml").write_text(tpl, encoding="utf-8")
+    m = verify.Model(ws)
+    assert [r["http_api"] for r in m.functions["books-get"]["api"]] == [True, True]
+    ev, gw = verify.build_event(m, _case(request={"method": "GET", "path": "/api/public", "identity": None}))
+    assert gw is None and ev["version"] == "1.0" and ev["pathParameters"] is None and ev["httpMethod"] == "GET"
+
+
+def _obs(calls, status=None, error=None):
+    return {"calls": calls, "outcome": {"error": error, "result": {"statusCode": status} if status else None}}
+
+
+R_SEG = {"op": "Query", "table": "Seg", "key": "BOS-JFK"}
+R_SEG2 = {"op": "Query", "table": "Seg", "key": "JFK-BOS"}
+W = {"op": "PutItem", "table": "Booking", "item": {"id": "b"}}
+
+
+def test_r1b_extra_reads_accepted_on_error_propagation_path():
+    extra, why = verify.speculative_extra_reads(_obs([R_SEG], 500), _obs([R_SEG, R_SEG2], 500))
+    assert why is None and extra == [R_SEG2]
+    extra, why = verify.speculative_extra_reads(_obs([R_SEG], error="Error"), _obs([R_SEG2, R_SEG], error="Error"))
+    assert extra == [R_SEG2]
+
+
+def test_r1b_rejects_authz_success_writes_and_missing_reads():
+    assert "authorization" in verify.speculative_extra_reads(_obs([R_SEG], 403), _obs([R_SEG, R_SEG2], 403))[1]
+    assert "authorization" in verify.speculative_extra_reads(_obs([R_SEG], 401), _obs([R_SEG, R_SEG2], 401))[1]
+    assert "successfully" in verify.speculative_extra_reads(_obs([R_SEG], 200), _obs([R_SEG, R_SEG2], 200))[1]
+    assert "writes" in verify.speculative_extra_reads(_obs([R_SEG], 500), _obs([R_SEG, W], 500))[1]
+    assert "missing" in verify.speculative_extra_reads(_obs([R_SEG, R_SEG2], 500), _obs([R_SEG2], 500))[1]

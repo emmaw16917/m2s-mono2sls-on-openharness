@@ -868,3 +868,21 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
   - 拿不到 CodeUri 时，维持旧行为。
 - **实测**：用 airline-booking 现有的原始覆盖率数据重算，`bookings-create` 从 54.0% / 10.4%（414 个文件）变为 **72.5% / 64.7%**（只有 handler.py），排除 413 个文件。
 - **测试**：新增 1 个，共 139 passed / 3 skipped。
+
+## API 类型在 S1 决定；规则 R1b 投机读（2026-10-10）
+
+依据 `PERF_OPTIMIZATION.md` §10.4 (a)(e) 和 §10.6 的 A/B。
+
+- **API 类型**：
+  - blueprint `api_gateway` 新增 `api_type`（`http`/`rest`）、`clients`（`same_region`/`internet`）、`api_type_reason`、`rest_features`。默认 HTTP API，payload 固定 1.0，Lambda 事件和 REST 相同。
+  - gate(blueprint) **AT1**：需要 REST 独有功能却选了 http 报 ERROR；选了 rest 却不需要报 WARNING（R6 advisory 的来源）。`cognito_authorizer`（有 `auth: required` 或 `cognito.enabled`）和 `gateway_responses`（未被裁掉的全局响应头）自动推导。
+  - gate(template) **AT2**：模板与 `api_type` 一致；HttpApi 事件必须 `PayloadFormatVersion: '1.0'`；rest + `same_region` 必须 `EndpointConfiguration: REGIONAL`。C7/C7b 同时识别 `HttpApi` 事件。旧工作区（blueprint 没有 `api_type`）不做 AT2。
+  - verify.py：HttpApi 事件按 REST 事件建模，事件多一个 `version: "1.0"`。
+  - 现有工作区按 AT1 推导：acmeair-a1 没有 REST 独有需求，应选 http；bookstore-oh 等有 Cognito，仍是 rest。
+- **R1b 投机读**：
+  - spec `responses[].guard_kind`：`authz` / `error_propagation`（provenance 校验取值）。
+  - verifier：`error_propagation` 的提前返回只排除写操作和发消息，不排除读。
+  - perf-optimizer：§6.2 改窄；规则 R1b 与 JS/Python 写法；R6 只出 advisory。
+  - `run_equivalence(speculative_reads=[...])`：多出的读只在基线返回错误、且不是 401/403 的用例上接受；写操作、消息和基线的每一次读必须不变；结果给出 `speculative_reads` 和 `extra_reads_total`。
+- **测试**：新增 6 个（AT1 两个、AT2 一个、HttpApi 事件一个、R1b 判定两个），共 184 passed（不含集成测试）。
+- **未做**：R1b 和 HTTP API 都还没有在一次完整的流水线运行里用过；e2e_ec2.py 的 `v0-http` 变体仍然假设 v0 是 REST。

@@ -84,6 +84,9 @@ GOOD_BLUEPRINT = {
     },
     "api_gateway": {
         "type": "REST",
+        "api_type": "rest",
+        "clients": "internet",
+        "api_type_reason": "cognito_authorizer",
         "cors": {"allow_origins": ["*"], "allow_methods": ["GET", "POST"]},
         "authorizer": "Cognito",
         "authorizer_type": "COGNITO_USER_POOLS",
@@ -1063,3 +1066,57 @@ def test_gm_passes_when_lambda_and_gateway_set_the_header(tmp_path):
 def test_gm_respects_a_migration_change_ruling(tmp_path):
     ws, template = _gm_ws(tmp_path, "def f(): pass", dropped=True)
     assert gates.check_gm_code(ws) == [] and gates.check_gm_template(ws, template) == []
+
+
+def _at_ws(tmp_path, api, cognito=False, auth="none", headers=None):
+    (tmp_path / "storage").mkdir(exist_ok=True)
+    bp = {"lambda_functions": [{"name": "f", "trigger_type": "api", "auth": auth, "entry_points": ["GET /x"]}],
+          "cognito": {"enabled": cognito}, "api_gateway": api, "metadata": {}}
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    gm = [{"kind": "cors", "headers": headers}] if headers else []
+    (tmp_path / "storage" / "analysis_report.json").write_text(json.dumps({"global_middleware": gm}), encoding="utf-8")
+    return tmp_path
+
+
+def _sev(findings):
+    return sorted((f["check_id"], f["severity"]) for f in findings)
+
+
+def test_at1_http_when_nothing_rest_only(tmp_path):
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "same_region", "api_type_reason": "none"})
+    assert gates.check_api_type(ws) == []
+    ws = _at_ws(tmp_path, {"api_type": "rest", "clients": "same_region", "api_type_reason": "habit"})
+    assert _sev(gates.check_api_type(ws)) == [("AT1", "WARNING")]          # R6
+    assert _sev(gates.check_api_type(_at_ws(tmp_path, {}))) == [("AT1", "ERROR")] * 3
+
+
+def test_at1_rest_only_needs(tmp_path):
+    for kw in ({"auth": "required"}, {"cognito": True}, {"headers": {"Access-Control-Allow-Origin": "*"}}):
+        ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "x"}, **kw)
+        assert _sev(gates.check_api_type(ws)) == [("AT1", "ERROR")], kw
+        ws = _at_ws(tmp_path, {"api_type": "rest", "clients": "internet", "api_type_reason": "x"}, **kw)
+        assert gates.check_api_type(ws) == []
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "x", "rest_features": ["waf", "bogus"]})
+    assert _sev(gates.check_api_type(ws)) == [("AT1", "ERROR")] * 2
+
+
+def _at_template(kind, payload="'1.0'", endpoint=None):
+    api = {"Type": "AWS::Serverless::HttpApi" if kind == "http" else "AWS::Serverless::Api", "Properties": {"StageName": "Prod"}}
+    if endpoint:
+        api["Properties"]["EndpointConfiguration"] = {"Type": endpoint}
+    ev = ({"Type": "HttpApi", "Properties": {"ApiId": "A", "Path": "/x", "Method": "get", **({"PayloadFormatVersion": "1.0"} if payload else {})}}
+          if kind == "http" else {"Type": "Api", "Properties": {"RestApiId": "A", "Path": "/x", "Method": "get"}})
+    return {"Resources": {"A": api, "F": {"Type": "AWS::Serverless::Function", "Properties": {"Events": {"E": ev}}}}}
+
+
+def test_at2_template_matches_api_type(tmp_path):
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "same_region", "api_type_reason": "none"})
+    assert gates.check_api_type_template(ws, _at_template("http")) == []
+    assert _sev(gates.check_api_type_template(ws, _at_template("http", payload=None))) == [("AT2", "ERROR")]
+    assert _sev(gates.check_api_type_template(ws, _at_template("rest"))) == [("AT2", "ERROR")] * 2
+    ws = _at_ws(tmp_path, {"api_type": "rest", "clients": "same_region", "api_type_reason": "waf", "rest_features": ["waf"]})
+    assert _sev(gates.check_api_type_template(ws, _at_template("rest"))) == [("AT2", "ERROR")]   # EDGE by default
+    assert gates.check_api_type_template(ws, _at_template("rest", endpoint="REGIONAL")) == []
+    ws = _at_ws(tmp_path, {"type": "REST"})                                    # before AT1: not checked
+    assert gates.check_api_type_template(ws, _at_template("rest")) == []
+    assert gates.check_c7(ws, _at_template("http")) == []

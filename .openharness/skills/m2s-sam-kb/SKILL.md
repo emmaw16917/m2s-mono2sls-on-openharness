@@ -206,6 +206,40 @@ MyApi:
     TracingEnabled: true
 ```
 
+### API Gateway Pattern (HTTP API)
+
+Use this when blueprint `api_gateway.api_type` is `"http"` (no gateway authorizer, no GatewayResponses
+needed). Payload format **1.0** keeps the Lambda event identical to the REST one, so handlers and tests
+are unchanged; SAM's default for HttpApi events is 2.0, which is a different event.
+
+```yaml
+MyApi:
+  Type: AWS::Serverless::HttpApi
+  Properties:
+    StageName: $default          # no stage prefix in the URL
+    CorsConfiguration:
+      AllowMethods: ['*']
+      AllowHeaders: ['*']
+      AllowOrigins: ['*']
+    AccessLogSettings:
+      DestinationArn: !GetAtt ApiLogGroup.Arn
+      Format: '$context.requestId $context.status $context.responseLatency $context.integrationLatency $context.error.message'
+
+# Each function event:
+#   Events:
+#     GetBook:
+#       Type: HttpApi
+#       Properties:
+#         ApiId: !Ref MyApi
+#         Path: /books/{id}
+#         Method: get
+#         PayloadFormatVersion: '1.0'   # REQUIRED
+```
+
+- No `GatewayResponses`, `Auth`, `TracingEnabled` or `EndpointConfiguration` (HTTP APIs are regional).
+- Output URL: `!Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com"`.
+- The REST pattern's `ApiLogGroup` companion works unchanged.
+
 ### CORS on real responses (read this before relying on `Cors`)
 ⚠️ With Lambda **proxy** integration, the `Cors` property only creates the preflight `OPTIONS`
 methods. API Gateway adds **nothing** to the GET/POST responses your function returns, so:
