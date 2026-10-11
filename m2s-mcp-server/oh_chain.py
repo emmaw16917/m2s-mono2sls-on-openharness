@@ -41,14 +41,41 @@ RESUME = (
     "续跑（上一次 oh 运行没有把这个工作区跑完：可能是网络错误中断、只回复了文字，或者停在了没通过的 gate 上）。"
     "先读 WS/storage/TODO.md、output/perf_report.json、perf/requests/、blueprint 的 spec_resolutions 和 git log，"
     "判断流程走到了哪一步、为什么没完成，从那里继续；不重做已经提交的步骤；output/ 里没提交的临时量测改动可以丢弃。"
+    "原始说明里\"WS 是空目录、第一步一定是 P0\"只适用于首次启动；续跑时 WS 里已有的产出就是本次运行之前的进度，不要移走、不要重做。"
     "gate(final) 没通过时，按它报的检查项处理（例如 SR2：被接受的申请还没有重判；裁定本身有问题就交回 architect 修订）。"
     "下面是原始任务说明：\n\n"
 )
 
 
+def _git(workspace: Path, *args: str) -> str:
+    return subprocess.run(["git", "-C", str(workspace), *args], capture_output=True, text=True).stdout.strip()
+
+
+def pipeline_complete(workspace: Path) -> str | None:
+    """None when the run went past S4: gate(final) also passes right after S4,
+    so on its own it cannot tell a finished run from one that stopped at V2.
+    Requires the workspace's own repo tagged v0, the S5 report and perf_report.json."""
+    top = _git(workspace, "rev-parse", "--show-toplevel")
+    if not top or Path(top).resolve() != workspace.resolve():
+        return "workspace has no git repo of its own (v0 not tagged yet)"
+    if not _git(workspace, "tag", "--list", "v0"):
+        return "tag v0 missing"
+    for f in ("storage/stage_reports/S5.json", "output/perf_report.json"):
+        if not (workspace / f).is_file():
+            return f"{f} missing (S5 not run)"
+    return None
+
+
+def has_progress(workspace: Path) -> bool:
+    return any(p.name not in (".gitkeep",) for p in workspace.iterdir()) if workspace.is_dir() else False
+
+
 def finished(workspace: Path, since: float) -> tuple[bool, str]:
-    """(done, why): gate(final) PASS and no pending_human change recorded
-    by commits made after `since` (epoch seconds)."""
+    """(done, why): pipeline_complete, gate(final) PASS and no pending_human
+    change recorded by commits made after `since` (epoch seconds)."""
+    missing = pipeline_complete(workspace)
+    if missing:
+        return False, f"pipeline not complete: {missing}"
     gate = gates.run_gate("final", str(workspace))
     if gate.get("status") != "PASS":
         failed = [c.get("check_id") for c in gate.get("checks", []) if c.get("severity") == "ERROR"]
@@ -94,10 +121,13 @@ def run_chain(apps: list[tuple[str, Path]], log_dir: Path, attempts: int, max_tu
         set_workspace(name)
         start = time.time()
         done, why = False, "not started"
+        resuming = has_progress(ws)  # a relaunched chain must not hand the fresh-start prompt to a workspace with progress
+        first_log = 1 + sum(1 for _ in log_dir.glob(f"{name}.run*.log"))
         for attempt in range(1, attempts + 1):
-            prompt = task if attempt == 1 else RESUME + task
-            note(f"start {name} attempt {attempt}")
-            with (log_dir / f"{name}.run{attempt}.log").open("w", encoding="utf-8") as out:
+            prompt = RESUME + task if resuming or attempt > 1 else task
+            log = log_dir / f"{name}.run{first_log + attempt - 1}.log"
+            note(f"start {name} attempt {attempt}{' (resume)' if prompt is not task else ''} log={log.name}")
+            with log.open("w", encoding="utf-8") as out:
                 rc = subprocess.run(["oh", "-p", prompt, "--max-turns", str(max_turns)], cwd=REPO, env=env,
                                     stdout=out, stderr=subprocess.STDOUT).returncode
             done, why = finished(ws, start)
