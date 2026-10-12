@@ -1,0 +1,290 @@
+{
+  "stack": "m2s-e2e-acmeair-v0",
+  "outputs": {
+    "CustomerTableName": "dev-acmeair-customer",
+    "ApiUrl": "https://zdfgg3sfd5.execute-api.us-east-1.amazonaws.com",
+    "BookingTableName": "dev-acmeair-booking",
+    "CustomerSessionTableName": "dev-acmeair-customer-session",
+    "FlightTableName": "dev-acmeair-flight",
+    "FlightSegmentTableName": "dev-acmeair-flight-segment",
+    "AirportCodeMappingTableName": "dev-acmeair-airport-code-mapping"
+  },
+  "resources": {
+    "AcmeAirApi": {
+      "type": "AWS::ApiGatewayV2::Api",
+      "physical": "zdfgg3sfd5"
+    },
+    "AcmeAirApiApiGatewayDefaultStage": {
+      "type": "AWS::ApiGatewayV2::Stage",
+      "physical": "$default"
+    },
+    "AirportCodeMappingTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-acmeair-airport-code-mapping"
+    },
+    "ApiLogGroup": {
+      "type": "AWS::Logs::LogGroup",
+      "physical": "/aws/apigateway/zdfgg3sfd5"
+    },
+    "BookingTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-acmeair-booking"
+    },
+    "BookingsByCustomerFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "bookings-by-customer"
+    },
+    "BookingsByCustomerFunctionBookingsByUserPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-BookingsByCustomerFunctionBookingsByUserPermission-lrcKew3ZpeiF"
+    },
+    "BookingsByCustomerFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-BookingsByCustomerFunctionRole-6qXxpInzlBDh"
+    },
+    "BookingsCancelFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "bookings-cancel"
+    },
+    "BookingsCancelFunctionCancelBookingPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-BookingsCancelFunctionCancelBookingPermission-2pm5ZpHsQXbw"
+    },
+    "BookingsCancelFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-BookingsCancelFunctionRole-kUwc962k3ESH"
+    },
+    "BookingsCreateFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "bookings-create"
+    },
+    "BookingsCreateFunctionBookFlightsPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-BookingsCreateFunctionBookFlightsPermission-Qnp1TVczKAJr"
+    },
+    "BookingsCreateFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-BookingsCreateFunctionRole-pt6JWhiXIVIf"
+    },
+    "CheckStatusFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "checkstatus"
+    },
+    "CheckStatusFunctionCheckStatusPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-CheckStatusFunctionCheckStatusPermission-Mz51ckM1pKlp"
+    },
+    "CheckStatusFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-CheckStatusFunctionRole-OiU9wN3ZjARh"
+    },
+    "ConfigActiveDataServiceFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "config-activedataservice"
+    },
+    "ConfigActiveDataServiceFunctionActiveDataServicePermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-ConfigActiveDataServiceFunctionActiveDataServicePermission-ZR7ygNxumu6R"
+    },
+    "ConfigActiveDataServiceFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-ConfigActiveDataServiceFunctionR-pWvGwfKQdWHk"
+    },
+    "ConfigCountAirportsFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "config-count-airports"
+    },
+    "ConfigCountAirportsFunctionCountAirportsPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-ConfigCountAirportsFunctionCountAirportsPermission-3SxYycttFtne"
+    },
+    "ConfigCountAirportsFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-ConfigCountAirportsFunctionRole-wZyUJo2Dqgba"
+    },
+    "ConfigCountBookingsFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "config-count-bookings"
+    },
+    "ConfigCountBookingsFunctionCountBookingsPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-ConfigCountBookingsFunctionCountBookingsPermission-aY2EpNuCkVDA"
+    },
+    "ConfigCountBookingsFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-ConfigCountBookingsFunctionRole-u0zainfdtQ2R"
+    },
+    "ConfigCountCustomersFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "config-count-customers"
+    },
+    "ConfigCountCustomersFunctionCountCustomersPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-ConfigCountCustomersFunctionCountCustomersPermission-e4THqq2LlX0N"
+    },
+    "ConfigCountCustomersFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-ConfigCountCustomersFunctionRole-a86FwWGMsU6b"
+    },
+    "ConfigCountFlightSegmentsFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "config-count-flightsegments"
+    },
+    "ConfigCountFlightSegmentsFunctionCountFlightSegmentsPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-ConfigCountFlightSegmentsFunctionCountFlightSegmentsPermission-8LQjerngV5EO"
+    },
+    "ConfigCountFlightSegmentsFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-ConfigCountFlightSegmentsFunctio-7auGZXuIX5Zk"
+    },
+    "ConfigCountFlightsFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "config-count-flights"
+    },
+    "ConfigCountFlightsFunctionCountFlightsPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-ConfigCountFlightsFunctionCountFlightsPermission-OxZEUyzhmsi1"
+    },
+    "ConfigCountFlightsFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-ConfigCountFlightsFunctionRole-DyPPl8LKPJW2"
+    },
+    "ConfigCountSessionsFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "config-count-sessions"
+    },
+    "ConfigCountSessionsFunctionCountSessionsPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-ConfigCountSessionsFunctionCountSessionsPermission-5WGgcN870Sq4"
+    },
+    "ConfigCountSessionsFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-ConfigCountSessionsFunctionRole-zYt9Sfy3GtVx"
+    },
+    "ConfigDataservicesFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "config-dataservices"
+    },
+    "ConfigDataservicesFunctionDataServicesPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-ConfigDataservicesFunctionDataServicesPermission-bXffyb1hZ5Gi"
+    },
+    "ConfigDataservicesFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-ConfigDataservicesFunctionRole-ZQYcjqqN03ln"
+    },
+    "ConfigRuntimeFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "config-runtime"
+    },
+    "ConfigRuntimeFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-ConfigRuntimeFunctionRole-ccsB3ILnJQfo"
+    },
+    "ConfigRuntimeFunctionRuntimePermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-ConfigRuntimeFunctionRuntimePermission-ArFvIB9WYE7V"
+    },
+    "CustomerGetFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "customer-get"
+    },
+    "CustomerGetFunctionGetCustomerPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-CustomerGetFunctionGetCustomerPermission-XhiaCiFCxuRP"
+    },
+    "CustomerGetFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-CustomerGetFunctionRole-Wo55wNWspd5U"
+    },
+    "CustomerSessionTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-acmeair-customer-session"
+    },
+    "CustomerTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-acmeair-customer"
+    },
+    "CustomerUpdateFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "customer-update"
+    },
+    "CustomerUpdateFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-CustomerUpdateFunctionRole-h7VfTN6sgDRx"
+    },
+    "CustomerUpdateFunctionUpdateCustomerPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-CustomerUpdateFunctionUpdateCustomerPermission-IC9jXRkh985T"
+    },
+    "FlightSegmentTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-acmeair-flight-segment"
+    },
+    "FlightTable": {
+      "type": "AWS::DynamoDB::Table",
+      "physical": "dev-acmeair-flight"
+    },
+    "FlightsQueryFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "flights-query"
+    },
+    "FlightsQueryFunctionQueryFlightsPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-FlightsQueryFunctionQueryFlightsPermission-76kxbTtEpJRR"
+    },
+    "FlightsQueryFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-FlightsQueryFunctionRole-hOe1CRaS1yeR"
+    },
+    "LoaderLoadFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "loader-load"
+    },
+    "LoaderLoadFunctionLoadPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-LoaderLoadFunctionLoadPermission-1up1HYcCZRL4"
+    },
+    "LoaderLoadFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-LoaderLoadFunctionRole-UBqHGqh3YiJ6"
+    },
+    "LoaderQueryFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "loader-query"
+    },
+    "LoaderQueryFunctionQueryPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-LoaderQueryFunctionQueryPermission-uuyKg9LmGNHF"
+    },
+    "LoaderQueryFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-LoaderQueryFunctionRole-P72y4dbgpcqx"
+    },
+    "LoginCreateSessionFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "login-create-session"
+    },
+    "LoginCreateSessionFunctionLoginPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-LoginCreateSessionFunctionLoginPermission-fJnUmFW0dXei"
+    },
+    "LoginCreateSessionFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-LoginCreateSessionFunctionRole-0r5H4YUpWdsA"
+    },
+    "SessionLogoutFunction": {
+      "type": "AWS::Lambda::Function",
+      "physical": "session-logout"
+    },
+    "SessionLogoutFunctionLogoutPermission": {
+      "type": "AWS::Lambda::Permission",
+      "physical": "m2s-e2e-acmeair-v0-SessionLogoutFunctionLogoutPermission-QJkn6UPC683d"
+    },
+    "SessionLogoutFunctionRole": {
+      "type": "AWS::IAM::Role",
+      "physical": "m2s-e2e-acmeair-v0-SessionLogoutFunctionRole-NwY2xOUIuAjz"
+    }
+  }
+}

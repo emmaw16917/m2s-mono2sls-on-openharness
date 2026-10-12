@@ -495,8 +495,10 @@ def summarize_metrics(m: dict) -> dict:
         warm = [r["duration"] for r in reps if r["init"] is None]
         cold = [r for r in reps if r["init"] is not None]
         per_fn[fn] = {"invocations": len(reps), "cold": len(cold),
-                      "warm_p50_ms": round(statistics.median(warm), 1) if warm else None,
+                      # nearest rank for both: a median of two would average them and could exceed this p90
+                      "warm_p50_ms": round(sorted(warm)[int(0.5 * (len(warm) - 1))], 1) if warm else None,
                       "warm_p90_ms": round(sorted(warm)[int(0.9 * (len(warm) - 1))], 1) if warm else None,
+                      "warm_n": len(warm),
                       "init_p50_ms": round(statistics.median(r["init"] for r in cold), 1) if cold else None,
                       "max_memory_mb": max(r["max_memory"] for r in reps)}
         gb_s += sum(r["billed"] / 1000 * r["memory"] / 1024 for r in reps)

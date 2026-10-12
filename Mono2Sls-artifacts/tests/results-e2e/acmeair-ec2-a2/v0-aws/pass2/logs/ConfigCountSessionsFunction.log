@@ -1,0 +1,7 @@
+1791788584072	2026/10/12/[$LATEST]2ac41259c43a4d7dbf0fc96e5ef8dd34	INIT_START Runtime Version: nodejs:22.mainline.v122	Runtime Version ARN: arn:aws:lambda:us-east-1::runtime:775dab0d220a0b97f3ec34fe1692d7a07b5d13049153b00f03204c9543bd69e4
+1791788584335	2026/10/12/[$LATEST]2ac41259c43a4d7dbf0fc96e5ef8dd34	START RequestId: 8692dd96-a965-4c3f-a885-c18d7ff84fc6 Version: $LATEST
+1791788584337	2026/10/12/[$LATEST]2ac41259c43a4d7dbf0fc96e5ef8dd34	2026-10-12T07:03:04.337Z	8692dd96-a965-4c3f-a885-c18d7ff84fc6	INFO	Calling count on dev-acmeair-customer-session
+1791788584530	2026/10/12/[$LATEST]2ac41259c43a4d7dbf0fc96e5ef8dd34	2026-10-12T07:03:04.530Z	8692dd96-a965-4c3f-a885-c18d7ff84fc6	INFO	Output for dev-acmeair-customer-session is 0
+1791788584544	2026/10/12/[$LATEST]2ac41259c43a4d7dbf0fc96e5ef8dd34	END RequestId: 8692dd96-a965-4c3f-a885-c18d7ff84fc6
+1791788584544	2026/10/12/[$LATEST]2ac41259c43a4d7dbf0fc96e5ef8dd34	REPORT RequestId: 8692dd96-a965-4c3f-a885-c18d7ff84fc6	Duration: 207.89 ms	Billed Duration: 468 ms	Memory Size: 512 MB	Max Memory Used: 99 MB	Init Duration: 259.68 ms	
+XRAY TraceId: 1-6acc8627-067abab743fb217027c5f0d7	SegmentId: 75bf5a07923673e7	Sampled: true

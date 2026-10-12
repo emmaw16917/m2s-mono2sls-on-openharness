@@ -1,0 +1,114 @@
+--- i-00025edc6f1925002 Success
+	"MAX_DAYS_TO_SCHEDULE_FLIGHTS" : 13,
+READY
+Created symlink /etc/systemd/system/multi-user.target.wants/docker.service → /usr/lib/systemd/system/docker.service.
+Unable to find image 'mongo:4.4' locally
+4.4: Pulling from library/mongo
+13b7e930469f: Pulling fs layer
+d103ead1acfe: Pulling fs layer
+c67f7c95021c: Pulling fs layer
+8fd00fb17365: Pulling fs layer
+130589ade9bb: Pulling fs layer
+6a696631c981: Pulling fs layer
+1f21fe582607: Pulling fs layer
+98279e2678fe: Pulling fs layer
+8fd00fb17365: Waiting
+130589ade9bb: Waiting
+6a696631c981: Waiting
+1f21fe582607: Waiting
+98279e2678fe: Waiting
+d103ead1acfe: Verifying Checksum
+d103ead1acfe: Download complete
+c67f7c95021c: Verifying Checksum
+c67f7c95021c: Download complete
+130589ade9bb: Verifying Checksum
+130589ade9bb: Download complete
+8fd00fb17365: Verifying Checksum
+8fd00fb17365: Download complete
+6a696631c981: Verifying Checksum
+6a696631c981: Download complete
+98279e2678fe: Verifying Checksum
+98279e2678fe: Download complete
+13b7e930469f: Verifying Checksum
+13b7e930469f: Download complete
+1f21fe582607: Verifying Checksum
+1f21fe582607: Download complete
+13b7e930469f: Pull complete
+d103ead1acfe: Pull complete
+c67f7c95021c: Pull complete
+8fd00fb17365: Pull complete
+130589ade9bb: Pull complete
+6a696631c981: Pull complete
+1f21fe582607: Pull complete
+98279e2678fe: Pull complete
+Digest: sha256:4be76f674fc4b27859816811b8baa3c51830eb1dbf4ca81a51e26b79edd662ef
+Status: Downloaded newer image for mongo:4.4
+Unable to find image 'node:22' locally
+22: Pulling from library/node
+8cb71386cfcf: Pulling fs layer
+a4edf9c328e8: Pulling fs layer
+c6c71fff0869: Pulling fs layer
+610dc773fbd7: Pulling fs layer
+4e8e38f4cbab: Pulling fs layer
+b27643410a32: Pulling fs layer
+263f72aebc64: Pulling fs layer
+11fd0fe23a0e: Pulling fs layer
+610dc773fbd7: Waiting
+4e8e38f4cbab: Waiting
+b27643410a32: Waiting
+263f72aebc64: Waiting
+11fd0fe23a0e: Waiting
+a4edf9c328e8: Verifying Checksum
+a4edf9c328e8: Download complete
+8cb71386cfcf: Verifying Checksum
+8cb71386cfcf: Download complete
+4e8e38f4cbab: Verifying Checksum
+4e8e38f4cbab: Download complete
+c6c71fff0869: Verifying Checksum
+c6c71fff0869: Download complete
+263f72aebc64: Verifying Checksum
+263f72aebc64: Download complete
+11fd0fe23a0e: Verifying Checksum
+11fd0fe23a0e: Download complete
+b27643410a32: Verifying Checksum
+b27643410a32: Download complete
+610dc773fbd7: Verifying Checksum
+610dc773fbd7: Download complete
+8cb71386cfcf: Pull complete
+a4edf9c328e8: Pull complete
+c6c71fff0869: Pull complete
+610dc773fbd7: Pull complete
+4e8e38f4cbab: Pull complete
+b27643410a32: Pull complete
+263f72aebc64: Pull complete
+11fd0fe23a0e: Pull complete
+Digest: sha256:0e5f906573693feaa1e21057ebdcfdb5bd5021f050b2dc7c9deceb629c7da2a8
+Status: Downloaded newer image for node:22
+
+--- i-0f9ec4ad7217d64ae Success
+Database Finished Loading
+--- i-0f9ec4ad7217d64ae Success
+{"Customers":10000,"Flights":5122,"FlightSegments":394,"Airports":14,"_":0}
+--- i-00025edc6f1925002 Success
+34
+
+--- i-0f9ec4ad7217d64ae Success
+summary =   1892 in 00:00:10 =  197.9/s Avg:     3 Min:     1 Max:    87 Err:     0 (0.00%)
+Tidying up ...    @ October 12, 2026 6:49:15 AM UTC (1791787755777)
+... end of run
+Oct 12, 2026 6:49:04 AM java.util.prefs.FileSystemPreferences$1 run
+INFO: Created user preferences directory.
+
+--- i-0f9ec4ad7217d64ae Success
+summary =   1892 in 00:00:10 =  197.7/s Avg:     2 Min:     1 Max:    54 Err:     0 (0.00%)
+Tidying up ...    @ October 12, 2026 6:50:15 AM UTC (1791787815717)
+... end of run
+Oct 12, 2026 6:50:04 AM java.util.prefs.FileSystemPreferences$1 run
+INFO: Created user preferences directory.
+
+--- i-00025edc6f1925002 Success
+3784
+
+--- i-0f9ec4ad7217d64ae Success
+597 0
+

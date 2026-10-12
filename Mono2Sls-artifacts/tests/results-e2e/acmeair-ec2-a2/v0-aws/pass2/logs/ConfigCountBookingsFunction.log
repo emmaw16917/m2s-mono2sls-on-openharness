@@ -1,0 +1,7 @@
+1791788583290	2026/10/12/[$LATEST]34a8feb7c3584ea4bd5c76a3af8d9b0f	INIT_START Runtime Version: nodejs:22.mainline.v122	Runtime Version ARN: arn:aws:lambda:us-east-1::runtime:775dab0d220a0b97f3ec34fe1692d7a07b5d13049153b00f03204c9543bd69e4
+1791788583599	2026/10/12/[$LATEST]34a8feb7c3584ea4bd5c76a3af8d9b0f	START RequestId: 30fa528a-d105-4f3c-bb0e-244fd16d7cad Version: $LATEST
+1791788583601	2026/10/12/[$LATEST]34a8feb7c3584ea4bd5c76a3af8d9b0f	2026-10-12T07:03:03.601Z	30fa528a-d105-4f3c-bb0e-244fd16d7cad	INFO	Calling count on dev-acmeair-booking
+1791788583816	2026/10/12/[$LATEST]34a8feb7c3584ea4bd5c76a3af8d9b0f	2026-10-12T07:03:03.816Z	30fa528a-d105-4f3c-bb0e-244fd16d7cad	INFO	Output for dev-acmeair-booking is 602
+1791788583837	2026/10/12/[$LATEST]34a8feb7c3584ea4bd5c76a3af8d9b0f	END RequestId: 30fa528a-d105-4f3c-bb0e-244fd16d7cad
+1791788583837	2026/10/12/[$LATEST]34a8feb7c3584ea4bd5c76a3af8d9b0f	REPORT RequestId: 30fa528a-d105-4f3c-bb0e-244fd16d7cad	Duration: 237.24 ms	Billed Duration: 544 ms	Memory Size: 512 MB	Max Memory Used: 100 MB	Init Duration: 306.12 ms	
+XRAY TraceId: 1-6acc8627-5b5267467304b2157260fb46	SegmentId: 2fbb3709500fc102	Sampled: true

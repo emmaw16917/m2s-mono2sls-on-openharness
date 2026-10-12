@@ -19,6 +19,7 @@ report.json, <variant>.pass<N>.jtl, logs).
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import re
 import statistics
@@ -392,6 +393,75 @@ def _fmt(x):
     return "-" if x is None else x
 
 
+MIN_N = 10  # fewer samples than this: shown, but flagged as not comparable
+_REPORT = re.compile(r"Duration: ([\d.]+) ms\s+Billed Duration: (\d+) ms\s+Memory Size: (\d+) MB\s+Max Memory Used: (\d+) MB"
+                     r"(?:\s+Init Duration: ([\d.]+) ms)?")
+
+
+def _lambda_logs(out_dir: Path, variant: str, n: int) -> list[Path]:
+    d = out_dir / f"{variant}-aws" / f"pass{n}" / "logs"
+    return sorted(f for f in d.glob("*.log") if f.name != "ApiLogGroup.log") if d.is_dir() else []
+
+
+def cold_windows(out_dir: Path, variant: str, n: int) -> list[tuple[int, int]]:
+    """(INIT_START ms, REPORT ms) of every cold invocation in the saved logs:
+    the request that waited for it is the one whose client window contains it."""
+    wins = []
+    for f in _lambda_logs(out_dir, variant, n):
+        init: dict[str, int] = {}
+        for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+            parts = line.split("\t", 2)
+            if len(parts) < 3 or not parts[0].isdigit():
+                continue
+            ts, stream, msg = int(parts[0]), parts[1], parts[2]
+            if msg.startswith("INIT_START"):
+                init[stream] = ts
+            elif msg.startswith("REPORT") and "Init Duration" in msg and stream in init:
+                wins.append((init.pop(stream), ts))
+    return wins
+
+
+def function_stats(out_dir: Path, variant: str, n: int) -> dict | None:
+    """Per function from the saved REPORT lines, one percentile rule
+    (e2e_jmeter._pct) for every column, warm sample count included."""
+    files = _lambda_logs(out_dir, variant, n)
+    if not files:
+        return None
+    out = {}
+    for f in files:
+        warm, init = [], []
+        for m in _REPORT.finditer(f.read_text(encoding="utf-8", errors="replace")):
+            (init.append(float(m.group(5))) if m.group(5) else warm.append(float(m.group(1))))
+        if warm or init:
+            out[f.stem] = {"invocations": len(warm) + len(init), "cold": len(init), "warm_n": len(warm),
+                           "warm_p50_ms": e2e_jmeter._pct(warm, 50), "warm_p90_ms": e2e_jmeter._pct(warm, 90),
+                           "init_p50_ms": e2e_jmeter._pct(init, 50)}
+    return out
+
+
+def warm_labels(out_dir: Path, variant: str, n: int) -> dict | None:
+    """Per request label of pass n with cold-start samples taken out: a sample
+    is cold when a cold invocation (INIT_START..REPORT, 100 ms clock slack)
+    lies inside its client window."""
+    jtl = out_dir / f"{variant}.pass{n}.jtl"
+    if not jtl.exists():
+        return None
+    wins = cold_windows(out_dir, variant, n)
+    by: dict[str, dict] = {}
+    with jtl.open(encoding="utf-8") as fh:
+        for r in csv.DictReader(fh):
+            t0, el = int(r["timeStamp"]), int(r["elapsed"])
+            x = by.setdefault(r["label"], {"n": 0, "cold": 0, "errors": 0, "warm": []})
+            x["n"] += 1
+            x["errors"] += r["success"] != "true"
+            if any(t0 - 100 <= a and b <= t0 + el + 100 for a, b in wins):
+                x["cold"] += 1
+            else:
+                x["warm"].append(el)
+    return {k: {"n": x["n"], "cold": x["cold"], "errors": x["errors"], "warm_n": len(x["warm"]),
+                "p50": e2e_jmeter._pct(x["warm"], 50), "p90": e2e_jmeter._pct(x["warm"], 90)} for k, x in by.items()}
+
+
 def report(results: dict, out_dir: Path, threads: int, loops: int) -> None:
     (out_dir / "report.json").write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
     vs = [v for v in ("monolith", "v0", "v0-http", "opt") if v in results and not results[v].get("error")]
@@ -408,13 +478,24 @@ def report(results: dict, out_dir: Path, threads: int, loops: int) -> None:
             md.append(f"| {v} | {p['pass']} | {p['samples']} | {p['errors']} | {p['throughput_per_s']} | "
                       f"{p['all']['p50']} | {p['all']['p90']} | {p['all']['p99']} |")
     labels = sorted({k for v in vs for p in results[v]["passes"] for k in p["labels"]})
-    md += ["", "## Per request, warm pass (p50 / p90 ms, errors/samples)", "", "| request | " + " | ".join(vs) + " |",
+    warm = {v: warm_labels(out_dir, v, results[v]["passes"][-1]["pass"]) for v in vs}
+    md += ["", "## Per request, warm pass (p50 / p90 ms over warm samples; errors/samples, cold)", "",
+           "A sample counts as cold when a Lambda cold start (INIT_START to its REPORT) falls inside its client window; "
+           "cold samples are left out of p50/p90 and counted after the comma. *few* = under "
+           f"{MIN_N} warm samples, not comparable. `-` = the request never ran in this pass (e.g. the driver cancels only "
+           "for a customer holding more than 2 bookings, AcmeAir.jmx).", "", "| request | " + " | ".join(vs) + " |",
            "|---|" + "---|" * len(vs)]
     for k in labels:
         cells = []
         for v in vs:
-            x = results[v]["passes"][-1]["labels"].get(k)
-            cells.append(f"{x['p50']} / {x['p90']} ({x['errors']}/{x['n']})" if x else "-")
+            x = (warm[v] or {}).get(k)
+            if x is None:
+                y = results[v]["passes"][-1]["labels"].get(k)  # no saved jtl: the summary as recorded
+                cells.append(f"{y['p50']} / {y['p90']} ({y['errors']}/{y['n']})" if y else "-")
+                continue
+            few = " *few*" if x["warm_n"] < MIN_N else ""
+            cold = f", cold {x['cold']}" if x["cold"] else ""
+            cells.append(f"{_fmt(x['p50'])} / {_fmt(x['p90'])} ({x['errors']}/{x['n']}{cold}){few}")
         md.append(f"| {k} | " + " | ".join(cells) + " |")
     md += ["", "## Server-side time", ""]
     if "monolith" in vs:
@@ -423,10 +504,16 @@ def report(results: dict, out_dir: Path, threads: int, loops: int) -> None:
     for v in vs:
         if v == "monolith":
             continue
+        last = results[v]["metrics_per_pass"][-1]
+        fns = function_stats(out_dir, v, len(results[v]["metrics_per_pass"])) or last["functions"]
         md += ["", f"{v} (Lambda REPORT, warm pass; cold starts counted separately):", "",
+               "`-` under warm p50/p90: every invocation in this pass was a cold start (e.g. the count checks the harness "
+               "calls once before/after the passes). `-` under init: no cold start in this pass (pass 1 already warmed it). "
+               f"*few* = under {MIN_N} warm invocations.", "",
                "| function | invocations | cold | warm p50 ms | warm p90 ms | init p50 ms |", "|---|---|---|---|---|---|"]
-        for fn, x in results[v]["metrics_per_pass"][-1]["functions"].items():
-            md.append(f"| {fn} | {x['invocations']} | {x['cold']} | {_fmt(x['warm_p50_ms'])} | {_fmt(x['warm_p90_ms'])} | {_fmt(x['init_p50_ms'])} |")
+        for fn, x in fns.items():
+            few = " *few*" if 0 < x.get("warm_n", MIN_N) < MIN_N else ""
+            md.append(f"| {fn} | {x['invocations']} | {x['cold']} | {_fmt(x['warm_p50_ms'])}{few} | {_fmt(x['warm_p90_ms'])} | {_fmt(x['init_p50_ms'])} |")
         c1 = sum(x["cold"] for x in results[v]["metrics_per_pass"][0]["functions"].values())
         md.append(f"\nCold starts in pass 1: {c1}.")
     gl = [(v, results[v].get("gateway_latency")) for v in vs if v != "monolith" and results[v].get("gateway_latency")]
@@ -466,12 +553,16 @@ def main() -> None:
     ap.add_argument("--keep-infra", action="store_true")
     ap.add_argument("--flight-days", type=int, default=13, help="loader MAX_DAYS_TO_SCHEDULE_FLIGHTS (>=13 for round trips)")
     ap.add_argument("--out-name", default="acmeair-ec2", help="results-e2e/<name>")
+    ap.add_argument("--report-only", action="store_true", help="rebuild report.md from results.json and the saved jtl/logs; no AWS")
     args = ap.parse_args()
     out_dir = TESTS / "results-e2e" / args.out_name
     out_dir.mkdir(parents=True, exist_ok=True)
     log = out_dir / "infra.log"
     path = out_dir / "results.json"
     results = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    if args.report_only:
+        report({v: results[v] for v in ("monolith", "v0", "v0-http", "opt") if v in results}, out_dir, args.threads, args.loops)
+        return
     try:
         infra = infra_up(log)
         if "READY" not in run(infra["LoadGenId"], SETUP_LOADGEN.format(repo=REPO_URL, commit=REPO_COMMIT), log, timeout=1800):

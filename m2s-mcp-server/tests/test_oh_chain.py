@@ -18,6 +18,9 @@ def _ws(tmp_path, changes):
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     subprocess.run(["git", "-C", str(tmp_path), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty",
                     "-m", "stage 6 (not accepted): gate(final) FAIL"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "tag", "v0"], check=True)
+    (tmp_path / "storage" / "stage_reports").mkdir(parents=True)
+    (tmp_path / "storage" / "stage_reports" / "S5.json").write_text("{}", encoding="utf-8")
     return tmp_path
 
 
@@ -40,3 +43,15 @@ def test_gate_pass_is_finished(tmp_path, monkeypatch):
     ws = _ws(tmp_path, [{"id": "C1", "verdict": "kept"}])
     monkeypatch.setattr(oh_chain.gates, "run_gate", lambda phase, w: {"status": "PASS", "checks": []})
     assert oh_chain.finished(ws, time.time() - 60) == (True, "gate(final) PASS")
+
+
+def test_gate_pass_before_s5_is_not_finished(tmp_path, monkeypatch):
+    # gate(final) already passes after S4: a run that stopped in V2 must not count as done
+    ws = _ws(tmp_path, [])
+    (ws / "storage" / "stage_reports" / "S5.json").unlink()
+    monkeypatch.setattr(oh_chain.gates, "run_gate", lambda phase, w: {"status": "PASS", "checks": []})
+    done, why = oh_chain.finished(ws, time.time() - 60)
+    assert not done and "S5" in why
+    subprocess.run(["git", "-C", str(ws), "tag", "-d", "v0"], check=True, capture_output=True)
+    (ws / "storage" / "stage_reports" / "S5.json").write_text("{}", encoding="utf-8")
+    assert "v0" in oh_chain.finished(ws, time.time() - 60)[1]

@@ -16,12 +16,14 @@ Load generator: EC2 t3.small in us-east-1a running acmeair-driver AcmeAir.jmx (1
 | opt | 1 | 1861 | 0 | 107.58 | 45.0 | 73.0 | 623.0 |
 | opt | 2 | 1865 | 0 | 107.96 | 41.0 | 60.0 | 142.0 |
 
-## Per request, warm pass (p50 / p90 ms, errors/samples)
+## Per request, warm pass (p50 / p90 ms over warm samples; errors/samples, cold)
+
+A sample counts as cold when a Lambda cold start (INIT_START to its REPORT) falls inside its client window; cold samples are left out of p50/p90 and counted after the comma. *few* = under 10 warm samples, not comparable. `-` = the request never ran in this pass (e.g. the driver cancels only for a customer holding more than 2 bookings, AcmeAir.jmx).
 
 | request | monolith | v0 | v0-http | opt |
 |---|---|---|---|---|
 | BookFlight | 2.0 / 4.0 (0/192) | 39.0 / 51.0 (0/169) | 34.0 / 46.0 (0/172) | 37.0 / 51.0 (0/165) |
-| Cancel Booking | 1.0 / 2.0 (0/3) | 62.0 / 844.0 (0/3) | 40.0 / 824.0 (0/2) | - |
+| Cancel Booking | 1.0 / 2.0 (0/3) *few* | 40.0 / 62.0 (0/3, cold 1) *few* | 40.0 / 40.0 (0/2, cold 1) *few* | - |
 | List Bookings | 2.0 / 3.0 (0/200) | 33.0 / 47.0 (0/200) | 26.0 / 38.0 (0/200) | 33.0 / 44.0 (0/200) |
 | Login | 2.0 / 3.0 (0/200) | 34.0 / 61.0 (0/200) | 29.0 / 46.0 (0/200) | 37.0 / 54.0 (0/200) |
 | QueryFlight | 3.0 / 6.0 (0/1000) | 47.0 / 67.0 (0/1000) | 42.0 / 60.0 (0/1000) | 47.0 / 65.0 (0/1000) |
@@ -46,51 +48,57 @@ Monolith (morgan response time, both passes):
 
 v0 (Lambda REPORT, warm pass; cold starts counted separately):
 
+`-` under warm p50/p90: every invocation in this pass was a cold start (e.g. the count checks the harness calls once before/after the passes). `-` under init: no cold start in this pass (pass 1 already warmed it). *few* = under 10 warm invocations.
+
 | function | invocations | cold | warm p50 ms | warm p90 ms | init p50 ms |
 |---|---|---|---|---|---|
-| BookingsByCustomerFunction | 200 | 1 | 10.1 | 22.4 | 342.3 |
-| BookingsCancelFunction | 3 | 1 | 20.2 | 17.0 | 324.4 |
-| BookingsCreateFunction | 169 | 0 | 17.4 | 28.3 | - |
-| ConfigCountBookingsFunction | 1 | 1 | - | - | 328.1 |
-| ConfigCountSessionsFunction | 1 | 1 | - | - | 336.3 |
-| CustomerGetFunction | 50 | 0 | 9.3 | 19.3 | - |
-| CustomerUpdateFunction | 50 | 0 | 11.5 | 18.6 | - |
-| FlightsQueryFunction | 1000 | 0 | 24.9 | 45.9 | - |
-| LoginCreateSessionFunction | 200 | 0 | 10.4 | 20.8 | - |
-| SessionLogoutFunction | 200 | 0 | 7.8 | 8.8 | - |
+| BookingsByCustomerFunction | 200 | 1 | 10.06 | 22.37 | 342.3 |
+| BookingsCancelFunction | 3 | 1 | 16.96 *few* | 23.46 | 324.38 |
+| BookingsCreateFunction | 169 | 0 | 17.45 | 28.27 | - |
+| ConfigCountBookingsFunction | 1 | 1 | - | - | 328.14 |
+| ConfigCountSessionsFunction | 1 | 1 | - | - | 336.32 |
+| CustomerGetFunction | 50 | 0 | 9.2 | 19.3 | - |
+| CustomerUpdateFunction | 50 | 0 | 11.51 | 18.6 | - |
+| FlightsQueryFunction | 1000 | 0 | 24.9 | 45.86 | - |
+| LoginCreateSessionFunction | 200 | 0 | 10.38 | 20.77 | - |
+| SessionLogoutFunction | 200 | 0 | 7.75 | 8.77 | - |
 
 Cold starts in pass 1: 25.
 
 v0-http (Lambda REPORT, warm pass; cold starts counted separately):
 
+`-` under warm p50/p90: every invocation in this pass was a cold start (e.g. the count checks the harness calls once before/after the passes). `-` under init: no cold start in this pass (pass 1 already warmed it). *few* = under 10 warm invocations.
+
 | function | invocations | cold | warm p50 ms | warm p90 ms | init p50 ms |
 |---|---|---|---|---|---|
-| BookingsByCustomerFunction | 200 | 0 | 9.1 | 19.1 | - |
-| BookingsCancelFunction | 2 | 1 | 24.6 | 24.6 | 316.5 |
-| BookingsCreateFunction | 172 | 0 | 17.8 | 30.4 | - |
-| ConfigCountBookingsFunction | 1 | 1 | - | - | 328.5 |
-| ConfigCountSessionsFunction | 1 | 1 | - | - | 321.7 |
-| CustomerGetFunction | 50 | 0 | 8.8 | 19.4 | - |
-| CustomerUpdateFunction | 50 | 0 | 11.7 | 17.2 | - |
-| FlightsQueryFunction | 1000 | 0 | 25.1 | 43.5 | - |
-| LoginCreateSessionFunction | 200 | 0 | 11.4 | 23.1 | - |
-| SessionLogoutFunction | 200 | 0 | 7.5 | 9.0 | - |
+| BookingsByCustomerFunction | 200 | 0 | 9.1 | 19.07 | - |
+| BookingsCancelFunction | 2 | 1 | 24.6 *few* | 24.6 | 316.49 |
+| BookingsCreateFunction | 172 | 0 | 17.75 | 32.25 | - |
+| ConfigCountBookingsFunction | 1 | 1 | - | - | 328.48 |
+| ConfigCountSessionsFunction | 1 | 1 | - | - | 321.66 |
+| CustomerGetFunction | 50 | 0 | 8.72 | 19.36 | - |
+| CustomerUpdateFunction | 50 | 0 | 11.68 | 17.22 | - |
+| FlightsQueryFunction | 1000 | 0 | 25.06 | 43.55 | - |
+| LoginCreateSessionFunction | 200 | 0 | 11.41 | 23.14 | - |
+| SessionLogoutFunction | 200 | 0 | 7.53 | 8.98 | - |
 
 Cold starts in pass 1: 27.
 
 opt (Lambda REPORT, warm pass; cold starts counted separately):
 
+`-` under warm p50/p90: every invocation in this pass was a cold start (e.g. the count checks the harness calls once before/after the passes). `-` under init: no cold start in this pass (pass 1 already warmed it). *few* = under 10 warm invocations.
+
 | function | invocations | cold | warm p50 ms | warm p90 ms | init p50 ms |
 |---|---|---|---|---|---|
-| BookingsByCustomerFunction | 200 | 0 | 10.2 | 21.7 | - |
-| BookingsCreateFunction | 165 | 0 | 13.4 | 23.6 | - |
+| BookingsByCustomerFunction | 200 | 0 | 10.25 | 21.67 | - |
+| BookingsCreateFunction | 165 | 0 | 13.42 | 24.67 | - |
 | ConfigCountBookingsFunction | 1 | 1 | - | - | 204.8 |
-| ConfigCountSessionsFunction | 1 | 1 | - | - | 257.6 |
-| CustomerGetFunction | 50 | 0 | 10.2 | 21.1 | - |
-| CustomerUpdateFunction | 50 | 0 | 11.6 | 18.9 | - |
-| FlightsQueryFunction | 1000 | 0 | 24.7 | 44.2 | - |
-| LoginCreateSessionFunction | 200 | 1 | 12.2 | 22.8 | 309.1 |
-| SessionLogoutFunction | 200 | 0 | 7.0 | 8.4 | - |
+| ConfigCountSessionsFunction | 1 | 1 | - | - | 257.58 |
+| CustomerGetFunction | 50 | 0 | 10.23 | 21.12 | - |
+| CustomerUpdateFunction | 50 | 0 | 11.58 | 18.87 | - |
+| FlightsQueryFunction | 1000 | 0 | 24.71 | 44.17 | - |
+| LoginCreateSessionFunction | 200 | 1 | 12.2 | 22.82 | 309.09 |
+| SessionLogoutFunction | 200 | 0 | 6.98 | 8.37 | - |
 
 Cold starts in pass 1: 27.
 
