@@ -593,8 +593,9 @@
       "lambda_duration": 0.00067812,
       "lambda_requests": 0.0007482,
       "dynamodb": 0.00200606,
-      "api_gateway": 0.0130865,
-      "total": 0.01651889
+      "api_gateway": 0.003739,
+      "total": 0.00717139,
+      "note": "recomputed 2026-10-12: native HTTP API, first run priced it as REST"
     },
     "gateway_latency": {
       "n": 1875,
@@ -970,8 +971,9 @@
       "lambda_duration": 0.00058634,
       "lambda_requests": 0.0007466,
       "dynamodb": 0.00182531,
-      "api_gateway": 0.0130585,
-      "total": 0.01621675
+      "api_gateway": 0.003731,
+      "total": 0.00688925,
+      "note": "recomputed 2026-10-12: native HTTP API, first run priced it as REST"
     },
     "gateway_latency": {
       "n": 1869,

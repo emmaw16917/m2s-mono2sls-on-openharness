@@ -311,6 +311,13 @@ def prepare_variant(src: Path, variant: str, flight_days: int) -> None:
     (src / "template.yaml").write_text(t, encoding="utf-8")
 
 
+def api_price(template: Path) -> float:
+    """Per-request API Gateway price of the deployed (prepared) template: the
+    -http variant and a workspace whose blueprint chose api_type http both
+    deploy an HTTP API."""
+    return e2e_aws.API_GW_HTTP_PER_REQUEST if "AWS::Serverless::HttpApi" in template.read_text(encoding="utf-8") else e2e_aws.API_GW_REST_PER_REQUEST
+
+
 def gateway_latency(access_log: Path) -> dict | None:
     """p50/p90 of the access log's responseLatency (time inside API Gateway,
     request in to response out) and integrationLatency (the Lambda call as
@@ -382,7 +389,7 @@ def run_serverless(infra: dict, variant: str, ref: str, workspace: str, out_dir:
                 "counts": counts, "passes": passes, "metrics_per_pass": per_pass, "metrics": total,
                 "counts_after": {"Bookings": after[0] if after else None, "Sessions": after[1] if len(after) > 1 else None},
                 "cost_usd": e2e_aws.cost(total, arch, api_requests=sum(p["samples"] for p in passes),
-                                         api_price=e2e_aws.API_GW_HTTP_PER_REQUEST if variant.endswith("-http") else e2e_aws.API_GW_REST_PER_REQUEST),
+                                         api_price=api_price(src / "template.yaml")),
                 "gateway_latency": gateway_latency(raw_dir / f"pass{passes[-1]['pass']}" / "logs" / "ApiLogGroup.log")}
     finally:
         if not keep and e2e_aws.stack_exists(stack):

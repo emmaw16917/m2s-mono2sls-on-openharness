@@ -95,8 +95,8 @@ End-to-end from the load generator; API Gateway response latency (request in to 
 | variant | invocations | Lambda GB-s | RRU | WRU | cost USD (both passes) | per 1k requests |
 |---|---|---|---|---|---|---|
 | monolith | - | - | - | - | 0.000445 (EC2 time during the passes; $0.0208/h whether busy or idle) | 0.000118 |
-| v0 | 3741 | 50.859 | 5488.5 | 2112.0 | 0.016519 | 0.004418 |
-| opt | 3733 | 43.975 | 4242.5 | 2072.0 | 0.016217 | 0.004346 |
+| v0 | 3741 | 50.859 | 5488.5 | 2112.0 | 0.007171 | 0.001918 |
+| opt | 3733 | 43.975 | 4242.5 | 2072.0 | 0.006889 | 0.001846 |
 
 - monolith: loader `Database Finished Loading`; counts {'Customers': 10000, 'Flights': 5122, 'FlightSegments': 394, 'Airports': 14, '_': 0}; after the runs {'Bookings': '597', 'Sessions': '0'}
 - v0: loader `200 7.709610s
