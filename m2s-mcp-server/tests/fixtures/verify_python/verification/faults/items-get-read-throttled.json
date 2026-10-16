@@ -1,0 +1,7 @@
+{
+  "id": "items-get-read-throttled",
+  "description": "The first GetItem is throttled; botocore retries it",
+  "function": "items-get",
+  "cases": ["items-get-happy"],
+  "rules": [{"match": {"op": "GetItem", "table": "Items"}, "nth": 1, "kind": "throttle"}]
+}

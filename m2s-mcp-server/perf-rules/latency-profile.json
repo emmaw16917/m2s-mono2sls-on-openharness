@@ -1,0 +1,49 @@
+{
+  "_note": "Per-operation round trip (ms, p50) for perf.py's calibrated critical-path estimate (network_ms_cal). Sizing only, never a verdict: verdicts stay on the local fixed-latency RIE runs. Evidence grade M: measured by e2e_calibrate.py inside an arm64 512 MB nodejs22.x Lambda (runtime-bundled SDK v3, keep-alive) against a table and queue in the same region, ~1 KB items, Query/Scan/BatchGet return 10-20 items. The pipeline itself never calls AWS; refresh this file by hand when the region, runtime or SDK changes.",
+  "source": "Mono2Sls-artifacts/tests/results-e2e/calibration/calibration-2026-10-10.json",
+  "grade": "M",
+  "region_scope": "client Lambda and table in the same region",
+  "ops_ms": {
+    "BatchGetItem": 4.38,
+    "BatchWriteItem": 4.99,
+    "DeleteItem": 3.21,
+    "GetItem": 2.86,
+    "PutItem": 3.32,
+    "Query": 4.12,
+    "Query@GSI": 4.33,
+    "Scan": 4.64,
+    "SendMessage": 7.03,
+    "SendMessageBatch": 13.99,
+    "TransactGetItems": 8.06,
+    "TransactWriteItems": 17.88,
+    "UpdateItem": 4.76
+  },
+  "ops_p90_ms": {
+    "BatchGetItem": 10,
+    "BatchWriteItem": 6.74,
+    "DeleteItem": 9.61,
+    "GetItem": 12.33,
+    "PutItem": 12.69,
+    "Query": 17.15,
+    "Query@GSI": 14.88,
+    "Scan": 11.71,
+    "SendMessage": 11.44,
+    "SendMessageBatch": 29.36,
+    "TransactGetItems": 10.13,
+    "TransactWriteItems": 22.21,
+    "UpdateItem": 6.88
+  },
+  "default_ms": 10,
+  "uncalibrated": [],
+  "previous": {
+    "grade": "E",
+    "source": "Mono2Sls-artifacts/tests/results-e2e/acmeair-ec2 (commit 4adc9a7 data), 2026-10-09",
+    "ops_ms": {
+      "GetItem": 3.7,
+      "Query": 4.2,
+      "PutItem": 5.5,
+      "DeleteItem": 4.8,
+      "UpdateItem": 4.8
+    }
+  }
+}

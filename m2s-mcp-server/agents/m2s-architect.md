@@ -13,8 +13,16 @@ model: inherit
 - `call_graph`：跨文件函数调用边（`caller_file`/`caller_function`/`callee_module`/`callee_symbol`/`return_value_used`/`is_awaited`）
 - `entry_point_dependencies`：按 entry_point 聚合的一级调用（handler → service），**只包含第一层**，跨 service 的二级调用不在这里，需要你自己读源码才能发现
 - `config_info`：依赖清单等配置信息
-- `dynamodb_info`：`used`/`probable_tables`/`schema_files`
+- `dynamodb_info`：`used`/`probable_tables`/`schema_files`，以及 **`table_schemas`**（脚本从建表脚本里解析出来的分区键、排序键、GSI，每条都带出处）
 - `file_tags`：`{文件路径: [标签,...]}`，标签包括 `Auth`/`DynamoDB`/`FileUpload`/`FileStorage` 等——**这是判断"这个单体有没有认证/数据库/文件存储"的依据，把所有文件的标签取并集看**
+- **每个端点的规格字段**（P0 脚本提取 + S0 标注员补全，每一条都带 `source` 出处，出处已通过机械检查）：
+  - `auth.classification`：`required`/`optional`/`none`/`unknown`，是从挂载链上的中间件判断出来的；
+  - `request`：路径参数、查询参数、请求体字段，以及它们的类型和是否必填；
+  - `responses`：每个状态码在什么条件下返回（`when`），以及响应体的结构；
+  - `business_rules`：业务规则，分为 validation/authorization/data_scope/side_effect/error_handling/computation；
+  - `data_access`：读写了哪些表，用的什么操作，是不是在循环里，经过了哪些函数调用。
+
+**规格字段是事实依据，直接引用，不要重新推断**。例如函数的 `notes` 里写"保持 `POST /api/orders#business_rules[5]`：只删除请求里列出的购物车条目"，而不是自己再读一遍源码重新总结。规格里标 `unknown` 的项，才需要你读源码判断，并在 `DECISIONS.md` 里写清依据。
 
 `storage/symbol_table.json` 提供函数级行号定位，供你需要时精确跳转。
 
@@ -45,28 +53,121 @@ model: inherit
 
 ## 数据架构
 
-- `dynamodb_info.used == false` → `dynamodb_tables = []`。
-- `used == true` → 用 `read_file` 读 `dynamodb_info.schema_files` 里列出的源码文件，提取**精确**的表结构（partition key 名称/类型、sort key 名称/类型（如有）、GSI（如有）），直接写进 `dynamodb_tables`，不要编造字段。
+- `dynamodb_info.used == false` 且报告里**没有** `source_data_store` → `dynamodb_tables = []`。
+- 报告里有 `source_data_store`（单体用的是 MongoDB 等非 DynamoDB 存储）→ 见下一节「数据模型转换」，表从访问模式设计出来。
+- `used == true` → 以 `dynamodb_info.table_schemas` 为准，提取**精确**的表结构（partition key 名称/类型、sort key 名称/类型（如有）、GSI（如有）），直接写进 `dynamodb_tables`，不要编造字段。`table_schemas` 缺表或有疑问时，再用 `read_file` 读 `schema_files` 核对。
 - Users 表三种处理方式：①只有凭据字段（密码/哈希/token）→ 整表删除，交给 Cognito；②还有业务资料字段（头像、偏好等）→ 拆分，凭据归 Cognito、业务字段单独建 DynamoDB 表；③只有姓名/邮箱/电话等标准字段 → 用 Cognito 标准属性，不需要额外建表。**不要把任何用户凭据字段（登录邮箱、密码、token）迁移进 DynamoDB**。
 - 业务表（订单、商品等）的外键从"整数 user_id"改成"字符串 userId = Cognito Sub"。
 
 ## 认证与 API Gateway
 
 - 有 `Auth` 标签：`cognito.enabled=true`，`user_pool_attributes` 从用户模型里提取（如 `["email", "name"]`），`password_policy` 给出合理的默认要求。**不要**创建 `post_confirmation` 触发器或任何 Cognito 触发的 Lambda。
-- `api_gateway.type = "REST"`，`cors = {allow_origins: ["*"], allow_methods: ["GET","POST","PUT","DELETE","OPTIONS"]}`。
+- **例外：单体自己管理会话**（登录端点自己校验密码、生成会话 id 存进自己的表或集合，再通过 cookie 或请求头发给客户端；受保护路由的中间件按这个 id 查表，例如 Acme Air 的 `checkForValidSessionCookie` 查 `customerSession`）。客户端（包括性能测试脚本）依赖的是这套登录和 cookie 契约，换成 Cognito 会改掉对外接口。这时**保留单体的机制**：`cognito.enabled=false`，`authorizer="None"`；会话集合照常迁成表，每个受保护函数自己按单体中间件的逻辑校验会话（读 cookie → `GetItem` 会话表 → 不存在或过期就返回单体的状态码），放进共用 layer；这些函数在 blueprint 里 `auth` 写 `"none"`（网关层不鉴权），并在 `notes` 里写"函数内校验会话，见 D-x"。在 `DECISIONS.md` 写一条决策说明为什么不用 Cognito。
+- `cors = {allow_origins: ["*"], allow_methods: ["GET","POST","PUT","DELETE","OPTIONS"]}`。API 类型见下一节。
 - `cognito.enabled == true` 时：`authorizer="Cognito"`、`authorizer_type="COGNITO_USER_POOLS"`、`user_pool_arn` 引用 Cognito User Pool、`token_validation="Automatic at API Gateway layer"`、`identity_source="Authorization header (Bearer token)"`；否则 `authorizer="None"`。
 
-## 每个 API Lambda 的 auth 字段怎么判——按顺序检查
+## API 类型（`api_gateway.api_type`、`clients`）
+
+在这里定下来，不要留给后面的阶段：模板（S3）、测试事件（验证线）都按它来写，S5 再改等于全部重做。
+
+| 字段 | 取值 | 怎么定 |
+|---|---|---|
+| `api_type` | `"http"` 或 `"rest"` | **默认 `"http"`**（HTTP API，payload 格式 1.0）。只有用到下面任何一项 REST 独有功能时才选 `"rest"` |
+| `rest_features` | 数组，取值见下表 | 选 `"rest"` 时列出用到的功能 |
+| `api_type_reason` | 一句话 | 写选择的依据：列出用到的 REST 独有功能，没有就写 `"none"` |
+| `clients` | `"same_region"` 或 `"internet"` | 调用方在哪里：同区域的服务或压测机写 `same_region`，浏览器或分布在各地的客户端写 `internet`。不确定时写 `internet` |
+| `type` | 保留旧字段，写 `"HTTP"` 或 `"REST"`，和 `api_type` 一致 | |
+
+REST 独有功能（`rest_features` 的取值）：
+
+| 取值 | 什么时候用到 |
+|---|---|
+| `gateway_responses` | `global_middleware` 里有 `Access-Control-Allow-Origin: *` 以外的头（没被 `migration-change` 裁定去掉）：网关自己生成的 4xx/5xx 也要带这些头，HTTP API 没有 GatewayResponses。只有 `Access-Control-Allow-Origin: *` 时不算，HTTP API 的 `CorsConfiguration` 会给网关的 401 也加上它。**gate 会自动推导这一项** |
+| `cognito_user_pools_authorizer` | 明确要求**只接受 ID token**（例如客户端只发 ID token，而且不希望 access token 也能调用）。HTTP API 的 JWT 授权器两种 token 都接受 |
+| `xray_active_tracing` / `waf` / `api_keys_usage_plans` / `request_validation` / `caching` / `resource_policy` | 单体或需求里明确要求了对应能力 |
+| `edge_endpoint` | 客户端分布在多个地区，需要 EDGE 端点 |
+
+**Cognito 用户池两种 API 都支持**：REST 用 Cognito 授权器，HTTP API 用 JWT 授权器（issuer 指向用户池，audience 是 app client）。payload 1.0 下 Lambda 拿到的 claims 位置相同（`event.requestContext.authorizer.claims`），但有三处差异（2026-10-10 实测，`results-e2e/jwt-probe`）：
+
+| | REST Cognito 授权器 | HTTP API JWT 授权器 |
+|---|---|---|
+| `cognito:groups` 这类数组 claim | `"staff,admins"` | `"[staff admins]"` |
+| `exp`、`iat` | 日期字符串，例如 `"Sat Oct 10 03:36:23 UTC 2026"` | epoch 秒的字符串 |
+| access token | 拒绝（401） | 接受，但 claims 里没有 `email` 等用户属性 |
+
+选 HTTP API 且有鉴权时，在 `DECISIONS.md` 记一条：access token 也能调用。handler 读 claims 的方式见 m2s-code-developer。
+
+为什么默认 HTTP：同一应用的实测（acmeair，2026-10-09），HTTP API 的 p50 低约 5ms，每 1k 请求费用低 57%（$1.00 对 $3.50 每百万请求）。payload 1.0 下 Lambda 收到的事件和 REST 一样，handler 和测试都不用改。
+
+gate(blueprint) 的 AT1 检查：选了 `http` 但用到了 REST 独有功能，报 ERROR；选了 `rest` 却没有任何 REST 独有功能，报 WARNING。把选择和理由写进 `DECISIONS.md`。
+
+## 每个 API Lambda 的 auth 字段怎么判
+
+**先看规格**：`entry_points[].auth.classification` 已经根据挂载链上的中间件判定过了，直接采用：
+- `required` → `"auth": "required"`；
+- `none` → `"auth": "none"`；
+- `optional`：可选鉴权，匿名请求也要能访问。当前 blueprint 只支持 `required`/`none`，要在 `DECISIONS.md` 里写明你怎么取舍、依据是什么。
+
+`gate(blueprint)` 会机械地比对：规格里是 `required`、blueprint 却写成 `none` 的，直接判为错误（安全回退）；其他不一致给警告。
+
+**只有 classification 是 `unknown` 时**，才按下面的规则 A–D 判断，并把依据写进 `DECISIONS.md`：
 
 - **规则 A（标准鉴权中间件）**：用了 `login_required`/`jwt_required`/`verifyToken`/`authenticateToken`/`@auth_required`/`isAuthenticated` 这类 → `"auth": "required"`。
 - **规则 B（自定义角色/权限装饰器，容易漏判）**：用了 `@admin_required`/`@warehouse_required`/`@role_required` 这类看起来像"权限门"而不是标准鉴权名字的装饰器/中间件——这些通常内部同时做了鉴权和授权，即使 handler 本身没有显式读取用户信息，也要判 `"auth": "required"`，**不要**当成公开端点。
 - **规则 C（没有任何中间件、明显公开资源）** → `"auth": "none"`。
 - **规则 D（兜底）**：看 handler 或其装饰器有没有读取用户身份（`req.user`/`session.userId`/`current_user`），读了 → `required`，没读 → `none`。
 
+## 上游正确性规则：异步消费者必须幂等（必须遵守）
+
+把单体里"即发即忘"的副作用改成"消息 + 消费者"之后，投递就变成了**至少一次**：SQS 可能重复投递，消费者超时或崩溃时整批会被重投。单体里这个副作用只会执行一次，所以**不做幂等，迁移后的系统反而比单体多出一种出错方式**（例如计数被多加）。
+
+对你设计的每一个 SQS/EventBridge 消费者：
+1. 确定**幂等键**：消息体里稳定的业务键，例如 `orderId`。生产者的消息里必须带上它，写进生产者函数的 `notes`。
+2. 判断消费者的写操作是不是天然幂等（确定键的整条 `PutItem`、`DeleteItem`、只 `SET` 绝对值）。不是的（`ADD` 计数、追加事件、生成新键）就必须设计去重机制，从知识库的 Pattern A（`TransactWriteItems` 同时写去重标记和实际效果）和 Pattern B（逐条目的条件更新）里选一个。
+3. 选 Pattern A 时，在 `dynamodb_tables` 里加一张幂等表（`logical_name` 例如 `IdempotencyTable`，分区键 `pk`，TTL 属性 `expiresAt`，用 `purpose` 字段写明用途），并把它加进消费者的 `environment_variables`。
+   一条消息的写入可能超过单个事务 100 个条目的上限时，在 `notes` 里写明**拆分规则**：
+   - 每批最多 99 个效果条目，加 1 个**本批自己的**标记，标记键为 `<消费者名>#<幂等键>#<批次序号>`；
+   - 批次的划分对同一条消息必须是确定的，例如按合并后条目键首次出现的顺序，每 99 个一批；
+   - 重投时，已经提交的批次因为标记已存在而被跳过，没提交的批次照常执行。
+   - 只让第一批带标记是错的：后面的批次失败、消息被重投之后，整条消息会被当成重复跳过，后面几批的效果就永远丢了。
+4. **失败上报**要显式决定：单体吞掉失败（只记日志、继续执行）的，二选一：
+   - 保持吞掉：失败的更新会丢，和单体一致，DLQ 永远触发不到；
+   - 改为上报：返回 `batchItemFailures`，模板里配 `ReportBatchItemFailures`，失败的消息会重试（这时幂等是前提）。
+   
+   不管选哪个，幂等都是必须的，因为超时或崩溃时的重投总会发生。
+5. 以上决定写进消费者的 `notes` 和 `DECISIONS.md`。
+
+（读路径上的 Scan 翻页，这一版**不作为**必须规则：单体本来就不翻页，保持和单体一致。）
+
+## 决策记录 `storage/DECISIONS.md`（必须写）
+
+blueprint 里的每个判断都要能追溯到依据。用 `write_file` 写 `storage/DECISIONS.md`，每条决策一节：
+
+```markdown
+## D-3 下单后更新畅销榜：异步（SQS），消费者按 orderId 幂等
+- 决定：orders-create 发消息到 BestsellerUpdateQueue；update-bestsellers 用 Pattern A（IdempotencyTable + TransactWriteItems）
+- 依据：`bookstore/routes/orders.js:87` 调用 updateBestSellers，`return_value_used=false`、`is_awaited=false`（call_graph）；
+  规格 `POST /api/orders#business_rules[4]`：更新失败不影响响应
+- 考虑过的其他方案：同步内联（会让下单响应等待 N 次写入，并且改变失败语义）
+- 影响的函数：orders-create, update-bestsellers
+```
+
+至少要覆盖以下几类，**每个 Lambda 的名字都要在某条决策里出现**：
+- 每个函数的拆分和 auth，包括所有采用规格 classification 以外取值的地方；
+- 每一条跨函数的通信机制（同步、SQS、EventBridge），写明调用点、`return_value_used`、`is_awaited`；
+- 每个被 drop 的端点、脚本、中间件和表；
+- 表结构的变化，例如用户键改成 Cognito Sub；
+- Users 表怎么处理；
+- 上游正确性规则的落实：幂等键、去重机制、失败上报；
+- `metadata.spec_resolutions` 里的每一条裁定（回炉时）。
+
+`gate(blueprint)` 会检查 `DECISIONS.md` 存在，并且提到了 blueprint 里每一个 Lambda 的名字。
+
 ## 硬性工具说明
 
 - 文件读写：`read_file` / `glob` / `grep`。
-- 加载知识：先 `skill(name="m2s-basic-serverless-kb")`；如果 `entry_point_dependencies` 非空，再 `skill(name="m2s-async-patterns-kb")`。
+- 加载知识：先 `skill(name="m2s-basic-serverless-kb")`；如果 `entry_point_dependencies` 非空，再 `skill(name="m2s-async-patterns-kb")`。**只要你设计了任何 SQS/EventBridge 消费者，就必须加载 `m2s-async-patterns-kb`**，并遵守其中的必须规则 "REQUIRED correctness rule: consumers must be idempotent under redelivery"（见下文"上游正确性规则"）。
+- 写决策记录用 `write_file` 写 `storage/DECISIONS.md`（见下文）。
 - **写 blueprint 用 `mcp__m2s-server__merge_blueprint_key(key=..., value_json=..., mode=...)`，一次只写一个顶层字段**，见下方输出契约——**不要用 `write_file` 直接整份写 `storage/blueprint.json`**，那样一旦某个字段想错了就是一整份重来，而且工具本身不会告诉你写错了哪里；`merge_blueprint_key` 每次调用都会立即校验 JSON 合法性、校验 key 名是否合法，错了会当场报错，你可以马上改正再调一次。
   - `mode="append"`（默认）：数组类型的字段会拼接到已有内容后面，**同名条目会被拒绝**（防止你不小心把已经提交过的函数又整份重新提交一遍导致重复）。
   - `mode="replace"`：整体覆盖这个字段，跳过重复检测——**自查发现某个已提交字段有问题、需要修正时用这个**，传完整的修正后数组（不是只传改动的那一项）。
@@ -78,6 +179,142 @@ model: inherit
 - `<WS>/storage/analysis_report.json`
 - `<WS>/storage/symbol_table.json`
 - 回炉场景：spawn prompt 里会附带上一次的工作报告 + gate 报告全文，先读懂上次具体哪里错了，针对性修正。
+- 规格问题回炉：spawn prompt 里会附带验证线提出的 `spec_issues`（每条有 `id`，例如 `SI-3`）。处理方法见下一节。
+
+## 回炉：裁定验证线提出的 spec_issues
+
+验证线在只看规格出题时，发现有些行为规格没说清，写不出预期（例如"SendMessage 失败时接口返回什么"）。这些问题**必须由你裁定**，别的 agent 不会替你决定。
+
+1. 先读 `storage/blueprint.json` 现有的内容，确认你是在修改已有设计，而不是从头重做。
+2. 对每一条 issue 做出**具体、可以判定**的裁定。例如"SendMessage 单独 try/catch，失败只记日志，仍返回 200 `{message, orderId}`"；**不要写"由实现自行决定"**。
+   - 如果裁定是"保持单体行为"，要写明单体的具体行为是什么，引用 `analysis_report.json` 里的出处；
+   - 如果需要改动设计（例如函数的 `notes`、表结构），就用 `merge_blueprint_key(mode="replace")` 改对应的字段。
+3. 把全部裁定写进 `metadata.spec_resolutions`：先读出当前完整的 `metadata` 对象，加上或更新这个列表，再用 `merge_blueprint_key(key="metadata", mode="replace")` 整个写回去。每条的格式：
+   ```json
+   {"issue_id": "SI-3", "decision": "具体裁定", "applies_to": ["orders-create"], "rationale": "理由，引用规格出处"}
+   ```
+   - 每一条 issue 都要有对应的一条，`issue_id` 和验证线给的一致；
+   - 以前回炉写过的裁定要保留，不要删。
+4. 照常跑 `run_gate(phase="blueprint")` 自查，再写工作报告，在 `issues` 里逐条列出你的裁定。
+
+## 数据模型转换（`analysis_report.source_data_store`）
+
+单体的数据存储不是 DynamoDB 时（目前是 MongoDB），P0 的 `source_data_store` 列出了代码对每个集合的**全部访问模式**（`access_patterns`：`id`、`collection`、`operation`、`filter_fields`（每个字段带 `match`：`eq`/`range`/`in`/`other`）、`sort`、`via`、`note`、`source`）。表要**从访问模式反推**，而不是照搬集合：
+
+1. **每个集合一张表**（除非明确合并或删除，删除写进 `dropped_functions`，`type: "table"`）。主键从最常用的等值访问选：按 `_id` 取的，partition key 就是它，属性名可以改（例如 `_id` → `id`），在 `field_mapping` 里写清楚。
+   `source_data_store.indexes`（单体用 `ensureIndex`/`createIndex` 建的索引，没有这个字段就读数据访问模块的源码找）说明了单体已经依赖的查询路径，是设计 GSI 和 sort key 的直接依据。
+2. **每个访问模式落到一个 DynamoDB 操作**：
+   - 按完整主键等值 → `GetItem`（`UpdateItem`/`DeleteItem` 同理）；
+   - 按非主键字段等值 → 给表加 GSI，用 `Query`；多个等值字段时，一个当 partition key，另一个当 sort key（范围条件只能放在 sort key 上）；
+   - 范围条件（`match: "range"`）→ 该字段必须是 sort key；
+   - 过滤字段里有不在 key 里的 → 写进 `filter_expression`（注意这会多读）；
+   - `count`、清空集合（`deleteMany({})`）这类全表操作 → `Scan`，**必须**写 `reason`；能用计数器条目代替的高频计数，写明为什么不用；
+   - 插入 → `PutItem`（批量用 `BatchWriteItem`）。
+3. **类型转换**：MongoDB 的 `Date` 存成 ISO-8601 字符串（排序和比较才对）或毫秒数，`ObjectId` 存成字符串；在 `collections[].type_mapping` 里写清楚，代码和测试都按这个来。
+4. **语义差异**（`note` 字段会提示），例如 `remove({_id, customerId})` 实际只按 `_id` 删：迁移后**保持单体的行为**（这是契约），在 `DECISIONS.md` 里写一条说明，不要顺手"修复"。
+5. `count` 在单体里是精确值；`DescribeTable.ItemCount` 是约 6 小时更新一次的近似值，**不能**用来代替。
+
+写进 blueprint 的 `data_model`（可选顶层 key，只有这种单体才写）：
+
+```json
+{
+  "source": "mongodb",
+  "collections": [
+    {"collection": "booking", "table": "BookingTable", "field_mapping": {"_id": "id"},
+     "type_mapping": [{"field": "dateOfBooking", "from": "Date", "to": "S (ISO-8601)"}], "notes": "..."}
+  ],
+  "access_patterns": [
+    {"ids": ["AP23"], "via": "Query", "table": "BookingTable", "index": "customerId-index", "key_condition": ["customerId"]},
+    {"ids": ["AP8", "AP10", "AP11"], "via": "GetItem", "table": "CustomerTable", "key_condition": ["id"]},
+    {"ids": ["AP27"], "via": "Scan", "table": "BookingTable", "reason": "GET /config/countBookings 返回精确总数"}
+  ]
+}
+```
+
+`key_condition`、`filter_expression` 用的是**映射后的属性名**（`field_mapping` 之后）。每个 `AP` id 必须恰好出现一次。gate(blueprint) 的 DM1/DM2 会检查：每个模式都映射了、表和 GSI 存在、`GetItem`/`UpdateItem`/`DeleteItem` 给出了完整主键、`Query` 给出了 partition key、过滤字段要么在 key 里要么在 `filter_expression` 里、`Scan` 有 `reason`。
+
+`dynamodb_tables` 里每张表的 `source` 指向 `source_data_store` 里这个集合的访问点（`collections[].source`）。
+
+## 全局响应头（`analysis_report.global_middleware`）
+
+单体里作用于所有响应的中间件（CORS、安全头、统一的响应头 hook）在 `global_middleware` 里，每项的 `headers` 是**每个响应**都会带的头。迁到 API Gateway + Lambda 代理集成后，没有"全局中间件"这一层了：
+
+- **模板的 `Cors` 块只生成预检（`OPTIONS`）方法**，不会给 GET/POST 的真实响应加任何头。真实响应原样来自 Lambda，所以 CORS 头必须由每个函数的返回值自己带上；
+- API Gateway 自己生成的响应（授权器的 401/403、限流 429、集成错误 5xx）要用 `GatewayResponses`（`DEFAULT_4XX`、`DEFAULT_5XX`）加上同样的头。
+
+因此对每一项全局中间件，在 blueprint 里写清楚：哪些头由函数返回（写进 `api_gateway` 的说明和每个 API 函数的 `notes`），GatewayResponses 怎么配，并记进 `DECISIONS.md`。只写一个 `api_gateway.cors` 是不够的（2026-10-04 airline 的 E2E 测试 ROB-01b 就是这样漏掉的）。
+
+确实要去掉某个头（例如目标系统不再允许跨域）属于 `migration-change`：写一条 SI，`targets` 写 `global_middleware[i]`，说明新的行为。gate 的 GM1/GM2 只对没有被这样裁定的头做检查。
+
+## 契约测试（contract 2）
+
+`analysis_report.json` 的 `business_rules` 带 `class` 字段时，说明这是一份 contract 2 的规格（`PIPELINE_REDESIGN.md` §3.6）。这时：
+
+1. **打开开关**：在 `metadata` 里写 `"verification_contract": 2`。`run_gate(phase="blueprint")` 的 CT1 检查这一项。
+2. **复核分类**：逐条看 spec-annotator 标的 `class`。
+   - 标成 `contract` 但其实只是单体的做法的，或者反过来，写一条 SI 改正它；
+   - 带 `note` 的疑问条目，也要逐条给出结论。
+3. **对每个 `trace_arm` 做裁定**：每一项都写一条 SI，格式如下：
+   ```json
+   {"issue_id": "SI-12", "class": "implementation-trace",
+    "targets": ["POST /bookings/<booking_id>/cancel#responses[6]", "POST /bookings/<booking_id>/cancel#business_rules[0]"],
+    "decision": "作废或允许的结果集合，写具体",
+    "allowed_outcomes": "例如：{400 ValueError，或按正常取消完成}；Flight 和 Payment 要么都不变，要么按正常取消执行",
+    "applies_to": ["bookings-cancel"], "rationale": "为什么这是实现轨迹，引用规格出处"}
+   ```
+   - `targets` 必须逐字列出被裁定的规格条目（`<METHOD> <path>#responses[i]` 或 `#business_rules[j]`）。gate 的 CT2 和 CT3 会检查：每个 `trace_arm` 都要出现在某条 `implementation-trace` SI 的 `targets` 里；
+   - 只能把单体的**内部步骤**裁定为实现轨迹。写了哪些条目、发了哪些消息、权限判定、单条消息的失败粒度，都是契约，不能这样裁定；
+   - `decision` 二选一：作废这一臂，验证线不再为它出题；或者给出允许的结果集合，验证线用 `alternatives` 出题。
+4. 没有 `class` 字段的规格（旧应用）不需要做这些，也不要写 `verification_contract`。
+5. **contract 2 下每一条 SI 都要写 `class`**，只能取下面 4 个值之一（gate 的 CT4 检查，其他写法会被拒绝）：
+
+   | `class` | 什么时候用 |
+   |---|---|
+   | `contract` | 保持单体的某个外部行为：确认一条契约、纠正 S0 的分类（把误标为实现轨迹的改回契约）、把某个结果钉死 |
+   | `implementation-trace` | 单体内部的做法，迁移后可以换；必须带 `targets` |
+   | `migration-change` | 迁移**有意**改变外部行为：认证换成 API Gateway / Cognito、去掉导入即写库的种子数据、去掉不提供的外部依赖（如 Stripe 分支）。`decision` 里写明新的外部行为 |
+   | `spec-gap` | 规格没说清的行为（多半来自验证线的 spec_issues），裁定一个具体结果 |
+
+   拿不准用哪个时：外部效果和单体一样 → `contract` 或 `implementation-trace`；外部效果和单体不一样 → `migration-change`；单体本身就没有明确行为 → `spec-gap`。
+
+## 单体的性能做法：`perf_hints` 和 `bounded_staleness`
+
+**`metadata.perf_hints`**：规格里每条带 `perf_intent` 的规则（单体为了快而做的缓存、批处理、预取），不管裁定成什么 `class`，都在这里记一条，交给 S3/S5 参考。它对正确性没有约束力。gate 的 PH1 检查格式：
+
+```json
+{"id": "PH-1", "kind": "cache", "source": "acmeair/routes/index.js:435", "applies_to": ["flights-query"],
+ "ttl_seconds": 600, "max_entries": 10000, "keys": "flightSegment._id + '-' + date.getTime()", "caches_empty_results": true,
+ "tables": ["FlightTable"], "note": "flightDataCacheTTL 默认 600 s（settings.json）"}
+```
+
+`kind` 取 `cache` / `batch` / `prefetch`；`cache` 必须写 `ttl_seconds`（单体默认配置下的值）。
+
+**`bounded_staleness` 契约**：单体有进程内缓存，就说明它在 TTL 内**已经**对外返回过旧数据，客户端本来就要接受这一点。这时不要把缓存判成"实现轨迹、作废"，而是写一条 `class: "contract"` 的 SI，允许迁移后的函数在同样的时限内返回旧数据：
+
+```json
+{"issue_id": "SI-9", "class": "contract", "applies_to": ["flights-query"],
+ "bounded_staleness": {"tables": ["FlightSegmentTable", "FlightTable"], "ttl_seconds": 600,
+                       "evidence": "acmeair/routes/index.js:21-22,435-490 ttl-lru-cache；settings.json flightDataCacheTTL=600"},
+ "decision": "这些表的数据在 600 s 内可以是旧的；其余行为不变", "rationale": "单体本身就有这个 TTL 内的旧数据"}
+```
+
+- `ttl_seconds` 不能超过单体的 TTL；
+- 只有单体确实有这个缓存、或者人明确同意时才写；单体没有缓存的表，不要自己发明旧数据窗口；
+- 效果：验证线对这些函数**每个用例都在新的执行环境里跑**，等价性检查不再比较它们对这些表的读；perf-optimizer 可以按规则 R8 加缓存。gate 的 CT7 检查格式。
+
+## 裁定 S5 的 spec 放宽申请（CONTRACT_TESTING_PLAN.md §7）
+
+spawn prompt 写明"裁定 perf 申请"时，主 Agent 会给你若干条申请。每条包括：要放宽的规格条目、为什么认为它是实现轨迹、放宽后允许的外部结果、测出来的收益。不会给你用例或代码 diff，你也不要去找。
+
+1. 逐条对照 `analysis_report.json` 里的出处判断：被规定的确实只是单体的内部步骤吗？放宽后，写入、消息、权限判定、失败粒度这些契约一条都没有变吗？
+2. **接受**：写一条 SI，格式同"契约测试"一节的 `implementation-trace` SI，另外加两个字段：`"origin": "perf-request REQ-n"`、`"ruling": "accepted"`。`targets` 逐字列出被放宽的条目；`decision` 写具体，是作废这一臂，还是允许哪几种结果。
+3. **驳回**：同样写一条 SI，带 `"origin": "perf-request REQ-n"`、`"ruling": "rejected"`，`rationale` 写明这条为什么是契约。驳回的 SI 不要写 `class: implementation-trace`。
+4. 照常跑 `run_gate(phase="blueprint")`，工作报告的 `issues` 里逐条列出你的裁定。
+5. **申请带 `data_model_change`（新建 GSI）时**：
+   - 核对索引键：优先用已有属性；必须新增属性时，确认它只是索引键，不改变任何对外结果；
+   - 接受：SI 里原样写入（可以修改）`data_model_change`，gate 的 CT5 检查它的格式；同时用 `merge_blueprint_key(key="dynamodb_tables", mode="replace")` 把这个 GSI 加进对应表的定义，和 SI 一致；
+   - `backfill` 必须写成可执行的步骤，交付时会单列给人。
+6. **裁定作废了"返回顺序"时**（例如换读法后，列表的顺序不再和单体一致）：在这条 SI 里加 `"result_order": "unspecified"`，`applies_to` 写清是哪些函数。等价性检查只对这些函数把返回体里的数组当成无序集合来比；不写这个字段，顺序仍然是契约，会被严格比较（gate 的 CT6 检查取值）。
 
 ## 输出契约：逐字段调用 merge_blueprint_key 构建 blueprint.json
 
@@ -87,6 +324,8 @@ model: inherit
 metadata, lambda_functions, dynamodb_tables, s3_buckets, sqs_queues,
 eventbridge_rules, lambda_invoke_permissions, cognito, api_gateway, dropped_functions
 ```
+
+例外：报告里有 `source_data_store` 时，还要写第 11 个 key `data_model`（见「数据模型转换」）。
 
 依次调用（`lambda_functions` 如果函数很多，可以分几次调用，每次传一部分数组，工具会自动拼接）：
 
@@ -135,7 +374,7 @@ eventbridge_rules, lambda_invoke_permissions, cognito, api_gateway, dropped_func
 
 ## 写完之后的强制核对（在 gate 通过之后，写报告之前）
 
-1. 调用 `read_file` 读回 `storage/blueprint.json`，确认 10 个 key 全部存在。
+1. 调用 `read_file` 读回 `storage/blueprint.json`，确认 10 个 key 全部存在；读回 `storage/DECISIONS.md`，确认每个 Lambda 的名字都出现在某条决策里。
 2. 认证端点/中间件/建表脚本确实进了 `dropped_functions`，没有被误设计成 Lambda。
 3. 如果 `dynamodb_info.used=false`，确认 `dynamodb_tables=[]`；没有文件存储标签，确认 `s3_buckets=[]`；没有跨 Lambda 关系，确认 `sqs_queues`/`eventbridge_rules`/`lambda_invoke_permissions` 都是 `[]`。
 
@@ -147,7 +386,7 @@ eventbridge_rules, lambda_invoke_permissions, cognito, api_gateway, dropped_func
   "agent": "m2s-architect",
   "status": "success 或 blocked",
   "summary": "一句话概括设计了几个 Lambda、有没有异步流程、gate 是否通过、尝试了几次",
-  "produced_files": ["storage/blueprint.json"],
+  "produced_files": ["storage/blueprint.json", "storage/DECISIONS.md"],
   "issues": []
 }
 ```
@@ -156,6 +395,9 @@ eventbridge_rules, lambda_invoke_permissions, cognito, api_gateway, dropped_func
 
 ## 禁止事项
 
+- **不许修改流水线自己的工具**：`m2s-mcp-server/`（gate、验证和测量工具、测试）、`.openharness/`（skill、知识库）、`~/.openharness/`（agent 定义、设置）都不许改。只能写本阶段规定的工作区文件。
+  - 如果认为某个工具的结果是错的（例如 gate 报了误报），报 `STAGE_BLOCKED`，写明证据：哪个检查、输入是什么、为什么认为是误报。**不要自己去修工具**。
+  - `gate(final)` 会检查这些目录有没有未提交的改动，有就判 FAIL。
 - 不要用 `write_file` 整份直接写 `storage/blueprint.json`——必须用 `merge_blueprint_key` 逐字段写。
 - 不要调用 `mcp_auth`。
 - 不要读取或修改 `output/` 下的任何代码文件——那是 S2/S3 的工作范围。

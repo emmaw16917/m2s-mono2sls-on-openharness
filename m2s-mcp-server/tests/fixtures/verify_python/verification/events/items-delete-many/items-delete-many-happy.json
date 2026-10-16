@@ -1,0 +1,4 @@
+{"id": "items-delete-many-happy", "function": "items-delete-many", "kind": "happy", "spec_refs": ["blueprint:items-delete-many"],
+ "request": {"method": "POST", "path": "/items/delete", "body": {"ids": ["a", "nope", "b", "c"]}},
+ "fixtures": {"Items": [{"id": "a"}, {"id": "b"}, {"id": "c"}, {"id": "keep"}]},
+ "expect": {"status": 200, "body": {"equals": {"deleted": 3, "missing": ["nope"], "failed": []}}, "tables_after": {"Items": {"count": 1, "contains": [{"id": "keep"}]}}}}

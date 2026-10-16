@@ -27,6 +27,28 @@ every stage against a deterministic MCP tool server (`m2s-mcp-server/`).
 `m2s-mcp-server/README.md` is the detailed "how do I run it / where is everything"
 reference this file summarizes.
 
+### Update 2026-10: what was added since the first snapshot
+
+- **Spec line** — `spec_extract.py` / `spec_extract_py.py`, `provenance.py`,
+  `global_middleware.py` enrich `analysis_report.json` with per-endpoint contracts, app-wide
+  middleware and source locations; the `m2s-spec-annotator` agent reviews them (S0).
+- **MongoDB monoliths** — `data_store.py` extracts Mongo access patterns and indexes, the
+  architect maps them onto DynamoDB tables (gates DM1/DM2). New benchmark:
+  `mono_benchmark/acmeair` (acmeair-nodejs, Apache-2.0).
+- **Verification line** — `verify.py` + `verify-tools/` run spec-level test cases written by the
+  `m2s-verifier` agent against the generated handlers (RIE containers + DynamoDB Local, or local
+  Node + dynalite without Docker), plus coverage and fault-injection equivalence checks.
+  Needs `npm install` in `m2s-mcp-server/verify-tools/` and `sam` on PATH (or `M2S_SAM`).
+- **Optimization line** — `perf.py` + `perf-rules/` and the `m2s-perf-optimizer` agent (S5):
+  rule-driven performance changes, each kept only if the verification line still passes.
+- **API type choice** — gates AT1/AT2 pick HTTP API vs REST API per app.
+- **Orchestration** — `oh_chain.py` chains/resumes long `oh -p` runs.
+- **Optional AWS benchmarking** — `e2e_aws.py`, `e2e_ec2.py`, `e2e_jmeter.py`,
+  `e2e_calibrate.py`, `e2e_ec2_recompute.py`, `e2e-tools/`: deploy a generated workspace and
+  the monolith to a real AWS account and compare them with JMeter from the same region.
+  These need AWS credentials and **create billable resources**; the pipeline itself never
+  needs them.
+
 ## Prerequisites
 
 1. **One conda environment (or venv)** running both OpenHarness (`oh`) and the MCP

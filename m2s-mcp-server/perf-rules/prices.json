@@ -1,0 +1,10 @@
+{
+  "_note": "Unit prices for the per-invocation cost estimate (PERF_OPTIMIZATION_DESIGN.md §4). us-east-1, on-demand, taken from the assistant's knowledge (DynamoDB on-demand after the Nov-2024 price cut) -- verify against the AWS pricing pages before quoting absolute numbers. Verdicts only compare directions between two versions, so exact values matter little. lambda_gb_second is x86_64; lambda_gb_second_arm64 is the Graviton price (20% lower).",
+  "currency": "USD",
+  "dynamodb_write_request_unit": 6.25e-07,
+  "dynamodb_read_request_unit": 1.25e-07,
+  "sqs_request": 4e-07,
+  "lambda_gb_second": 1.66667e-05,
+  "lambda_gb_second_arm64": 1.33334e-05,
+  "lambda_request": 2e-07
+}

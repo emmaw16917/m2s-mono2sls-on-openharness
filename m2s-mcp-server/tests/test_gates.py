@@ -14,6 +14,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import gates  # noqa: E402
 
+_real_check_tools_unmodified = gates.check_tools_unmodified
+
+
+@pytest.fixture(autouse=True)
+def _tools_check_off(monkeypatch):
+    """gate(final)'s TOOLS check looks at the real repo's git state; unit
+    tests of the other checks must not depend on it (tested on its own)."""
+    monkeypatch.setattr(gates, "check_tools_unmodified", lambda *a, **k: [])
+
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 GOOD_BLUEPRINT = {
@@ -75,6 +84,9 @@ GOOD_BLUEPRINT = {
     },
     "api_gateway": {
         "type": "REST",
+        "api_type": "rest",
+        "clients": "internet",
+        "api_type_reason": "cognito_authorizer",
         "cors": {"allow_origins": ["*"], "allow_methods": ["GET", "POST"]},
         "authorizer": "Cognito",
         "authorizer_type": "COGNITO_USER_POOLS",
@@ -172,6 +184,8 @@ def _write_good_workspace(root: Path) -> Path:
     output = root / "output"
     storage.mkdir(parents=True)
     (storage / "blueprint.json").write_text(json.dumps(GOOD_BLUEPRINT), encoding="utf-8")
+    (storage / "DECISIONS.md").write_text(
+        "## D-1 one Lambda per endpoint\n- todo-list-items, todo-create-item: auth required (spec)\n", encoding="utf-8")
     (storage / "analysis_report.json").write_text(
         json.dumps({"entry_points": [{"method": "GET", "path": "/item"}, {"method": "POST", "path": "/item"}]}),
         encoding="utf-8",
@@ -195,6 +209,66 @@ def test_b0_good_blueprint_passes(tmp_path):
     _write_good_workspace(tmp_path)
     findings = gates.check_b0(tmp_path)
     assert findings == []
+
+
+def test_normalize_path_folds_flask_angle_brackets():
+    """P0 keeps the framework's own route spelling. Express (":id" / "{id}")
+    was already folded; Flask "<id>" / "<int:id>" must fold to the same
+    canonical form, because the blueprint can only carry the deployable
+    API Gateway shape "/{id}"."""
+    assert gates._normalize_path("/item/<id>") == "/item/{param}"
+    assert gates._normalize_path("/item/<int:id>") == "/item/{param}"
+    assert gates._normalize_path("/item/{id}") == gates._normalize_path("/item/:id")
+
+
+def test_b0_flask_spec_path_covered_by_curly_blueprint(tmp_path):
+    """A Flask monolith: analysis_report says GET /item/<id>, the blueprint
+    must say GET /item/{id}. That is correct, not uncovered."""
+    _write_good_workspace(tmp_path)
+    bp_path = tmp_path / "storage" / "blueprint.json"
+    bp = json.loads(bp_path.read_text(encoding="utf-8"))
+    bp["lambda_functions"][0]["entry_points"] = ["GET /item/{id}"]
+    bp_path.write_text(json.dumps(bp), encoding="utf-8")
+    (tmp_path / "storage" / "analysis_report.json").write_text(json.dumps({"entry_points": [
+        {"method": "GET", "path": "/item/<id>", "auth": {"classification": "required"}},
+        {"method": "POST", "path": "/item"},
+    ]}), encoding="utf-8")
+    assert gates.check_b0(tmp_path) == []
+
+
+def test_b0_requires_decisions_md_mentioning_every_function(tmp_path):
+    _write_good_workspace(tmp_path)
+    (tmp_path / "storage" / "DECISIONS.md").write_text("## D-1\n- todo-list-items only\n", encoding="utf-8")
+    msgs = [f["description"] for f in gates.check_b0(tmp_path) if f["severity"] == "ERROR"]
+    assert any("todo-create-item" in m and "DECISIONS.md" in m for m in msgs)
+    (tmp_path / "storage" / "DECISIONS.md").unlink()
+    msgs = [f["description"] for f in gates.check_b0(tmp_path) if f["severity"] == "ERROR"]
+    assert any("missing or empty" in m for m in msgs)
+
+
+def test_b0_auth_must_not_drop_spec_required(tmp_path):
+    """Spec says the endpoint needs auth, blueprint makes it public: security regression."""
+    _write_good_workspace(tmp_path)
+    (tmp_path / "storage" / "analysis_report.json").write_text(json.dumps({"entry_points": [
+        {"method": "GET", "path": "/item", "auth": {"classification": "required"}},
+        {"method": "POST", "path": "/item", "auth": {"classification": "required"}}]}), encoding="utf-8")
+    bp = json.loads(json.dumps(GOOD_BLUEPRINT))
+    bp["lambda_functions"][0]["auth"] = "none"
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    errs = [f for f in gates.check_b0(tmp_path) if f["severity"] == "ERROR"]
+    assert len(errs) == 1 and "requires authentication" in errs[0]["description"]
+
+
+def test_b0_warns_on_consumer_without_idempotency(tmp_path):
+    _write_good_workspace(tmp_path)
+    bp = json.loads(json.dumps(GOOD_BLUEPRINT))
+    bp["lambda_functions"].append({"name": "todo-consumer", "trigger_type": "sqs", "runtime": "nodejs22.x", "handler": "handler.handler"})
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    (tmp_path / "storage" / "DECISIONS.md").write_text("todo-list-items todo-create-item todo-consumer\n", encoding="utf-8")
+    warns = [f for f in gates.check_b0(tmp_path) if f["severity"] == "WARNING"]
+    assert any("idempotency" in f["description"] for f in warns)
+    (tmp_path / "storage" / "DECISIONS.md").write_text("todo-list-items todo-create-item todo-consumer: 按 orderId 幂等\n", encoding="utf-8")
+    assert not [f for f in gates.check_b0(tmp_path) if "idempotency" in f["description"]]
 
 
 def test_b0_residue_fixture_reports_findings():
@@ -797,5 +871,296 @@ def test_run_gate_final_passes_with_report(tmp_path):
     assert result["status"] == "PASS"
 
 
+@pytest.mark.parametrize("status", ["IN_PROGRESS", "FAIL"])
+def test_run_gate_final_rejects_unfinished_or_failed_report(tmp_path, status):
+    """Real incident (bookstore-v1): S4 wrote a provisional report with status
+    IN_PROGRESS and gate(final) still returned PASS."""
+    _write_good_workspace(tmp_path)
+    (tmp_path / "output" / "consistency_report.json").write_text(json.dumps({"status": status}), encoding="utf-8")
+    result = gates.run_gate("final", str(tmp_path))
+    assert result["status"] == "FAIL"
+    assert any(f["check_id"] == "REPORT" and status in f["description"] for f in result["mechanical_failures"])
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))
+
+
+def _layer_ws(tmp_path, files, content_uri, runtime, build_method):
+    for rel in files:
+        (tmp_path / "output" / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / "output" / rel).write_text("x = 1\n", encoding="utf-8")
+    res = {"Type": "AWS::Serverless::LayerVersion", "Properties": {"ContentUri": content_uri, "CompatibleRuntimes": [runtime]}}
+    if build_method:
+        res["Metadata"] = {"BuildMethod": build_method}
+    return {"Resources": {"SharedLayer": res}}
+
+
+def test_c13_layer_layout(tmp_path):
+    """sam build with BuildMethod nests ContentUri under python/ / nodejs/
+    itself; M2S's documented Python layout (code in layers/shared/python/ +
+    BuildMethod) produced /opt/python/python/ and an ImportModuleError."""
+    cases = [
+        (["layers/shared/python/shared_utils.py"], "layers/shared/", "python3.12", "python3.12", True),   # double nesting
+        (["layers/shared/shared_utils.py"], "layers/shared/", "python3.12", "python3.12", False),          # correct
+        (["layers/shared/python/shared_utils.py"], "layers/shared/", "python3.12", None, False),           # plain copy, correct
+        (["layers/shared/shared_utils.py"], "layers/shared/", "python3.12", None, True),                   # plain copy to /opt/
+        (["layers/shared/nodejs/shared.js"], "layers/shared/", "nodejs22.x", "nodejs22.x", True),          # nodejs/nodejs
+        (["layers/shared/nodejs/shared.js"], "layers/shared/nodejs/", "nodejs22.x", "nodejs22.x", False),  # M2S's Node layout
+    ]
+    for i, (files, uri, runtime, bm, bad) in enumerate(cases):
+        ws = tmp_path / str(i)
+        template = _layer_ws(ws, files, uri, runtime, bm)
+        found = gates.check_c13(ws, template)
+        assert bool(found) == bad, (i, found)
+        assert all(f["check_id"] == "C13" and f["severity"] == "ERROR" for f in found)
+
+
+def test_tools_check_flags_modified_pipeline_files(tmp_path):
+    """TOOLS (gate final): an agent editing gates.py, adding a file to the
+    tools, or a stale ~/.openharness agent copy fails the gate; the ledger
+    that S5 writes does not."""
+    import subprocess
+    repo, home = tmp_path / "repo", tmp_path / "home_agents"
+    (repo / "m2s-mcp-server" / "agents").mkdir(parents=True)
+    (repo / "m2s-mcp-server" / "perf-rules").mkdir()
+    home.mkdir()
+    (repo / "m2s-mcp-server" / "gates.py").write_text("x = 1\n", encoding="utf-8")
+    (repo / "m2s-mcp-server" / "perf-rules" / "ledger.json").write_text("{}\n", encoding="utf-8")
+    (repo / "m2s-mcp-server" / "agents" / "m2s-architect.md").write_text("prompt\n", encoding="utf-8")
+    (home / "m2s-architect.md").write_bytes((repo / "m2s-mcp-server" / "agents" / "m2s-architect.md").read_bytes())
+    git = lambda *a: subprocess.run(["git", "-C", str(repo), *a], check=True, capture_output=True)
+    git("init", "-q")
+    git("add", "-A")
+    git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "tools")
+    assert _real_check_tools_unmodified(repo, home) == []
+    (repo / "m2s-mcp-server" / "perf-rules" / "ledger.json").write_text('{"runs": []}\n', encoding="utf-8")
+    assert _real_check_tools_unmodified(repo, home) == []  # S5's ledger is exempt
+    (repo / "m2s-mcp-server" / "gates.py").write_text("x = 2  # 'fixed' by an agent\n", encoding="utf-8")
+    (repo / "m2s-mcp-server" / "helper.py").write_text("y = 1\n", encoding="utf-8")
+    (home / "m2s-architect.md").write_text("edited\n", encoding="utf-8")
+    found = _real_check_tools_unmodified(repo, home)
+    assert {f["check_id"] for f in found} == {"TOOLS"} and all(f["severity"] == "ERROR" for f in found)
+    text = " | ".join(f["description"] for f in found)
+    assert "gates.py" in text and "helper.py" in text and "m2s-architect.md" in text
+
+
+# -- contract testing (PIPELINE_REDESIGN.md section 3.6) -------------------
+
+def _contract_ws(tmp_path, meta, rules, responses):
+    (tmp_path / "storage").mkdir()
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps({"metadata": meta}), encoding="utf-8")
+    report = {"entry_points": [{"method": "POST", "path": "/x", "business_rules": rules, "responses": responses}]}
+    (tmp_path / "storage" / "analysis_report.json").write_text(json.dumps(report), encoding="utf-8")
+    return tmp_path
+
+
+def _ids(findings):
+    return sorted(f["check_id"] for f in findings)
+
+
+def test_contract_unclassified_spec_needs_nothing(tmp_path):
+    ws = _contract_ws(tmp_path, {}, [{"rule": "r"}], [{"status": 200}])
+    assert gates.check_contract(ws) == []
+
+
+def test_contract_classified_spec_needs_the_switch_and_rulings(tmp_path):
+    rules = [{"rule": "r", "class": "implementation-trace"}]
+    resp = [{"status": 200}, {"status": 400, "trace_arm": True}]
+    ws = _contract_ws(tmp_path, {}, rules, resp)
+    assert _ids(gates.check_contract(ws)) == ["CT1", "CT3"]
+    si = {"issue_id": "SI-1", "class": "implementation-trace", "decision": "void"}
+    (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"verification_contract": 2, "spec_resolutions": [si]}}), encoding="utf-8")
+    assert _ids(gates.check_contract(ws)) == ["CT2", "CT3"]
+    si["targets"] = ["POST /x#responses[1]"]
+    (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"verification_contract": 2, "spec_resolutions": [si]}}), encoding="utf-8")
+    assert gates.check_contract(ws) == []
+
+
+def test_spec_relaxations_must_be_finished(tmp_path):
+    (tmp_path / "storage").mkdir()
+    (tmp_path / "output").mkdir()
+    si = {"issue_id": "SI-20", "class": "implementation-trace", "origin": "perf-request REQ-1", "targets": ["POST /x#responses[1]"]}
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"spec_resolutions": [si]}}), encoding="utf-8")
+    rp = tmp_path / "output" / "perf_report.json"
+    rp.write_text(json.dumps({"changes": [{"id": "C1", "request": "perf/requests/REQ-1.json", "verdict": "pending_spec"}]}), encoding="utf-8")
+    assert _ids(gates.check_spec_relaxations(tmp_path)) == ["SR1", "SR2"]
+    rp.write_text(json.dumps({"changes": [{"id": "C1", "request": "perf/requests/REQ-1.json", "verdict": "reverted"}]}), encoding="utf-8")
+    assert gates.check_spec_relaxations(tmp_path) == []
+    si["ruling"] = "rejected"
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"spec_resolutions": [si]}}), encoding="utf-8")
+    rp.write_text(json.dumps({"changes": []}), encoding="utf-8")
+    assert gates.check_spec_relaxations(tmp_path) == []
+
+
+def test_si_class_vocabulary(tmp_path):
+    ws = _contract_ws(tmp_path, {}, [{"rule": "r"}], [{"status": 200}])
+    def meta(m):
+        (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": m}), encoding="utf-8")
+    meta({"spec_resolutions": [{"issue_id": "SI-1", "class": "auth-migration"}]})
+    assert _ids(gates.check_contract(ws)) == ["CT4"]
+    meta({"spec_resolutions": [{"issue_id": "SI-1"}]})  # contract 1: class optional
+    assert gates.check_contract(ws) == []
+    meta({"verification_contract": 2, "spec_resolutions": [{"issue_id": "SI-1"}, {"issue_id": "SI-2", "class": "spec-gap"}]})
+    assert _ids(gates.check_contract(ws)) == ["CT4"]
+
+
+def test_data_model_change_shape(tmp_path):
+    ws = _contract_ws(tmp_path, {}, [{"rule": "r"}], [{"status": 200}])
+    si = {"issue_id": "SI-1", "class": "implementation-trace", "targets": ["POST /x#responses[0]"],
+          "data_model_change": {"table": "Books", "index": {"name": "all-by-sales"}}}
+    (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"spec_resolutions": [si]}}), encoding="utf-8")
+    assert _ids(gates.check_contract(ws)) == ["CT5"]
+    si["data_model_change"] = {"table": "Books", "index": {"name": "all-by-sales", "keys": [{"attribute": "gsiPk", "type": "HASH"}]},
+                               "new_attributes": [{"name": "gsiPk", "value": "ALL", "backfill": "set gsiPk='ALL' on every existing row"}]}
+    (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"spec_resolutions": [si]}}), encoding="utf-8")
+    assert gates.check_contract(ws) == []
+
+
+def test_result_order_values(tmp_path):
+    ws = _contract_ws(tmp_path, {}, [{"rule": "r"}], [{"status": 200}])
+    def si(**kw):
+        (ws / "storage" / "blueprint.json").write_text(json.dumps({"metadata": {"spec_resolutions": [{"issue_id": "SI-1", **kw}]}}),
+                                                       encoding="utf-8")
+    si(result_order="any")
+    assert _ids(gates.check_contract(ws)) == ["CT6"]
+    si(result_order="unspecified")
+    assert _ids(gates.check_contract(ws)) == ["CT6"]
+    si(result_order="unspecified", applies_to=["f"])
+    assert gates.check_contract(ws) == []
+
+
+# -- app-wide response headers (global middleware) ---------------------------
+
+def _gm_ws(tmp_path, handler_src, gateway_headers=None, dropped=False):
+    (tmp_path / "storage").mkdir()
+    report = {"entry_points": [], "global_middleware": [
+        {"kind": "cors", "framework": "flask-cors", "headers": {"Access-Control-Allow-Origin": "*"}, "source": [{"file": "a/app.py", "line": 24}]}]}
+    (tmp_path / "storage" / "analysis_report.json").write_text(json.dumps(report), encoding="utf-8")
+    meta = {"spec_resolutions": [{"issue_id": "SI-1", "class": "migration-change", "targets": ["global_middleware[0]"]}]} if dropped else {}
+    bp = {"metadata": meta, "lambda_functions": [{"name": "flights-search", "trigger_type": "api"}, {"name": "consumer", "trigger_type": "sqs"}]}
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    for name, src in (("flights-search", handler_src), ("consumer", "def lambda_handler(e, c): return {}")):
+        d = tmp_path / "output" / "lambdas" / "flights" / name
+        d.mkdir(parents=True)
+        (d / "handler.py").write_text(src, encoding="utf-8")
+    template = {"Globals": {"Api": {"Cors": {"AllowOrigin": "'*'"}}}, "Resources": {}}
+    if gateway_headers:
+        template["Globals"]["Api"]["GatewayResponses"] = {r: {"ResponseParameters": {"Headers": gateway_headers}} for r in ("DEFAULT_4XX", "DEFAULT_5XX")}
+    return tmp_path, template
+
+
+def test_gm_flags_the_airline_gap(tmp_path):
+    # airline: a Cors block (preflight only) and handlers returning only Content-Type
+    ws, template = _gm_ws(tmp_path, 'def json_response(s, p): return {"headers": {"Content-Type": "application/json"}}')
+    assert _ids(gates.check_gm_code(ws)) == ["GM1"]
+    assert _ids(gates.check_gm_template(ws, template)) == ["GM2", "GM2"]
+
+
+def test_gm_passes_when_lambda_and_gateway_set_the_header(tmp_path):
+    ws, template = _gm_ws(tmp_path, 'H = {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"}',
+                          gateway_headers={"Access-Control-Allow-Origin": "'*'"})
+    assert gates.check_gm_code(ws) == [] and gates.check_gm_template(ws, template) == []
+
+
+def test_gm_respects_a_migration_change_ruling(tmp_path):
+    ws, template = _gm_ws(tmp_path, "def f(): pass", dropped=True)
+    assert gates.check_gm_code(ws) == [] and gates.check_gm_template(ws, template) == []
+
+
+def _at_ws(tmp_path, api, cognito=False, auth="none", headers=None):
+    (tmp_path / "storage").mkdir(exist_ok=True)
+    bp = {"lambda_functions": [{"name": "f", "trigger_type": "api", "auth": auth, "entry_points": ["GET /x"]}],
+          "cognito": {"enabled": cognito}, "api_gateway": api, "metadata": {}}
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    gm = [{"kind": "cors", "headers": headers}] if headers else []
+    (tmp_path / "storage" / "analysis_report.json").write_text(json.dumps({"global_middleware": gm}), encoding="utf-8")
+    return tmp_path
+
+
+def _sev(findings):
+    return sorted((f["check_id"], f["severity"]) for f in findings)
+
+
+def test_at1_http_when_nothing_rest_only(tmp_path):
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "same_region", "api_type_reason": "none"})
+    assert gates.check_api_type(ws) == []
+    ws = _at_ws(tmp_path, {"api_type": "rest", "clients": "same_region", "api_type_reason": "habit"})
+    assert _sev(gates.check_api_type(ws)) == [("AT1", "WARNING")]          # R6
+    assert _sev(gates.check_api_type(_at_ws(tmp_path, {}))) == [("AT1", "ERROR")] * 3
+
+
+def test_at1_rest_only_needs(tmp_path):
+    # Cognito and a plain 'ACAO: *' work on HTTP API (JWT authorizer, CorsConfiguration): AWS probe 2026-10-10
+    for kw in ({"auth": "required"}, {"cognito": True}, {"headers": {"Access-Control-Allow-Origin": "*"}}):
+        ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "x"}, **kw)
+        assert gates.check_api_type(ws) == [], kw
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "x"},
+                headers={"Access-Control-Allow-Origin": "<echo Origin>", "Vary": "Origin"})
+    assert _sev(gates.check_api_type(ws)) == [("AT1", "ERROR")]
+    ws = _at_ws(tmp_path, {"api_type": "rest", "clients": "internet", "api_type_reason": "x"},
+                headers={"X-Frame-Options": "DENY"})
+    assert gates.check_api_type(ws) == []
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "x", "rest_features": ["waf", "bogus"]})
+    assert _sev(gates.check_api_type(ws)) == [("AT1", "ERROR")] * 2
+
+
+def _at_template(kind, payload="'1.0'", endpoint=None):
+    api = {"Type": "AWS::Serverless::HttpApi" if kind == "http" else "AWS::Serverless::Api", "Properties": {"StageName": "Prod"}}
+    if endpoint:
+        api["Properties"]["EndpointConfiguration"] = {"Type": endpoint}
+    ev = ({"Type": "HttpApi", "Properties": {"ApiId": "A", "Path": "/x", "Method": "get", **({"PayloadFormatVersion": "1.0"} if payload else {})}}
+          if kind == "http" else {"Type": "Api", "Properties": {"RestApiId": "A", "Path": "/x", "Method": "get"}})
+    return {"Resources": {"A": api, "F": {"Type": "AWS::Serverless::Function", "Properties": {"Events": {"E": ev}}}}}
+
+
+def test_at2_template_matches_api_type(tmp_path):
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "same_region", "api_type_reason": "none"})
+    assert gates.check_api_type_template(ws, _at_template("http")) == []
+    assert _sev(gates.check_api_type_template(ws, _at_template("http", payload=None))) == [("AT2", "ERROR")]
+    assert _sev(gates.check_api_type_template(ws, _at_template("rest"))) == [("AT2", "ERROR")] * 2
+    ws = _at_ws(tmp_path, {"api_type": "rest", "clients": "same_region", "api_type_reason": "waf", "rest_features": ["waf"]})
+    assert _sev(gates.check_api_type_template(ws, _at_template("rest"))) == [("AT2", "ERROR")]   # EDGE by default
+    assert gates.check_api_type_template(ws, _at_template("rest", endpoint="REGIONAL")) == []
+    ws = _at_ws(tmp_path, {"type": "REST"})                                    # before AT1: not checked
+    assert gates.check_api_type_template(ws, _at_template("rest")) == []
+    assert gates.check_c7(ws, _at_template("http")) == []
+
+
+def test_at2_http_with_gateway_auth_needs_jwt_authorizer(tmp_path):
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "none"}, auth="required")
+    t = _at_template("http")
+    assert _sev(gates.check_api_type_template(ws, t)) == [("AT2", "ERROR")]
+    t["Resources"]["A"]["Properties"]["Auth"] = {"DefaultAuthorizer": "J", "Authorizers": {"J": {"JwtConfiguration": {"issuer": "i", "audience": ["a"]}}}}
+    assert gates.check_api_type_template(ws, t) == []
+
+
+def _ct_ws(tmp_path, resolutions=None, hints=None):
+    (tmp_path / "storage").mkdir(exist_ok=True)
+    meta = {"verification_contract": 2, "spec_resolutions": resolutions or []}
+    if hints is not None:
+        meta["perf_hints"] = hints
+    bp = {"metadata": meta, "dynamodb_tables": [{"logical_name": "Flight"}],
+          "lambda_functions": [{"name": "flights-query", "trigger_type": "api"}]}
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(bp), encoding="utf-8")
+    (tmp_path / "storage" / "analysis_report.json").write_text(json.dumps({"entry_points": []}), encoding="utf-8")
+    return tmp_path
+
+
+BS_OK = {"issue_id": "SI-9", "class": "contract", "applies_to": ["flights-query"],
+         "bounded_staleness": {"tables": ["Flight"], "ttl_seconds": 600, "evidence": "routes/index.js:459 ttl-lru-cache, flightDataCacheTTL"}}
+
+
+def test_ct7_bounded_staleness(tmp_path):
+    assert gates.check_contract(_ct_ws(tmp_path, [BS_OK])) == []
+    bad = {**BS_OK, "class": "implementation-trace", "targets": ["x"], "applies_to": ["nope"],
+           "bounded_staleness": {"tables": ["Nope"], "ttl_seconds": 0, "evidence": ""}}
+    ids = [f["description"] for f in gates.check_contract(_ct_ws(tmp_path, [bad])) if f["check_id"] == "CT7"]
+    assert len(ids) == 5
+
+
+def test_ph1_perf_hints(tmp_path):
+    ok = [{"kind": "cache", "source": "acmeair/routes/index.js:435", "applies_to": ["flights-query"], "ttl_seconds": 600}]
+    assert gates.check_contract(_ct_ws(tmp_path, hints=ok)) == []
+    bad = [{"kind": "memo", "source": "somewhere", "applies_to": ["x"]}, "str"]
+    assert [f["check_id"] for f in gates.check_contract(_ct_ws(tmp_path, hints=bad))] == ["PH1"] * 4

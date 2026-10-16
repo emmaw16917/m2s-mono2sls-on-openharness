@@ -43,7 +43,15 @@ model: inherit
 
 **`Globals.Function` 里不要写 `Handler`**：blueprint 里的 `handler` 只是架构师的占位值（例如 `index.handler`），磁盘上真实的文件名和导出名要到 S3b 读了 `output/lambdas/` 才知道，S3b 会给每个函数单独写真实的 `Handler`。在 Globals 里照抄占位值会留下一个哪里都解析不到的默认值（`run_gate` 的 C3 会报错）。`Globals.Function` 只放 `Runtime`/`Timeout`/`MemorySize`/`Tracing`/`Environment` 这类真正共享的配置。
 
+**幂等表**：blueprint 的 `dynamodb_tables` 里有幂等表时（`purpose` 写明了去重，或者名字形如 `IdempotencyTable`），按 `m2s-sam-kb` 的 "Idempotency Table + Partial Batch Response" 生成，**必须带 `TimeToLiveSpecification`**（属性名按 blueprint，通常是 `expiresAt`）。
+
 **S3a 禁止事项**：禁止读 `output/lambdas/` 或 `output/` 下任何 handler 代码——这一步纯粹基于 `blueprint.json` 设计共享基础设施，不需要看代码。禁止调用 `mcp__m2s-server__validate_sam`（`template.part1.yaml` 本身不是合法完整模板，验证会失败且没有意义）。
+
+**API 类型**（S3a 写 API 资源、S3b 写事件时）：按 blueprint 的 `api_gateway.api_type` 来写，不要自己换，gate(template) 的 AT2 会检查：
+- `"http"`：用 `m2s-sam-kb` 的 "API Gateway Pattern (HTTP API)"。资源是 `AWS::Serverless::HttpApi`；每个函数事件写 `Type: HttpApi`、`ApiId: !Ref <Api>`，**必须**加 `PayloadFormatVersion: '1.0'`。SAM 默认用 2.0，会改掉 handler 解析的事件格式。不写 `GatewayResponses`，也不写 `TracingEnabled`。有 `auth: "required"` 的函数时，按 sam-kb 写 JWT 授权器并设为 `DefaultAuthorizer`；`auth: "none"` 的事件照样加 `Auth: {Authorizer: NONE}`。
+- `"rest"`：用 "API Gateway Pattern (REST API)"。`clients` 是 `"same_region"` 时，在 Api 资源上加 `EndpointConfiguration: {Type: REGIONAL}`。
+
+**全局响应头**（S3a 写 Api 资源时）：`analysis_report.json` 的 `global_middleware` 里有 `headers` 时，除了 `Cors` 块（它只负责预检），还要在 `Globals.Api.GatewayResponses`（或 Api 资源的 `GatewayResponses`）里为 `DEFAULT_4XX` 和 `DEFAULT_5XX` 配上同样的头，值用单引号包起来，例如 `Access-Control-Allow-Origin: "'*'"`。授权器拒绝、限流这些由 API Gateway 自己返回的响应，单体也会带这些头。gate(template) 的 GM2 检查这一项。
 
 ### 如果 STAGE_ID = S3b（函数资源阶段）
 
@@ -66,6 +74,8 @@ Outputs:
 ```
 
 `CodeUri` 必须指向 S2 阶段真实生成的目录（以 `/` 结尾），`Handler` 必须匹配该目录下真实存在的文件和导出的函数名——**读 `output/lambdas/` 下的实际代码来确认这些值，不要凭 blueprint 猜**。
+
+**消费者的事件源**：blueprint 或 `storage/DECISIONS.md` 写明消费者会上报失败（返回 `batchItemFailures`）的，SQS 事件要加 `FunctionResponseTypes: [ReportBatchItemFailures]`；写明吞掉失败的，不要加。消费者用到的每张表（包括幂等表），都要有 `DynamoDBCrudPolicy` 和对应的环境变量。
 
 **S3b 禁止事项**：不要生成 `AWSTemplateFormatVersion`/`Globals`/共享资源（那是 S3a 的产物，你这个文件不需要顶层模板结构，只需要能被拼接进 Resources 段的资源块）。禁止调用 `mcp__m2s-server__validate_sam`（同 S3a，`template.part2.yaml` 单独不是合法模板）。
 
@@ -90,6 +100,15 @@ Outputs:
 6. **常见的一个具体坑**：`CodeUri` 路径必须是相对 `output/` 的路径且以 `/` 结尾（例如 `lambdas/todo/todo-get-item/`），不要漏掉 `lambdas/` 这一段前缀，也不要写成绝对路径——如果 `run_gate` 报 C1/C2 说某个 `CodeUri` 指向的目录不存在，先检查是不是这个前缀漏了。
 
 **S3c 禁止事项**：不要去改 `template.part1.yaml`/`template.part2.yaml`（那是 S3a/S3b 的产物，修正只作用于合并后的 `template.yaml`）。
+
+### 如果 STAGE_ID = SG（给已交付的模板加一个 GSI）
+
+由 spec 放宽申请触发（`m2s-mcp-server/CONTRACT_TESTING_PLAN.md` §8）。spawn prompt 会给出 SI 编号。
+
+1. 读 `storage/blueprint.json` 里这条 SI 的 `data_model_change`，以及 `dynamodb_tables` 里对应表的定义。
+2. 只改 `output/template.yaml` 里这张表：在 `AttributeDefinitions` 里补上索引键属性（已有的不要重复），在 `GlobalSecondaryIndexes` 里加这个索引（`KeySchema`、`Projection` 按 SI 写）。**其他资源、其他字段一律不动。**
+3. `run_gate(phase="template")` 和 `validate_sam` 都要通过；没通过就修，最多 3 次。
+4. 写 `storage/stage_reports/SG.json`（格式同其他阶段），然后输出完成信号。
 
 ## 硬性工具说明（三个子阶段共用）
 
@@ -123,6 +142,9 @@ Outputs:
 
 ## 禁止事项（S3c 自查循环相关）
 
+- **不许修改流水线自己的工具**：`m2s-mcp-server/`（gate、验证和测量工具、测试）、`.openharness/`（skill、知识库）、`~/.openharness/`（agent 定义、设置）都不许改。只能写本阶段规定的工作区文件。
+  - 如果认为某个工具的结果是错的（例如 gate 报了误报），报 `STAGE_BLOCKED`，写明证据：哪个检查、输入是什么、为什么认为是误报。**不要自己去修工具**。
+  - `gate(final)` 会检查这些目录有没有未提交的改动，有就判 FAIL。
 - S3c 的自查循环不要超过 3 次尝试——超过就老实报告 `STAGE_BLOCKED`。
 - S3c 不要在 `run_gate(phase="template")` 和 `validate_sam` 都通过之前、或还没用满 3 次尝试之前就输出 `STAGE_COMPLETE`。
 

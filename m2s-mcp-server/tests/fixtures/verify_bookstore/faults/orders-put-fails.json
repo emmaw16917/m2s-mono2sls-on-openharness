@@ -1,0 +1,2 @@
+{"id":"orders-put-fails","description":"Orders PutItem always fails","function":"orders-create","cases":["orders-create-happy"],
+ "rules":[{"match":{"op":"PutItem","table":"Orders"},"nth":"all","kind":"error"}]}

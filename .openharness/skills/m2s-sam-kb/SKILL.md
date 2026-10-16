@@ -24,6 +24,11 @@ Globals:
     Handler: index.handler
     Timeout: 30  # seconds
     MemorySize: 512  # MB
+    # Graviton: 20% lower GB-second price; as fast or faster in this project's
+    # real-AWS A/B (m2s-mcp-server PERF_OPTIMIZATION_DESIGN.md A.4). Keep
+    # x86_64 only when a dependency ships x86-only compiled modules.
+    Architectures:
+      - arm64
     
     # Environment Variables (Common)
     Environment:
@@ -201,6 +206,87 @@ MyApi:
     TracingEnabled: true
 ```
 
+### API Gateway Pattern (HTTP API)
+
+Use this when blueprint `api_gateway.api_type` is `"http"` (no gateway authorizer, no GatewayResponses
+needed). Payload format **1.0** keeps the Lambda event identical to the REST one, so handlers and tests
+are unchanged; SAM's default for HttpApi events is 2.0, which is a different event.
+
+```yaml
+MyApi:
+  Type: AWS::Serverless::HttpApi
+  Properties:
+    StageName: $default          # no stage prefix in the URL
+    CorsConfiguration:
+      AllowMethods: ['*']
+      AllowHeaders: ['*']
+      AllowOrigins: ['*']
+    AccessLogSettings:
+      DestinationArn: !GetAtt ApiLogGroup.Arn
+      Format: '$context.requestId $context.status $context.responseLatency $context.integrationLatency $context.error.message'
+
+# Each function event:
+#   Events:
+#     GetBook:
+#       Type: HttpApi
+#       Properties:
+#         ApiId: !Ref MyApi
+#         Path: /books/{id}
+#         Method: get
+#         PayloadFormatVersion: '1.0'   # REQUIRED
+```
+
+- No `GatewayResponses`, `TracingEnabled` or `EndpointConfiguration` (HTTP APIs are regional).
+
+**With a Cognito user pool** (blueprint has `auth: "required"` functions): a JWT authorizer instead of
+the REST Cognito authorizer. Verified on AWS 2026-10-10 (`results-e2e/jwt-probe`): with payload 1.0 the
+claims are at `requestContext.authorizer.claims`, as on REST; `Authorization` works with or without
+`Bearer `; the CorsConfiguration puts `Access-Control-Allow-Origin: *` on the authorizer's 401.
+
+```yaml
+MyApi:
+  Type: AWS::Serverless::HttpApi
+  Properties:
+    CorsConfiguration: {AllowMethods: ['*'], AllowHeaders: ['*'], AllowOrigins: ['*']}
+    Auth:
+      DefaultAuthorizer: CognitoJwt
+      Authorizers:
+        CognitoJwt:
+          IdentitySource: $request.header.Authorization
+          JwtConfiguration:
+            issuer: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}
+            audience: [!Ref UserPoolClient]
+
+# Public route: same override as REST
+#   Events:
+#     Pub:
+#       Type: HttpApi
+#       Properties: {ApiId: !Ref MyApi, Path: /books, Method: get, PayloadFormatVersion: '1.0', Auth: {Authorizer: NONE}}
+```
+- Output URL: `!Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com"`.
+- The REST pattern's `ApiLogGroup` companion works unchanged.
+
+### CORS on real responses (read this before relying on `Cors`)
+⚠️ With Lambda **proxy** integration, the `Cors` property only creates the preflight `OPTIONS`
+methods. API Gateway adds **nothing** to the GET/POST responses your function returns, so:
+- every function must return `Access-Control-Allow-Origin` (and any other header the monolith's
+  global middleware added) in its own response headers;
+- the responses API Gateway generates itself (authorizer 401/403, throttling 429, 5xx) need
+  `GatewayResponses`:
+```yaml
+Globals:
+  Api:
+    GatewayResponses:
+      DEFAULT_4XX:
+        ResponseParameters:
+          Headers:
+            Access-Control-Allow-Origin: "'*'"
+      DEFAULT_5XX:
+        ResponseParameters:
+          Headers:
+            Access-Control-Allow-Origin: "'*'"
+```
+
 ### CORS Configuration Best Practice
 ⚠️ **IMPORTANT**: Define CORS properties as simple strings.
 ❌ **DO NOT** use `!Sub` with a list or object structure for the Cors property.
@@ -366,6 +452,34 @@ ApiLogGroup:
           Queue: !GetAtt <QueueLogicalName>.Arn
           BatchSize: 10
 ```
+
+### Idempotency Table + Partial Batch Response (for idempotent consumers)
+
+Required whenever the blueprint gives an SQS/EventBridge consumer a dedupe mechanism (see `m2s-async-patterns-kb`, "REQUIRED correctness rule: consumers must be idempotent under redelivery"):
+
+```yaml
+  IdempotencyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: expiresAt
+        Enabled: true
+
+  # on the consumer function:
+  #   Environment.Variables.IDEMPOTENCY_TABLE: !Ref IdempotencyTable
+  #   Policies: [DynamoDBCrudPolicy: {TableName: !Ref IdempotencyTable}, ...the tables it updates]
+  #   Events.<Queue>.Properties.FunctionResponseTypes: [ReportBatchItemFailures]   # only if the handler returns batchItemFailures
+```
+
+- `TransactWriteItems` across two tables needs write permission on **both** tables; `DynamoDBCrudPolicy` on each covers it. IAM authorizes a transaction through the per-item actions (`PutItem`, `UpdateItem`, `DeleteItem`, `ConditionCheckItem`, all included in `DynamoDBCrudPolicy`), optionally narrowed with the condition key `dynamodb:EnclosingOperation`. **There is no `dynamodb:TransactWriteItems` IAM action; do not add one**, it grants nothing.
+- Only add `FunctionResponseTypes: [ReportBatchItemFailures]` when the handler actually returns `{ batchItemFailures: [...] }` (the blueprint says which). Otherwise a returned object is ignored and any thrown error retries the whole batch.
 
 ### EventBridge Rule Pattern
 
@@ -629,7 +743,7 @@ nested artifact breaks module resolution and causes imports like
 ### Correct Layer Patterns
 
 #### Python Layer
-Use the layer root as `ContentUri`, with code placed under `python/`:
+Use the layer root as `ContentUri`, with the code **at that root** (not in a `python/` subdirectory). With `BuildMethod: python3.12`, `sam build` itself puts the ContentUri's contents, and the packages from its `requirements.txt`, under `python/` in the layer, which Lambda mounts as `/opt/python` (on `sys.path`). A `python/` directory in the source would end up as `/opt/python/python/` and `import shared_utils` fails with `Runtime.ImportModuleError` (verified with `sam build`; the gate's C13 check reports it):
 
 ```yaml
 SharedUtilsLayer:
@@ -646,10 +760,11 @@ Directory layout:
 
 ```text
 layers/shared/
-├── python/
-│   └── shared_utils.py
-└── requirements.txt
+├── shared_utils.py
+└── requirements.txt      # optional; only third-party packages that are not in the runtime
 ```
+
+(Without `Metadata.BuildMethod`, `sam build` copies ContentUri as-is; then the code must be under `layers/shared/python/` instead, and no packages are installed.)
 
 #### Node.js Layer
 Use the `nodejs/` directory itself as `ContentUri`:

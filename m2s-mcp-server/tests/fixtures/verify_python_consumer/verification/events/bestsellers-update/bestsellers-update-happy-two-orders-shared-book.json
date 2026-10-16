@@ -1,0 +1,63 @@
+{
+ "id": "bestsellers-update-happy-two-orders-shared-book",
+ "function": "bestsellers-update",
+ "kind": "happy",
+ "spec_refs": [
+  "blueprint:bestsellers-update"
+ ],
+ "sqs": {
+  "records": [
+   {
+    "message_id": "m1",
+    "body": {
+     "orderId": "order-1",
+     "books": [
+      {
+       "bookId": "b1",
+       "quantity": 2
+      }
+     ]
+    }
+   },
+   {
+    "message_id": "m2",
+    "body": {
+     "orderId": "order-2",
+     "books": [
+      {
+       "bookId": "b1",
+       "quantity": 3
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "fixtures": {},
+ "expect": {
+  "batch_item_failures": [],
+  "tables_after": {
+   "BestsellersTable": {
+    "count": 1,
+    "contains": [
+     {
+      "bookId": "b1",
+      "salesCount": 5
+     }
+    ]
+   },
+   "IdempotencyTable": {
+    "count": 2,
+    "contains": [
+     {
+      "pk": "bestsellers-update#order-1"
+     },
+     {
+      "pk": "bestsellers-update#order-2"
+     }
+    ]
+   }
+  }
+ },
+ "note": "two messages of one batch touch the same item"
+}

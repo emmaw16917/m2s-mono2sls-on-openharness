@@ -1,0 +1,5 @@
+{"id":"books-get-by-id-404","function":"books-get-by-id","kind":"error","title":"missing book -> 404",
+ "spec_refs":["GET /api/books/:id#responses[1]"],
+ "request":{"method":"GET","path":"/api/books/nope","identity":{"sub":"u1"}},
+ "fixtures":{},
+ "expect":{"status":404,"body":{"equals":{"error":"Book not found"}}}}

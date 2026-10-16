@@ -1,0 +1,7 @@
+{
+  "id": "items-delete-many-one-fails",
+  "description": "Deleting item b fails with a server error every time; the others must still be deleted",
+  "function": "items-delete-many",
+  "cases": ["items-delete-many-happy"],
+  "rules": [{"match": {"op": "DeleteItem", "item": {"id": "b"}}, "nth": "all", "kind": "error"}]
+}

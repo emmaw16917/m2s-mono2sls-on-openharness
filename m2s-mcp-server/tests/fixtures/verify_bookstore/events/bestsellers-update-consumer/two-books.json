@@ -1,0 +1,5 @@
+{"id":"consumer-two-books","function":"bestsellers-update-consumer","kind":"happy","title":"ADD salesCount per book",
+ "spec_refs":["POST /api/orders#data_access[2]"],
+ "sqs":{"records":[{"message_id":"m1","body":{"orderId":"o1","books":[{"bookId":"b1","quantity":2},{"bookId":"b2","quantity":1}]}}]},
+ "fixtures":{"Bestsellers":[{"bookId":"b1","salesCount":5}]},
+ "expect":{"batch_item_failures":[],"tables_after":{"Bestsellers":{"contains":[{"bookId":"b1","salesCount":7},{"bookId":"b2","salesCount":1}]}}}}

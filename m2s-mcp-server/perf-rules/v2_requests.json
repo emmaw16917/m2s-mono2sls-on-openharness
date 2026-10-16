@@ -1,0 +1,665 @@
+{
+  "version": 1,
+  "generated_at": "2026-10-02",
+  "source": "advisories of runs/{bookstore-v2,coffee-e0,shopping-cart-e0,ecommerce-e0,airline-booking-e0}/output/perf_report.json (bookstore-v1 superseded by v2)",
+  "format": "PERF_OPTIMIZATION_DESIGN.md section 9.4, plus app / advisory_ref / priority / prerequisites",
+  "priority_legend": {
+    "P1": "semantic change confined to one handler; needs only the H1(a) same-call-multiset relaxation + full stage-A re-acceptance",
+    "P2": "data-model / template change; architect re-issues the blueprint, then code-developer + sam-engineer",
+    "P3": "changes failure semantics; blocked on differential testing against the monolith (section 12)",
+    "P4": "async / retry / config; architect decision or L3 measurement"
+  },
+  "requests": [
+    {
+      "id": "V2-01",
+      "app": "airline-booking",
+      "advisory_ref": "A-1",
+      "priority": "P1",
+      "source": "analysis",
+      "target": {
+        "file": "output/lambdas/bookings/bookings-cancel/handler.py",
+        "function": "bookings-cancel, bookings-confirm",
+        "lines": [
+          292,
+          301
+        ]
+      },
+      "diagnosis": {
+        "metric": "calls/depth",
+        "value": 7,
+        "evidence": "bookings-cancel GetItem(Booking) x3 on the same key (:292, :300, :301->storage_get_booking); bookings-confirm x2 (:126, :133). 3 of 7 calls, ~20 ms of the 84 ms warm median at the 10 ms model."
+      },
+      "proposal": "Read the Booking once and pass the item down to the owner check, service_get_booking and cancel_booking.",
+      "expected": {
+        "depth": "7 -> 5",
+        "calls": "7 -> 5",
+        "rru": "-0.5"
+      },
+      "constraints": [
+        "H1b",
+        "H1c",
+        "spec ruling: later reads may be dropped (no concurrent-modification guarantee lost)"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "code-developer",
+      "prerequisites": [
+        "spec ruling",
+        "H1(a) relaxed for dropped duplicate reads"
+      ],
+      "status": "kept 2026-10-02 via the S5->S1 spec relaxation flow (airline-booking-e0): REQ-3 -> SI-8 accepted -> VS adjusted 9 cases (186/186 on v0) -> calls 7->5, depth 6->4, RIE warm p50 72.6->49.9 ms @10ms (88bb743); gate(final) PASS, full regression 186/186"
+    },
+    {
+      "id": "V2-02",
+      "app": "ecommerce",
+      "advisory_ref": "advisories[2]",
+      "priority": "P1",
+      "source": "analysis",
+      "target": {
+        "file": "output/lambdas/delivery/delivery-complete/handler.py; packaging-request-fail/handler.py (_trigger_payment_cancellation)",
+        "function": "delivery-complete, packaging-request-fail",
+        "lines": [
+          0,
+          0
+        ]
+      },
+      "diagnosis": {
+        "metric": "calls",
+        "value": 7,
+        "evidence": "call_ops: GetItem Delivery, UpdateItem Delivery, GetItem Orders, PutItem Orders, GetItem Orders (same key), GetItem Payment3p, PutItem Payment3p; warm CPU 5.903 ms."
+      },
+      "proposal": "Reuse the Orders item already read/written in the refund chain instead of re-reading it.",
+      "expected": {
+        "depth": "7 -> 6",
+        "calls": "7 -> 6"
+      },
+      "constraints": [
+        "H1b",
+        "H1c",
+        "the second read must not depend on a write by another writer"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "code-developer",
+      "prerequisites": [
+        "spec ruling",
+        "H1(a) relaxed for dropped duplicate reads"
+      ],
+      "status": "kept 2026-10-02 (ecommerce-e0 65887e2): 7->6 calls, rru 2->1.5, RIE warm p50 90.6->78.6 ms @10ms; packaging-request-fail half not done"
+    },
+    {
+      "id": "V2-03",
+      "app": "shopping-cart",
+      "advisory_ref": "advisories[4]",
+      "priority": "P1",
+      "source": "analysis",
+      "target": {
+        "file": "output/lambdas/cart/cart-migrate/handler.py",
+        "function": "cart-migrate (_delete_cart_items)",
+        "lines": [
+          167,
+          189
+        ]
+      },
+      "diagnosis": {
+        "metric": "calls",
+        "value": 2,
+        "evidence": "Query cart#<cartId> at :189 (merge) and again at :167 (keys to wipe); post-REQ-1 depth 6-8."
+      },
+      "proposal": "Pass the rows from the first Query to _delete_cart_items.",
+      "expected": {
+        "depth": "-1",
+        "calls": "-1"
+      },
+      "constraints": [
+        "H1b",
+        "H1c"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "code-developer",
+      "prerequisites": [
+        "H1(a) relaxed for dropped duplicate reads"
+      ],
+      "status": "blocked: spec br[5] pins delete_cart_items own Query as a step; wb-cart-migrate-post-read-fails-200-products-empty pins the fault on Query nth=3 -> spec ruling + test re-pin"
+    },
+    {
+      "id": "V2-04",
+      "app": "shopping-cart",
+      "advisory_ref": "advisories[6]",
+      "priority": "P1",
+      "source": "analysis",
+      "target": {
+        "file": "output/lambdas/cart/cart-migrate/handler.py",
+        "function": "cart-migrate",
+        "lines": [
+          0,
+          0
+        ]
+      },
+      "diagnosis": {
+        "metric": "depth",
+        "value": 8,
+        "evidence": "after REQ-1 the source wipe (Query + BatchWriteItem on cart#<cartId>) shares no item with the merge wave (user#<sub>). Not measured."
+      },
+      "proposal": "Run the source wipe concurrently with the merge wave; requires hoisting the wipe into _migrate_cart_items.",
+      "expected": {
+        "depth": "6-8 -> 4-6",
+        "calls": "="
+      },
+      "constraints": [
+        "H1a",
+        "H1b",
+        "H1c",
+        "no-shared-item",
+        "failure of a merge must still prevent/allow the wipe exactly as v0"
+      ],
+      "semantic_class": "v1-allowed",
+      "owner_v2": "code-developer",
+      "prerequisites": [
+        "confirm v0 wipe-after-merge-failure behaviour; if v0 skips the wipe this becomes P3"
+      ],
+      "status": "kept_inconclusive 2026-10-02 (shopping-cart-e0 c324b0c): depth 8->5, calls =, RIE 133.3->126.4 ms ranges overlap. Reclassified: same operation set, v1-allowed"
+    },
+    {
+      "id": "V2-05",
+      "app": "coffee",
+      "advisory_ref": "ADV-3",
+      "priority": "P1",
+      "source": "analysis",
+      "target": {
+        "file": "orders-create-order:172, validator-verify-qr-code:191, config-update-config:187, validator-get-qr-code:98, orders-update-order:370",
+        "function": "5 handlers",
+        "lines": [
+          0,
+          0
+        ]
+      },
+      "diagnosis": {
+        "metric": "response bytes",
+        "value": 700,
+        "evidence": "GetItem whole config item (~700 B) to use only storeOpen / drinksPerBarcode / existence."
+      },
+      "proposal": "Add ProjectionExpression with only the used attributes.",
+      "expected": {
+        "calls": "=",
+        "depth": "=",
+        "rru": "= below 4 KB item size",
+        "bytes": "down"
+      },
+      "constraints": [
+        "H1b",
+        "H1c"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "code-developer",
+      "prerequisites": [
+        "proxy must measure response bytes (rru does not move below 4 KB)"
+      ],
+      "status": "not tried: shim GetItem ignores ProjectionExpression, cannot be measured"
+    },
+    {
+      "id": "V2-06",
+      "app": "coffee, bookstore, airline-booking",
+      "advisory_ref": "coffee ADV-2, bookstore-v2 A3, airline A-3",
+      "priority": "P1",
+      "source": "analysis",
+      "target": {
+        "file": "coffee: orders-update-order :288/:301/:315/:325/:338, validator-verify-qr-code :185; bookstore: cart-update/handler.js:69; airline: bookings-cancel/handler.py:104-121",
+        "function": "multiple",
+        "lines": [
+          0,
+          0
+        ]
+      },
+      "diagnosis": {
+        "metric": "response bytes",
+        "value": 200,
+        "evidence": "UpdateItem ReturnValues ALL_NEW / UPDATED_NEW whose Attributes are discarded (~150-200 B unmarshalled per call). Not applicable to shopping-cart (return value is used)."
+      },
+      "proposal": "Remove ReturnValues (default NONE) where Attributes are not read; keep it in config-update-config.",
+      "expected": {
+        "calls": "=",
+        "depth": "=",
+        "wru": "=",
+        "bytes": "down"
+      },
+      "constraints": [
+        "H1b",
+        "H1c",
+        "UpdateItem params differ -> H1(a) parameter relaxation"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "code-developer",
+      "prerequisites": [
+        "proxy must measure response bytes / client unmarshal CPU, otherwise the judge returns 'no clear win'"
+      ],
+      "status": "reverted 2026-10-02 (coffee-e0, verdicts in d8848dc): H1 EQUIVALENT but RIE no_diff (63.65 vs 63.48 ms); the gain is below the measurement floor"
+    },
+    {
+      "id": "V2-07",
+      "app": "airline-booking",
+      "advisory_ref": "A-2",
+      "priority": "P2",
+      "source": "analysis",
+      "target": {
+        "file": "template.yaml + flights-search, customers-list-bookings, loyalty-get-summary",
+        "function": "3 read endpoints",
+        "lines": [
+          0,
+          0
+        ]
+      },
+      "diagnosis": {
+        "metric": "rru",
+        "value": "linear in table size",
+        "evidence": "Scan + FilterExpression, LastEvaluatedKey ignored (silent truncation); GSIs Booking/customer-index and Loyalty/customer-flag-index already defined but unused; blueprint pins D-9."
+      },
+      "proposal": "Query the existing GSIs; add pagination. Lowest-cost P2 item since the GSIs exist.",
+      "expected": {
+        "rru": "O(table) -> O(result)",
+        "calls": "~"
+      },
+      "constraints": [
+        "result set identical for tables within one page",
+        "beyond one page: behaviour change (no truncation) needs spec ruling"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "architect",
+      "prerequisites": [
+        "blueprint D-9 revised"
+      ],
+      "status": "kept on airline-booking-c2 (2026-10-03, SI-18/19) and airline-booking-e0 (2026-10-04, SI-9, RIE 74.1->16.0 ms, rru 49.5->1.0); flights-search not done (no GSI)"
+    },
+    {
+      "id": "V2-08",
+      "app": "bookstore",
+      "advisory_ref": "bookstore-v2 A1",
+      "priority": "P2",
+      "source": "analysis",
+      "target": {
+        "file": "bestsellers-list/handler.js:49-58, search-books/handler.js:60-74, books-list/handler.js:56-71",
+        "function": "3 read endpoints",
+        "lines": [
+          0,
+          0
+        ]
+      },
+      "diagnosis": {
+        "metric": "rru/warm_cpu",
+        "value": "rru 3 @200 items",
+        "evidence": "full Scan; bestsellers-list sorts the whole table in memory to keep 20; search-books filters in memory."
+      },
+      "proposal": "bestsellers-list: GSI with sort key on quantity (Query Limit 20, ScanIndexForward false); books-list: GSI on category (already partial); search-books: keep Scan or move to a search index (OpenSearch) - architect decision.",
+      "expected": {
+        "rru": "O(table) -> O(20)"
+      },
+      "constraints": [
+        "ordering ties must match v0"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "architect",
+      "prerequisites": [
+        "blueprint revision"
+      ],
+      "status": "bestsellers-list kept on bookstore-v2 2026-10-04 (SI-1, new GSI BestsellersBySalesIndex + gsiPk backfill; rru 9.5->0.5, RIE 24.2->14.5 ms). Open: SI-1 pins tie order bookId desc, which a GSI does not guarantee. books-list/search-books not GSI-able."
+    },
+    {
+      "id": "V2-09",
+      "app": "ecommerce",
+      "advisory_ref": "advisories[3]",
+      "priority": "P2",
+      "source": "analysis",
+      "target": {
+        "file": "template.yaml + delivery-list, products-list, packaging-requests-list",
+        "function": "3 list endpoints",
+        "lines": [
+          0,
+          0
+        ]
+      },
+      "diagnosis": {
+        "metric": "rru",
+        "value": 6.5,
+        "evidence": "Scan + Filter(status='NEW') + Limit 50 on 200 rows; blueprint notes an unused 'orderId-new-index'."
+      },
+      "proposal": "Sparse/status GSI for delivery-list; Query instead of Scan.",
+      "expected": {
+        "rru": "6.5 -> O(result)"
+      },
+      "constraints": [
+        "Limit 50 semantics preserved"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "architect",
+      "prerequisites": [
+        "blueprint revision"
+      ],
+      "status": "delivery-list kept on ecommerce-e0 2026-10-04 (SI-13, new sparse GSI on existing isNew; rru 61.5->1.0, RIE 63.6->16.5 ms). products-list/packaging-requests-list are full listings, not GSI-able."
+    },
+    {
+      "id": "V2-10",
+      "app": "shopping-cart",
+      "advisory_ref": "advisories[3]",
+      "priority": "P2",
+      "source": "analysis",
+      "target": {
+        "file": "output/lambdas/products/products-list/handler.py",
+        "function": "products-list",
+        "lines": [
+          62,
+          88
+        ]
+      },
+      "diagnosis": {
+        "metric": "rru/warm_cpu",
+        "value": "warm 15.979 ms",
+        "evidence": "Scan + Filter over the single table (all carts + aggregates), not just 200 catalogue rows; shim understates (ignores FilterExpression billing)."
+      },
+      "proposal": "GSI on the pk prefix or a separate catalogue table.",
+      "expected": {
+        "rru": "O(single table) -> O(catalogue)"
+      },
+      "constraints": [],
+      "semantic_class": "semantic",
+      "owner_v2": "architect",
+      "prerequisites": [
+        "blueprint revision",
+        "shim should bill scanned rows, not returned rows"
+      ],
+      "status": "kept on shopping-cart-e0 2026-10-04 (SI-14 round 7, new GSI ProductDetailsBySk on sk; rru 38->0.5). Note: single hot partition for all products."
+    },
+    {
+      "id": "V2-11",
+      "app": "coffee",
+      "advisory_ref": "ADV-4, ADV-5",
+      "priority": "P2",
+      "source": "analysis",
+      "target": {
+        "file": "template.yaml (GSI-status, GSI-userId) + config-get-all-configs:47-50, journey-get-order-journey:59-64, orders-list-orders:70-76, orders-get-my-orders:53-59",
+        "function": "list endpoints",
+        "lines": [
+          0,
+          0
+        ]
+      },
+      "diagnosis": {
+        "metric": "rru",
+        "value": "scan-40-configs 4, list-orders-100 2",
+        "evidence": "GSIs ProjectionType ALL; single-page reads with silent truncation (SI-2)."
+      },
+      "proposal": "Covering projection (INCLUDE only listed attributes); add pagination.",
+      "expected": {
+        "rru": "down",
+        "bytes": "down"
+      },
+      "constraints": [
+        "response shape unchanged",
+        "pagination = behaviour change -> spec ruling"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "architect",
+      "prerequisites": [
+        "blueprint revision",
+        "E4 L3 data on projection cost"
+      ]
+    },
+    {
+      "id": "V2-12",
+      "app": "ecommerce",
+      "advisory_ref": "advisories[0]",
+      "priority": "P3",
+      "source": "analysis",
+      "target": {
+        "file": "orders-create:248-259, order-update:265-277, packaging-request-update-product:103-114, order-delete:209-211",
+        "function": "PackagingRequest.save / delete",
+        "lines": [
+          0,
+          0
+        ]
+      },
+      "diagnosis": {
+        "metric": "depth",
+        "value": 23,
+        "evidence": "N+1 PutItem/DeleteItem with no per-row error handling; orders-create depth 23 / warm 21.85 ms, update-product depth 10, delete depth 15."
+      },
+      "proposal": "BatchWriteItem with UnprocessedItems retry, or parallel puts with explicit failure handling.",
+      "expected": {
+        "depth": "23 -> ~13"
+      },
+      "constraints": [
+        "failure behaviour must match the monolith (partial writes)"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "code-developer",
+      "prerequisites": [
+        "differential test vs monolith",
+        "BatchWriteItem re-admitted to the allowed list"
+      ]
+    },
+    {
+      "id": "V2-13",
+      "app": "ecommerce",
+      "advisory_ref": "advisories[1]",
+      "priority": "P3",
+      "source": "analysis",
+      "target": {
+        "file": "orders-create/handler.py",
+        "function": "validate_products",
+        "lines": [
+          381,
+          410
+        ]
+      },
+      "diagnosis": {
+        "metric": "depth",
+        "value": 10,
+        "evidence": "one GetItem per product before any result is used; each followed by a 500 path."
+      },
+      "proposal": "BatchGetItem (or parallel GetItem) then validate in v0 order.",
+      "expected": {
+        "depth": "10 -> 1",
+        "calls": "10 -> 1 (BatchGet)"
+      },
+      "constraints": [
+        "error reported must be the first invalid product in v0 order"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "code-developer",
+      "prerequisites": [
+        "H1(a) relaxed: extra reads on the failure path are acceptable (reads are side-effect free)"
+      ]
+    },
+    {
+      "id": "V2-14",
+      "app": "shopping-cart",
+      "advisory_ref": "advisories[0..2]",
+      "priority": "P3",
+      "source": "analysis",
+      "target": {
+        "file": "cart-add:195/225, cart-checkout:285-291, cart-update-item:236-293",
+        "function": "cart write chains",
+        "lines": [
+          0,
+          0
+        ]
+      },
+      "diagnosis": {
+        "metric": "depth",
+        "value": "add 3, update 4, checkout 13",
+        "evidence": "serial writes under one try/except; checkout 13 calls / 20 WRU / warm 36.9 ms for a 10-item cart."
+      },
+      "proposal": "checkout: per-item catch + parallel decrements, or TransactWriteItems for decrement+wipe; add/update: parallel cart+aggregate writes.",
+      "expected": {
+        "depth": "checkout 13 -> 2-3"
+      },
+      "constraints": [
+        "spec ruling on half-applied writes",
+        "TransactWriteItems doubles WRU"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "code-developer",
+      "prerequisites": [
+        "differential test vs monolith",
+        "spec ruling"
+      ]
+    },
+    {
+      "id": "V2-15",
+      "app": "coffee, bookstore",
+      "advisory_ref": "coffee ADV-1, bookstore-v2 A2",
+      "priority": "P3",
+      "source": "analysis",
+      "target": {
+        "file": "coffee orders-update-order (submit), validator-verify-qr-code; bookstore orders-create/handler.js:74-118",
+        "function": "guarded write chains",
+        "lines": [
+          0,
+          0
+        ]
+      },
+      "diagnosis": {
+        "metric": "depth",
+        "value": "coffee 5, bookstore 3",
+        "evidence": "guards between calls; a failure stops later writes."
+      },
+      "proposal": "Overlap reads before guards (speculative read), or move SendMessage after the commit into a Streams-based outbox.",
+      "expected": {
+        "depth": "5 -> 3-4; bookstore 3 -> 2"
+      },
+      "constraints": [
+        "no write executed that v0 would not execute"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "architect",
+      "prerequisites": [
+        "differential test vs monolith"
+      ]
+    },
+    {
+      "id": "V2-16",
+      "app": "airline-booking",
+      "advisory_ref": "A-4",
+      "priority": "P3",
+      "source": "rule:R1",
+      "target": {
+        "file": "output/lambdas/bookings/bookings-create/handler.py",
+        "function": "bookings-create compensation",
+        "lines": [
+          557,
+          614
+        ]
+      },
+      "diagnosis": {
+        "metric": "depth",
+        "value": 5,
+        "evidence": "refund_payment / cancel_booking / release_flight_seat: three best-effort blocks, disjoint items, only on 400/500 paths."
+      },
+      "proposal": "Run the three blocks concurrently (same pattern as kept C2 in bookings-cancel).",
+      "expected": {
+        "depth": "5 -> 2"
+      },
+      "constraints": [
+        "H1a",
+        "H1b",
+        "H1c",
+        "no-shared-item"
+      ],
+      "semantic_class": "v1-allowed",
+      "owner_v2": "code-developer",
+      "prerequisites": [
+        "perf judge must accept failure-path benchmarks (section 3.1 validity rule)"
+      ]
+    },
+    {
+      "id": "V2-17",
+      "app": "bookstore, airline-booking",
+      "advisory_ref": "bookstore-v2 A4, airline A-5",
+      "priority": "P4",
+      "source": "analysis",
+      "target": {
+        "file": "bestsellers-update/handler.js:221-225, 263-320; airline bookings-create step 5 + loyalty apply_message",
+        "function": "retry / async",
+        "lines": [
+          0,
+          0
+        ]
+      },
+      "diagnosis": {
+        "metric": "worst-case duration",
+        "value": "bookstore ~350 ms/batch, airline 50-800 ms/retry",
+        "evidence": "TransactionConflict backoff sleeps on the handler thread; airline waits for SendMessage before 201 (D-6)."
+      },
+      "proposal": "Return failed items via ReportBatchItemFailures and let SQS redeliver instead of sleeping; revisit D-6.",
+      "expected": {
+        "billed duration": "down on conflict paths"
+      },
+      "constraints": [
+        "idempotent consumer",
+        "redelivery ordering"
+      ],
+      "semantic_class": "semantic",
+      "owner_v2": "architect",
+      "prerequisites": [
+        "architect decision"
+      ]
+    },
+    {
+      "id": "V2-18",
+      "app": "all",
+      "advisory_ref": "PERF_OPTIMIZATION_DESIGN section 12, appendix A.4",
+      "priority": "P4",
+      "source": "analysis",
+      "target": {
+        "file": "template.yaml (Globals)",
+        "function": "all",
+        "lines": [
+          0,
+          0
+        ]
+      },
+      "diagnosis": {
+        "metric": "duration/cost",
+        "value": "128MB ~5x slower than 512MB",
+        "evidence": "real AWS A/B; arm64 matches or beats x86_64."
+      },
+      "proposal": "Default arm64; MemorySize per function via Lambda Power Tuning (L3).",
+      "expected": {
+        "cost": "down",
+        "duration": "down"
+      },
+      "constraints": [
+        "native deps must have arm64 builds"
+      ],
+      "semantic_class": "v1-allowed",
+      "owner_v2": "sam-engineer",
+      "prerequisites": [
+        "L3 Power Tuning run"
+      ]
+    }
+  ],
+  "dropped": [
+    {
+      "app": "shopping-cart",
+      "item": "ALL_NEW on aggregate UpdateItem",
+      "reason": "return value is used"
+    },
+    {
+      "app": "shopping-cart",
+      "item": "hoist datetime.now() in cart-migrate",
+      "reason": "changes written expirationTime values"
+    },
+    {
+      "app": "coffee",
+      "item": "ADV-6 duplicated body parser",
+      "reason": "0.337 us/request; maintainability only"
+    },
+    {
+      "app": "coffee",
+      "item": "REQ-1 journey sort",
+      "reason": "judged and reverted in v1"
+    },
+    {
+      "app": "bookstore",
+      "item": "A5 fault-rule order sensitivity",
+      "reason": "validation-line note, no perf action"
+    }
+  ]
+}

@@ -14,11 +14,17 @@ model: inherit
 2. **依赖管理**：只有真正用到非运行时内置的第三方包时才生成 `requirements.txt`/`package.json`。Python 的 `boto3`/`botocore` 是运行时内置，不要写进 `requirements.txt`。Node.js 不要假设所有 `@aws-sdk/*` 都是内置——`@aws-sdk/lib-dynamodb` 等实际用到的包必须显式声明在 `package.json` 里。
 3. **代码改写**：把原单体代码（Express/Flask 路由处理函数）改写成 Lambda handler，数据库调用换成 DynamoDB 客户端，去掉任何进程级全局状态假设。
 4. **只做代码，不碰模板**：你完全不碰 `output/template.yaml` 或 `template.part*.yaml`，那是 S3（sam-engineer）的工作。
+5. **全局响应头**：`analysis_report.json` 的 `global_middleware` 里每一项的 `headers`（单体用 `CORS(app)`、`helmet()` 等给**所有**响应加的头），每个 API 函数的**每个**返回都要带上，包括错误响应。在共用的响应函数（例如 `json_response`）里统一加，不要只靠模板的 `Cors` 块：它只管预检。gate(code) 的 GM1 会逐个函数检查。
+6. **数据模型转换**（blueprint 有 `data_model` 时，单体用的是 MongoDB）：按 `data_model.access_patterns` 里每个模式指定的操作写（`GetItem`/`Query` + 指定的 GSI/`Scan`），不要因为单体是 `find({...})` 就写 `Scan` + 过滤；属性名按 `field_mapping` 改（例如 `_id` → `id`），类型按 `type_mapping` 转（`Date` → ISO-8601 字符串，返回给客户端时保持单体的格式）。单体返回的文档里有 `_id` 的，响应里仍然要叫 `_id`：改名只发生在存储层。`count` 要返回精确值（`Scan` + `Select: "COUNT"`，分页累加），不能用 `DescribeTable.ItemCount`。
+7. **契约优先**（contract 2，`blueprint.json` 的 `metadata.verification_contract` 是 2）：`analysis_report.json` 里 `class: contract` 的业务规则必须满足；`class: implementation-trace` 的条目只描述单体是怎么做的，供参考，不必照抄。例如单体在两层各读一次同一条记录，你可以只读一次。被 SI 裁定作废的 `trace_arm` 响应不需要实现。
 
 ## 硬性工具说明
 
 - 文件读写：`read_file` / `write_file` / `glob` / `grep`。
-- 加载知识：先调用 `skill(name="m2s-lambda-coding-kb")`（handler 签名、事件结构、CommonJS 约束等权威规则）；如果 blueprint 里有 `trigger_type` 为 `sqs`/`eventbridge` 的函数，再调用 `skill(name="m2s-async-patterns-kb")`（生产者/消费者代码模式）。
+- 加载知识：先调用 `skill(name="m2s-lambda-coding-kb")`（handler 签名、事件结构、CommonJS 约束等权威规则）；如果 blueprint 里有 `trigger_type` 为 `sqs`/`eventbridge` 的函数，再调用 `skill(name="m2s-async-patterns-kb")`（生产者/消费者代码模式）。**消费者必须幂等，这是必须遵守的正确性规则**（知识库里的 "REQUIRED correctness rule: consumers must be idempotent under redelivery"）：
+  - 按 blueprint 里该函数的 `notes` 和 `storage/DECISIONS.md` 指定的机制实现：幂等键、Pattern A 或 B、幂等表的环境变量、失败是吞掉还是上报；
+  - 生产者要把幂等键放进消息体；
+  - blueprint 没写清楚机制时，报 `STAGE_BLOCKED`，指出这是 architect 的问题，**不要自己发明机制**。
 - **导航方式**：不要囫囵吞枣读整个单体源码。用 blueprint 每个函数的 `source_files` 字段 + `storage/symbol_table.json` 的行号定位，配合 `grep`/`glob`/`read_file` 精确定位到需要的函数体，再决定怎么改写。
 - **不要调用 `mcp_auth`**。
 - 写完代码后要用 `mcp__m2s-server__run_gate(phase="code")` 自查（见下方自查循环）——这一步 gate 只能检查 C1（目录名对不对得上 blueprint）和 C10（依赖文件卫生），因为这时候 S3 还没生成 `template.yaml`，`C3`/`C11`/`C12` 这些需要模板信息的检查要等 S3 阶段才会真正跑到，不代表你现在不用管代码质量。
@@ -39,6 +45,16 @@ model: inherit
 - 仅当有非内置第三方依赖时：`requirements.txt` 或 `package.json`
 
 如果 blueprint 判定需要共享层（多个函数有公共逻辑），额外在 `<WS>/output/layers/shared/` 下生成共享代码；如果不需要，就不要创建这个目录（会被 C6 检查判定为不一致）。
+- 共享层的目录布局按运行时区分：
+  - **Python**：代码直接放在 `layers/shared/` 下，例如 `layers/shared/shared_utils.py`，**不要**再套一层 `python/`。模板里的 `BuildMethod: python3.12` 会让 `sam build` 自动把它放进 `python/`。多套一层会变成 `/opt/python/python/`，导入失败；
+  - **Node.js**：代码放在 `layers/shared/nodejs/` 下，例如 `layers/shared/nodejs/shared.js`，模板的 `ContentUri` 指向 `layers/shared/nodejs/`。
+- 这两条由 gate 的 C13 检查。
+
+**从网关鉴权读用户身份**（blueprint 有 `auth: "required"` 的函数时）：只从 `event.requestContext.authorizer.claims` 读，REST 和 HTTP API（payload 1.0）都在这个位置。另外：
+- 用户 id 用 `sub`，不要用 `email`。HTTP API 也接受 access token，access token 里没有 `email`；
+- 数组类 claim（例如 `cognito:groups`）两种格式都要能解析：REST 是 `"a,b"`，HTTP API 是 `"[a b]"`。去掉首尾的 `[` `]`，再按逗号或空格切分；
+- 不要解析 `exp`、`iat`：两种 API 的格式不同，而且过期已经由网关检查过了。
+多个函数都要读身份时，把这段逻辑放进共享层。
 
 自检要点（Node.js 文件里没有 `import`/`export` 关键字、没有裸 `require('aws-sdk')`；依赖文件里没有 Python 运行时内置包 boto3/botocore/s3transfer/jmespath/urllib3；每个 handler 实际用到的环境变量名心里有数，方便后面排查 C4）——这些是给自己核对用的，不是可以跳过自查循环的理由。
 
@@ -69,6 +85,9 @@ model: inherit
 
 ## 禁止事项
 
+- **不许修改流水线自己的工具**：`m2s-mcp-server/`（gate、验证和测量工具、测试）、`.openharness/`（skill、知识库）、`~/.openharness/`（agent 定义、设置）都不许改。只能写本阶段规定的工作区文件。
+  - 如果认为某个工具的结果是错的（例如 gate 报了误报），报 `STAGE_BLOCKED`，写明证据：哪个检查、输入是什么、为什么认为是误报。**不要自己去修工具**。
+  - `gate(final)` 会检查这些目录有没有未提交的改动，有就判 FAIL。
 - 不要碰 `output/template.yaml`、`template.part1.yaml`、`template.part2.yaml`。
 - 不要调用 `mcp_auth`。
 - 不要给运行时内置包（boto3 等）写依赖文件。

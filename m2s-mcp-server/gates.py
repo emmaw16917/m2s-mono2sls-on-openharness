@@ -24,7 +24,7 @@ convention, rooted at $M2S_WORKSPACE instead of the M2S repo root):
 
 Only checks that cross-reference structured data (blueprint.json vs
 template.yaml vs the on-disk directory layout) produce a pass/fail verdict
-here: B0, C1, C2, C3, C7, C7b, C8, C9, C10, C11, C12. C4/C5/C6 are
+here: B0, C1, C2, C3, C7, C7b, C8, C9, C10, C11, C12, C13. C4/C5/C6 are
 "suspects": mechanically extracted data handed to the m2s-validator agent
 for semantic judgment, because they require interpreting arbitrary
 generated code (env var usage, IAM-relevant SDK calls, layer imports)
@@ -107,6 +107,546 @@ def _endpoint_from_entry_point(entry_point: str) -> str | None:
     return entry_point.strip() if entry_point else None
 
 
+def check_spec_relaxations(workspace: Path) -> list[dict[str, Any]]:
+    """S5 -> S1 spec relaxation (CONTRACT_TESTING_PLAN.md section 7) must be
+    finished before delivery: no request still waiting for a ruling (SR1),
+    and every ruling that came from a perf request has its re-judged change
+    in perf_report.json (SR2) -- an accepted relaxation nobody re-judged would
+    leave the spec and the tests changed for nothing."""
+    findings: list[dict[str, Any]] = []
+    try:
+        report = json.loads((workspace / "output" / "perf_report.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        report = {}
+    changes = [c for c in (report.get("changes") or []) if isinstance(c, dict)] if isinstance(report, dict) else []
+    for c in changes:
+        if c.get("verdict") == "pending_spec":
+            findings.append(_finding("SR1", "ERROR", f"perf change {c.get('id')} ({c.get('request')}) is still pending_spec: the spec "
+                                     "relaxation it asked for was never ruled on and re-judged.", "output/perf_report.json"))
+    try:
+        meta = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8")).get("metadata") or {}
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return findings
+    req = lambda v: (m.group(0) if (m := re.search(r"REQ-\d+", str(v or ""))) else None)
+    judged = {req(c.get("request")) for c in changes if c.get("verdict") in ("kept", "kept_inconclusive", "reverted", "revert")}
+    for r in meta.get("spec_resolutions") or [] if isinstance(meta, dict) else []:
+        if not isinstance(r, dict) or not str(r.get("origin", "")).startswith("perf-request"):
+            continue
+        if r.get("ruling", "accepted") == "accepted" and req(r.get("origin")) not in judged:
+            findings.append(_finding("SR2", "ERROR", f"spec_resolutions[{r.get('issue_id')}] accepted {r.get('origin')} but perf_report.json "
+                                     "has no kept / reverted verdict for that request (re-judge it).", "blueprint.json"))
+    return findings
+
+
+# What a spec_resolutions entry rules on (PIPELINE_REDESIGN.md section 3.6).
+SI_CLASSES = {
+    "contract": "keep an externally observable behaviour of the monolith (confirm, correct a classification, pin a result)",
+    "implementation-trace": "a monolith-internal step the migration may change",
+    "migration-change": "the migration deliberately changes external behaviour (auth platform, seed data, external dependency); states the new behaviour",
+    "spec-gap": "behaviour the spec left open; the ruling fixes a concrete result",
+}
+
+
+PERF_HINT_KINDS = ("cache", "batch", "prefetch")
+
+
+def _check_bounded_staleness(r: dict[str, Any], bs: Any, blueprint: dict[str, Any]) -> list[dict[str, Any]]:
+    """CT7: a bounded_staleness ruling (PERF_OPTIMIZATION.md 10.4 (b)) is a
+    contract: for up to ttl_seconds these functions may answer with data of
+    these tables that is older than the latest write -- what the monolith's own
+    cache already exposed. It needs evidence (the monolith cache, or a human
+    decision) because it changes what tests may assert."""
+    sid = r.get("issue_id")
+    tables = {t.get("logical_name") for t in blueprint.get("dynamodb_tables") or [] if isinstance(t, dict)}
+    fns = {f.get("name") for f in blueprint.get("lambda_functions") or [] if isinstance(f, dict)}
+    errs = []
+    if r.get("class") != "contract":
+        errs.append(f"class must be 'contract' (bounded staleness is an observable promise), got {r.get('class')!r}")
+    if not isinstance(bs, dict):
+        errs.append("bounded_staleness must be an object {tables, ttl_seconds, evidence}")
+    else:
+        ttl = bs.get("ttl_seconds")
+        if not (isinstance(ttl, (int, float)) and not isinstance(ttl, bool) and ttl > 0):
+            errs.append("ttl_seconds must be a positive number")
+        ts = bs.get("tables")
+        if not (isinstance(ts, list) and ts):
+            errs.append("tables must be a non-empty list of dynamodb_tables logical_name")
+        else:
+            errs += [f"table {t!r} is not a dynamodb_tables logical_name" for t in ts if t not in tables]
+        if not str(bs.get("evidence") or "").strip():
+            errs.append("evidence is empty: cite the monolith cache (file:line and its TTL), or the human decision")
+    af = r.get("applies_to")
+    if not (isinstance(af, list) and af):
+        errs.append("applies_to must list the functions that may cache")
+    else:
+        errs += [f"applies_to {f!r} is not a lambda_functions name" for f in af if f not in fns]
+    return [_finding("CT7", "ERROR", f"spec_resolutions[{sid}].bounded_staleness: {e}", "blueprint.json") for e in errs]
+
+
+def _check_perf_hints(meta: dict[str, Any], blueprint: dict[str, Any]) -> list[dict[str, Any]]:
+    """PH1: metadata.perf_hints (PERF_OPTIMIZATION.md 10.4 (c)) -- what the
+    monolith did for performance (cache, batching, prefetch) that the spec
+    rules as an implementation trace. Not binding on correctness; S3/S5 read
+    them. Each needs a kind, a source in the monolith and the functions."""
+    hints = meta.get("perf_hints")
+    if hints is None:
+        return []
+    if not isinstance(hints, list):
+        return [_finding("PH1", "ERROR", "metadata.perf_hints must be a list.", "blueprint.json")]
+    fns = {f.get("name") for f in blueprint.get("lambda_functions") or [] if isinstance(f, dict)}
+    out = []
+    for i, h in enumerate(hints):
+        errs = []
+        if not isinstance(h, dict):
+            errs.append("must be an object")
+        else:
+            if h.get("kind") not in PERF_HINT_KINDS:
+                errs.append(f"kind must be one of {PERF_HINT_KINDS}")
+            if not re.search(r":\d+", str(h.get("source") or "")):
+                errs.append("source must point at the monolith code (file:line)")
+            af = h.get("applies_to")
+            if not (isinstance(af, list) and af and all(f in fns for f in af)):
+                errs.append("applies_to must list lambda_functions names")
+            if h.get("kind") == "cache" and not isinstance(h.get("ttl_seconds"), (int, float)):
+                errs.append("a cache hint needs ttl_seconds (the monolith's TTL; null is not allowed, write the default it runs with)")
+        out += [_finding("PH1", "ERROR", f"metadata.perf_hints[{i}]: {e}", "blueprint.json") for e in errs]
+    return out
+
+
+def check_contract(workspace: Path) -> list[dict[str, Any]]:
+    """Contract testing (PIPELINE_REDESIGN.md section 3.6). A spec whose
+    business rules carry a class is a contract-2 spec: the blueprint must say
+    so, and every response arm the annotator marked trace_arm must be ruled on
+    (voided, or given its allowed outcomes) by an implementation-trace SI that
+    lists it in `targets`. Implementation-trace SIs, wherever they come from
+    (S1, or an S5 spec relaxation request), must name their targets."""
+    findings: list[dict[str, Any]] = []
+    try:
+        blueprint = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+        report = json.loads((workspace / "storage" / "analysis_report.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return findings  # B0 reports a missing / broken blueprint; no report yet means nothing to check
+    meta = blueprint.get("metadata") if isinstance(blueprint, dict) else None
+    meta = meta if isinstance(meta, dict) else {}
+    eps = report.get("entry_points", []) if isinstance(report, dict) else []
+    classified = any(isinstance(r, dict) and "class" in r for ep in eps for r in ep.get("business_rules") or [])
+    if classified and meta.get("verification_contract") != 2:
+        findings.append(_finding("CT1", "ERROR", "analysis_report.json classifies business rules (contract / implementation-trace) "
+                                 "but blueprint metadata.verification_contract is not 2.", "blueprint.json"))
+    if meta.get("verification_contract") not in (None, 1, 2):
+        findings.append(_finding("CT1", "ERROR", "metadata.verification_contract must be 1 or 2.", "blueprint.json"))
+    targets: set[str] = set()
+    for r in meta.get("spec_resolutions") or []:
+        if not isinstance(r, dict):
+            continue
+        cls = r.get("class")
+        if cls is not None and cls not in SI_CLASSES:
+            findings.append(_finding("CT4", "ERROR", f"spec_resolutions[{r.get('issue_id')}].class {cls!r} is not one of "
+                                     f"{sorted(SI_CLASSES)}.", "blueprint.json"))
+        elif cls is None and meta.get("verification_contract") == 2:
+            findings.append(_finding("CT4", "ERROR", f"spec_resolutions[{r.get('issue_id')}] has no 'class'; under "
+                                     f"verification_contract 2 every ruling needs one of {sorted(SI_CLASSES)}.", "blueprint.json"))
+        if r.get("result_order") not in (None, "unspecified"):
+            findings.append(_finding("CT6", "ERROR", f"spec_resolutions[{r.get('issue_id')}].result_order must be \"unspecified\" "
+                                     "(or absent: the order stays part of the contract).", "blueprint.json"))
+        elif r.get("result_order") == "unspecified" and not r.get("applies_to"):
+            findings.append(_finding("CT6", "ERROR", f"spec_resolutions[{r.get('issue_id')}] sets result_order but names no "
+                                     "applies_to functions.", "blueprint.json"))
+        dmc = r.get("data_model_change")
+        if dmc is not None:
+            idx = (dmc or {}).get("index") if isinstance(dmc, dict) else None
+            bad = not isinstance(dmc, dict) or not dmc.get("table") or not isinstance(idx, dict) or not idx.get("name")                 or not isinstance(idx.get("keys"), list) or not idx["keys"]                 or any(not isinstance(a, dict) or not a.get("name") or not a.get("backfill") for a in dmc.get("new_attributes") or [])
+            if bad:
+                findings.append(_finding("CT5", "ERROR", f"spec_resolutions[{r.get('issue_id')}].data_model_change needs table, index "
+                                         "{name, keys: [{attribute, type: HASH|RANGE}], projection}, and for each new_attributes item "
+                                         "a name and a backfill note.", "blueprint.json"))
+        bs = r.get("bounded_staleness")
+        if bs is not None:
+            findings += _check_bounded_staleness(r, bs, blueprint)
+        if cls != "implementation-trace":
+            continue
+        t = r.get("targets")
+        if not (isinstance(t, list) and t and all(isinstance(x, str) for x in t)):
+            findings.append(_finding("CT2", "ERROR", f"spec_resolutions[{r.get('issue_id')}] is class implementation-trace but has no "
+                                     "'targets' (the spec items it rules on, e.g. 'POST /x#responses[6]').", "blueprint.json"))
+        else:
+            targets.update(t)
+    findings += _check_perf_hints(meta, blueprint)
+    for ep in eps:
+        for i, resp in enumerate(ep.get("responses") or []):
+            ref = f"{ep.get('method')} {ep.get('path')}#responses[{i}]"
+            if isinstance(resp, dict) and resp.get("trace_arm") and ref not in targets:
+                findings.append(_finding("CT3", "ERROR", f"{ref} is marked trace_arm but no implementation-trace spec_resolution "
+                                         "targets it (void it, or give its allowed outcomes).", "blueprint.json"))
+    return findings
+
+
+def _contract_headers(workspace: Path) -> dict[str, list[str]]:
+    """Headers the monolith adds to every response through app-wide middleware
+    (analysis_report.global_middleware, P0 + S0), minus those an architect
+    ruling drops (class migration-change targeting global_middleware[i]).
+    {header name: [source "file:line", ...]}."""
+    try:
+        report = json.loads((workspace / "storage" / "analysis_report.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    try:
+        meta = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8")).get("metadata") or {}
+    except (OSError, json.JSONDecodeError, AttributeError):
+        meta = {}
+    dropped = {t for r in (meta.get("spec_resolutions") or []) if isinstance(r, dict) and r.get("class") == "migration-change"
+               for t in (r.get("targets") or [])}
+    out: dict[str, list[str]] = {}
+    for i, item in enumerate(report.get("global_middleware") or []):
+        if not isinstance(item, dict) or f"global_middleware[{i}]" in dropped:
+            continue
+        src = ",".join(f"{s.get('file')}:{s.get('line')}" for s in item.get("source") or [])
+        for name in (item.get("headers") or {}):
+            out.setdefault(name, []).append(src)
+    return out
+
+
+def _contract_header_values(workspace: Path) -> dict[str, set[str]]:
+    """Like _contract_headers, with the values: {header name: {value, ...}}."""
+    try:
+        report = json.loads((workspace / "storage" / "analysis_report.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    names = _contract_headers(workspace)
+    out: dict[str, set[str]] = {}
+    for item in report.get("global_middleware") or []:
+        for name, value in ((item or {}).get("headers") or {}).items() if isinstance(item, dict) else ():
+            if name in names:
+                out.setdefault(name, set()).add(str(value))
+    return out
+
+
+def check_gm_code(workspace: Path) -> list[dict[str, Any]]:
+    """GM1: every API function must set each app-wide response header itself
+    (Lambda proxy integration: API Gateway adds nothing to the function's
+    response; a template Cors block only answers preflight OPTIONS)."""
+    headers = _contract_headers(workspace)
+    if not headers:
+        return []
+    try:
+        blueprint = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    api_fns = {f.get("name") for f in blueprint.get("lambda_functions", []) if isinstance(f, dict) and f.get("trigger_type") == "api"}
+    layer_text = ""
+    layers = workspace / "output" / "layers"
+    if layers.exists():
+        layer_text = "\n".join(p.read_text(encoding="utf-8", errors="replace").lower() for p in layers.rglob("*")
+                               if p.is_file() and p.suffix in (".py", ".js", ".mjs", ".cjs", ".ts") and "node_modules" not in p.parts)
+    findings = []
+    for d in _iter_lambda_dirs(workspace / "output" / "lambdas"):
+        if d.name not in api_fns:
+            continue
+        text = "\n".join(p.read_text(encoding="utf-8", errors="replace").lower() for p in d.rglob("*")
+                         if p.is_file() and p.suffix in (".py", ".js", ".mjs", ".cjs", ".ts") and "node_modules" not in p.parts)
+        missing = [h for h in headers if h.lower() not in text and h.lower() not in layer_text]
+        if missing:
+            findings.append(_finding("GM1", "ERROR", f"{d.name} does not set app-wide response header(s) {missing} that the monolith adds "
+                                     f"to every response ({'; '.join(headers[h][0] for h in missing)}). With Lambda proxy integration "
+                                     "the function's own response must carry them.", d.name))
+    return findings
+
+
+GATEWAY_RESPONSE_TYPES = {
+    "DEFAULT_INTERNAL", "DEFAULT_4XX", "DEFAULT_5XX", "RESOURCE_NOT_FOUND", "UNAUTHORIZED", "ACCESS_DENIED",
+    "AUTHORIZER_FAILURE", "AUTHORIZER_CONFIGURATION_ERROR", "MISSING_AUTHENTICATION_TOKEN", "INVALID_SIGNATURE",
+    "EXPIRED_TOKEN", "INTEGRATION_FAILURE", "INTEGRATION_TIMEOUT", "API_CONFIGURATION_ERROR", "UNSUPPORTED_MEDIA_TYPE",
+    "INVALID_API_KEY", "BAD_REQUEST_PARAMETERS", "BAD_REQUEST_BODY", "REQUEST_TOO_LARGE", "THROTTLED", "QUOTA_EXCEEDED",
+    "WAF_FILTERED",
+}
+
+
+def check_gm_template(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
+    """GM2: responses API Gateway produces itself (authorizer 401/403,
+    throttling 429, integration 5xx) must carry the app-wide headers too --
+    the monolith added them to its error responses as well."""
+    headers = _contract_headers(workspace)
+    resources = template.get("Resources", {}) or {}
+    sources = [((template.get("Globals", {}) or {}).get("Api", {}) or {}).get("GatewayResponses") or {}]
+    sources += [((r.get("Properties") or {}).get("GatewayResponses") or {}) for r in resources.values()
+                if isinstance(r, dict) and r.get("Type") == "AWS::Serverless::Api"]
+    covered: dict[str, set[str]] = {}
+    for gr in sources:
+        for rtype, cfg in gr.items():
+            hdrs = (((cfg or {}).get("ResponseParameters") or {}).get("Headers") or {})
+            covered.setdefault(rtype, set()).update(k.lower() for k in hdrs)
+    findings = []
+    # cfn-lint does not check these names; API Gateway rejects the whole RestApi
+    # at deploy time (airline-booking-c3 2026-10-05: INTERNAL_ERROR)
+    for rtype in sorted(set(covered) - GATEWAY_RESPONSE_TYPES):
+        findings.append(_finding("GM2", "ERROR", f"GatewayResponses type {rtype!r} does not exist; API Gateway rejects the RestApi on "
+                                 f"deploy. Valid types: {', '.join(sorted(GATEWAY_RESPONSE_TYPES))}", "template.yaml"))
+    for rtype in ("DEFAULT_4XX", "DEFAULT_5XX") if headers else ():
+        missing = [h for h in headers if h.lower() not in covered.get(rtype, set())]
+        if missing:
+            findings.append(_finding("GM2", "ERROR", f"GatewayResponses {rtype} does not set {missing}: the gateway's own error responses "
+                                     "would lack headers the monolith sends on every response.", "template.yaml"))
+    return findings
+
+
+# ---------------------------------------------------------------------------
+# AT1/AT2 - API type chosen at S1 (PERF_OPTIMIZATION.md section 10.4 (e))
+# ---------------------------------------------------------------------------
+
+# What only a REST API (AWS::Serverless::Api) offers; HTTP API is otherwise
+# the default: about 1/3.5 the request price and ~5 ms lower p50 (acmeair A/B,
+# 2026-10-09, section 10.6). Architects may declare any of these in
+# api_gateway.rest_features; gateway_responses is also derived from the spec.
+# A Cognito user pool works on both: HTTP API uses a JWT authorizer, and with
+# payload format 1.0 the claims sit at requestContext.authorizer.claims as on
+# REST (AWS probe 2026-10-10, results-e2e/jwt-probe).
+REST_FEATURES = {
+    "cognito_user_pools_authorizer": "REST's COGNITO_USER_POOLS authorizer specifically (accepts ID tokens only; an HTTP API JWT "
+                                     "authorizer also accepts access tokens)",
+    "gateway_responses": "app-wide headers other than 'Access-Control-Allow-Origin: *' on the gateway's own 4xx/5xx "
+                         "(GatewayResponses, GM2); an HTTP API CorsConfiguration adds only the CORS headers",
+    "xray_active_tracing": "X-Ray active tracing on the API stage",
+    "waf": "a WAF web ACL attached directly to the API",
+    "api_keys_usage_plans": "API keys / usage plans",
+    "request_validation": "request validators / models",
+    "caching": "API Gateway stage caching",
+    "resource_policy": "a resource policy (IP or VPC restrictions)",
+    "edge_endpoint": "an EDGE-optimized endpoint (clients spread across regions)",
+}
+API_TYPES = ("http", "rest")
+API_CLIENTS = ("same_region", "internet")
+
+
+def api_type_needs(workspace: Path, blueprint: dict[str, Any] | None = None) -> dict[str, str]:
+    """The REST-only features this application needs: derived from the
+    blueprint (gateway auth) and the spec (app-wide headers), plus those the
+    architect declared in api_gateway.rest_features. {feature: why}."""
+    if blueprint is None:
+        try:
+            blueprint = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {}
+    needs: dict[str, str] = {}
+    headers = _contract_header_values(workspace)
+    beyond_cors = sorted(h for h, v in headers.items() if not (h.lower() == "access-control-allow-origin" and v == {"*"}))
+    if beyond_cors:
+        needs["gateway_responses"] = f"global_middleware headers {beyond_cors} must also be on the gateway's own errors"
+    api = blueprint.get("api_gateway") if isinstance(blueprint.get("api_gateway"), dict) else {}
+    for f in api.get("rest_features") or []:
+        needs.setdefault(str(f), "declared in api_gateway.rest_features")
+    return needs
+
+
+def check_api_type(workspace: Path) -> list[dict[str, Any]]:
+    """AT1 (gate(blueprint)): api_gateway.api_type is decided at S1, because
+    the template follows from it and S2/S3/verification are written against
+    it. 'http' (HTTP API with payload format 1.0: the same event as REST, so
+    handlers and tests do not change) unless a REST-only feature is needed.
+    'rest' without any such need is a WARNING: the R6 advisory."""
+    try:
+        blueprint = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []  # B0 reports it
+    api = blueprint.get("api_gateway")
+    if not isinstance(api, dict):
+        return []
+    if not any(isinstance(f, dict) and f.get("trigger_type") == "api" for f in blueprint.get("lambda_functions") or []):
+        return []
+    findings = []
+    t, clients = api.get("api_type"), api.get("clients")
+    if t not in API_TYPES:
+        findings.append(_finding("AT1", "ERROR", f"api_gateway.api_type must be one of {list(API_TYPES)} (got {t!r}); decide it at S1, "
+                                 "see m2s-architect 'API 类型'.", "blueprint.json"))
+    if clients not in API_CLIENTS:
+        findings.append(_finding("AT1", "ERROR", f"api_gateway.clients must be one of {list(API_CLIENTS)} (got {clients!r}): where the "
+                                 "callers run decides REGIONAL vs EDGE.", "blueprint.json"))
+    if not str(api.get("api_type_reason") or "").strip():
+        findings.append(_finding("AT1", "ERROR", "api_gateway.api_type_reason is empty: name the REST-only features needed, or 'none'.",
+                                 "blueprint.json"))
+    unknown = [f for f in api.get("rest_features") or [] if f not in REST_FEATURES]
+    if unknown:
+        findings.append(_finding("AT1", "ERROR", f"api_gateway.rest_features {unknown} unknown; use {sorted(REST_FEATURES)}.", "blueprint.json"))
+    needs = api_type_needs(workspace, blueprint)
+    if t == "http" and needs:
+        findings.append(_finding("AT1", "ERROR", "api_type 'http' but the application needs REST-only features: "
+                                 + "; ".join(f"{k} ({REST_FEATURES.get(k, k)}: {v})" for k, v in needs.items()), "blueprint.json"))
+    if t == "rest" and not needs:
+        findings.append(_finding("AT1", "WARNING", "api_type 'rest' but no REST-only feature is needed (R6): HTTP API costs $1.00 vs "
+                                 "$3.50 per million requests and was ~5 ms faster at p50 (PERF_OPTIMIZATION.md 10.6).", "blueprint.json"))
+    if clients == "same_region" and "edge_endpoint" in needs:
+        findings.append(_finding("AT1", "ERROR", "clients 'same_region' contradicts rest_features 'edge_endpoint'.", "blueprint.json"))
+    return findings
+
+
+def _api_events(template: dict[str, Any]) -> list[tuple[str, str, dict[str, Any]]]:
+    out = []
+    for lid, r in (template.get("Resources", {}) or {}).items():
+        if not isinstance(r, dict) or r.get("Type") != "AWS::Serverless::Function":
+            continue
+        for ev in ((r.get("Properties", {}) or {}).get("Events", {}) or {}).values():
+            if isinstance(ev, dict) and ev.get("Type") in API_EVENT_TYPES:
+                out.append((lid, ev["Type"], ev.get("Properties", {}) or {}))
+    return out
+
+
+def check_api_type_template(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
+    """AT2 (gate(template)): the template implements blueprint api_type.
+    http: AWS::Serverless::HttpApi only, every event Type HttpApi with
+    PayloadFormatVersion '1.0' (SAM defaults to 2.0, which changes the event
+    the handlers parse). rest: no HttpApi; clients same_region -> REGIONAL."""
+    try:
+        api = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8")).get("api_gateway") or {}
+    except (OSError, json.JSONDecodeError, AttributeError):
+        return []
+    t = api.get("api_type")
+    if t not in API_TYPES:
+        return []  # workspaces from before AT1, or AT1 already failed
+    res = template.get("Resources", {}) or {}
+    kinds = {r.get("Type") for r in res.values() if isinstance(r, dict)}
+    findings = []
+    for lid, etype, props in _api_events(template):
+        if t == "http" and etype != "HttpApi":
+            findings.append(_finding("AT2", "ERROR", f"{lid}: event Type {etype} but blueprint api_type is 'http' (use Type: HttpApi).", lid))
+        elif t == "http" and str(props.get("PayloadFormatVersion", "")) != "1.0":
+            findings.append(_finding("AT2", "ERROR", f"{lid}: HttpApi event needs PayloadFormatVersion: '1.0' (SAM's default 2.0 changes "
+                                     "the event format the handlers and tests were written for).", lid))
+        elif t == "rest" and etype != "Api":
+            findings.append(_finding("AT2", "ERROR", f"{lid}: event Type {etype} but blueprint api_type is 'rest'.", lid))
+    if t == "http":
+        try:
+            fns = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8")).get("lambda_functions") or []
+        except (OSError, json.JSONDecodeError, AttributeError):
+            fns = []
+        if any(isinstance(f, dict) and f.get("auth") == "required" for f in fns):
+            for lid, r in res.items():
+                if not isinstance(r, dict) or r.get("Type") != "AWS::Serverless::HttpApi":
+                    continue
+                auth = (r.get("Properties") or {}).get("Auth") or {}
+                default = (auth.get("Authorizers") or {}).get(str(auth.get("DefaultAuthorizer")))
+                if not isinstance(default, dict) or not isinstance(default.get("JwtConfiguration"), dict):
+                    findings.append(_finding("AT2", "ERROR", f"{lid}: blueprint has auth 'required' functions but the HttpApi has no "
+                                             "DefaultAuthorizer with JwtConfiguration (issuer = the user pool, audience = the app "
+                                             "client); see m2s-sam-kb 'HTTP API'.", lid))
+    if t == "http" and "AWS::Serverless::Api" in kinds:
+        findings.append(_finding("AT2", "ERROR", "blueprint api_type is 'http' but the template has an AWS::Serverless::Api (REST).", "template.yaml"))
+    if t == "rest" and "AWS::Serverless::HttpApi" in kinds:
+        findings.append(_finding("AT2", "ERROR", "blueprint api_type is 'rest' but the template has an AWS::Serverless::HttpApi.", "template.yaml"))
+    if t == "rest" and api.get("clients") == "same_region":
+        for lid, r in res.items():
+            if isinstance(r, dict) and r.get("Type") == "AWS::Serverless::Api":
+                ep = (r.get("Properties") or {}).get("EndpointConfiguration")
+                ep_type = ep.get("Type") if isinstance(ep, dict) else ep
+                if str(ep_type or "EDGE").upper() != "REGIONAL":
+                    findings.append(_finding("AT2", "ERROR", f"{lid}: clients 'same_region' but EndpointConfiguration is "
+                                             f"{ep_type or 'EDGE (default)'}; set Type: REGIONAL (an EDGE API routes same-region "
+                                             "callers through CloudFront).", lid))
+    return findings
+
+
+DM_VIA = {"GetItem", "Query", "PutItem", "UpdateItem", "DeleteItem", "Scan", "BatchWriteItem", "TransactWriteItems"}
+DM_KEYED = {"GetItem", "UpdateItem", "DeleteItem"}  # need the full primary key
+
+
+def check_dm(workspace: Path) -> list[dict[str, Any]]:
+    """DM1: a monolith on another data store (analysis_report.source_data_store,
+    P0 data_store.py) needs every access pattern mapped onto a DynamoDB
+    operation in blueprint.data_model. DM2: each mapping is one DynamoDB can
+    actually serve -- GetItem/UpdateItem/DeleteItem name the table's full
+    primary key, Query names the partition key of the table or the index (plus
+    optionally its sort key), filter fields outside the key are declared as a
+    FilterExpression, and a Scan states why. Without this, a find by a
+    non-key field silently becomes a full-table Scan in the serverless code."""
+    try:
+        report = json.loads((workspace / "storage" / "analysis_report.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    store = report.get("source_data_store")
+    if not isinstance(store, dict) or not store.get("access_patterns"):
+        return []
+    try:
+        blueprint = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []  # B0 reports it
+    dm = blueprint.get("data_model")
+    if not isinstance(dm, dict):
+        return [_finding("DM1", "ERROR", f"The monolith uses {store.get('kind')}, so blueprint.json needs a data_model section mapping "
+                         f"its {len(store['access_patterns'])} access patterns (analysis_report.source_data_store) onto DynamoDB tables.",
+                         "storage/blueprint.json")]
+    tables = {t.get("logical_name"): t for t in blueprint.get("dynamodb_tables", []) if isinstance(t, dict)}
+    colls = {c.get("collection"): c for c in dm.get("collections") or [] if isinstance(c, dict)}
+    findings: list[dict[str, Any]] = []
+    aps = {ap["id"]: ap for ap in store["access_patterns"] if isinstance(ap, dict) and ap.get("id")}
+
+    for name in sorted({ap.get("collection") for ap in aps.values()} - set(colls) - {None}):
+        findings.append(_finding("DM1", "ERROR", f"collection {name!r} has no entry in data_model.collections.", "storage/blueprint.json"))
+    for name, c in colls.items():
+        if c.get("table") not in tables and c.get("dropped") is not True:
+            findings.append(_finding("DM2", "ERROR", f"data_model.collections[{name!r}].table {c.get('table')!r} is not a "
+                                     "dynamodb_tables logical_name.", "storage/blueprint.json"))
+
+    mapped: dict[str, int] = {}
+    for i, m in enumerate(dm.get("access_patterns") or []):
+        where = f"data_model.access_patterns[{i}]"
+        if not isinstance(m, dict):
+            findings.append(_finding("DM2", "ERROR", f"{where} must be an object.", "storage/blueprint.json"))
+            continue
+        for ap_id in m.get("ids") or []:
+            mapped[ap_id] = mapped.get(ap_id, 0) + 1
+            if ap_id not in aps:
+                findings.append(_finding("DM2", "ERROR", f"{where}: {ap_id} is not an access pattern in source_data_store.", "storage/blueprint.json"))
+        via = m.get("via")
+        if via not in DM_VIA:
+            findings.append(_finding("DM2", "ERROR", f"{where}: via must be one of {sorted(DM_VIA)}.", "storage/blueprint.json"))
+            continue
+        if via == "Scan" and not str(m.get("reason") or "").strip():
+            findings.append(_finding("DM2", "ERROR", f"{where}: a Scan needs a reason (why no key or GSI serves {m.get('ids')}).",
+                                     "storage/blueprint.json"))
+        t = tables.get(m.get("table"))
+        if t is None:
+            findings.append(_finding("DM2", "ERROR", f"{where}: table {m.get('table')!r} is not a dynamodb_tables logical_name.",
+                                     "storage/blueprint.json"))
+            continue
+        if via in ("Scan", "PutItem", "BatchWriteItem", "TransactWriteItems"):
+            continue
+        key_src = t
+        if m.get("index"):
+            key_src = next((g for g in t.get("gsi") or [] if isinstance(g, dict) and g.get("index_name") == m["index"]), None)
+            if key_src is None:
+                findings.append(_finding("DM2", "ERROR", f"{where}: {m['table']} has no GSI {m['index']!r}.", "storage/blueprint.json"))
+                continue
+            if via != "Query":
+                findings.append(_finding("DM2", "ERROR", f"{where}: {via} cannot use an index; only Query can.", "storage/blueprint.json"))
+                continue
+        pk = (key_src.get("partition_key") or {}).get("name")
+        sk = (key_src.get("sort_key") or {}).get("name")
+        cond = list(m.get("key_condition") or [])
+        if via in DM_KEYED and set(cond) != {k for k in (pk, sk) if k}:
+            findings.append(_finding("DM2", "ERROR", f"{where}: {via} needs the full primary key {[k for k in (pk, sk) if k]}, "
+                                     f"key_condition is {cond}.", "storage/blueprint.json"))
+        if via == "Query" and (pk not in cond or not set(cond) <= {pk, sk}):
+            findings.append(_finding("DM2", "ERROR", f"{where}: Query on {m['table']}{'/' + m['index'] if m.get('index') else ''} "
+                                     f"must name partition key {pk!r} (and optionally sort key {sk!r}); key_condition is {cond}.",
+                                     "storage/blueprint.json"))
+        # every filter field of the source pattern is served by the key or declared as a FilterExpression
+        for ap_id in m.get("ids") or []:
+            ap = aps.get(ap_id) or {}
+            rename = (colls.get(ap.get("collection")) or {}).get("field_mapping") or {}
+            fields = [rename.get(f["name"], f["name"]) for f in ap.get("filter_fields") or []]
+            uncovered = sorted(set(fields) - set(cond) - set(m.get("filter_expression") or []))
+            if uncovered:
+                findings.append(_finding("DM2", "ERROR", f"{where}: {ap_id} filters on {uncovered} which is neither in key_condition "
+                                         f"{cond} nor in filter_expression.", "storage/blueprint.json"))
+
+    for ap_id, ap in aps.items():
+        n = mapped.get(ap_id, 0)
+        if n != 1:
+            src = (ap.get("source") or [{}])[0]
+            findings.append(_finding("DM1", "ERROR", f"{ap_id} ({ap.get('operation')} {ap.get('collection')} by "
+                                     f"{[f['name'] for f in ap.get('filter_fields') or []]}, {src.get('file')}:{src.get('line')}) is mapped "
+                                     f"{n} times in data_model.access_patterns; it must be mapped exactly once.", "storage/blueprint.json"))
+    return findings
+
+
 def check_b0(workspace: Path) -> list[dict[str, Any]]:
     findings: list[dict[str, Any]] = []
     storage_dir = workspace / "storage"
@@ -179,11 +719,11 @@ def check_b0(workspace: Path) -> list[dict[str, Any]]:
                 findings.append(
                     _finding("B0", "ERROR", f"{label} missing non-empty 'entry_points' (required for trigger_type='api').", label)
                 )
-            if fn.get("auth") not in {"required", "none"}:
+            if fn.get("auth") not in {"required", "none", "function"}:
                 findings.append(
                     _finding(
                         "B0", "ERROR",
-                        f"{label} 'auth' must be 'required' or 'none' for trigger_type='api', got {fn.get('auth')!r}.",
+                        f"{label} 'auth' must be 'required', 'none' or 'function' (gateway open, function checks the monolith's own session) for trigger_type='api', got {fn.get('auth')!r}.",
                         label,
                     )
                 )
@@ -203,11 +743,12 @@ def check_b0(workspace: Path) -> list[dict[str, Any]]:
                 for ep in analysis.get("entry_points", [])
                 if isinstance(ep, dict)
             }
-            # Endpoint spelling differs between analyzer ("GET /item/:id") and
-            # blueprint ("GET /item/{id}") -- normalize :param and {param} the
-            # same way before comparing, to avoid false positives.
+            # Endpoint spelling differs between analyzer ("GET /item/:id", Flask
+            # "GET /item/<id>") and blueprint ("GET /item/{id}") -- normalize
+            # :param, {param} and Flask's <param> / <converter:param> the same
+            # way before comparing, to avoid false positives.
             def _normalize(ep: str) -> str:
-                return re.sub(r"(:([A-Za-z0-9_]+)|\{([A-Za-z0-9_]+)\})", "{param}", ep)
+                return re.sub(r"(:([A-Za-z0-9_]+)|\{([A-Za-z0-9_]+)\}|<(?:[A-Za-z0-9_]+:)?([A-Za-z0-9_]+)>)", "{param}", ep)
 
             # Track WHO claims each normalized endpoint, not just whether it's
             # claimed, so a double assignment (the same endpoint given to two
@@ -258,6 +799,55 @@ def check_b0(workspace: Path) -> list[dict[str, Any]]:
                             ep,
                         )
                     )
+
+            # 5. Auth vs the spec's endpoint-level classification (PIPELINE_REDESIGN
+            # §2.1/§2.2): the architect adopts it instead of re-inferring from
+            # file tags. required -> none would expose an endpoint the monolith
+            # protected, so that is an ERROR; other differences are warnings.
+            spec_auth = {
+                _normalize(f"{ep.get('method', '').upper()} {ep.get('path', '')}"): (ep.get("auth") or {}).get("classification")
+                for ep in analysis.get("entry_points", [])
+                if isinstance(ep, dict) and isinstance(ep.get("auth"), dict)
+            }
+            for fn in blueprint.get("lambda_functions", []) or []:
+                if not isinstance(fn, dict) or fn.get("trigger_type") != "api":
+                    continue
+                for ep in fn.get("entry_points") or []:
+                    if not isinstance(ep, str):
+                        continue
+                    want = spec_auth.get(_normalize(ep))
+                    got = fn.get("auth")
+                    if want == "required" and got == "none":
+                        findings.append(_finding(
+                            "B0", "ERROR",
+                            f"'{ep}' requires authentication in the monolith (spec auth.classification=required) "
+                            f"but {fn.get('name')} has auth='none'.", fn.get("name", "<unnamed>")))
+                    elif want in ("required", "none") and got in ("required", "none") and want != got:
+                        findings.append(_finding(
+                            "B0", "WARNING",
+                            f"'{ep}': spec auth.classification={want!r} but {fn.get('name')} has auth={got!r}; "
+                            "record the reason in DECISIONS.md.", fn.get("name", "<unnamed>")))
+
+    # 6. Decision record (PIPELINE_REDESIGN §2.2): storage/DECISIONS.md must
+    # exist and mention every lambda function.
+    decisions_path = storage_dir / "DECISIONS.md"
+    decisions = decisions_path.read_text(encoding="utf-8", errors="replace") if decisions_path.exists() else ""
+    fn_names = [fn.get("name") for fn in blueprint.get("lambda_functions", []) or [] if isinstance(fn, dict) and fn.get("name")]
+    if not decisions.strip():
+        findings.append(_finding("B0", "ERROR", "storage/DECISIONS.md is missing or empty; every design decision needs a recorded rationale.", "storage/DECISIONS.md"))
+    else:
+        missing = [n for n in fn_names if n not in decisions]
+        if missing:
+            findings.append(_finding("B0", "ERROR", f"storage/DECISIONS.md does not mention these lambda functions: {missing}.", "storage/DECISIONS.md"))
+    # 7. Async consumers must be idempotent (§2.4) -- keyword heuristic, warning only.
+    for fn in blueprint.get("lambda_functions", []) or []:
+        if isinstance(fn, dict) and fn.get("trigger_type") in ("sqs", "eventbridge"):
+            text = (json.dumps(fn, ensure_ascii=False) + decisions).lower()
+            if "幂等" not in text and "idempot" not in text:
+                findings.append(_finding(
+                    "B0", "WARNING",
+                    f"Consumer {fn.get('name')} has no recorded idempotency design (notes / DECISIONS.md); "
+                    "consumers must be idempotent under redelivery (m2s-async-patterns-kb).", fn.get("name", "<unnamed>")))
 
     return findings
 
@@ -437,7 +1027,15 @@ def check_c3(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def _normalize_path(path: str) -> str:
-    return re.sub(r"(:([A-Za-z0-9_]+)|\{([A-Za-z0-9_]+)\})", "{param}", path)
+    """Fold Express (":id", "{id}") and Flask ("<id>", "<int:id>") resource
+    variables to one canonical "{param}" form so blueprint paths (written in
+    the API Gateway "{id}" shape) can be compared against analyzer paths
+    (which keep the framework's own spelling, e.g. Flask "/<product_id>") and
+    against template Paths."""
+    return re.sub(r"(:([A-Za-z0-9_]+)|\{([A-Za-z0-9_]+)\}|<([A-Za-z0-9_]+:)?[A-Za-z0-9_]+>)", "{param}", path)
+
+
+API_EVENT_TYPES = ("Api", "HttpApi")  # REST and HTTP API (payload 1.0) events
 
 
 def check_c7(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
@@ -462,7 +1060,7 @@ def check_c7(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
         if not isinstance(resource, dict) or resource.get("Type") != "AWS::Serverless::Function":
             continue
         for event in ((resource.get("Properties", {}) or {}).get("Events", {}) or {}).values():
-            if not isinstance(event, dict) or event.get("Type") != "Api":
+            if not isinstance(event, dict) or event.get("Type") not in API_EVENT_TYPES:
                 continue
             props = event.get("Properties", {}) or {}
             method = str(props.get("Method", "")).upper()
@@ -509,6 +1107,8 @@ def check_c7b(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]
         if not isinstance(fn, dict):
             continue
         auth = fn.get("auth")
+        if auth == "function":
+            auth = "none"  # the function checks the monolith's own session; the gateway must not
         for ep in fn.get("entry_points", []) or []:
             method, _, path = ep.partition(" ")
             key = f"{method.upper()} {_normalize_path(path)}"
@@ -519,7 +1119,7 @@ def check_c7b(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]
         if not isinstance(resource, dict) or resource.get("Type") != "AWS::Serverless::Function":
             continue
         for event in ((resource.get("Properties", {}) or {}).get("Events", {}) or {}).values():
-            if not isinstance(event, dict) or event.get("Type") != "Api":
+            if not isinstance(event, dict) or event.get("Type") not in API_EVENT_TYPES:
                 continue
             props = event.get("Properties", {}) or {}
             method = str(props.get("Method", "")).upper()
@@ -915,6 +1515,91 @@ def _stage_report_status(workspace: Path, phase: str) -> dict[str, Any]:
     return {"dir": str(reports_dir), "exists": reports_dir.exists(), "files": [p.name for p in candidates]}
 
 
+def check_c13(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
+    """C13: shared layer layout. Lambda adds /opt/python (Python) and
+    /opt/nodejs/node_modules (Node) to the module path, and M2S code requires
+    /opt/nodejs/... directly. `sam build` with Metadata.BuildMethod puts the
+    ContentUri's contents under python/ or nodejs/ itself, so the source must
+    NOT already have that directory (python/python/x.py is not importable);
+    without BuildMethod it copies ContentUri as-is, so the source MUST have it."""
+    findings: list[dict[str, Any]] = []
+    output_root = workspace / "output"
+    for logical, res in (template.get("Resources") or {}).items():
+        if not isinstance(res, dict) or res.get("Type") not in ("AWS::Serverless::LayerVersion", "AWS::Lambda::LayerVersion"):
+            continue
+        props = res.get("Properties") or {}
+        content_uri = str(props.get("ContentUri") or "").strip()
+        if not content_uri or content_uri.startswith("s3://"):
+            continue
+        root = (output_root / content_uri).resolve()
+        if not root.is_dir():
+            findings.append(_finding("C13", "ERROR", f"{logical}.ContentUri '{content_uri}' does not exist on disk.", logical))
+            continue
+        runtimes = [str(r) for r in (props.get("CompatibleRuntimes") or [])]
+        build_method = str(((res.get("Metadata") or {}).get("BuildMethod")) or "")
+        if build_method.startswith("python") or any(r.startswith("python") for r in runtimes):
+            kind, ext = "python", ".py"
+        elif build_method.startswith("nodejs") or any(r.startswith("nodejs") for r in runtimes):
+            kind, ext = "nodejs", ".js"
+        else:
+            continue
+        nested = root / kind
+        has_nested_code = nested.is_dir() and any(nested.rglob(f"*{ext}"))
+        has_root_code = any(root.glob(f"*{ext}"))
+        if build_method and has_nested_code:
+            findings.append(_finding(
+                "C13", "ERROR",
+                f"{logical}: with Metadata.BuildMethod {build_method}, sam build puts the contents of ContentUri '{content_uri}' "
+                f"under {kind}/ itself, so the code in '{content_uri.rstrip('/')}/{kind}/' ends up in /opt/{kind}/{kind}/ and "
+                f"cannot be {'imported' if kind == 'python' else 'required'}. Put the {ext} files at the ContentUri root "
+                f"(or point ContentUri at the {kind}/ directory).", logical))
+        elif not build_method and has_root_code and not has_nested_code:
+            findings.append(_finding(
+                "C13", "ERROR",
+                f"{logical}: without Metadata.BuildMethod, sam build copies ContentUri '{content_uri}' as-is, so its {ext} files "
+                f"land directly in /opt/ where Lambda does not look. Put them under '{content_uri.rstrip('/')}/{kind}/' "
+                f"or add Metadata.BuildMethod.", logical))
+    return findings
+
+
+# Pipeline tools an agent must never modify during a run (TOOLS check). The
+# rule ledger is written by update_ledger during S5, so it is exempt.
+TOOL_DIRS = ("m2s-mcp-server", ".openharness")
+TOOL_EXEMPT = {"m2s-mcp-server/perf-rules/ledger.json"}
+
+
+def check_tools_unmodified(repo: Path | None = None, home_agents: Path | None = None) -> list[dict[str, Any]]:
+    """TOOLS: the pipeline's own code, skills and agent definitions are the
+    committed versions. shopping-cart's architect edited gates.py/verify.py
+    to get past a gate it judged wrong; agents must report such a gate with
+    evidence (STAGE_BLOCKED) instead. Checks uncommitted changes (and new
+    files) under TOOL_DIRS of the repo, and that ~/.openharness/agents/m2s-*
+    equal the repo's agents/ copies."""
+    import subprocess
+    repo = repo or Path(__file__).resolve().parent.parent
+    home_agents = home_agents or Path.home() / ".openharness" / "agents"
+    findings: list[dict[str, Any]] = []
+    if (repo / ".git").exists():
+        p = subprocess.run(["git", "-C", str(repo), "status", "--porcelain", "--untracked-files=all", "--", *TOOL_DIRS],
+                           capture_output=True, text=True, encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL)
+        if p.returncode != 0:
+            findings.append(_finding("TOOLS", "WARNING", f"could not check the pipeline tools with git: {p.stderr.strip()[:200]}", str(repo)))
+        else:
+            for line in p.stdout.splitlines():
+                path = line[3:].strip().strip('"').split(" -> ")[-1]
+                if line.strip() and path not in TOOL_EXEMPT:
+                    findings.append(_finding("TOOLS", "ERROR",
+                                             f"pipeline tool file changed and not committed: {line[:2].strip()} {path} "
+                                             "(agents must not modify the pipeline's tools; report a suspected tool bug instead)", path))
+    agents_dir = repo / "m2s-mcp-server" / "agents"
+    for src in sorted(agents_dir.glob("m2s-*.md")) if agents_dir.is_dir() else []:
+        installed = home_agents / src.name
+        if installed.exists() and installed.read_bytes() != src.read_bytes():
+            findings.append(_finding("TOOLS", "ERROR", f"{installed} differs from the committed {src.relative_to(repo)} "
+                                     "(agent definitions were edited, or not synced after a change)", str(installed)))
+    return findings
+
+
 def run_gate(phase: str, workspace: str) -> dict[str, Any]:
     ws = Path(workspace).resolve()
     template_path = ws / "output" / "template.yaml"
@@ -931,7 +1616,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
     severe = False
 
     if phase == "blueprint":
-        checks = check_b0(ws)
+        checks = check_b0(ws) + check_contract(ws) + check_dm(ws) + check_api_type(ws)
         severe = any(f["severity"] == "ERROR" for f in checks)
 
     elif phase == "code":
@@ -941,13 +1626,13 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
         # S3 ever produces a template, so gate(phase="code") would otherwise
         # never be able to catch a C10 problem at the point it's most
         # useful (before the code-developer's own self-check loop exits).
-        checks = check_c1_code(ws) + check_c10(ws)
+        checks = check_c1_code(ws) + check_c10(ws) + check_gm_code(ws)
         if template_error is None and template:
             checks += check_c3(ws, template)
             checks += check_c11(ws, template)
             checks += check_c12(ws, template)
         c1_code_failed = any(f["check_id"] == "C1" for f in checks)
-        severe = c1_code_failed
+        severe = c1_code_failed or any(f["check_id"] == "GM1" for f in checks)
 
     elif phase == "template":
         if template_error is not None:
@@ -969,6 +1654,10 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c10(ws)
                 + check_c11(ws, template)
                 + check_c12(ws, template)
+                + check_c13(ws, template)
+                + check_gm_code(ws)
+                + check_gm_template(ws, template)
+                + check_api_type_template(ws, template)
             )
             suspects = {
                 "C4": suspects_c4_env(ws, template),
@@ -995,17 +1684,24 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c10(ws)
                 + check_c11(ws, template)
                 + check_c12(ws, template)
+                + check_c13(ws, template)
+                + check_gm_code(ws)
+                + check_gm_template(ws, template)
             )
+        checks += check_tools_unmodified() + check_spec_relaxations(ws) + check_dm(ws)
         report_path = ws / "output" / "consistency_report.json"
-        report_ok = False
+        report = None
         if report_path.exists():
             try:
                 report = json.loads(report_path.read_text(encoding="utf-8"))
-                report_ok = isinstance(report, dict) and "status" in report
             except json.JSONDecodeError:
-                report_ok = False
-        if not report_ok:
+                report = None
+        if not isinstance(report, dict) or "status" not in report:
             checks.append(_finding("REPORT", "ERROR", "output/consistency_report.json missing or unreadable.", str(report_path)))
+        elif report["status"] != "PASS":
+            # Agents may write a provisional report first ("IN_PROGRESS");
+            # only a finished, passing report counts.
+            checks.append(_finding("REPORT", "ERROR", f"output/consistency_report.json status is {report['status']!r}, not 'PASS'.", str(report_path)))
         severe = any(f["severity"] == "ERROR" for f in checks)
 
     else:

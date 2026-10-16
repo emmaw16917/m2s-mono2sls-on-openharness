@@ -109,6 +109,9 @@ BLUEPRINT_KEYS: frozenset[str] = frozenset(
         "dropped_functions",
     }
 )
+#: Optional keys: only some monoliths need them (data_model: the monolith's
+#: data store is not DynamoDB, see data_store.py and gate DM1/DM2).
+OPTIONAL_BLUEPRINT_KEYS: frozenset[str] = frozenset({"data_model"})
 
 
 def merge_blueprint_key(workspace: str, key: str, value_json: str, mode: str = "append") -> dict[str, Any]:
@@ -131,10 +134,10 @@ def merge_blueprint_key(workspace: str, key: str, value_json: str, mode: str = "
             submitted (e.g. fixing one function's entry_points after
             self-checking against run_gate), not adding something new.
     """
-    if key not in BLUEPRINT_KEYS:
+    if key not in BLUEPRINT_KEYS | OPTIONAL_BLUEPRINT_KEYS:
         raise ValueError(
             f"'{key}' is not a valid blueprint.json top-level key. "
-            f"Valid keys are: {sorted(BLUEPRINT_KEYS)}. "
+            f"Valid keys are: {sorted(BLUEPRINT_KEYS | OPTIONAL_BLUEPRINT_KEYS)}. "
             "Do not invent new keys -- if none of these fit what you're "
             "trying to record, put it in 'metadata.notes' instead."
         )

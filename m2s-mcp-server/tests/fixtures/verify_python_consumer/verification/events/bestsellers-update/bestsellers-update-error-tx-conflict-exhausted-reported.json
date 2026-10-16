@@ -1,0 +1,73 @@
+{
+ "id": "bestsellers-update-error-tx-conflict-exhausted-reported",
+ "function": "bestsellers-update",
+ "kind": "error",
+ "spec_refs": [
+  "blueprint:bestsellers-update"
+ ],
+ "sqs": {
+  "records": [
+   {
+    "message_id": "m-ex1",
+    "body": {
+     "orderId": "order-ex1",
+     "books": [
+      {
+       "bookId": "b1",
+       "quantity": 2
+      }
+     ]
+    }
+   },
+   {
+    "message_id": "m-ok",
+    "body": {
+     "orderId": "order-ok",
+     "books": [
+      {
+       "bookId": "b2",
+       "quantity": 1
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "fixtures": {},
+ "expect": {
+  "batch_item_failures": [
+   "m-ex1"
+  ],
+  "tables_after": {
+   "BestsellersTable": {
+    "count": 1,
+    "contains": [
+     {
+      "bookId": "b2",
+      "salesCount": 1
+     }
+    ]
+   },
+   "IdempotencyTable": {
+    "count": 1,
+    "contains": [
+     {
+      "pk": "bestsellers-update#order-ok"
+     }
+    ]
+   }
+  }
+ },
+ "faults": [
+  {
+   "match": {
+    "op": "TransactWriteItems",
+    "item": {
+     "pk": "bestsellers-update#order-ex1"
+    }
+   },
+   "nth": "all",
+   "kind": "tx_conflict"
+  }
+ ]
+}

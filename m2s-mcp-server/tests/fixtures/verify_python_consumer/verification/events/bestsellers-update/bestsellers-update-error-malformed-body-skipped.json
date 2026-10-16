@@ -1,0 +1,43 @@
+{
+ "id": "bestsellers-update-error-malformed-body-skipped",
+ "function": "bestsellers-update",
+ "kind": "error",
+ "spec_refs": [
+  "blueprint:bestsellers-update"
+ ],
+ "sqs": {
+  "records": [
+   {
+    "message_id": "m-bad",
+    "body": "not json"
+   },
+   {
+    "message_id": "m-ok",
+    "body": {
+     "orderId": "order-ok",
+     "books": [
+      {
+       "bookId": "b1",
+       "quantity": 1
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "fixtures": {},
+ "expect": {
+  "batch_item_failures": [],
+  "tables_after": {
+   "BestsellersTable": {
+    "count": 1,
+    "contains": [
+     {
+      "bookId": "b1",
+      "salesCount": 1
+     }
+    ]
+   }
+  }
+ }
+}

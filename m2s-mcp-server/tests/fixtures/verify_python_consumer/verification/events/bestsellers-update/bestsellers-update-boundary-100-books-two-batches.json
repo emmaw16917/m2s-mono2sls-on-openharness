@@ -1,0 +1,450 @@
+{
+ "id": "bestsellers-update-boundary-100-books-two-batches",
+ "function": "bestsellers-update",
+ "kind": "boundary",
+ "spec_refs": [
+  "blueprint:bestsellers-update"
+ ],
+ "sqs": {
+  "records": [
+   {
+    "message_id": "m1",
+    "body": {
+     "orderId": "order-big",
+     "books": [
+      {
+       "bookId": "bk-000",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-001",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-002",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-003",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-004",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-005",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-006",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-007",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-008",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-009",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-010",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-011",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-012",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-013",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-014",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-015",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-016",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-017",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-018",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-019",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-020",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-021",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-022",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-023",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-024",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-025",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-026",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-027",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-028",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-029",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-030",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-031",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-032",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-033",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-034",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-035",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-036",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-037",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-038",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-039",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-040",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-041",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-042",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-043",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-044",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-045",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-046",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-047",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-048",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-049",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-050",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-051",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-052",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-053",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-054",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-055",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-056",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-057",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-058",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-059",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-060",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-061",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-062",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-063",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-064",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-065",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-066",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-067",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-068",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-069",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-070",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-071",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-072",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-073",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-074",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-075",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-076",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-077",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-078",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-079",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-080",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-081",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-082",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-083",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-084",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-085",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-086",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-087",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-088",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-089",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-090",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-091",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-092",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-093",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-094",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-095",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-096",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-097",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-098",
+       "quantity": 1
+      },
+      {
+       "bookId": "bk-099",
+       "quantity": 1
+      }
+     ]
+    }
+   }
+  ]
+ },
+ "fixtures": {},
+ "expect": {
+  "batch_item_failures": [],
+  "tables_after": {
+   "BestsellersTable": {
+    "count": 100,
+    "contains": [
+     {
+      "bookId": "bk-000",
+      "salesCount": 1
+     },
+     {
+      "bookId": "bk-099",
+      "salesCount": 1
+     }
+    ]
+   },
+   "IdempotencyTable": {
+    "count": 2,
+    "contains": [
+     {
+      "pk": "bestsellers-update#order-big#0"
+     },
+     {
+      "pk": "bestsellers-update#order-big#1"
+     }
+    ]
+   }
+  }
+ }
+}

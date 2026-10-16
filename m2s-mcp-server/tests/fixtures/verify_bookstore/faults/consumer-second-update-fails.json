@@ -1,0 +1,2 @@
+{"id":"consumer-second-update-fails","description":"2nd UpdateItem fails for good","function":"bestsellers-update-consumer","cases":["consumer-two-books"],
+ "rules":[{"match":{"op":"UpdateItem"},"nth":[2,3,4],"kind":"validation"}]}

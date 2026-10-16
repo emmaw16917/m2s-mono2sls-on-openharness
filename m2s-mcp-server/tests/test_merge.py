@@ -128,6 +128,7 @@ def test_merge_blueprint_key_builds_full_valid_blueprint(tmp_path):
     }
     for key, value in sections.items():
         m2s_merge.merge_blueprint_key(str(tmp_path), key, json.dumps(value))
+    (storage / "DECISIONS.md").write_text("## D-1\n- todo-list-items: one Lambda per endpoint\n", encoding="utf-8")
 
     findings = gates.check_b0(tmp_path)
     assert findings == []
