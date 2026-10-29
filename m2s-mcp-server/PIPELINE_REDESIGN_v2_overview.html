@@ -1,0 +1,514 @@
+<title>M2S 流水线 v2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+/* Layout: one reading column for prose, wide figure panels that scroll sideways on phones; color marks the judge, dashes mark feedback */
+:root {
+  --bg: #F4F6F9;
+  --surface: #FFFFFF;
+  --fg: #17202B;
+  --muted: #5A6676;
+  --line: #CBD3DD;
+  --accent: #0D6E68;
+  --accent-tint: #E1F0EE;
+  --fb: #6A4BA8;
+  --font-ui: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-cjk: "Noto Sans SC", "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161D; --surface: #19212B; --fg: #E4E9EF; --muted: #9AA6B5; --line: #354152;
+    --accent: #4CC0B6; --accent-tint: #13332F; --fb: #B49BEA; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161D; --surface: #19212B; --fg: #E4E9EF; --muted: #9AA6B5; --line: #354152;
+  --accent: #4CC0B6; --accent-tint: #13332F; --fb: #B49BEA; color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-cjk);
+  font-size: 15px;
+  line-height: 1.7;
+}
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+  display: grid;
+  gap: 48px;
+}
+header { display: grid; gap: 12px; max-width: 760px; }
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+h1 {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: clamp(30px, 5vw, 44px);
+  line-height: 1.15;
+  margin: 0;
+  text-wrap: balance;
+}
+h2 {
+  font-family: var(--font-ui);
+  font-size: 22px;
+  line-height: 1.3;
+  margin: 0;
+  text-wrap: balance;
+}
+p { margin: 0; max-width: 68ch; }
+.lede { font-size: 17px; color: var(--fg); }
+.meta {
+  display: flex; flex-wrap: wrap; gap: 8px 20px;
+  font-size: 13px; color: var(--muted);
+  padding: 0; margin: 4px 0 0; list-style: none;
+}
+.meta b { color: var(--fg); font-weight: 500; }
+section { display: grid; gap: 16px; }
+.ideas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+.idea {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: grid; gap: 6px; align-content: start;
+  min-width: 0;
+}
+.idea .tag {
+  font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; color: var(--accent);
+}
+.idea h3 { margin: 0; font-size: 17px; font-family: var(--font-ui); line-height: 1.35; }
+.idea p { color: var(--muted); font-size: 14px; }
+
+figure { margin: 0; display: grid; gap: 10px; }
+.fig-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  overflow-x: auto;
+}
+.fig-panel svg { display: block; width: 100%; height: auto; min-width: 880px; font-family: var(--font-cjk); }
+figcaption { font-size: 13.5px; color: var(--muted); max-width: 90ch; }
+
+/* SVG roles */
+.box { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+.box-strong { fill: var(--surface); stroke: var(--fg); stroke-width: 1.4; }
+.box-j { fill: var(--surface); stroke: var(--accent); stroke-width: 1.4; }
+.band-j { fill: var(--accent-tint); }
+.box-ea { fill: var(--bg); stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.group { fill: none; stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
+.pill { fill: var(--accent); }
+.pill-t { fill: var(--surface); font: 600 13px var(--font-mono); }
+.t-h { fill: var(--fg); font-weight: 600; font-size: 13.5px; }
+.t-s { fill: var(--muted); font-size: 11.5px; }
+.t-code { fill: var(--accent); font: 600 13px var(--font-mono); }
+.t-mono { fill: var(--fg); font: 500 11.5px var(--font-mono); }
+.lane { fill: var(--accent); font-size: 12px; font-weight: 600; }
+.lbl { fill: var(--muted); font-size: 11px; }
+.lbl-j { fill: var(--accent); font-size: 11px; }
+.lbl-fb { fill: var(--fb); font-size: 11px; }
+.edge { stroke: var(--fg); stroke-width: 1.3; fill: none; }
+.edge-j { stroke: var(--accent); stroke-width: 1.5; fill: none; }
+.edge-fb { stroke: var(--fb); stroke-width: 1.3; fill: none; stroke-dasharray: 5 4; }
+.ah { fill: var(--fg); }
+.ah-j { fill: var(--accent); }
+.ah-fb { fill: var(--fb); }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 720px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--font-ui); font-weight: 600; font-size: 13px; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: none; }
+td code, p code {
+  font-family: var(--font-mono); font-size: 12.5px; color: var(--accent);
+}
+.code-col { font-family: var(--font-mono); color: var(--accent); white-space: nowrap; font-weight: 500; }
+.layer { font-family: var(--font-mono); font-weight: 600; }
+.note { color: var(--muted); font-size: 14px; }
+footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
+footer a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">Mono2Sls · 设计草案</div>
+    <h1>M2S 流水线 v2</h1>
+    <p class="lede">把单体 Web 应用自动迁移成 AWS Serverless 的 agent 流水线。v2 的主线是：先以单体的实际行为为准建立裁判，再设计、实现、验收和优化；跨应用的经验只在升级流水线时进入规则手册。</p>
+    <ul class="meta">
+      <li><b>状态</b> 草案，2026-10-30，尚未实现</li>
+      <li><b>范围</b> 离线迁移和验收，不部署 AWS</li>
+      <li><b>基准</b> 7 个单体应用（Express / Flask，DynamoDB / MongoDB）</li>
+    </ul>
+  </header>
+
+  <section aria-labelledby="ideas-h">
+    <h2 id="ideas-h">三个核心想法</h2>
+    <div class="ideas">
+      <div class="idea">
+        <span class="tag">裁判</span>
+        <h3>先建裁判，以单体为准</h3>
+        <p>测试的期望结果来自实际运行单体，不来自 LLM 对代码的理解。裁判建好后要在故意弄坏的单体上自检，然后冻结。</p>
+      </div>
+      <div class="idea">
+        <span class="tag">知识分层</span>
+        <h3>修流程，不修产物</h3>
+        <p>通用规则写在规则手册里，只在升级流水线时修改；每个应用特有的问题记进它自己的缺口清单和裁定记录。</p>
+      </div>
+      <div class="idea">
+        <span class="tag">三层观测</span>
+        <h3>分清功能和实现方式</h3>
+        <p>外部行为分为"必须保持"和"可在声明范围内放宽"两层，由裁判判定；内部的实现轨迹可以自由修改。</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="flow-h">
+    <h2 id="flow-h">一次运行的流程</h2>
+    <figure>
+      <div class="fig-panel">
+        <svg viewBox="0 0 1200 630" role="img" aria-label="单次运行流程：单体代码先进入事实线，之后分成两路。裁判线以单体为准建立并冻结裁判，主线依次是缺口盘点、设计、增量测试设计和实现。冻结的裁判以只读方式供实现自测，并用于验收。验收通过得到基线 B0，之后是优化和收尾，最后归档到证据库。虚线表示反馈：事实错误回到事实线，验收失败回到实现或设计，架构类优化回到设计。">
+          <defs>
+            <marker id="f1-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+            <marker id="f1-aj" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-j"/></marker>
+            <marker id="f1-af" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-fb"/></marker>
+          </defs>
+
+          <!-- judge lane -->
+          <rect class="band-j" x="368" y="40" width="704" height="114" rx="10"/>
+          <text class="lane" x="384" y="60">裁判线 J（与设计并行）</text>
+
+          <rect class="box-j" x="380" y="72" width="100" height="68" rx="8"/>
+          <text class="t-code" x="430" y="98" text-anchor="middle">J1</text>
+          <text class="t-s" x="430" y="121" text-anchor="middle">黑盒用例</text>
+          <rect class="box-j" x="496" y="72" width="100" height="68" rx="8"/>
+          <text class="t-code" x="546" y="98" text-anchor="middle">J2</text>
+          <text class="t-s" x="546" y="121" text-anchor="middle">运行单体</text>
+          <rect class="box-j" x="612" y="72" width="100" height="68" rx="8"/>
+          <text class="t-code" x="662" y="98" text-anchor="middle">J3</text>
+          <text class="t-s" x="662" y="121" text-anchor="middle">规格对账</text>
+          <rect class="box-j" x="728" y="72" width="100" height="68" rx="8"/>
+          <text class="t-code" x="778" y="98" text-anchor="middle">J4</text>
+          <text class="t-s" x="778" y="121" text-anchor="middle">单体白盒补测</text>
+          <rect class="box-j" x="844" y="72" width="100" height="68" rx="8"/>
+          <text class="t-code" x="894" y="98" text-anchor="middle">J5</text>
+          <text class="t-s" x="894" y="121" text-anchor="middle">变异自检</text>
+          <rect class="box-j" x="960" y="72" width="100" height="68" rx="8"/>
+          <text class="t-code" x="1010" y="98" text-anchor="middle">J6</text>
+          <text class="t-s" x="1010" y="121" text-anchor="middle">冻结裁判</text>
+
+          <line class="edge-j" x1="480" y1="106" x2="496" y2="106" marker-end="url(#f1-aj)"/>
+          <line class="edge-j" x1="596" y1="106" x2="612" y2="106" marker-end="url(#f1-aj)"/>
+          <line class="edge-j" x1="712" y1="106" x2="728" y2="106" marker-end="url(#f1-aj)"/>
+          <line class="edge-j" x1="828" y1="106" x2="844" y2="106" marker-end="url(#f1-aj)"/>
+          <line class="edge-j" x1="944" y1="106" x2="960" y2="106" marker-end="url(#f1-aj)"/>
+
+          <!-- main row -->
+          <rect class="box-strong" x="20" y="250" width="100" height="84" rx="8"/>
+          <text class="t-h" x="70" y="278" text-anchor="middle">单体代码</text>
+          <text class="t-s" x="70" y="300" text-anchor="middle">Express · Flask</text>
+          <text class="t-s" x="70" y="318" text-anchor="middle">含建表脚本</text>
+
+          <rect class="box" x="172" y="250" width="160" height="84" rx="8"/>
+          <text class="t-h" x="252" y="278" text-anchor="middle">F 事实线</text>
+          <text class="t-s" x="252" y="300" text-anchor="middle">F1 结构提取 · F2 语义标注</text>
+          <text class="t-s" x="252" y="318" text-anchor="middle">F3 出处检查</text>
+
+          <rect class="box" x="384" y="250" width="110" height="84" rx="8"/>
+          <text class="t-h" x="439" y="278" text-anchor="middle">G 缺口盘点</text>
+          <text class="t-s" x="439" y="300" text-anchor="middle">G1 工具扫描</text>
+          <text class="t-s" x="439" y="318" text-anchor="middle">G2 agent 补充</text>
+
+          <rect class="box" x="546" y="250" width="140" height="84" rx="8"/>
+          <text class="t-h" x="616" y="278" text-anchor="middle">A 设计</text>
+          <text class="t-s" x="616" y="300" text-anchor="middle">蓝图 · 适配映射</text>
+          <text class="t-s" x="616" y="318" text-anchor="middle">决策记录</text>
+
+          <rect class="box" x="738" y="250" width="130" height="84" rx="8"/>
+          <text class="t-h" x="803" y="278" text-anchor="middle">D 增量测试设计</text>
+          <text class="t-s" x="803" y="300" text-anchor="middle">写代码之前完成</text>
+          <text class="t-s" x="803" y="318" text-anchor="middle">看不到实现</text>
+
+          <rect class="box" x="920" y="250" width="140" height="84" rx="8"/>
+          <text class="t-h" x="990" y="278" text-anchor="middle">I 实现</text>
+          <text class="t-s" x="990" y="300" text-anchor="middle">I1 代码 · I2 模板</text>
+          <text class="t-s" x="990" y="318" text-anchor="middle">I3 一致性检查</text>
+
+          <line class="edge" x1="120" y1="292" x2="172" y2="292" marker-end="url(#f1-a)"/>
+          <text class="lbl" x="146" y="284" text-anchor="middle">源代码</text>
+          <line class="edge" x1="332" y1="292" x2="384" y2="292" marker-end="url(#f1-a)"/>
+          <text class="lbl" x="358" y="284" text-anchor="middle">事实库</text>
+          <line class="edge" x1="494" y1="292" x2="546" y2="292" marker-end="url(#f1-a)"/>
+          <text class="lbl" x="520" y="284" text-anchor="middle">缺口清单</text>
+          <line class="edge" x1="686" y1="292" x2="738" y2="292" marker-end="url(#f1-a)"/>
+          <text class="lbl" x="712" y="284" text-anchor="middle">蓝图</text>
+          <line class="edge" x1="868" y1="292" x2="920" y2="292" marker-end="url(#f1-a)"/>
+          <text class="lbl" x="894" y="284" text-anchor="middle">先出题</text>
+
+          <!-- into and out of the judge lane -->
+          <path class="edge" d="M252,250 V106 H380" marker-end="url(#f1-a)"/>
+          <text class="lbl" x="260" y="182">事实库</text>
+          <path class="edge-j" d="M70,250 V30 H546 V72" marker-end="url(#f1-aj)"/>
+          <text class="lbl-j" x="300" y="22" text-anchor="middle">实际运行单体，得到期望结果</text>
+          <path class="edge-fb" d="M662,140 V200 H300 V250" marker-end="url(#f1-af)"/>
+          <text class="lbl-fb" x="480" y="194" text-anchor="middle">事实错误 → 回到 F2 修正</text>
+          <path class="edge-j" d="M1010,140 V250" marker-end="url(#f1-aj)"/>
+          <text class="lbl-j" x="1000" y="200" text-anchor="end">只读 · run_judge 自测</text>
+          <path class="edge-j" d="M1060,106 H1120 V512 H1060" marker-end="url(#f1-aj)"/>
+          <text class="lbl-j" x="1128" y="300">冻结的</text>
+          <text class="lbl-j" x="1128" y="316">裁判</text>
+
+          <!-- second row, flows right to left -->
+          <rect class="box" x="860" y="470" width="200" height="84" rx="8"/>
+          <text class="t-h" x="960" y="498" text-anchor="middle">V 验收</text>
+          <text class="t-s" x="960" y="520" text-anchor="middle">V1 映射检查 · V2 裁判验收</text>
+          <text class="t-s" x="960" y="538" text-anchor="middle">V3 增量测试 · V4 分诊</text>
+
+          <rect class="pill" x="780" y="494" width="50" height="36" rx="18"/>
+          <text class="pill-t" x="805" y="517" text-anchor="middle">B0</text>
+          <text class="lbl" x="805" y="550" text-anchor="middle">验收通过</text>
+
+          <rect class="box" x="520" y="470" width="220" height="84" rx="8"/>
+          <text class="t-h" x="630" y="498" text-anchor="middle">O 优化</text>
+          <text class="t-s" x="630" y="520" text-anchor="middle">O1 诊断 · O2 小范围改动</text>
+          <text class="t-s" x="630" y="538" text-anchor="middle">O3 架构申请 · O4 交给人</text>
+
+          <rect class="box" x="300" y="470" width="170" height="84" rx="8"/>
+          <text class="t-h" x="385" y="498" text-anchor="middle">C 收尾</text>
+          <text class="t-s" x="385" y="520" text-anchor="middle">C1 最终检验</text>
+          <text class="t-s" x="385" y="538" text-anchor="middle">C2 归档</text>
+
+          <rect class="box-ea" x="40" y="470" width="200" height="84" rx="8"/>
+          <text class="t-h" x="140" y="498" text-anchor="middle">证据库（跨应用）</text>
+          <text class="t-s" x="140" y="520" text-anchor="middle">仓库内 · 只追加</text>
+          <text class="t-s" x="140" y="538" text-anchor="middle">运行中不读</text>
+
+          <line class="edge" x1="860" y1="512" x2="830" y2="512" marker-end="url(#f1-a)"/>
+          <line class="edge" x1="780" y1="512" x2="740" y2="512" marker-end="url(#f1-a)"/>
+          <line class="edge" x1="520" y1="512" x2="470" y2="512" marker-end="url(#f1-a)"/>
+          <text class="lbl" x="495" y="504" text-anchor="middle">最终版本</text>
+          <line class="edge" x1="300" y1="512" x2="240" y2="512" marker-end="url(#f1-a)"/>
+          <text class="lbl" x="270" y="504" text-anchor="middle">归档</text>
+
+          <path class="edge" d="M1020,334 V470" marker-end="url(#f1-a)"/>
+          <text class="lbl" x="1028" y="408">代码 + 模板</text>
+
+          <!-- feedback -->
+          <path class="edge-fb" d="M950,470 V334" marker-end="url(#f1-af)"/>
+          <text class="lbl-fb" x="942" y="404" text-anchor="end">分诊回炉</text>
+          <path class="edge-fb" d="M880,470 V425 H640 V334" marker-end="url(#f1-af)"/>
+          <text class="lbl-fb" x="760" y="419" text-anchor="middle">设计问题</text>
+          <path class="edge-fb" d="M600,470 V334" marker-end="url(#f1-af)"/>
+          <text class="lbl-fb" x="592" y="400" text-anchor="end">O3 架构改动</text>
+
+          <!-- legend -->
+          <line class="edge" x1="40" y1="600" x2="80" y2="600" marker-end="url(#f1-a)"/>
+          <text class="lbl" x="90" y="604">数据和顺序</text>
+          <line class="edge-j" x1="220" y1="600" x2="260" y2="600" marker-end="url(#f1-aj)"/>
+          <text class="lbl" x="270" y="604">裁判相关</text>
+          <line class="edge-fb" x1="380" y1="600" x2="420" y2="600" marker-end="url(#f1-af)"/>
+          <text class="lbl" x="430" y="604">反馈和回炉</text>
+        </svg>
+      </div>
+      <figcaption>图 1　裁判线只依赖事实库和单体，可以和设计同时进行。它冻结后有两个用途：以只读方式给实现自测，以及在验收时作为标准。增量测试在写代码之前设计，专门测 serverless 新增的行为，比如消息重复投递时的幂等。需要做决定的问题（规格问题、放宽申请、性能权衡）都进入统一的裁定通道，图中没有画出。</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="mod-h">
+    <h2 id="mod-h">模块一览</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>模块</th><th>执行者</th><th>主要输入</th><th>主要输出</th><th>反馈给</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="code-col">M0 开工</td><td>主 Agent（工具）</td><td>当前流水线</td><td>版本戳、工作区</td><td>流水线有未提交改动 → 人</td></tr>
+          <tr><td class="code-col">F 事实线</td><td>分析脚本、spec-annotator、出处检查</td><td>单体代码</td><td>事实库：路由、鉴权、请求和响应、业务规则、数据访问、表结构，每条带出处</td><td>出处错误 → F2</td></tr>
+          <tr><td class="code-col">G 缺口盘点</td><td><code>gap_scan</code> 工具、spec-annotator</td><td>事实库、缺口类别表</td><td>缺口清单</td><td>→ A 逐条决定</td></tr>
+          <tr><td class="code-col">J 裁判线</td><td>verifier、<code>run_monolith</code> 等工具</td><td>事实库、单体代码（运行和阅读）</td><td>冻结的裁判、覆盖率和变异检出率</td><td>事实错误 → F2；需要决定 → 裁定通道</td></tr>
+          <tr><td class="code-col">A 设计</td><td>architect</td><td>事实库、缺口清单、裁定记录、规则手册</td><td>蓝图、适配映射、决策记录</td><td>疑点 → 裁定通道</td></tr>
+          <tr><td class="code-col">D 增量测试</td><td>verifier</td><td>蓝图、缺口决定、规则手册、单体的效果</td><td>增量测试用例</td><td>蓝图矛盾 → A</td></tr>
+          <tr><td class="code-col">I 实现</td><td>code-developer、sam-engineer ×3、validator</td><td>蓝图、规则手册、裁判（只读）</td><td>函数代码、SAM 模板</td><td>蓝图问题 → A；代码问题 → I1</td></tr>
+          <tr><td class="code-col">V 验收</td><td>工具、verifier</td><td>裁判、增量测试、适配映射、目标版本</td><td>判定、覆盖率、基线 B0</td><td>分诊 → A / I / 裁定通道</td></tr>
+          <tr><td class="code-col">O 优化</td><td>perf-optimizer、判决工具</td><td>B0、规则手册的性能部分</td><td>保留的改动、性能报告</td><td>架构改动 → A；有得有失 → 人</td></tr>
+          <tr><td class="code-col">C 收尾</td><td>主 Agent（工具）</td><td>最终版本</td><td>最终报告、归档</td><td>—</td></tr>
+          <tr><td class="code-col">U 升级</td><td>人、汇总脚本、对抗评审</td><td>证据库</td><td>新版流水线</td><td>回补各应用</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="orch-h">
+    <h2 id="orch-h">谁在协调这些 agent</h2>
+    <p>由一个主 Agent 编排，子 agent 之间不直接对话。主 Agent 按编排协议一次派发一个子 agent；子 agent 读写工作区里的文件，下一个子 agent 从文件接手；每一步是否通过，由主 Agent 调用检查工具来判定。</p>
+    <figure>
+      <div class="fig-panel">
+        <svg viewBox="0 0 940 340" role="img" aria-label="编排方式：主 Agent 按编排协议一次派发一个子 agent；子 agent 之间不直接对话，只通过工作区文件交接；主 Agent 用 MCP 工具和 gate 复核每一步。">
+          <defs>
+            <marker id="f2-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+          </defs>
+          <rect class="box-strong" x="330" y="24" width="240" height="74" rx="8"/>
+          <text class="t-h" x="450" y="50" text-anchor="middle">主 Agent</text>
+          <text class="t-s" x="450" y="70" text-anchor="middle">编排协议 m2s-migrate</text>
+          <text class="t-s" x="450" y="88" text-anchor="middle">派发 · 复核 · 回炉</text>
+
+          <rect class="box-j" x="640" y="24" width="260" height="74" rx="8"/>
+          <text class="t-h" x="770" y="50" text-anchor="middle">MCP 工具 / gate</text>
+          <text class="t-s" x="770" y="70" text-anchor="middle">检查和判定的权威来源</text>
+          <text class="t-s" x="770" y="88" text-anchor="middle">agent 自己说"完成"不算数</text>
+          <line class="edge" x1="570" y1="61" x2="640" y2="61" marker-end="url(#f2-a)"/>
+          <text class="lbl" x="605" y="54" text-anchor="middle">调用</text>
+
+          <path class="edge" d="M450,98 V122"/>
+          <line class="edge" x1="90" y1="122" x2="738" y2="122"/>
+          <text class="lbl" x="250" y="115" text-anchor="middle">派发，一次一个</text>
+          <line class="edge" x1="90" y1="122" x2="90" y2="146" marker-end="url(#f2-a)"/>
+          <line class="edge" x1="198" y1="122" x2="198" y2="146" marker-end="url(#f2-a)"/>
+          <line class="edge" x1="306" y1="122" x2="306" y2="146" marker-end="url(#f2-a)"/>
+          <line class="edge" x1="414" y1="122" x2="414" y2="146" marker-end="url(#f2-a)"/>
+          <line class="edge" x1="522" y1="122" x2="522" y2="146" marker-end="url(#f2-a)"/>
+          <line class="edge" x1="630" y1="122" x2="630" y2="146" marker-end="url(#f2-a)"/>
+          <line class="edge" x1="738" y1="122" x2="738" y2="146" marker-end="url(#f2-a)"/>
+
+          <rect class="box" x="40" y="146" width="100" height="60" rx="7"/>
+          <text class="t-mono" x="90" y="171" text-anchor="middle">spec-annotator</text>
+          <text class="t-s" x="90" y="192" text-anchor="middle">F2 · G2</text>
+          <rect class="box" x="148" y="146" width="100" height="60" rx="7"/>
+          <text class="t-mono" x="198" y="171" text-anchor="middle">verifier</text>
+          <text class="t-s" x="198" y="192" text-anchor="middle">J · D · V3</text>
+          <rect class="box" x="256" y="146" width="100" height="60" rx="7"/>
+          <text class="t-mono" x="306" y="171" text-anchor="middle">architect</text>
+          <text class="t-s" x="306" y="192" text-anchor="middle">A</text>
+          <rect class="box" x="364" y="146" width="100" height="60" rx="7"/>
+          <text class="t-mono" x="414" y="171" text-anchor="middle">code-developer</text>
+          <text class="t-s" x="414" y="192" text-anchor="middle">I1</text>
+          <rect class="box" x="472" y="146" width="100" height="60" rx="7"/>
+          <text class="t-mono" x="522" y="171" text-anchor="middle">sam-engineer</text>
+          <text class="t-s" x="522" y="192" text-anchor="middle">I2，派发 3 次</text>
+          <rect class="box" x="580" y="146" width="100" height="60" rx="7"/>
+          <text class="t-mono" x="630" y="171" text-anchor="middle">validator</text>
+          <text class="t-s" x="630" y="192" text-anchor="middle">I3</text>
+          <rect class="box" x="688" y="146" width="100" height="60" rx="7"/>
+          <text class="t-mono" x="738" y="171" text-anchor="middle">perf-optimizer</text>
+          <text class="t-s" x="738" y="192" text-anchor="middle">O</text>
+
+          <line class="edge" x1="90" y1="206" x2="90" y2="262" marker-start="url(#f2-a)" marker-end="url(#f2-a)"/>
+          <line class="edge" x1="198" y1="206" x2="198" y2="262" marker-start="url(#f2-a)" marker-end="url(#f2-a)"/>
+          <line class="edge" x1="306" y1="206" x2="306" y2="262" marker-start="url(#f2-a)" marker-end="url(#f2-a)"/>
+          <line class="edge" x1="414" y1="206" x2="414" y2="262" marker-start="url(#f2-a)" marker-end="url(#f2-a)"/>
+          <line class="edge" x1="522" y1="206" x2="522" y2="262" marker-start="url(#f2-a)" marker-end="url(#f2-a)"/>
+          <line class="edge" x1="630" y1="206" x2="630" y2="262" marker-start="url(#f2-a)" marker-end="url(#f2-a)"/>
+          <line class="edge" x1="738" y1="206" x2="738" y2="262" marker-start="url(#f2-a)" marker-end="url(#f2-a)"/>
+          <text class="lbl" x="750" y="240">读写文件</text>
+
+          <line class="edge" x1="880" y1="98" x2="880" y2="262" marker-end="url(#f2-a)"/>
+          <text class="lbl" x="872" y="180" text-anchor="end">检查</text>
+
+          <rect class="box-ea" x="40" y="262" width="860" height="60" rx="8"/>
+          <text class="t-h" x="470" y="287" text-anchor="middle">工作区（每次运行一个独立的 git 仓库）</text>
+          <text class="t-s" x="470" y="308" text-anchor="middle">事实库 · 缺口清单 · 裁判 · 蓝图 · 代码和模板 · 判定 · 工作报告 · 裁定记录</text>
+        </svg>
+      </div>
+      <figcaption>图 2　这是"中心编排"结构，不是让多个 agent 互相讨论的团队结构。子 agent 发现上游的问题时，在工作报告里写明，由主 Agent 决定退回哪个模块。后续最可能引入"平级讨论"的地方是流水线升级时的规则压测：两个对抗评审加一个仲裁。</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="layer-h">
+    <h2 id="layer-h">三层观测</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>层</th><th>含义</th><th>例子</th><th>由谁判定</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="layer">P 必须保持</td><td>必须和单体一致</td><td>状态码、响应体、响应头，写操作之后读回来的数据</td><td>裁判：严格比对单体的实际输出</td></tr>
+          <tr><td class="layer">R 可放宽</td><td>允许和单体不同，但只能在裁定声明的范围内</td><td>结果顺序不作要求；单体遇到数据库错误返回 500，serverless 重试后成功（最终数据要和返回的结果一致）</td><td>裁判：按裁定允许的结果集合判定</td></tr>
+          <tr><td class="layer">T 实现轨迹</td><td>内部细节，不做判定</td><td>数据库调用的次数和顺序，串行还是并行</td><td>不判定；小范围优化时，另用"和 B0 行为一致"的检查兜底</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="asset-h">
+    <h2 id="asset-h">三类资产和跨运行升级</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>类别</th><th>包含</th><th>运行中</th><th>什么时候改</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><b>跨应用共用</b>（流水线本身）</td><td>编排协议、agent 定义、规则手册、MCP 工具和 gate、hook、模型</td><td>只读，每个 gate 都检查</td><td>流水线升级时，经人批准</td></tr>
+          <tr><td><b>单应用指导内容</b></td><td>事实库、缺口清单、裁判、蓝图和适配映射、决策记录、裁定记录</td><td>经指定通道修订，到点冻结</td><td>本次运行内</td></tr>
+          <tr><td><b>单应用产物</b></td><td>代码、模板、增量测试、判定、性能报告、最终报告</td><td>由各模块产出，可以重新生成</td><td>本次运行内</td></tr>
+          <tr><td><b>证据库</b>（跨应用）</td><td>每次运行的裁定记录、缺口清单、性能报告、版本戳</td><td>只追加，运行中不读</td><td>每次运行结束时归档</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <figure>
+      <div class="fig-panel">
+        <svg viewBox="0 0 940 240" role="img" aria-label="跨运行升级：每次运行只读使用当前版本的流水线，结束时把裁定、缺口和性能报告归档到证据库；升级时汇总证据库，经人评审和压测后发布新版流水线，再回补并统一重跑各应用。">
+          <defs>
+            <marker id="f3-a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+            <marker id="f3-aj" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-j"/></marker>
+          </defs>
+          <rect class="box-strong" x="20" y="40" width="200" height="110" rx="8"/>
+          <text class="t-h" x="120" y="68" text-anchor="middle">流水线 H<tspan class="t-s" dy="4">n</tspan></text>
+          <text class="t-s" x="120" y="94" text-anchor="middle">编排协议 · agent 定义</text>
+          <text class="t-s" x="120" y="114" text-anchor="middle">规则手册 · 工具 · 模型</text>
+          <text class="lbl" x="120" y="136" text-anchor="middle">运行中只读</text>
+
+          <rect class="group" x="290" y="22" width="220" height="150" rx="8"/>
+          <rect class="box" x="305" y="36" width="190" height="36" rx="6"/>
+          <text class="t-s" x="400" y="59" text-anchor="middle">应用 A：一次运行</text>
+          <rect class="box" x="305" y="82" width="190" height="36" rx="6"/>
+          <text class="t-s" x="400" y="105" text-anchor="middle">应用 B：一次运行</text>
+          <text class="t-s" x="400" y="148" text-anchor="middle">……</text>
+          <line class="edge" x1="220" y1="95" x2="290" y2="95" marker-end="url(#f3-a)"/>
+          <text class="lbl" x="255" y="88" text-anchor="middle">使用</text>
+
+          <rect class="box-ea" x="590" y="55" width="140" height="80" rx="8"/>
+          <text class="t-h" x="660" y="84" text-anchor="middle">证据库</text>
+          <text class="t-s" x="660" y="105" text-anchor="middle">只追加</text>
+          <text class="t-s" x="660" y="123" text-anchor="middle">裁定 · 缺口 · 性能</text>
+          <line class="edge" x1="510" y1="95" x2="590" y2="95" marker-end="url(#f3-a)"/>
+          <text class="lbl" x="550" y="88" text-anchor="middle">C2 归档</text>
+
+          <rect class="box-j" x="780" y="30" width="140" height="130" rx="8"/>
+          <text class="t-h" x="850" y="56" text-anchor="middle">U 升级</text>
+          <text class="t-s" x="850" y="80" text-anchor="middle">U1 汇总</text>
+          <text class="t-s" x="850" y="100" text-anchor="middle">U2 晋升评审（人）</text>
+          <text class="t-s" x="850" y="120" text-anchor="middle">U3 压测新规则</text>
+          <text class="t-s" x="850" y="140" text-anchor="middle">U4 发布新版</text>
+          <line class="edge" x1="730" y1="95" x2="780" y2="95" marker-end="url(#f3-a)"/>
+          <text class="lbl" x="755" y="88" text-anchor="middle">升级时读</text>
+
+          <path class="edge-j" d="M850,160 V206 H120 V150" marker-end="url(#f3-aj)"/>
+          <text class="lbl-j" x="485" y="228" text-anchor="middle">新版 H<tspan dy="3">n+1</tspan><tspan dy="-3">：U5 先在两个应用上回补，U6 用最终版本统一重跑全部应用</tspan></text>
+        </svg>
+      </div>
+      <figcaption>图 3　运行过程中不读其他应用的记录，保证同一版流水线下各应用的实验条件相同。反复出现的裁定和缺口，要满足晋升条件并经人批准，才进入规则手册。</figcaption>
+    </figure>
+  </section>
+
+  <footer>
+    <div>每个模块的输入、输出、反馈和所用工具，详见仓库中的 <code>m2s-mcp-server/PIPELINE_REDESIGN_v2.md</code>。</div>
+    <div>方法论参考：<a href="https://claude.com/blog/ai-code-migration">Anthropic, How Anthropic runs large-scale code migrations with Claude Code</a>；<a href="https://arxiv.org/abs/2501.06972">Google, How is Google using AI for internal code migrations?</a></div>
+  </footer>
+</div>
