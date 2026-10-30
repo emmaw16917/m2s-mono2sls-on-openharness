@@ -77,7 +77,9 @@ v3 改的是**谁来调度、怎么通信**，不改**每一步做什么**。
 ### 1.2 环境（本机）
 
 - Windows 11；Git Bash 和 PowerShell。
-- conda 环境 `mono2esls`：OpenHarness（可编辑安装，源码在 `OpenHarness/src/`）、`mcp` 1.30、sam、boto3。
+- conda 环境 `mono2esls`：OpenHarness（可编辑安装，源码在 `OpenHarness/src/`）、`mcp` 1.30、sam、boto3、cfn-lint。
+  - **协调层 `coord/` 也在这个环境里运行**（2026-10-30 定），和 `oh` 在同一个环境里。调度器直接调用 `gates.py` 等模块，m2s-mcp-server 的测试在这个环境里同样全部通过（194 个通过，3 个跳过）。
+  - m2s-server 本身仍按现有配置，在 `mono2sls` 环境里运行。
 - 本机 Docker 不稳定；可以在 AWS 上实测。
 - 2026-10-30 实测：`br` 0.7.6 和 mcp_agent_mail_rust 0.3.39 都可以在本机使用（探索稿 §6.4）。
 
@@ -505,11 +507,11 @@ agent_mail 的 build slot 只是建议性的，也不能计数，所以只用来
 | 编号 | 内容 | 产出 | 验收 | 依赖 | 规模 |
 |---|---|---|---|---|---|
 | W0.1 | 修复 `--settings`、`--allowed-tools`、`--disallowed-tools`、`--mcp-config`；以及 `-p` 模式下的 `--permission-mode`、`--append-system-prompt` | OpenHarness 补丁 + 测试 | 用 `--settings` 传入的禁止规则在 `oh -p` 中生效。**2026-10-30 完成**：<br>- OpenHarness 分支 `feat/cli-settings-flags`；<br>- 新增测试 21 个，全部通过；<br>- 全量测试的失败集合和改动前相同（14 个，都和 Windows 环境有关）；<br>- 真实的 `oh -p` 中，受保护文件用 `read_file` 和 bash `cat` 读取都被拒绝 | — | M |
-| W0.2 | 固定版本：`br` 0.7.6、mcp_agent_mail_rust 0.3.39，校验 sha256 后放进 `D:\m2s-tools\`；写一个冒烟测试脚本 | `coord/smoke_tools.py` | 本机上冒烟测试通过：建任务、依赖、门禁、`allow_bypass`、HTTP 连接、建讨论串 | — | S |
+| W0.2 | 固定版本：`br` 0.7.6、mcp_agent_mail_rust 0.3.39，校验 sha256 后放进 `D:\m2s-tools\`；写一个冒烟测试脚本 | `coord/toolchain.py`、`coord/smoke_tools.py`；`coord/board.py`、`coord/mail.py`（最小封装，W1.1、W3.1 在此基础上扩展）；`coord/policy.py`（附录 B 的策略） | 本机上冒烟测试通过：建任务、依赖、门禁、`allow_bypass`、HTTP 连接、建讨论串。**2026-10-30 完成**：<br>- 安装命令：`python -m coord.toolchain install`。安装包先按固定的 sha256 校验，再解压；<br>- 冒烟测试 `python -m coord.smoke_tools` 的全部检查通过，包括附录 B 里原先没验证过的 `needs_human` 两条迁移规则（都必须附说明）；<br>- 单元测试 8 个；带工具的冒烟测试要设置 `M2S_RUN_TOOL_SMOKE=1` 才运行 | — | S |
 | W0.3 | 路径规则区分读和写；新增可写路径名单；检查顺序改为"禁止规则优先于工具允许名单" | OpenHarness 补丁 + 测试 | 只读工具读得到但写不进去；列在允许名单里的工具也受路径规则和命令规则约束；不写 `access` 的老配置照样有效。**2026-10-30 完成**：<br>- 新增测试 15 个，全部通过，包括用真实的写文件工具，经过查询引擎实测；<br>- 全量测试 1175 个通过，失败的仍是原来那 14 个 | W0.1 | S |
 | W0.4 | 子 agent 的权限传递 | OpenHarness 补丁 + 测试 | 子 agent 也受 agent 定义里的权限约束。**2026-10-30 完成**：<br>- 子 agent 继承父进程的限制，不能再通过开子 agent 绕过；<br>- 新增测试 20 个，全部通过；<br>- 全量测试 1195 个通过，失败的仍是原来那 14 个；<br>- 用 `agent` 工具生成的真实参数启动了一次子进程（dry-run）：经过 Windows 命令行转义后，权限规则和 MCP 配置都解析正确 | W0.1 | S |
-| W0.5 | 端到端权限测试：用一个真实的 `oh -p` worker，故意去读受保护的文件、越界写文件 | `tests/test_coord_perm.py` | 全部被拒绝。bash 的递归读取作为已知风险记下来 | W0.1、W0.3 | S |
-| W0.6 | 记录 harness 版本：OpenHarness commit、m2s-mcp-server commit、`br` / agent_mail 版本、各角色的模型 | `coord/harness.py` | 每次运行的事件日志第一行都是 harness 版本 | — | S |
+| W0.5 | 端到端权限测试：用一个真实的 `oh -p` worker，故意去读受保护的文件、越界写文件 | `tests/test_coord_perm.py` | 全部被拒绝。bash 的递归读取作为已知风险记下来。**2026-10-30 完成**。测试要调用模型，所以要设置 `M2S_RUN_LLM_TESTS=1` 才运行。用 qwen3.8-flash 实测的结果：<br>- worker 自己的 6 次读写，拒绝和放行都正确，磁盘上的文件没有被改动；<br>- 子 agent 的越权读写也都被拒绝；<br>- bash 的 `grep -r` 确实读出了受保护文件里的金丝雀标记，作为已知风险用 xfail 记下 | W0.1、W0.3、W0.4 | S |
+| W0.6 | 记录 harness 版本：OpenHarness commit、m2s-mcp-server commit、`br` / agent_mail 版本、各角色的模型 | `coord/harness.py` | 每次运行的事件日志第一行都是 harness 版本。**2026-10-30 完成**：<br>- `python -m coord.harness` 输出两个仓库的 commit 和未提交的改动、工具版本、每个角色实际使用的模型、agent 定义和技能文件的 hash；<br>- 不记录 API key；<br>- 写进事件日志的第一行，在 W1.7 里接上 | — | S |
 
 ### M1 协调骨架，和 v1 等价【必做】
 
