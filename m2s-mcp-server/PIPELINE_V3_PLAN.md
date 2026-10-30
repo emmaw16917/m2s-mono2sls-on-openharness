@@ -92,6 +92,7 @@ v3 改的是**谁来调度、怎么通信**，不改**每一步做什么**。
 | 权限检查器（`permissions/checker.py`） | 支持工具禁止名单、路径规则、命令禁止规则（通配符匹配整条命令）；禁止规则在 `full_auto` 模式下也生效 | 能力够用，但要能按任务设置 |
 | 路径规则 | 只有允许和禁止，**不区分读和写** | 表达不了"只准写自己的目录，其他地方可以读"；要扩展（W0.3） |
 | 子 agent 的权限 | `agent_tool.py` 把 agent 定义里的 `permissions` 传了进去，但 `spawn_utils.py` 启动子进程时只带了 `--permission-mode` | v3 的 worker 由调度器直接启动成顶层进程，不再经过这条路径；顺手修（W0.4） |
+| 子 agent 会绕过父进程的限制（W0.4 时发现） | 子进程以 `--task-worker` 启动，只读全局的 `settings.json`。父进程通过 `--settings` 拿到的禁止规则不会传下去，所以受限的 worker 只要开一个子 agent，就能绕过限制。另外几处问题：<br>- 参数值被 `shlex.quote` 包了一层引号，但子进程是直接按参数列表启动的，引号会原样留在值里；<br>- 内置 agent 定义用的是 Claude Code 的工具名（`Read`、`file_edit`），和 OpenHarness 的实际名称（`read_file`、`edit_file`）对不上，所以定义里的工具限制从来没有生效过 | W0.4 一并修好 |
 | MCP | 支持 stdio 和 HTTP（streamable HTTP，可以带请求头） | agent_mail 只能用 HTTP 方式共用（探索稿 §6.4） |
 
 ---
@@ -422,7 +423,7 @@ agent_mail 在这里提供四样东西：消息存档、讨论串、搜索，以
 |---|---|---|
 | W0.1 | 让 `--settings` 真正生效：接受文件路径或内联 JSON，深度合并到读入的设置上。同时让 `--allowed-tools`、`--disallowed-tools`、`--mcp-config` 生效 | `cli.py`，以及读取设置的代码 |
 | W0.3 | 三项改动：<br>- 路径规则加上 `access: read \| write \| any`（默认 `any`，兼容现有配置）。检查时用工具调用已有的 `is_read_only` 来区分读和写；<br>- 新增可写路径名单 `permission.writable_paths`：名单不为空时，内置的改文件工具只能写匹配的路径。现有的路径规则只有"禁止"起作用，"允许"规则不生效，所以只靠路径规则表达不了"只准写自己的目录"；<br>- 所有禁止规则都在工具允许名单之前检查 | `config/settings.py`（`PathRuleConfig`、`PermissionSettings`）、`permissions/checker.py` |
-| W0.4 | 子 agent 启动时，把 agent 定义里的 `permissions` 传给子进程 | `tools/agent_tool.py`、`swarm/spawn_utils.py` |
+| W0.4 | 子 agent 启动时：<br>- 继承父进程的覆盖层（`--settings`、工具名单、MCP），以及父进程的权限模式；<br>- 再叠加 agent 定义里的工具允许名单和禁止名单（换算成 OpenHarness 的工具名）、定义里的权限模式，以及定义里的 `permissions`（作为允许名单）；<br>- 参数值不再加引号 | `tools/agent_tool.py`、`swarm/spawn_utils.py`、`swarm/types.py`、`coordinator/agent_definitions.py`、`config/settings.py`、`ui/runtime.py` |
 | W0.5 | 测试：<br>- 被禁止的路径，用读文件、grep、glob 都读不到；<br>- bash 里出现被禁止路径的命令会被拒绝；<br>- 写到范围之外会被拒绝；<br>- 原来的全局设置照样有效 | OpenHarness 的测试目录，外加 `m2s-mcp-server/tests/test_coord_perm.py` 做端到端检查 |
 
 OpenHarness 的改动也属于 harness 的一部分。调度器在每次运行开始时，把 OpenHarness 的 commit、`br` 和 agent_mail 的版本记进事件日志。
@@ -506,7 +507,7 @@ agent_mail 的 build slot 只是建议性的，也不能计数，所以只用来
 | W0.1 | 修复 `--settings`、`--allowed-tools`、`--disallowed-tools`、`--mcp-config`；以及 `-p` 模式下的 `--permission-mode`、`--append-system-prompt` | OpenHarness 补丁 + 测试 | 用 `--settings` 传入的禁止规则在 `oh -p` 中生效。**2026-10-30 完成**：<br>- OpenHarness 分支 `feat/cli-settings-flags`；<br>- 新增测试 21 个，全部通过；<br>- 全量测试的失败集合和改动前相同（14 个，都和 Windows 环境有关）；<br>- 真实的 `oh -p` 中，受保护文件用 `read_file` 和 bash `cat` 读取都被拒绝 | — | M |
 | W0.2 | 固定版本：`br` 0.7.6、mcp_agent_mail_rust 0.3.39，校验 sha256 后放进 `D:\m2s-tools\`；写一个冒烟测试脚本 | `coord/smoke_tools.py` | 本机上冒烟测试通过：建任务、依赖、门禁、`allow_bypass`、HTTP 连接、建讨论串 | — | S |
 | W0.3 | 路径规则区分读和写；新增可写路径名单；检查顺序改为"禁止规则优先于工具允许名单" | OpenHarness 补丁 + 测试 | 只读工具读得到但写不进去；列在允许名单里的工具也受路径规则和命令规则约束；不写 `access` 的老配置照样有效。**2026-10-30 完成**：<br>- 新增测试 15 个，全部通过，包括用真实的写文件工具，经过查询引擎实测；<br>- 全量测试 1175 个通过，失败的仍是原来那 14 个 | W0.1 | S |
-| W0.4 | 子 agent 的权限传递 | OpenHarness 补丁 + 测试 | 子 agent 也受 agent 定义里的权限约束 | — | S |
+| W0.4 | 子 agent 的权限传递 | OpenHarness 补丁 + 测试 | 子 agent 也受 agent 定义里的权限约束。**2026-10-30 完成**：<br>- 子 agent 继承父进程的限制，不能再通过开子 agent 绕过；<br>- 新增测试 20 个，全部通过；<br>- 全量测试 1195 个通过，失败的仍是原来那 14 个；<br>- 用 `agent` 工具生成的真实参数启动了一次子进程（dry-run）：经过 Windows 命令行转义后，权限规则和 MCP 配置都解析正确 | W0.1 | S |
 | W0.5 | 端到端权限测试：用一个真实的 `oh -p` worker，故意去读受保护的文件、越界写文件 | `tests/test_coord_perm.py` | 全部被拒绝。bash 的递归读取作为已知风险记下来 | W0.1、W0.3 | S |
 | W0.6 | 记录 harness 版本：OpenHarness commit、m2s-mcp-server commit、`br` / agent_mail 版本、各角色的模型 | `coord/harness.py` | 每次运行的事件日志第一行都是 harness 版本 | — | S |
 
