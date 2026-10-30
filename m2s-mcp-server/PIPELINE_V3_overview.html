@@ -1,0 +1,679 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>M2S 流水线 v3</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;600&family=Noto+Sans+SC:wght@400;500;700&display=swap">
+<style>
+/* Layout: same system as the v2 overview; one reading column, wide figure panels that scroll sideways on phones.
+   Color roles: accent = the v3 coordination layer (dispatcher and what it runs itself), purple dashes = feedback,
+   amber = hand-off to a person, grey dashes = started on demand. */
+:root {
+  --bg: #F4F6F9;
+  --surface: #FFFFFF;
+  --fg: #17202B;
+  --muted: #5A6676;
+  --line: #CBD3DD;
+  --accent: #0D6E68;
+  --accent-tint: #E1F0EE;
+  --fb: #6A4BA8;
+  --hum: #A05A12;
+  --hum-tint: #F7EBDD;
+  --font-ui: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-cjk: "Noto Sans SC", "IBM Plex Sans", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161D; --surface: #19212B; --fg: #E4E9EF; --muted: #9AA6B5; --line: #354152;
+    --accent: #4CC0B6; --accent-tint: #13332F; --fb: #B49BEA; --hum: #E2A85A; --hum-tint: #3A2A16;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161D; --surface: #19212B; --fg: #E4E9EF; --muted: #9AA6B5; --line: #354152;
+  --accent: #4CC0B6; --accent-tint: #13332F; --fb: #B49BEA; --hum: #E2A85A; --hum-tint: #3A2A16;
+  color-scheme: dark;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-cjk);
+  font-size: 15px;
+  line-height: 1.7;
+}
+.page {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+  display: grid;
+  gap: 48px;
+}
+header { display: grid; gap: 12px; max-width: 780px; }
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  text-transform: uppercase;
+}
+h1 {
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: clamp(30px, 5vw, 44px);
+  line-height: 1.15;
+  margin: 0;
+  text-wrap: balance;
+}
+h2 {
+  font-family: var(--font-ui);
+  font-size: 22px;
+  line-height: 1.3;
+  margin: 0;
+  text-wrap: balance;
+}
+p { margin: 0; max-width: 68ch; }
+.lede { font-size: 17px; }
+.meta {
+  display: flex; flex-wrap: wrap; gap: 8px 20px;
+  font-size: 13px; color: var(--muted);
+  padding: 0; margin: 4px 0 0; list-style: none;
+}
+.meta b { color: var(--fg); font-weight: 500; }
+section { display: grid; gap: 16px; }
+.ideas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+.idea {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px 20px;
+  display: grid; gap: 6px; align-content: start;
+  min-width: 0;
+}
+.idea .tag { font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.06em; color: var(--accent); }
+.idea h3 { margin: 0; font-size: 17px; font-family: var(--font-ui); line-height: 1.35; }
+.idea p { color: var(--muted); font-size: 14px; }
+
+figure { margin: 0; display: grid; gap: 10px; }
+.fig-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px;
+  overflow-x: auto;
+}
+.fig-panel svg { display: block; width: 100%; height: auto; min-width: 900px; font-family: var(--font-cjk); }
+figcaption { font-size: 13.5px; color: var(--muted); max-width: 92ch; display: grid; gap: 4px; }
+
+/* SVG roles */
+.box { fill: var(--surface); stroke: var(--line); stroke-width: 1.2; }
+.box-strong { fill: var(--surface); stroke: var(--fg); stroke-width: 1.4; }
+.box-c { fill: var(--accent-tint); stroke: var(--accent); stroke-width: 1.4; }
+.box-ea { fill: var(--bg); stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 4 3; }
+.box-room { fill: var(--surface); stroke: var(--fb); stroke-width: 1.3; }
+.box-hum { fill: var(--hum-tint); stroke: var(--hum); stroke-width: 1.3; }
+.group { fill: none; stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 3; }
+.t-h { fill: var(--fg); font-weight: 600; font-size: 13.5px; }
+.t-s { fill: var(--muted); font-size: 11.5px; }
+.t-code { fill: var(--fg); font: 600 13px var(--font-mono); }
+.t-code-c { fill: var(--accent); font: 600 13px var(--font-mono); }
+.t-mono { fill: var(--fg); font: 500 11.5px var(--font-mono); }
+.t-mono-m { fill: var(--muted); font: 500 11px var(--font-mono); }
+.t-panel { fill: var(--fg); font-weight: 700; font-size: 14px; }
+.lbl { fill: var(--muted); font-size: 11px; }
+.lbl-c { fill: var(--accent); font-size: 11px; }
+.lbl-fb { fill: var(--fb); font-size: 11px; }
+.lbl-hum { fill: var(--hum); font-size: 11px; }
+.t-room { fill: var(--fb); font-weight: 600; font-size: 12.5px; }
+.t-hum { fill: var(--hum); font: 600 13px var(--font-mono); }
+.edge { stroke: var(--fg); stroke-width: 1.3; fill: none; }
+.edge-c { stroke: var(--accent); stroke-width: 1.5; fill: none; }
+.edge-fb { stroke: var(--fb); stroke-width: 1.3; fill: none; stroke-dasharray: 5 4; }
+.edge-hum { stroke: var(--hum); stroke-width: 1.3; fill: none; }
+.edge-ea { stroke: var(--muted); stroke-width: 1.2; fill: none; stroke-dasharray: 4 3; }
+.ah { fill: var(--fg); }
+.ah-c { fill: var(--accent); }
+.ah-fb { fill: var(--fb); }
+.ah-hum { fill: var(--hum); }
+.ah-ea { fill: var(--muted); }
+
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; min-width: 760px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--font-ui); font-weight: 600; font-size: 13px; color: var(--muted); background: var(--bg); }
+tr:last-child td { border-bottom: none; }
+td code, p code, li code, figcaption code { font-family: var(--font-mono); font-size: 12.5px; color: var(--accent); }
+.code-col { font-family: var(--font-mono); color: var(--accent); white-space: nowrap; font-weight: 600; }
+.status {
+  display: inline-block; white-space: nowrap;
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+  padding: 1px 9px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted);
+}
+.status.done { background: var(--accent-tint); border-color: var(--accent); color: var(--accent); }
+.status.next { border-color: var(--fg); color: var(--fg); }
+.note { color: var(--muted); font-size: 14px; }
+ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; max-width: 80ch; }
+footer { border-top: 1px solid var(--line); padding-top: 20px; font-size: 13px; color: var(--muted); display: grid; gap: 6px; }
+a { color: var(--accent); }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+
+<div class="page">
+  <header>
+    <div class="eyebrow">Mono2Sls · 实施方案</div>
+    <h1>M2S 流水线 v3</h1>
+    <p class="lede">把"一个 LLM 主 Agent 从头到尾撑完整条流水线"，换成任务板加确定性调度器。每个任务启动一个独立的 worker，按工作包并行；需要来回讨论的问题进讨论室，不再全部经过主 Agent 转发。各模块做什么不变，变的是谁来调度、怎么通信。</p>
+    <ul class="meta">
+      <li><b>状态</b> M0 已完成（2026-10-30），下一步 M1</li>
+      <li><b>底座</b> OpenHarness worker · Beads（<code>br</code>）任务板 · mcp_agent_mail</li>
+      <li><b>依据</b> <code>PIPELINE_V3_PLAN.md</code> · 模块定义见 v2</li>
+    </ul>
+  </header>
+
+  <section aria-labelledby="ideas-h">
+    <h2 id="ideas-h">三个核心变化</h2>
+    <div class="ideas">
+      <div class="idea">
+        <span class="tag">调度</span>
+        <h3>确定性调度器代替主 Agent</h3>
+        <p>派发、检查、回炉都由代码完成，状态全部记在任务板里，进程崩溃了可以重启接着跑。LLM 只在出现异常时按需启动，读一份案情材料后给出判断。</p>
+      </div>
+      <div class="idea">
+        <span class="tag">并行</span>
+        <h3>按工作包拆任务</h3>
+        <p>几个相关接口为一组，组成一个工作包，标注、测试设计、写代码都按包并行。分组规则由工具机械执行：运维类接口先分出、按亲和关系合并、按代码量控制大小。</p>
+      </div>
+      <div class="idea">
+        <span class="tag">通信与隔离</span>
+        <h3>讨论室代替转发，权限真正执行</h3>
+        <p>规格问题、分诊争议在讨论室里直接沟通，结论必须经工具写入。每个 worker 的读写范围由 OpenHarness 的权限强制执行，子 agent 也不能绕过。</p>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="cmp-h">
+    <h2 id="cmp-h">v2 和 v3 的编排方式</h2>
+    <figure>
+      <div class="fig-panel">
+        <svg viewBox="0 0 1120 360" role="img" aria-label="左边是 v2：一个主 Agent 串行派发子 agent，反馈都经它转发，会话中断就是整个运行中断。右边是 v3：调度器只读写任务板，把并行的 worker 一起启动；worker 的反馈直接进讨论室；出现异常时才启动异常处理者。">
+          <defs>
+            <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+            <marker id="a1c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-c"/></marker>
+            <marker id="a1f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-fb"/></marker>
+            <marker id="a1e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-ea"/></marker>
+          </defs>
+
+          <!-- v2 -->
+          <rect class="group" x="16" y="16" width="520" height="328" rx="10"/>
+          <text class="t-panel" x="36" y="46">v2：主 Agent 编排</text>
+          <rect class="box-strong" x="176" y="66" width="200" height="66" rx="8"/>
+          <text class="t-h" x="276" y="94" text-anchor="middle">主 Agent（LLM）</text>
+          <text class="t-s" x="276" y="115" text-anchor="middle">一个会话撑完整条流水线</text>
+          <text class="lbl" x="392" y="96">派发 · 复核 · 回炉</text>
+          <text class="lbl" x="392" y="114">反馈都经它转发</text>
+
+          <line class="edge" x1="276" y1="132" x2="80" y2="226" marker-end="url(#a1)"/>
+          <line class="edge" x1="276" y1="132" x2="176" y2="226" marker-end="url(#a1)"/>
+          <line class="edge" x1="276" y1="132" x2="272" y2="226" marker-end="url(#a1)"/>
+          <line class="edge" x1="276" y1="132" x2="368" y2="226" marker-end="url(#a1)"/>
+          <line class="edge" x1="276" y1="132" x2="464" y2="226" marker-end="url(#a1)"/>
+          <rect class="box" x="40" y="228" width="80" height="44" rx="7"/>
+          <text class="t-code" x="80" y="255" text-anchor="middle">S0</text>
+          <rect class="box" x="136" y="228" width="80" height="44" rx="7"/>
+          <text class="t-code" x="176" y="255" text-anchor="middle">S1</text>
+          <rect class="box" x="232" y="228" width="80" height="44" rx="7"/>
+          <text class="t-code" x="272" y="255" text-anchor="middle">V1</text>
+          <rect class="box" x="328" y="228" width="80" height="44" rx="7"/>
+          <text class="t-code" x="368" y="255" text-anchor="middle">S2</text>
+          <rect class="box" x="424" y="228" width="80" height="44" rx="7"/>
+          <text class="t-code" x="464" y="255" text-anchor="middle">…</text>
+          <text class="t-s" x="40" y="302">· 一次只派发一个，能并行的工作也在排队</text>
+          <text class="t-s" x="40" y="320">· 只回复文字、轮数用完、进程被杀：整个运行中断</text>
+
+          <!-- v3 -->
+          <rect class="group" x="584" y="16" width="520" height="328" rx="10"/>
+          <text class="t-panel" x="604" y="46">v3：任务板 + 确定性调度器</text>
+          <rect class="box-c" x="604" y="66" width="190" height="66" rx="8"/>
+          <text class="t-h" x="699" y="94" text-anchor="middle">调度器（代码）</text>
+          <text class="t-s" x="699" y="115" text-anchor="middle">可以随时杀掉重启</text>
+          <rect class="box" x="894" y="66" width="190" height="66" rx="8"/>
+          <text class="t-h" x="989" y="94" text-anchor="middle">任务板（br）</text>
+          <text class="t-s" x="989" y="115" text-anchor="middle">依赖 · 状态 · 完成门禁</text>
+          <line class="edge-c" x1="796" y1="99" x2="892" y2="99" marker-start="url(#a1c)" marker-end="url(#a1c)"/>
+          <text class="lbl-c" x="844" y="91" text-anchor="middle">只有它写</text>
+
+          <path class="edge-c" d="M745,132 V166"/>
+          <path class="edge-c" d="M745,166 H1039"/>
+          <line class="edge-c" x1="745" y1="166" x2="745" y2="198" marker-end="url(#a1c)"/>
+          <line class="edge-c" x1="843" y1="166" x2="843" y2="198" marker-end="url(#a1c)"/>
+          <line class="edge-c" x1="941" y1="166" x2="941" y2="198" marker-end="url(#a1c)"/>
+          <line class="edge-c" x1="1039" y1="166" x2="1039" y2="198" marker-end="url(#a1c)"/>
+          <text class="lbl-c" x="806" y="158">同时启动多个 worker</text>
+          <rect class="box" x="700" y="200" width="90" height="46" rx="7"/>
+          <text class="t-mono" x="745" y="227" text-anchor="middle">S2:flights</text>
+          <rect class="box" x="798" y="200" width="90" height="46" rx="7"/>
+          <text class="t-mono" x="843" y="227" text-anchor="middle">S2:orders</text>
+          <rect class="box" x="896" y="200" width="90" height="46" rx="7"/>
+          <text class="t-mono" x="941" y="227" text-anchor="middle">V1:auth</text>
+          <rect class="box" x="994" y="200" width="90" height="46" rx="7"/>
+          <text class="t-mono" x="1039" y="227" text-anchor="middle">S0:cart</text>
+
+          <path class="edge-ea" d="M630,132 V198" marker-end="url(#a1e)"/>
+          <rect class="box-ea" x="604" y="200" width="86" height="46" rx="7"/>
+          <text class="t-h" x="647" y="221" text-anchor="middle" style="font-size:12.5px">异常处理者</text>
+          <text class="t-s" x="647" y="238" text-anchor="middle">出事才启动</text>
+
+          <line class="edge-fb" x1="843" y1="246" x2="843" y2="284" marker-end="url(#a1f)"/>
+          <line class="edge-fb" x1="941" y1="246" x2="941" y2="284" marker-end="url(#a1f)"/>
+          <rect class="box-room" x="776" y="286" width="230" height="44" rx="8"/>
+          <text class="t-room" x="891" y="306" text-anchor="middle">公告板 · 讨论室</text>
+          <text class="t-s" x="891" y="322" text-anchor="middle">agent_mail，结论经工具写入</text>
+          <text class="lbl-fb" x="1012" y="312">直接讨论</text>
+          <text class="t-s" x="604" y="290">· 状态都在任务板里</text>
+          <text class="t-s" x="604" y="308">· 一个 worker 失败</text>
+          <text class="t-s" x="604" y="324">  只算这个任务失败</text>
+        </svg>
+      </div>
+      <figcaption>v2 的四个运行故障（只回复文字就退出、轮数用完、OOM、工具进程是旧版代码）都来自"LLM 当调度器"；串行和事事转发来自"中心化编排"。v3 用确定性调度器解决前者，用任务板加讨论室解决后者。</figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="arch-h">
+    <h2 id="arch-h">运行时的组成</h2>
+    <figure>
+      <div class="fig-panel">
+        <svg viewBox="0 0 1180 540" role="img" aria-label="调度器读写工作区里的运行状态（任务板、事件日志、处理记录），为每个任务启动一个 oh -p worker。每个 worker 带一个自己的 m2s-server，worker 通过它读写工作区、提交任务、使用公告板和讨论室。公告板和讨论室由本机一个共用的 agent_mail HTTP 服务承载，人可以在它的 Web UI 里旁观。需要独占的资源由本机的文件锁控制，O 阶段的性能测量在 AWS 上进行。出现异常时，调度器准备案情材料，按需启动异常处理者。">
+          <defs>
+            <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+            <marker id="a2c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-c"/></marker>
+            <marker id="a2f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-fb"/></marker>
+            <marker id="a2e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-ea"/></marker>
+            <marker id="a2h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-hum"/></marker>
+          </defs>
+
+          <!-- dispatcher -->
+          <rect class="box-c" x="24" y="40" width="300" height="196" rx="10"/>
+          <text class="t-h" x="44" y="68">调度器 coord.dispatcher</text>
+          <text class="t-s" x="44" y="88">Python · 确定性 · 自己不调用 LLM</text>
+          <text class="t-s" x="44" y="118">① 按模板展开任务，包括按工作包展开</text>
+          <text class="t-s" x="44" y="138">② 取出可以开始的任务并认领</text>
+          <text class="t-s" x="44" y="158">③ 为它启动一个 worker</text>
+          <text class="t-s" x="44" y="178">④ worker 提交后做三项检查</text>
+          <text class="t-s" x="44" y="198">⑤ 关闭 / 回炉 / 失效 / 交给人</text>
+          <text class="t-s" x="44" y="218">然后回到 ①，直到终点任务关闭</text>
+
+          <!-- run state -->
+          <line class="edge-c" x1="174" y1="238" x2="174" y2="272" marker-start="url(#a2c)" marker-end="url(#a2c)"/>
+          <text class="lbl-c" x="184" y="259">只有调度器写</text>
+          <rect class="box" x="24" y="274" width="300" height="110" rx="10"/>
+          <text class="t-h" x="44" y="300">运行状态 WS/coord/</text>
+          <text class="t-mono" x="44" y="324">beads/</text>
+          <text class="t-s" x="150" y="324">任务板（br + 策略）</text>
+          <text class="t-mono" x="44" y="344">events.jsonl</text>
+          <text class="t-s" x="150" y="344">事件日志，可复现</text>
+          <text class="t-mono" x="44" y="364">journal.md</text>
+          <text class="t-s" x="150" y="364">异常处理记录</text>
+
+          <!-- handler -->
+          <line class="edge-ea" x1="174" y1="386" x2="174" y2="424" marker-end="url(#a2e)"/>
+          <text class="lbl" x="184" y="410">出现异常时：案情材料</text>
+          <rect class="box-ea" x="24" y="426" width="300" height="66" rx="10"/>
+          <text class="t-h" x="44" y="452">异常处理者（oh -p，按需启动）</text>
+          <text class="t-s" x="44" y="474">读案情材料和处理记录 → handler_decide</text>
+
+          <!-- workers -->
+          <text class="t-h" x="384" y="46">worker：每个任务一个进程</text>
+          <path class="edge-c" d="M324,150 H354"/>
+          <path class="edge-c" d="M354,89 V241"/>
+          <line class="edge-c" x1="354" y1="89" x2="382" y2="89" marker-end="url(#a2c)"/>
+          <line class="edge-c" x1="354" y1="165" x2="382" y2="165" marker-end="url(#a2c)"/>
+          <line class="edge-c" x1="354" y1="241" x2="382" y2="241" marker-end="url(#a2c)"/>
+          <rect class="box" x="384" y="60" width="240" height="58" rx="8"/>
+          <text class="t-mono" x="400" y="84">oh -p · S2:flights</text>
+          <text class="t-s" x="400" y="104">m2s-code-developer</text>
+          <rect class="box" x="384" y="136" width="240" height="58" rx="8"/>
+          <text class="t-mono" x="400" y="160">oh -p · S2:orders</text>
+          <text class="t-s" x="400" y="180">m2s-code-developer</text>
+          <rect class="box" x="384" y="212" width="240" height="58" rx="8"/>
+          <text class="t-mono" x="400" y="236">oh -p · V1:auth</text>
+          <text class="t-s" x="400" y="256">m2s-verifier</text>
+          <text class="t-s" x="384" y="296">启动时带上：角色说明（--append-system-prompt）</text>
+          <text class="t-s" x="384" y="314">本次的权限和 MCP（--settings，W0.1）</text>
+          <text class="t-s" x="384" y="332">它开的子 agent 继承同样的限制（W0.4）</text>
+
+          <!-- m2s-server -->
+          <line class="edge" x1="624" y1="145" x2="682" y2="145" marker-end="url(#a2)"/>
+          <text class="lbl" x="653" y="137" text-anchor="middle">MCP</text>
+          <rect class="box" x="684" y="100" width="220" height="90" rx="8"/>
+          <text class="t-h" x="700" y="126">m2s-server</text>
+          <text class="t-s" x="700" y="146">每个 worker 一个（stdio）</text>
+          <text class="t-mono-m" x="700" y="168">submit_task · notice · room</text>
+
+          <line class="edge" x1="624" y1="241" x2="682" y2="262" marker-end="url(#a2)"/>
+          <rect class="box" x="684" y="232" width="220" height="70" rx="8"/>
+          <text class="t-h" x="700" y="258">工作区产物</text>
+          <text class="t-s" x="700" y="280">只准写本任务的 scope.paths</text>
+
+          <path class="edge" d="M904,170 H926 V372 H906" marker-end="url(#a2)"/>
+          <text class="lbl" x="932" y="276">加锁</text>
+          <rect class="box" x="684" y="340" width="220" height="64" rx="8"/>
+          <text class="t-h" x="700" y="366">本机资源锁</text>
+          <text class="t-mono-m" x="700" y="388">aws-load-client · docker-rie</text>
+
+          <!-- agent_mail, human, aws -->
+          <line class="edge-fb" x1="904" y1="128" x2="962" y2="128" marker-end="url(#a2f)"/>
+          <text class="lbl-fb" x="933" y="120" text-anchor="middle">HTTP</text>
+          <rect class="box-room" x="964" y="96" width="192" height="94" rx="8"/>
+          <text class="t-room" x="980" y="122">agent_mail</text>
+          <text class="t-s" x="980" y="144">本机一个共用的 HTTP 服务</text>
+          <text class="t-s" x="980" y="164">公告板 · 讨论室 · 存档</text>
+
+          <line class="edge-hum" x1="1060" y1="192" x2="1060" y2="238" marker-start="url(#a2h)" marker-end="url(#a2h)"/>
+          <text class="lbl-hum" x="1068" y="220">Web UI</text>
+          <rect class="box-hum" x="964" y="240" width="192" height="70" rx="8"/>
+          <text class="t-h" x="980" y="266">人</text>
+          <text class="t-s" x="980" y="288">needs_human · 旁观 · U3 评审</text>
+
+          <line class="edge" x1="904" y1="388" x2="962" y2="388" marker-end="url(#a2)"/>
+          <rect class="box" x="964" y="352" width="192" height="72" rx="8"/>
+          <text class="t-h" x="980" y="378">AWS（O 阶段，M4）</text>
+          <text class="t-s" x="980" y="400">每个候选改动一个栈</text>
+
+          <!-- legend -->
+          <rect class="box-c" x="384" y="470" width="22" height="14" rx="3"/>
+          <text class="t-s" x="414" y="482">v3 协调层（新）</text>
+          <rect class="box-ea" x="540" y="470" width="22" height="14" rx="3"/>
+          <text class="t-s" x="570" y="482">按需启动</text>
+          <line class="edge-fb" x1="660" y1="477" x2="700" y2="477"/>
+          <text class="t-s" x="708" y="482">公告板 / 讨论室</text>
+          <rect class="box-hum" x="830" y="470" width="22" height="14" rx="3"/>
+          <text class="t-s" x="860" y="482">交给人</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span>worker 做完后调用 m2s-server 的 <code>submit_task</code> 提交，调度器再运行完成检查，检查通过才关闭任务。worker 不直接调用 agent_mail，由 m2s-server 代理，这样可见性过滤、讨论轮次和转达格式都在我们自己的代码里控制。</span>
+        <span>协调层 <code>coord/</code> 在 <code>mono2esls</code> 环境里运行，和 <code>oh</code> 同一个环境；<code>br</code> 0.7.6 和 agent_mail 0.3.39 固定版本，装在 <code>D:\m2s-tools</code>。</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="dag-h">
+    <h2 id="dag-h">一个应用的任务图</h2>
+    <figure>
+      <div class="fig-panel">
+        <svg viewBox="0 0 1200 460" role="img" aria-label="按 v1 模块排出的任务图。第一行：P0 结构提取，工作包规划，按包展开的 S0 标注，S1 设计，按包展开的 V1 测试设计，S2 共享层和按包展开的 S2 写代码。全部 S2 完成后进入第二行：S3a、S3b、S3c 写模板，S4 一致性检查，V2 验收，打 tag v0，S5 性能优化，最后收尾检查。V1 报出规格问题时进规格讨论室，再回到 S1；V2 失败且判断不了归因时进分诊讨论室，再回炉到对应的 S2 工作包。">
+          <defs>
+            <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+            <marker id="a3f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-fb"/></marker>
+          </defs>
+
+          <!-- row 1 -->
+          <rect class="box-c" x="40" y="96" width="110" height="64" rx="8"/>
+          <text class="t-code-c" x="95" y="122" text-anchor="middle">P0</text>
+          <text class="t-s" x="95" y="144" text-anchor="middle">结构提取</text>
+          <line class="edge" x1="150" y1="128" x2="188" y2="128" marker-end="url(#a3)"/>
+
+          <rect class="box-c" x="190" y="96" width="110" height="64" rx="8"/>
+          <text class="t-code-c" x="245" y="122" text-anchor="middle">PKG</text>
+          <text class="t-s" x="245" y="144" text-anchor="middle">工作包规划</text>
+          <line class="edge" x1="300" y1="128" x2="338" y2="128" marker-end="url(#a3)"/>
+
+          <rect class="box" x="348" y="88" width="130" height="64" rx="8"/>
+          <rect class="box" x="344" y="92" width="130" height="64" rx="8"/>
+          <rect class="box" x="340" y="96" width="130" height="64" rx="8"/>
+          <text class="t-code" x="405" y="122" text-anchor="middle">S0:包 ×N</text>
+          <text class="t-s" x="405" y="144" text-anchor="middle">annotator</text>
+          <line class="edge" x1="478" y1="128" x2="508" y2="128" marker-end="url(#a3)"/>
+
+          <rect class="box" x="510" y="96" width="110" height="64" rx="8"/>
+          <text class="t-code" x="565" y="122" text-anchor="middle">S1</text>
+          <text class="t-s" x="565" y="144" text-anchor="middle">architect</text>
+          <line class="edge" x1="620" y1="128" x2="658" y2="128" marker-end="url(#a3)"/>
+
+          <rect class="box" x="668" y="88" width="130" height="64" rx="8"/>
+          <rect class="box" x="664" y="92" width="130" height="64" rx="8"/>
+          <rect class="box" x="660" y="96" width="130" height="64" rx="8"/>
+          <text class="t-code" x="725" y="122" text-anchor="middle">V1:包 ×N</text>
+          <text class="t-s" x="725" y="144" text-anchor="middle">verifier</text>
+          <line class="edge" x1="798" y1="128" x2="978" y2="128" marker-end="url(#a3)"/>
+
+          <path class="edge" d="M565,96 V52 H828" marker-end="url(#a3)"/>
+          <rect class="box" x="830" y="28" width="110" height="48" rx="8"/>
+          <text class="t-code" x="885" y="50" text-anchor="middle">S2:shared</text>
+          <text class="t-s" x="885" y="68" text-anchor="middle">共享层</text>
+          <path class="edge" d="M940,52 H1045 V86" marker-end="url(#a3)"/>
+
+          <rect class="box" x="988" y="88" width="130" height="64" rx="8"/>
+          <rect class="box" x="984" y="92" width="130" height="64" rx="8"/>
+          <rect class="box" x="980" y="96" width="130" height="64" rx="8"/>
+          <text class="t-code" x="1045" y="122" text-anchor="middle">S2:包 ×N</text>
+          <text class="t-s" x="1045" y="144" text-anchor="middle">code-developer</text>
+
+          <!-- spec room -->
+          <line class="edge-fb" x1="700" y1="160" x2="700" y2="190" marker-end="url(#a3f)"/>
+          <text class="lbl-fb" x="708" y="181">spec_issues</text>
+          <rect class="box-room" x="585" y="192" width="120" height="36" rx="8"/>
+          <text class="t-room" x="645" y="215" text-anchor="middle">规格讨论室</text>
+          <line class="edge-fb" x1="600" y1="192" x2="600" y2="162" marker-end="url(#a3f)"/>
+          <text class="lbl-fb" x="520" y="181">裁定后重做</text>
+
+          <!-- row break -->
+          <path class="edge" d="M1045,160 V252 H90 V298" marker-end="url(#a3)"/>
+          <text class="lbl" x="770" y="245">全部 S2 完成后</text>
+
+          <!-- row 2 -->
+          <rect class="box" x="40" y="300" width="100" height="64" rx="8"/>
+          <text class="t-code" x="90" y="326" text-anchor="middle">S3a</text>
+          <text class="t-s" x="90" y="348" text-anchor="middle">sam-engineer</text>
+          <line class="edge" x1="140" y1="332" x2="183" y2="332" marker-end="url(#a3)"/>
+          <rect class="box" x="185" y="300" width="100" height="64" rx="8"/>
+          <text class="t-code" x="235" y="326" text-anchor="middle">S3b</text>
+          <text class="t-s" x="235" y="348" text-anchor="middle">sam-engineer</text>
+          <line class="edge" x1="285" y1="332" x2="328" y2="332" marker-end="url(#a3)"/>
+          <rect class="box" x="330" y="300" width="100" height="64" rx="8"/>
+          <text class="t-code" x="380" y="326" text-anchor="middle">S3c</text>
+          <text class="t-s" x="380" y="348" text-anchor="middle">合并模板</text>
+          <line class="edge" x1="430" y1="332" x2="473" y2="332" marker-end="url(#a3)"/>
+          <rect class="box" x="475" y="300" width="100" height="64" rx="8"/>
+          <text class="t-code" x="525" y="326" text-anchor="middle">S4</text>
+          <text class="t-s" x="525" y="348" text-anchor="middle">validator</text>
+          <line class="edge" x1="575" y1="332" x2="618" y2="332" marker-end="url(#a3)"/>
+          <rect class="box" x="620" y="300" width="100" height="64" rx="8"/>
+          <text class="t-code" x="670" y="326" text-anchor="middle">V2</text>
+          <text class="t-s" x="670" y="348" text-anchor="middle">verifier</text>
+          <line class="edge" x1="720" y1="332" x2="763" y2="332" marker-end="url(#a3)"/>
+          <rect class="box-c" x="765" y="300" width="100" height="64" rx="8"/>
+          <text class="t-code-c" x="815" y="326" text-anchor="middle">tag v0</text>
+          <text class="t-s" x="815" y="348" text-anchor="middle">阶段复查</text>
+          <line class="edge" x1="865" y1="332" x2="908" y2="332" marker-end="url(#a3)"/>
+          <rect class="box" x="910" y="300" width="100" height="64" rx="8"/>
+          <text class="t-code" x="960" y="326" text-anchor="middle">S5</text>
+          <text class="t-s" x="960" y="348" text-anchor="middle">perf-optimizer</text>
+          <line class="edge" x1="1010" y1="332" x2="1053" y2="332" marker-end="url(#a3)"/>
+          <rect class="box-c" x="1055" y="300" width="100" height="64" rx="8"/>
+          <text class="t-code-c" x="1105" y="326" text-anchor="middle">FINAL</text>
+          <text class="t-s" x="1105" y="348" text-anchor="middle">收尾检查</text>
+
+          <!-- triage room -->
+          <line class="edge-fb" x1="670" y1="364" x2="670" y2="398" marker-end="url(#a3f)"/>
+          <rect class="box-room" x="610" y="400" width="120" height="36" rx="8"/>
+          <text class="t-room" x="670" y="423" text-anchor="middle">分诊讨论室</text>
+          <path class="edge-fb" d="M730,418 H1172 V128 H1120" marker-end="url(#a3f)"/>
+          <text class="lbl-fb" x="742" y="448">归因到哪个包，就回炉到哪个 S2:包</text>
+          <text class="lbl-fb" x="560" y="388" text-anchor="end">判断不了归因时</text>
+        </svg>
+      </div>
+      <figcaption>
+        <span>绿色框由调度器自己执行（调用工具、打 tag），白色框各启动一个 worker；叠起来的框按工作包展开，每个应用大约 2–6 个包，可以同时进行。</span>
+        <span>上游任务重做后，已经完成的下游任务会自动失效（<code>stale</code>），重新进入待办。M4 接入 v2 的模块（裁判线 J、增量测试 D 等）时，它们作为新的任务类型加进同一张图。</span>
+      </figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="life-h">
+    <h2 id="life-h">一个任务的生命周期</h2>
+    <figure>
+      <div class="fig-panel">
+        <svg viewBox="0 0 1120 345" role="img" aria-label="任务状态：待办 open 被认领后变为进行中 in_progress，worker 提交后变为检查中 checking。三项检查通过、done_check 门禁报告通过后才能关闭 closed。检查不通过时进入回炉 rework，带着反馈重试；次数用完或处理者判断不了时交给人 needs_human，人决定重新打开或接受，都必须附说明。worker 崩溃或超时时任务放回待办。已关闭的任务在上游产物变化后变为失效 stale，再重新排队。">
+          <defs>
+            <marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah"/></marker>
+            <marker id="a4c" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-c"/></marker>
+            <marker id="a4f" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-fb"/></marker>
+            <marker id="a4h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-hum"/></marker>
+            <marker id="a4e" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="ah-ea"/></marker>
+          </defs>
+
+          <!-- states -->
+          <rect class="box" x="40" y="120" width="130" height="44" rx="22"/>
+          <text class="t-code" x="105" y="139" text-anchor="middle">open</text>
+          <text class="t-s" x="105" y="155" text-anchor="middle">待办</text>
+          <rect class="box" x="240" y="120" width="130" height="44" rx="22"/>
+          <text class="t-code" x="305" y="139" text-anchor="middle">in_progress</text>
+          <text class="t-s" x="305" y="155" text-anchor="middle">进行中</text>
+          <rect class="box" x="460" y="120" width="130" height="44" rx="22"/>
+          <text class="t-code" x="525" y="139" text-anchor="middle">checking</text>
+          <text class="t-s" x="525" y="155" text-anchor="middle">检查中</text>
+          <rect class="box-c" x="700" y="120" width="130" height="44" rx="22"/>
+          <text class="t-code-c" x="765" y="139" text-anchor="middle">closed</text>
+          <text class="t-s" x="765" y="155" text-anchor="middle">完成</text>
+          <rect class="box" x="460" y="240" width="130" height="44" rx="22"/>
+          <text class="t-code" x="525" y="259" text-anchor="middle">rework</text>
+          <text class="t-s" x="525" y="275" text-anchor="middle">回炉</text>
+          <rect class="box-hum" x="700" y="240" width="130" height="44" rx="22"/>
+          <text class="t-hum" x="765" y="259" text-anchor="middle">needs_human</text>
+          <text class="t-s" x="765" y="275" text-anchor="middle">交给人</text>
+          <rect class="box" x="700" y="20" width="130" height="44" rx="22"/>
+          <text class="t-code" x="765" y="39" text-anchor="middle">stale</text>
+          <text class="t-s" x="765" y="55" text-anchor="middle">失效</text>
+
+          <!-- main path -->
+          <line class="edge" x1="170" y1="142" x2="238" y2="142" marker-end="url(#a4)"/>
+          <text class="lbl" x="205" y="134" text-anchor="middle">认领 + 启动</text>
+          <line class="edge" x1="370" y1="142" x2="458" y2="142" marker-end="url(#a4)"/>
+          <text class="lbl" x="414" y="134" text-anchor="middle">worker 提交</text>
+          <line class="edge-c" x1="590" y1="142" x2="698" y2="142" marker-end="url(#a4c)"/>
+          <text class="lbl-c" x="644" y="134" text-anchor="middle">done_check 通过</text>
+
+          <!-- rework loop -->
+          <line class="edge-fb" x1="525" y1="164" x2="525" y2="238" marker-end="url(#a4f)"/>
+          <text class="lbl-fb" x="533" y="206">检查不通过</text>
+          <path class="edge-fb" d="M460,262 H305 V166" marker-end="url(#a4f)"/>
+          <text class="lbl-fb" x="382" y="280" text-anchor="middle">带反馈重试</text>
+
+          <!-- crash -->
+          <path class="edge-ea" d="M275,120 V92 H135 V118" marker-end="url(#a4e)"/>
+          <text class="lbl" x="205" y="86" text-anchor="middle">worker 崩溃 / 超时</text>
+
+          <!-- human -->
+          <line class="edge-hum" x1="580" y1="164" x2="702" y2="242" marker-end="url(#a4h)"/>
+          <text class="lbl-hum" x="652" y="196">次数用完</text>
+          <line class="edge-hum" x1="765" y1="240" x2="765" y2="166" marker-end="url(#a4h)"/>
+          <text class="lbl-hum" x="773" y="206">人接受（附说明）</text>
+          <path class="edge-hum" d="M765,284 V312 H105 V166" marker-end="url(#a4h)"/>
+          <text class="lbl-hum" x="430" y="330" text-anchor="middle">人决定重做（附说明）</text>
+
+          <!-- stale -->
+          <line class="edge" x1="765" y1="120" x2="765" y2="66" marker-end="url(#a4)"/>
+          <text class="lbl" x="773" y="98">上游产物变了</text>
+          <path class="edge" d="M700,42 H90 V118" marker-end="url(#a4)"/>
+          <text class="lbl" x="400" y="36" text-anchor="middle">重新排队，下游一并失效</text>
+
+          <!-- checks panel -->
+          <rect class="box" x="880" y="64" width="220" height="214" rx="10"/>
+          <text class="t-h" x="896" y="92">提交后的三项检查</text>
+          <text class="t-s" x="896" y="120">1. 写入范围比对</text>
+          <text class="t-s" x="908" y="138">越界的改动撤销，判为失败</text>
+          <text class="t-s" x="896" y="162">2. 工具未改动</text>
+          <text class="t-s" x="908" y="180">m2s-mcp-server、.openharness</text>
+          <text class="t-s" x="896" y="204">3. 模板规定的检查</text>
+          <text class="t-s" x="908" y="222">run_gate、check_provenance…</text>
+          <text class="t-s" x="896" y="252">全部通过后，调度器报告</text>
+          <text class="t-s" x="896" y="268">done_check，任务才能关闭</text>
+        </svg>
+      </div>
+      <figcaption><span>状态和迁移规则写在 <code>br</code> 的策略文件里，由 <code>br</code> 强制执行：没有 <code>done_check</code> 门禁通过就关不了任务，跳过门禁的开关已关闭；交给人之后无论重开还是接受，都必须附说明。以上规则都已在本机实测（W0.2）。</span></figcaption>
+    </figure>
+  </section>
+
+  <section aria-labelledby="iso-h">
+    <h2 id="iso-h">谁能看到什么</h2>
+    <p class="note">每个 worker 启动时，调度器把下面的规则写进它的 <code>--settings</code>，由 OpenHarness 强制执行。"写"方向还有事后比对兜底；"读"方向剩下递归命令（<code>grep -r</code>）这个已知风险，已经用真实模型确认存在，在测试里记为 xfail。</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>角色或模式</th><th>禁止读</th><th>只准写</th><th>bash</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>所有 worker</td><td><code>WS/coord/**</code>、其他工作区、归档目录</td><td>本任务的 <code>scope.paths</code></td><td>禁止调用 <code>br</code>、agent_mail，禁止提到 <code>coord</code></td></tr>
+          <tr><td>实现线（architect、code-developer、sam-engineer、validator）</td><td><code>verification/**</code>；M4 起还有增量测试和保留用例</td><td>同上</td><td>还禁止提到 <code>verification</code></td></tr>
+          <tr><td>verifier（V1 模式、D1）</td><td><code>output/lambdas/**</code>、模板（看不到实现）</td><td><code>verification/**</code></td><td>还禁止提到 <code>output/lambdas</code></td></tr>
+          <tr><td>annotator</td><td>无额外限制</td><td>只能通过 MCP 标注工具写事实库</td><td>默认不能用</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="ms-h">
+    <h2 id="ms-h">里程碑</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>里程碑</th><th>状态</th><th>内容</th><th>验收</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="code-col">M0 准备</td>
+            <td><span class="status done">已完成</span></td>
+            <td>修好 OpenHarness 的命令行参数和权限（含子 agent 继承限制）；固定 <code>br</code> / agent_mail 版本；harness 版本记录；端到端权限测试</td>
+            <td>权限测试、冒烟测试通过；真实 worker 和子 agent 的越权读写都被拒绝</td>
+          </tr>
+          <tr>
+            <td class="code-col">M1 协调骨架</td>
+            <td><span class="status next">下一步</span></td>
+            <td>调度器加任务板，按 v1 的原顺序串行跑 v1 模块；异常处理者、相似失败归并、事件日志、故障注入测试</td>
+            <td>bookstore 无人值守跑完，验收结果和 bookstore-oh 处在同一水平；杀掉调度器或 worker 能自动恢复</td>
+          </tr>
+          <tr>
+            <td class="code-col">M2 工作包并行</td>
+            <td><span class="status">计划中</span></td>
+            <td>结构提取补上同文件辅助函数解析；工作包规划；按包展开；文件独占和资源锁；多个工作区同时运行</td>
+            <td>bookstore、acmeair 的结果和 M1 一致，关键路径变短，没有越界写入</td>
+          </tr>
+          <tr>
+            <td class="code-col">M3 公告板和讨论室</td>
+            <td><span class="status">计划中</span></td>
+            <td>agent_mail 服务；规格讨论室、分诊讨论室；按角色设置可见范围；金丝雀泄漏测试</td>
+            <td>讨论室结论都经工具写入；泄漏测试为 0</td>
+          </tr>
+          <tr>
+            <td class="code-col">M4 接入 v2 模块</td>
+            <td><span class="status">计划中</span></td>
+            <td>v2 模块实现一个接入一个；O 阶段在 AWS 上实测（本机初筛、每个候选一个栈、和 B0 交替测量）</td>
+            <td>v2 流水线在 v3 调度下跑通 bookstore 和 acmeair</td>
+          </tr>
+          <tr>
+            <td class="code-col">M5 对抗评审室</td>
+            <td><span class="status">计划中</span></td>
+            <td>第一次升级 harness 时压测规则：两个评审各自独立出意见，仲裁时人在场</td>
+            <td>规则修正候选经人批准</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="note">后续扩展，不在当前交付范围内：执行层替换实验、Temporal 耐久执行、保留用例、worker 沙箱、更好的分组方法、上百个接口的单体的分层设计、常驻 worker 自行认领。</p>
+  </section>
+
+  <footer>
+    <span>依据：<code>m2s-mcp-server/PIPELINE_V3_PLAN.md</code>（实施方案）、<code>PIPELINE_V3_EXPLORATION.md</code>（讨论过程）、<code>PIPELINE_REDESIGN_v2.md</code>（模块定义）。</span>
+    <span>M0 的提交：OpenHarness 分支 <code>feat/cli-settings-flags</code> 的 a554572、d265a5d、07404fa；本仓库 2eb0648。更新于 2026-10-30。</span>
+  </footer>
+</div>
