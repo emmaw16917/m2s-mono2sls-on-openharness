@@ -1,6 +1,7 @@
 # M2S 流水线 v3 探索：从"主 Agent 编排"到"任务板 + 团队协作"
 
-> **状态**：粗略的探索稿（2026-10-30），不是设计。§8 的问题正在逐条讨论，已定的标在 §8 里。基于 v2 草案（`PIPELINE_REDESIGN_v2.md`，commit 43f5c59）。
+> **状态**：探索稿（2026-10-30），记录讨论过程和取舍理由。§8 的 7 个问题都已经定了。
+> **可执行的实施方案见 `PIPELINE_V3_PLAN.md`**，其中区分了必做项和后续扩展。基于 v2 草案（`PIPELINE_REDESIGN_v2.md`，commit 43f5c59）。
 > 模块编号（M0/F/G/J/A/D/I/V/O/C/U）、术语（裁判、增量测试、事实库、缺口清单、裁定通道……）都沿用 v2。
 
 ---
@@ -473,7 +474,7 @@ graph LR
 | 组件 | 选项 | 建议 |
 |---|---|---|
 | mcp_agent_mail | Python 版已标为弃用，由 Rust 重写版 `mcp_agent_mail_rust` 取代。Rust 版：<br>- 有 Windows 构建和 PowerShell 安装脚本；<br>- 状态存在 SQLite，同时用 git 存档作为留痕；<br>- 新增了 build slot（`acquire_build_slot` / `renew_build_slot` / `release_build_slot`）；<br>- 自称还在 release candidate 阶段 | 用 **Rust 版**，固定版本号 |
-| Beads | 有两条分支：<br>- **`bd`**（steveyegge → gastownhall/beads）：已经改用 Dolt 存储；内嵌模式只允许一个写入者，多个写入者要另外起 Dolt 服务；会自动提交 git、安装 git hook；有原子认领 `bd update --claim`；有 `beads-mcp`；支持 Windows。<br>- **`br`**（beads_rust）：保留经典的 SQLite + JSONL 结构；没有守护进程；从不碰 git；mcp_agent_mail_rust 的文档是配合它写的 | 倾向 **`br`**。原因：<br>- 不碰 git，不会干扰工作区的 git（我们要打 B0 tag，提交也要串行）；<br>- 没有守护进程；<br>- 和 agent_mail 是同一个生态。<br>Windows 支持和并发写入**待核实** |
+| Beads | 有两条分支：<br>- **`bd`**（steveyegge → gastownhall/beads）：已经改用 Dolt 存储；内嵌模式只允许一个写入者，多个写入者要另外起 Dolt 服务；会自动提交 git、安装 git hook；有原子认领 `bd update --claim`；有 `beads-mcp`；支持 Windows。<br>- **`br`**（beads_rust）：保留经典的 SQLite + JSONL 结构；没有守护进程；从不碰 git；mcp_agent_mail_rust 的文档是配合它写的 | 倾向 **`br`**。原因：<br>- 不碰 git，不会干扰工作区的 git（我们要打 B0 tag，提交也要串行）；<br>- 没有守护进程；<br>- 和 agent_mail 是同一个生态。<br>Windows 支持和并发写入已于 2026-10-30 核实（见下） |
 
 **一个简化：worker 不直接写任务板。**
 - 在 OpenHarness 上，worker 是调度器为每个任务启动的一次性进程（`oh -p`），不是常驻着等活的。所以"认领"实际上由调度器完成：把任务设为进行中、记下执行者，再启动 worker。这样也就不依赖 Beads 的原子认领了。
@@ -486,20 +487,48 @@ graph LR
 | 我们的需求 | Beads / agent_mail 现成提供 | 要补的部分（放在 `m2s-server` 和调度器里） |
 |---|---|---|
 | 任务、依赖、"依赖全部完成就可以开始" | Beads 的任务、`blocks` / `parent-child` 依赖、`ready` 列表 | 工作包用父任务表示，各模块任务作为它的子任务 |
-| `checking` 状态：agent 不能自己把任务标为完成 | 没有 | worker 只能通过 `submit_task` 提交，之后调度器运行完成检查。检查通过，才由调度器关闭任务 |
-| `stale`：上游产物变了，下游任务失效 | 没有 | 任务说明里记录输入产物的版本。产物版本更新时，调度器重新打开用到旧版本的任务，并写明原因 |
+| `checking` 状态：agent 不能自己把任务标为完成 | **`br` 的工作流策略原生支持**（已实测）：<br>- 可以自定义状态和允许的迁移；<br>- 可以规定 `checking -> closed` 必须有 `done_check` 门禁通过 | worker 只能通过 `submit_task` 提交；调度器运行完成检查，用 `br gate report` 记录结果，再关闭任务。策略文件里要把 `allow_bypass: false` 写在顶层 |
+| `stale`：上游产物变了，下游任务失效 | **部分支持**（已实测）：允许 `closed -> stale` 这个迁移以后，下游任务会自动重新变为"被阻塞" | 任务说明里记录输入产物的版本。产物版本更新时，由调度器判断哪些任务用了旧版本，并把它们设为 `stale` |
 | 租约、心跳 | agent_mail 的文件预留带 TTL | worker 是调度器启动的进程，调度器直接看进程是否还活着，不需要心跳。进程崩溃了就把任务放回待办 |
 | 文件独占 | agent_mail 的独占文件预留，加上提交前检查。但它只是**建议性的**：冲突会报告出来，预留请求本身仍然成功 | 用 OpenHarness 的写路径规则强制执行（§4.3）；agent_mail 的预留只用来留痕和展示 |
-| 资源锁 | Rust 版的 build slot | 压测客户端、共用基础设施栈、`docker-rie` 池用 build slot（它是否支持"最多 N 个"，**待核实**）。账号并发额度由调度器计数 |
+| 资源锁 | Rust 版有 build slot，但实测它**只是建议性的独占**，也**没有数量参数**（见下） | 资源锁放进调度器和 `m2s-server`。用到这些资源的本来就是 `m2s-server` 的工具（`run_judge`、AWS 测量），而且调度器只有一个进程，计数很简单。build slot 只用来留痕和展示 |
 | 公告板 | agent_mail 的多收件人消息和 thread | 按角色列收件人，可见性靠"发给谁"来控制；每个应用一个独立的 project，满足"运行中不读其他应用的记录" |
 | 讨论室 | agent_mail 的 thread；联系人策略可以限制谁能给谁发消息 | 一室一个 thread；参与者用联系人策略固定；调度器数轮次；结论必须通过 `m2s-server` 的裁定工具写入 |
 | 事件流、留痕 | Beads 的 JSONL；agent_mail 的 git 存档 | 调度器另外写一份事件日志，记录每个任务的输入版本、执行者和模型，供复现使用；C2 归档时一并保存 |
 | 可见性 | 没有：Beads 和 agent_mail 的数据，所有 agent 都能读到 | 规定：任务说明和消息里**只放指针和 v2 的转达格式**，敏感内容留在受保护路径里 |
 
-**要先核实的点**（P0 开始前）：
-- `br` 在 Windows 上能不能用；多个进程同时写的时候表现如何。
-- agent_mail_rust 的 build slot 语义；它和 OpenHarness 的 MCP 配置能不能一起工作。
-- 两个项目的版本稳定性。固定版本号，并让 `m2s-server` 的适配层薄一些，以后如果要换掉其中一个，只需要改适配层。
+**核实结果**（2026-10-30，本机 Windows 11 实测。使用官方发布的 Windows 包，已校验 sha256；测试都在临时目录里进行）：
+
+1. **`br` v0.7.6 在 Windows 上可用，多进程同时写没有问题。**
+   - 原生 Windows 版可以直接运行，不需要 WSL。
+   - 8 个进程各创建 25 个任务，共 200 个，**没有失败，也没有丢失**，JSONL 导出也是 200 行。
+     - 总耗时 116 秒，写入是串行化的（`--lock-timeout 15000`）。
+     - 单进程创建一个任务约 430 ms；210 个任务时 `ready --json` 约 95 ms。
+     - 我们的设计里只有调度器写，这个速度足够。
+   - 设了 `claim_exclusive: true` 以后，8 个进程同时认领同一个任务，**只有 1 个成功**，其余 7 个被拒绝。
+   - 工作流策略：
+     - 没有 `done_check` 门禁通过时，`checking -> closed` 被拒绝；门禁报告失败时也被拒绝；报告通过后才放行。
+     - 把一个已完成的任务设为 `stale` 以后，依赖它的任务自动重新变为"被阻塞"。
+   - 要注意的两点：
+     - `--bypass-policy` 默认是允许的，必须在策略文件**顶层**写 `allow_bypass: false`（写在 `workflow` 下面会被忽略，只给出警告）。已实测有效。
+     - 门禁结果由报告者自己声明是谁报告的，任何能运行 `br` 的进程都能报告"通过"。所以 worker 必须被禁止运行 `br` 的写命令，这一点 §4.3 的命令规则已经包含。
+2. **agent_mail 的 build slot 不满足"最多 N 个"。**
+   - `acquire_build_slot` 的参数只有项目、agent、slot 名、TTL 和 `exclusive`，没有数量参数。
+   - 而且它是建议性的：第二个 agent 申请同一个独占 slot，结果仍然是"已授予"，只是附带一个 `conflicts` 列表，要由调用方自己检查、自己退让。
+   - 另外要设 `WORKTREES_ENABLED=true` 才能启用 build slot。
+   - 文件预留的行为不同：发生独占冲突时返回"授予为空 + 冲突列表"，也就是在预留这一层是拒绝的；但在文件系统层面仍然只是建议性的。
+   - 结论：资源锁由调度器和 `m2s-server` 负责（见上表）。
+3. **agent_mail 可以和 OpenHarness 一起用，但必须走 HTTP，不能走 stdio。**
+   - 用 OpenHarness 自带的 MCP 客户端，通过 HTTP 加 Bearer token 连接：2 个客户端同时连接，45 个工具都能列出、能调用。OpenHarness 设置里的 `mcp_servers` 支持 `{"type": "http", "url": ..., "headers": ...}`。
+   - stdio 不行：每个存储目录同一时间只允许一个 agent_mail 进程。实测第二个 stdio 进程因为锁被占用而拒绝启动。如果每个 `oh -p` worker 各自起一个 stdio 服务器，第二个 worker 就会连不上。
+   - 所以要起**一个共用的 HTTP 服务**，所有 worker 都配置成连它的 URL。
+   - Windows 上的坑：
+     - 存储目录必须事先建好；
+     - Bearer token 至少 8 个字符，否则服务拒绝启动；
+     - 路径太长时，git 存档会失败。实测在很深的临时目录下，文件预留的存档报了 "path too long"。存储根目录和项目路径要尽量短；
+     - 访问 localhost 要设 `NO_PROXY`，因为 OpenHarness 的 httpx 客户端会读取代理环境变量。
+
+**仍然要注意的**：两个项目的版本都更新得很快。要固定版本号，`m2s-server` 的适配层也要尽量薄，这样以后换掉其中一个时只需要改适配层。
 
 ---
 
@@ -507,7 +536,7 @@ graph LR
 
 | 阶段 | 内容 | 完成标志 |
 |---|---|---|
-| **P0 等价改造** | 先核实 §6.4 列出的几点；接入 Beads（`br`）和 mcp_agent_mail_rust；`m2s-server` 补上提交工具、完成检查、失效传播和事件日志；修好 OpenHarness 的权限（§4.3）；调度器按 v2 的顺序发布**粗粒度**任务，一次只放一个 | 在 bookstore 上得到和 v2 相同的验收结果；不再需要 LLM 主 Agent 撑完整个会话 |
+| **P0 等价改造** | 接入 Beads（`br`，使用工作流策略）和 mcp_agent_mail_rust（一个共用的 HTTP 服务）（§6.4 的几个点已于 2026-10-30 核实）；`m2s-server` 补上提交工具、完成检查、失效传播和事件日志；修好 OpenHarness 的权限（§4.3）；调度器按 v2 的顺序发布**粗粒度**任务，一次只放一个 | 在 bookstore 上得到和 v2 相同的验收结果；不再需要 LLM 主 Agent 撑完整个会话 |
 | **P1 细粒度并行** | 动态展开（按接口、按函数、按改动）；J 和 A 并行；文件独占和资源锁 | 关键路径时长、token、返工次数和 P0 对比；验收结果一致 |
 | **P2 公告板 + 讨论室** | 规格讨论室和分诊讨论室代替主 Agent 转发；按角色过滤可见性；异常处理者 | 主 Agent 介入次数下降；没有隔离泄漏（专门做泄漏测试） |
 | **P3 更换底座的实验（后续扩展）** | 同一个协调层接不同的执行层；评估 Temporal | 各执行层的效果、成本对比 |
