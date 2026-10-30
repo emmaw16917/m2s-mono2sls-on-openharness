@@ -85,7 +85,9 @@ v3 改的是**谁来调度、怎么通信**，不改**每一步做什么**。
 
 | 项 | 现状 | 对 v3 的影响 |
 |---|---|---|
-| `oh` 的 `--settings`、`--allowed-tools`、`--disallowed-tools`、`--mcp-config` | `cli.py` 里声明了这几个参数，但**没有任何代码使用它们**，传了也不起作用 | 不能按任务传入权限设置；要修（W0.1） |
+| `oh` 的 `--settings`、`--allowed-tools`、`--disallowed-tools`、`--mcp-config` | `cli.py` 里声明了这几个参数，但**没有任何代码使用它们**，传了也不起作用 | 不能按任务传入权限设置；要修（W0.1）。**已修**（2026-10-30，见 W0.1） |
+| `-p` 模式下的 `--permission-mode`、`--append-system-prompt` | `run_print_mode` 收到了这两个参数，但没有传给 `build_runtime`，所以同样不起作用；dry-run 预览里的 `--append-system-prompt` 会把默认的系统提示词整个替换掉 | 一并在 W0.1 修好 |
+| 工具允许名单（`allowed_tools`） | 列在允许名单里的工具，**会跳过路径规则和命令规则**，因为检查器先查允许名单。你的全局设置里就把 m2s-server 的工具都列了进去 | 调度器生成的设置不使用允许名单（统一用 `full_auto`）；在 W0.3 里改检查顺序，让禁止规则优先 |
 | `OPENHARNESS_CONFIG_DIR` 环境变量 | 可以让一个进程使用另一个配置目录 | 修好之前的临时办法：每个 worker 一个配置目录 |
 | 权限检查器（`permissions/checker.py`） | 支持工具禁止名单、路径规则、命令禁止规则（通配符匹配整条命令）；禁止规则在 `full_auto` 模式下也生效 | 能力够用，但要能按任务设置 |
 | 路径规则 | 只有允许和禁止，**不区分读和写** | 表达不了"只准写自己的目录，其他地方可以读"；要扩展（W0.3） |
@@ -493,9 +495,9 @@ agent_mail 的 build slot 只是建议性的，也不能计数，所以只用来
 
 | 编号 | 内容 | 产出 | 验收 | 依赖 | 规模 |
 |---|---|---|---|---|---|
-| W0.1 | 修复 `--settings`、`--allowed-tools`、`--disallowed-tools`、`--mcp-config` | OpenHarness 补丁 + 测试 | 用 `--settings` 传入的禁止规则在 `oh -p` 中生效 | — | M |
+| W0.1 | 修复 `--settings`、`--allowed-tools`、`--disallowed-tools`、`--mcp-config`；以及 `-p` 模式下的 `--permission-mode`、`--append-system-prompt` | OpenHarness 补丁 + 测试 | 用 `--settings` 传入的禁止规则在 `oh -p` 中生效。**2026-10-30 完成**：<br>- OpenHarness 分支 `feat/cli-settings-flags`；<br>- 新增测试 21 个，全部通过；<br>- 全量测试的失败集合和改动前相同（14 个，都和 Windows 环境有关）；<br>- 真实的 `oh -p` 中，受保护文件用 `read_file` 和 bash `cat` 读取都被拒绝 | — | M |
 | W0.2 | 固定版本：`br` 0.7.6、mcp_agent_mail_rust 0.3.39，校验 sha256 后放进 `D:\m2s-tools\`；写一个冒烟测试脚本 | `coord/smoke_tools.py` | 本机上冒烟测试通过：建任务、依赖、门禁、`allow_bypass`、HTTP 连接、建讨论串 | — | S |
-| W0.3 | 路径规则区分读和写 | OpenHarness 补丁 + 测试 | 只读工具读得到但写不进去；不写 `access` 的老配置照样有效 | W0.1 | S |
+| W0.3 | 路径规则区分读和写；检查顺序改为"禁止规则优先于工具允许名单" | OpenHarness 补丁 + 测试 | 只读工具读得到但写不进去；列在允许名单里的工具也受路径规则和命令规则约束；不写 `access` 的老配置照样有效 | W0.1 | S |
 | W0.4 | 子 agent 的权限传递 | OpenHarness 补丁 + 测试 | 子 agent 也受 agent 定义里的权限约束 | — | S |
 | W0.5 | 端到端权限测试：用一个真实的 `oh -p` worker，故意去读受保护的文件、越界写文件 | `tests/test_coord_perm.py` | 全部被拒绝。bash 的递归读取作为已知风险记下来 | W0.1、W0.3 | S |
 | W0.6 | 记录 harness 版本：OpenHarness commit、m2s-mcp-server commit、`br` / agent_mail 版本、各角色的模型 | `coord/harness.py` | 每次运行的事件日志第一行都是 harness 版本 | — | S |
