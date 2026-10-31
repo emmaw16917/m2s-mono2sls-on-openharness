@@ -76,6 +76,17 @@ class Template:
                     frontier.append(task.id)
         return [task.id for task in self.tasks if task.id in found]
 
+    def upstream(self, task_id: str) -> list[str]:
+        """task_id and every task it depends on, directly or transitively, in template order."""
+        found = {task_id}
+        frontier = [task_id]
+        while frontier:
+            for dep in self.get(frontier.pop()).deps:
+                if dep not in found:
+                    found.add(dep)
+                    frontier.append(dep)
+        return [task.id for task in self.tasks if task.id in found]
+
 
 def load_template(name: str = "v1", path: Path | None = None) -> Template:
     source = path or TEMPLATES_DIR / f"{name}.yaml"

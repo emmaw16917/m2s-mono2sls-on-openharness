@@ -54,7 +54,7 @@ MAX_SPAWNS_PER_TASK = 12  # backstop against a rule loop; normal limits are far 
 HANDLER_TIMEOUT_S = 20 * 60
 HANDLER_MAX_TURNS = 60
 
-EXIT_DONE, EXIT_HUMAN, EXIT_STALLED, EXIT_ERROR = 0, 3, 4, 1
+EXIT_DONE, EXIT_HUMAN, EXIT_STALLED, EXIT_ERROR, EXIT_STOPPED = 0, 3, 4, 1, 5
 
 
 def _git(ws: Path, *args: str) -> subprocess.CompletedProcess:
@@ -78,11 +78,19 @@ class Dispatcher:
         guard: ToolGuard | None = None,
         stamp: Callable[[], dict[str, Any]] = harness.stamp,
         log: Callable[[str], None] = print,
+        stop_after: str | None = None,
     ):
         self.ws = Path(ws).resolve()
         self.coord = self.ws / "coord"
         self.monolith = Path(monolith).resolve() if monolith else None
         self.template = load_template(template) if isinstance(template, str) else template
+        # --stop-after: start only this task and what it depends on (plus the human gates the
+        # flows add); stop once it is closed. A later run without the flag carries on.
+        self.stop_after = stop_after
+        try:
+            self.stop_set = set(self.template.upstream(stop_after)) if stop_after else None
+        except KeyError:
+            raise ValueError(f"--stop-after: {stop_after} is not a task of template {self.template.name}") from None
         self.coord.mkdir(parents=True, exist_ok=True)
         self.events = EventLog(self.coord / "events.jsonl")
         self.board = TaskBoard(self.coord)
@@ -113,7 +121,7 @@ class Dispatcher:
                 self.board.add_task(spec.to_json(), spec.deps)
             self.events.append("harness", stamp=self.stamp())
             self.events.append("run_start", ws=str(self.ws), monolith=str(self.monolith),
-                               template=self.template.name, max_workers=self.max_workers)
+                               template=self.template.name, max_workers=self.max_workers, stop_after=self.stop_after)
             self.events.append("tool_baseline", baseline=self.guard.capture())
             self.shadow.init()
             self.log(f"new run: {len(self.template.tasks)} tasks on the board")
@@ -126,7 +134,7 @@ class Dispatcher:
             self.guard.load(baseline["baseline"])
         else:
             self.guard.capture()
-        self.events.append("run_resume")
+        self.events.append("run_resume", stop_after=self.stop_after)
         self._reconcile()
 
     def _reconcile(self) -> None:
@@ -198,6 +206,11 @@ class Dispatcher:
     def _paused(self) -> bool:
         return any(h.kind == "handler" and h.meta["case"].kind == "review" for h in self.running.values())
 
+    def _in_stop_set(self, task_id: str) -> bool:
+        if self.stop_set is None or task_id in self.stop_set:
+            return True
+        return task_id not in {t.id for t in self.template.tasks}  # human gates added by the flows
+
     def _busy_workers(self) -> int:
         return sum(1 for h in self.running.values() if h.kind == "task")
 
@@ -205,7 +218,8 @@ class Dispatcher:
         if self._paused() or self._busy_workers() >= self.max_workers:
             return 0
         started = 0
-        ready = sorted((t for t in self.board.ready() if t not in self.running), key=self.template.order)
+        ready = sorted((t for t in self.board.ready() if t not in self.running and self._in_stop_set(t)),
+                       key=self.template.order)
         for task_id in ready:
             if self._busy_workers() >= self.max_workers:
                 break
@@ -691,14 +705,17 @@ class Dispatcher:
             return "done"
         if any(s == "needs_human" for s in statuses.values()):
             return "needs_human"
+        if self.stop_after and statuses.get(self.stop_after) == "closed":
+            return "stopped"
         return "stalled"
 
     def _finish(self, outcome: str) -> int:
-        self.events.append("run_end", outcome=outcome)
+        self.events.append("run_end", outcome=outcome, stop_after=self.stop_after)
         report = self.coord / "report.md"
         report.write_text(self.report(outcome), encoding="utf-8")
-        self.log(f"run {outcome}; report: {report}")
-        return {"done": EXIT_DONE, "needs_human": EXIT_HUMAN}.get(outcome, EXIT_STALLED)
+        shown = f"stopped after {self.stop_after}" if outcome == "stopped" else outcome
+        self.log(f"run {shown}; report: {report}")
+        return {"done": EXIT_DONE, "needs_human": EXIT_HUMAN, "stopped": EXIT_STOPPED}.get(outcome, EXIT_STALLED)
 
     def _task_events_text(self, task_id: str) -> str:
         lines = []
@@ -725,7 +742,8 @@ class Dispatcher:
 
     def report(self, outcome: str) -> str:
         tasks = self.board.tasks()
-        lines = [f"# 运行报告：{self.ws.name}", "", f"- 结果：**{outcome}**", f"- 单体：{self.monolith}",
+        shown = f"stopped（`--stop-after {self.stop_after}`，后面的任务未启动）" if outcome == "stopped" else outcome
+        lines = [f"# 运行报告：{self.ws.name}", "", f"- 结果：**{shown}**", f"- 单体：{self.monolith}",
                  f"- 模板：{self.template.name}", ""]
         stamp = next((e["stamp"] for e in self.events.all() if e["type"] == "harness"), {})
         if stamp:
@@ -786,6 +804,8 @@ def main(argv: list[str] | None = None) -> int:
     p_run.add_argument("--poll", type=float, default=5.0)
     p_run.add_argument("--no-handler", action="store_true", help="hand exceptions straight to a person")
     p_run.add_argument("--no-phase-review", action="store_true")
+    p_run.add_argument("--stop-after", metavar="TASK",
+                       help="run only TASK and its upstream tasks, then stop (exit 5); run again without it to continue")
     p_status = sub.add_parser("status", help="show task status")
     p_status.add_argument("--ws", required=True)
     p_resolve = sub.add_parser("resolve", help="resolve a needs_human task")
@@ -805,8 +825,13 @@ def main(argv: list[str] | None = None) -> int:
         for task_id, info in board.tasks().items():
             print(f"{task_id:20} {info['status']}")
         return EXIT_DONE
-    dispatcher = Dispatcher(args.ws, args.monolith, args.template, max_workers=args.max_workers, poll_s=args.poll,
-                            handler=not args.no_handler, phase_review=not args.no_phase_review)
+    try:
+        dispatcher = Dispatcher(args.ws, args.monolith, args.template, max_workers=args.max_workers, poll_s=args.poll,
+                                handler=not args.no_handler, phase_review=not args.no_phase_review,
+                                stop_after=args.stop_after)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return EXIT_ERROR
     return dispatcher.run()
 
 

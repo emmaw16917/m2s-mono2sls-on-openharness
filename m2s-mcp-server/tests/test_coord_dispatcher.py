@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from coord_fakes import FakeGuard, fail_report, make_dispatcher, ok_report  # noqa: E402
 
-from coord.dispatcher import EXIT_DONE, EXIT_HUMAN, main  # noqa: E402
+from coord.dispatcher import EXIT_DONE, EXIT_HUMAN, EXIT_STOPPED, main  # noqa: E402
 from coord.template import load_template  # noqa: E402
 
 MINI = load_template(path=Path(__file__).resolve().parent / "fixtures" / "coord_mini.yaml")
@@ -220,3 +220,15 @@ def test_dispatcher_restart_after_worker_finished(tmp_path: Path):
     restarted = make_dispatcher(tmp_path, {}, template=MINI)
     assert restarted.run() == EXIT_DONE
     assert _spawns(restarted, "S1") == 1
+
+
+def test_stop_after_runs_the_upstream_slice_then_resumes(tmp_path: Path):
+    d = make_dispatcher(tmp_path, {}, template=MINI, stop_after="S1")
+    assert d.run() == EXIT_STOPPED
+    statuses = {t: i["status"] for t, i in d.board.tasks().items()}
+    assert statuses == {"P0": "closed", "S1": "closed", "S2": "open", "S4": "open"}
+    assert "stopped" in (d.coord / "report.md").read_text(encoding="utf-8")
+
+    resumed = make_dispatcher(tmp_path, {}, template=MINI)
+    assert resumed.run() == EXIT_DONE
+    assert [e["task"] for e in resumed.events.all() if e["type"] == "spawn"] == ["S1", "S2", "S4"]

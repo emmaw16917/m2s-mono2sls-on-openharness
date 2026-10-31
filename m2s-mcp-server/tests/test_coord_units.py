@@ -31,6 +31,15 @@ def test_v1_template_loads_with_dependencies_in_order():
     assert template.downstream("S2") == ["S3a", "S3b", "S3c", "S4", "V2", "TAG_V0", "S5", "FINAL"]
     assert template.get("V2").on_stale == "rerun"
     assert all(t.role for t in template.tasks if t.runner == "agent")
+    assert template.upstream("V1") == ["P0", "S0", "S1", "V1"]
+    assert template.upstream("TAG_V0")[-1] == "TAG_V0" and "S5" not in template.upstream("TAG_V0")
+
+
+def test_stop_after_must_name_a_template_task(tmp_path: Path):
+    from coord.dispatcher import Dispatcher
+    with pytest.raises(ValueError, match="not a task"):
+        Dispatcher(tmp_path / "ws", tmp_path / "mono", stop_after="S9")
+    assert not (tmp_path / "ws").exists()
 
 
 def test_scope_globs():
