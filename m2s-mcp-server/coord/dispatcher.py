@@ -187,6 +187,7 @@ class Dispatcher:
         else:
             self.guard.capture()
         self.events.append("run_resume", stop_after=self.stop_after)
+        self.events.append("harness", stamp=self.stamp(), on="resume")  # the tools may have changed between segments
         self._reconcile()
 
     def _reconcile(self) -> None:
