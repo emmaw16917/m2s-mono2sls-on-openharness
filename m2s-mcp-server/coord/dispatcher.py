@@ -57,6 +57,21 @@ HANDLER_MAX_TURNS = 60
 EXIT_DONE, EXIT_HUMAN, EXIT_STALLED, EXIT_ERROR, EXIT_STOPPED = 0, 3, 4, 1, 5
 
 
+def other_run_dirs(ws: Path, monolith: Path | None) -> tuple[str, ...]:
+    """Workspaces of other runs, closed to this run's workers: the siblings of WS, and
+    siblings of WS's parent named like it (runs-prev-*). Never the monolith or its parents."""
+    found: list[Path] = []
+    parent = ws.parent
+    if parent.is_dir():
+        found += [d for d in parent.iterdir() if d.is_dir() and d != ws]
+    if parent.parent.is_dir():
+        found += [d for d in parent.parent.iterdir()
+                  if d.is_dir() and d != parent and d.name.startswith(parent.name)]
+    if monolith is not None:
+        found = [d for d in found if d != monolith and d not in monolith.parents]
+    return tuple(str(d) for d in sorted(found))
+
+
 def _git(ws: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", "-C", str(ws), *args], capture_output=True, text=True, encoding="utf-8", errors="replace")
 
@@ -109,6 +124,7 @@ class Dispatcher:
         self.log = log
         self.cases = Casebook(self.coord, self.events)
         self.running: dict[str, WorkerHandle] = {}
+        self.foreign_runs = other_run_dirs(self.ws, self.monolith)
 
     # ------------------------------------------------------------------ setup / resume
 
@@ -267,6 +283,7 @@ class Dispatcher:
             system_prompt=self.role_prompts(spec.role),
             prompt=worker_prompt(spec, self.ws, self.monolith, attempt, feedback),
             scope=spec.scope, max_turns=spec.max_turns, timeout_s=spec.timeout_min * 60,
+            deny_read=self.foreign_runs,
         )
         self.board.claim(spec.id, job.worker_name)
         snapshot = self.shadow.snapshot(f"before {spec.id} a{attempt}")
@@ -496,7 +513,8 @@ class Dispatcher:
         job = WorkerJob(task_id=case.case_id, attempt=1, role="handler", ws=self.ws, coord_dir=self.coord,
                         system_prompt=HANDLER_SYSTEM_PROMPT,
                         prompt=handler_prompt(case.case_id, case.path, self.cases.journal, self.ws, kind),
-                        scope=(), max_turns=HANDLER_MAX_TURNS, timeout_s=HANDLER_TIMEOUT_S, read_coord=True)
+                        scope=(), max_turns=HANDLER_MAX_TURNS, timeout_s=HANDLER_TIMEOUT_S, read_coord=True,
+                        deny_read=self.foreign_runs)
         handle = self.launcher.start(job)
         handle.kind = "handler"
         handle.meta = {"case": case}

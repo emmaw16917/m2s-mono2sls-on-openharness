@@ -84,6 +84,7 @@ def worker_prompt(spec: TaskSpec, ws: Path, monolith: Path, attempt: int,
         f"- 只改这个任务范围内的文件：{scope}。范围之外的改动会被撤销，这次尝试判为失败。\n"
         "- 不要修改流水线自己的工具：m2s-mcp-server/、.openharness/、~/.openharness/ 下的文件。\n"
         "- 不要读写 WS/coord/（调度器的内部状态）。不要调用 mcp_auth。\n"
+        "- 不要读别的工作区（WS 所在 runs/ 目录下的其他目录、runs-prev-*），也不要参照它们的产物。\n"
         "- 这份说明可以随时用 mcp__m2s-server__get_task_context 重新取回。"
     )
     return "\n\n".join(sections)

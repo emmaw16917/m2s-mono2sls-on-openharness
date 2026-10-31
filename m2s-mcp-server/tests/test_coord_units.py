@@ -204,3 +204,21 @@ def test_worker_settings_scope_and_isolation(tmp_path: Path):
 def test_role_prompt_strips_frontmatter(tmp_path: Path):
     (tmp_path / "m2s-architect.md").write_text("---\nname: m2s-architect\nmodel: inherit\n---\n\n# Architect\nbody\n", encoding="utf-8")
     assert role_prompt("m2s-architect", tmp_path) == "# Architect\nbody"
+
+
+def test_other_runs_are_closed_to_workers(tmp_path: Path):
+    from coord.dispatcher import other_run_dirs
+    runs = tmp_path / "M2S" / "runs"
+    for d in ("bookstore-v3a", "bookstore-v2", "acmeair-a1"):
+        (runs / d).mkdir(parents=True)
+    (tmp_path / "M2S" / "runs-prev-run5").mkdir()
+    (tmp_path / "M2S" / "knowledge").mkdir()
+    (runs / "notes.txt").write_text("x", encoding="utf-8")
+    ws = runs / "bookstore-v3a"
+    denied = other_run_dirs(ws, tmp_path / "mono" / "bookstore")
+    assert denied == tuple(str(d) for d in sorted([runs / "acmeair-a1", runs / "bookstore-v2", tmp_path / "M2S" / "runs-prev-run5"]))
+    assert other_run_dirs(ws, runs / "acmeair-a1" / "mono") == (str(runs / "bookstore-v2"), str(tmp_path / "M2S" / "runs-prev-run5"))
+
+    job = WorkerJob("S2", 1, "m2s-code-developer", ws, ws / "coord", "ROLE", "do it", (), 100, 60.0, deny_read=denied)
+    rules = worker_settings(job, [])["permission"]["path_rules"]
+    assert {"pattern": f"{runs / 'bookstore-v2'}/*", "allow": False} in rules

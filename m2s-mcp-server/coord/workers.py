@@ -46,6 +46,7 @@ class WorkerJob:
     max_turns: int
     timeout_s: float
     read_coord: bool = False  # only the exception handler may read WS/coord
+    deny_read: tuple[str, ...] = ()  # directories closed to the worker (other runs' workspaces)
 
     @property
     def run_dir(self) -> Path:
@@ -192,6 +193,7 @@ def worker_settings(job: WorkerJob, other_servers: list[str]) -> dict[str, Any]:
         {"pattern": f"{REPO}/.openharness/*", "allow": False, "access": "write"},
         {"pattern": f"{home}/.openharness/*", "allow": False, "access": "write"},
     ]
+    path_rules += [{"pattern": f"{d}/*", "allow": False} for d in job.deny_read]
     denied_commands: list[str] = []
     if not job.read_coord:
         path_rules.insert(0, {"pattern": f"{ws}/coord/*", "allow": False})
