@@ -828,19 +828,28 @@ class Dispatcher:
         shown = f"stopped（`--stop-after {self.stop_after}`，后面的任务未启动）" if outcome == "stopped" else outcome
         lines = [f"# 运行报告：{self.ws.name}", "", f"- 结果：**{shown}**", f"- 单体：{self.monolith}",
                  f"- 模板：{self.template.name}", ""]
-        stamp = next((e["stamp"] for e in self.events.all() if e["type"] == "harness"), {})
-        if stamp:
-            lines += [f"- harness：m2s {str(stamp.get('m2s', {}).get('commit'))[:10]}"
-                      f"（未提交改动 {len(stamp.get('m2s', {}).get('dirty', []))} 处），OpenHarness "
-                      f"{str(stamp.get('openharness', {}).get('commit'))[:10]}，模型 {stamp.get('models', {}).get('model')}", ""]
-        lines += ["| 任务 | 状态 | 启动次数 | 崩溃 | 用时（分钟） | 最后一次检查 |", "|---|---|---|---|---|---|"]
+        seen: list[str] = []
+        for event in self.events.all():  # one line per distinct harness version (the tools may change between segments)
+            if event["type"] != "harness":
+                continue
+            stamp = event.get("stamp") or {}
+            text = (f"m2s {str(stamp.get('m2s', {}).get('commit'))[:10]}"
+                    f"（未提交改动 {len(stamp.get('m2s', {}).get('dirty', []))} 处），OpenHarness "
+                    f"{str(stamp.get('openharness', {}).get('commit'))[:10]}，模型 {stamp.get('models', {}).get('model')}")
+            if text not in seen:
+                seen.append(text)
+                lines.append(f"- harness（{event['ts'][:16]} 起）：{text}" if "ts" in event else f"- harness：{text}")
+        if seen:
+            lines.append("")
+        lines += ["| 任务 | 状态 | 启动次数 | 崩溃 | API 中断 | 用时（分钟） | 最后一次检查 |", "|---|---|---|---|---|---|---|"]
         for task_id, info in sorted(tasks.items(), key=lambda kv: self.template.order(kv[0])):
             exits = self.events.of_task(task_id, "worker_exit")
             minutes = round(sum(e.get("duration_s") or 0 for e in exits) / 60, 1)
             last = self.events.last(task_id, "checks")
             last_text = "；".join(f"{r['name']}{'✓' if r['ok'] else '✗'}" for r in (last or {}).get("results", []))
             lines.append(f"| {task_id} | {info['status']} | {self.events.count('spawn', task_id)} | "
-                         f"{sum(1 for e in exits if e.get('crashed'))} | {minutes} | {last_text} |")
+                         f"{sum(1 for e in exits if e.get('crashed') and not e.get('infra'))} | "
+                         f"{sum(1 for e in exits if e.get('infra'))} | {minutes} | {last_text} |")
         cases = [e for e in self.events.all() if e["type"] == "case_decision"]
         if cases:
             lines += ["", "## 异常处理", ""] + [f"- {e['case']}：{(e.get('decision') or {}).get('action')} → {e['applied']}" for e in cases]
