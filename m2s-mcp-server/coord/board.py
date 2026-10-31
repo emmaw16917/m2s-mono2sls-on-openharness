@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from coord.policy import DISPATCHER_ACTOR, POLICY_YAML
+from coord.policy import DISPATCHER_ACTOR, DONE_GATE, POLICY_YAML
 from coord.toolchain import exe_path
 
 LOCK_TIMEOUT_MS = 15000
@@ -90,3 +90,123 @@ class Br:
     def status(self, issue_id: str) -> str:
         issues = issues_of(self.run("show", issue_id, "--json").json())
         return str(issues[0]["status"]) if issues else ""
+
+
+class TaskBoard:
+    """Task-level view of one run's board: tasks are addressed by their template
+    id (the issue title), and the description holds the immutable TaskSpec JSON."""
+
+    def __init__(self, coord_dir: Path, br: Br | None = None):
+        self.dir = Path(coord_dir) / "beads"
+        self.br = br or Br(self.dir)
+        self._ids: dict[str, str] = {}
+
+    # --- setup ---
+
+    def exists(self) -> bool:
+        return (self.dir / ".beads" / "policy.yaml").is_file()
+
+    def init(self) -> None:
+        self.br.init()
+
+    def add_task(self, spec: dict[str, Any], deps: list[str] | tuple[str, ...] = ()) -> str:
+        labels = [f"kind:{spec['id']}", f"runner:{spec.get('runner', 'agent')}"]
+        if spec.get("role"):
+            labels.append(f"role:{spec['role']}")
+        args = ["create", "--title", spec["id"], "--description", json.dumps(spec, ensure_ascii=False),
+                "--labels", ",".join(labels), "--silent"]
+        if deps:
+            # "blocks:X" = the new issue waits for X (checked against `dep add`, 2026-10-30)
+            args += ["--deps", ",".join(f"blocks:{self.issue_id(dep)}" for dep in deps)]
+        issue_id = self.br.run(*args).stdout.strip()
+        self._ids[spec["id"]] = issue_id
+        return issue_id
+
+    def add_dep(self, task_id: str, depends_on: str) -> None:
+        self.br.run("dep", "add", self.issue_id(task_id), self.issue_id(depends_on))
+
+    # --- lookup ---
+
+    def _refresh(self) -> list[dict[str, Any]]:
+        issues = issues_of(self.br.run("list", "--all", "--json", "--limit", "10000").json())
+        self._ids = {str(i["title"]): str(i["id"]) for i in issues}
+        return issues
+
+    def issue_id(self, task_id: str) -> str:
+        if task_id not in self._ids:
+            self._refresh()
+        return self._ids[task_id]
+
+    def tasks(self) -> dict[str, dict[str, Any]]:
+        """task id -> {"status", "issue", "spec"} for every task on the board."""
+        out = {}
+        for issue in self._refresh():
+            try:
+                spec = json.loads(issue.get("description") or "{}")
+            except json.JSONDecodeError:
+                spec = {}
+            out[str(issue["title"])] = {"status": issue["status"], "issue": issue["id"], "spec": spec}
+        return out
+
+    def status(self, task_id: str) -> str:
+        return self.br.status(self.issue_id(task_id))
+
+    def ready(self) -> list[str]:
+        if not self._ids:
+            self._refresh()
+        by_issue = {issue: task for task, issue in self._ids.items()}
+        ready = []
+        for issue in issues_of(self.br.run("ready", "--json", "--limit", "1000").json()):
+            if issue["id"] not in by_issue:
+                self._refresh()
+                by_issue = {i: t for t, i in self._ids.items()}
+            ready.append(by_issue.get(issue["id"], str(issue.get("title"))))
+        return ready
+
+    # --- transitions (only the dispatcher calls these) ---
+
+    def claim(self, task_id: str, worker: str) -> None:
+        """Assign the task to this attempt's worker; br refuses to re-claim an
+        issue still assigned to the previous attempt, so clear that first."""
+        issue = self.issue_id(task_id)
+        first = self.br.run("update", issue, "--claim", actor=worker, check=False)
+        if first.ok:
+            return
+        if "already assigned" not in first.stderr:
+            raise BrError(["update", issue, "--claim"], first)
+        self.br.run("update", issue, "--assignee", "")
+        self.br.run("update", issue, "--claim", actor=worker)
+
+    def set_status(self, task_id: str, status: str, comment: str | None = None) -> None:
+        args = ["update", self.issue_id(task_id), "-s", status]
+        if comment:
+            args += ["--transition-comment", comment]
+        self.br.run(*args)
+
+    def report_gate(self, task_id: str, passed: bool) -> None:
+        self.br.run(
+            "gate", "report", self.issue_id(task_id), "--gate", DONE_GATE, "--provider", DISPATCHER_ACTOR,
+            "--status", "pass" if passed else "fail", "--to", "closed",
+        )
+
+    def close(self, task_id: str, comment: str | None = None) -> None:
+        args = ["close", self.issue_id(task_id)]
+        if comment:
+            args += ["--transition-comment", comment]
+        self.br.run(*args)
+
+    def reopen(self, task_id: str) -> None:
+        """closed -> stale -> open, or rework/needs_human -> ... -> open."""
+        status = self.status(task_id)
+        if status == "closed":
+            self.set_status(task_id, "stale")
+            status = "stale"
+        if status in ("stale", "needs_human"):
+            self.set_status(task_id, "open", comment="dispatcher: reopened" if status == "needs_human" else None)
+        elif status == "rework":
+            pass  # rework is already in the ready group
+        elif status == "in_progress":
+            self.set_status(task_id, "open")
+
+    def comment(self, task_id: str, text: str) -> None:
+        self.br.run("comments", "add", self.issue_id(task_id), text)

@@ -1,6 +1,6 @@
 # M2S 流水线 v3 实施方案
 
-> **状态**：实施方案（2026-10-30 定稿）。M0 已完成，下一步是 M1。
+> **状态**：实施方案（2026-10-30 定稿）。M0 已完成；M1 的 W1.1–W1.10 已完成（2026-10-31），下一步是 W1.11 的 bookstore 等价运行。
 >
 > **概览网页**：`PIPELINE_V3_overview.html`（同目录，可以直接用浏览器打开）。
 >
@@ -519,17 +519,23 @@ agent_mail 的 build slot 只是建议性的，也不能计数，所以只用来
 
 | 编号 | 内容 | 产出 | 验收 | 依赖 | 规模 |
 |---|---|---|---|---|---|
-| W1.1 | 任务板封装：调用 `br`、解析 JSON、处理错误和锁等待；初始化 `policy.yaml` | `coord/board.py` | 单元测试覆盖所有状态迁移，包括被拒绝的迁移 | W0.2 | M |
-| W1.2 | v1 模板（附录 A），不拆包 | `coord/templates/v1.yaml` | 模板能展开成和 SKILL §1 相同的依赖图 | — | S |
-| W1.3 | 调度器主循环（§4.3），包括对账、选任务、监控、回炉、needs_human、结束 | `coord/dispatcher.py` | 用假 worker 跑完整个模板 | W1.1–W1.2 | L |
-| W1.4 | 启动 worker（§4.4）：生成本次启动的设置和提示词；把 SKILL §2 的要素移植过来 | `coord/workers.py` | 能以任意角色启动一个真实的 `oh -p`，并收到它的提交 | W0.1 | M |
-| W1.5 | `submit_task`、`report_blocked`、`get_task_context` | `server.py`、`coord/tools.py` | worker 能提交；不提交就退出的，判为失败 | — | S |
-| W1.6 | 完成检查（§4.5）：写入范围比对、工具未改动、模板规定的检查 | `coord/checks.py` | 越界写入被撤销，并判为失败 | W1.3 | M |
-| W1.7 | 事件日志、harness 版本记录、运行报告 | `coord/events.py` | 从事件日志能还原每个任务的执行过程 | W0.6 | S |
-| W1.8 | 异常处理者：生成案情材料、处理记录、`handler_decide`、相似失败归并、阶段复查 | `coord/handler.py` | 用假 worker 制造的同类失败能被归并成一个案例 | W1.3 | M |
-| W1.9 | 假 worker：一个脚本，按任务说明写出预先准备好的产物，并调用提交接口；可以模拟成功、失败、超时、崩溃、不提交 | `tests/fake_worker.py` | 被调度器的单元测试使用 | W1.3 | S |
-| W1.10 | 故障注入测试：运行中杀掉调度器、杀掉 worker、杀掉 m2s-server、让网络中断 | `tests/test_coord_resume.py` | 重启调度器后能自动继续，不重做已经关闭的任务 | W1.3–W1.9 | M |
+| W1.1 | 任务板封装：调用 `br`、解析 JSON、处理错误和锁等待；初始化 `policy.yaml` | `coord/board.py` | 单元测试覆盖所有状态迁移，包括被拒绝的迁移。**2026-10-31 完成**：`tests/test_coord_board.py` 用真实的 `br` 跑通。`br --claim` 不肯认领还挂着上一个执行者的任务，所以认领前先清空执行者 | W0.2 | M |
+| W1.2 | v1 模板（附录 A），不拆包 | `coord/templates/v1.yaml` | 模板能展开成和 SKILL §1 相同的依赖图。**2026-10-31 完成**：每个任务写明角色、执行线（实现线 / 验证线）、写入范围、完成检查、失效后的处理方式、`max_turns` 和超时 | — | S |
+| W1.3 | 调度器主循环（§4.3），包括对账、选任务、监控、回炉、needs_human、结束 | `coord/dispatcher.py` | 用假 worker 跑完整个模板。**2026-10-31 完成** | W1.1–W1.2 | L |
+| W1.4 | 启动 worker（§4.4）：生成本次启动的设置和提示词；把 SKILL §2 的要素移植过来 | `coord/workers.py` | 能以任意角色启动一个真实的 `oh -p`，并收到它的提交。**2026-10-31 完成**：`tests/test_coord_real_worker.py` 用 qwen 实测通过（46 秒）。和原方案的差别：角色说明经设置文件的 `system_prompt` 传入（效果同 v1 子 agent，替换默认系统提示词），因为放在命令行上会超出 Windows 的长度限制；超过 2 万字的任务说明改为让 worker 调用 `get_task_context` 读取 | W0.1 | M |
+| W1.5 | `submit_task`、`report_blocked`、`get_task_context` | `server.py`、`coord/tools.py` | worker 能提交；不提交就退出的，判为失败。**2026-10-31 完成**：另加了异常处理者专用的 `handler_decide` | — | S |
+| W1.6 | 完成检查（§4.5）：写入范围比对、工具未改动、模板规定的检查 | `coord/checks.py` | 越界写入被撤销，并判为失败。**2026-10-31 完成**：写入范围用一个影子 git 库（`coord/shadow.git`）做启动前快照和比对，不碰工作区自己的 `.git`；工具改动只撤回启动前就是干净的文件，人自己没提交的改动不动 | W1.3 | M |
+| W1.7 | 事件日志、harness 版本记录、运行报告 | `coord/events.py` | 从事件日志能还原每个任务的执行过程。**2026-10-31 完成** | W0.6 | S |
+| W1.8 | 异常处理者：生成案情材料、处理记录、`handler_decide`、相似失败归并、阶段复查 | `coord/handler.py` | 用假 worker 制造的同类失败能被归并成一个案例。**2026-10-31 完成**：一轮里非复查类的案例最多开一个；处理者给的重试不重置计数 | W1.3 | M |
+| W1.9 | 假 worker：一个脚本，按任务说明写出预先准备好的产物，并调用提交接口；可以模拟成功、失败、超时、崩溃、不提交 | `tests/fake_worker.py` | 被调度器的单元测试使用。**2026-10-31 完成** | W1.3 | S |
+| W1.10 | 故障注入测试：运行中杀掉调度器、杀掉 worker、杀掉 m2s-server、让网络中断 | `tests/test_coord_resume.py` | 重启调度器后能自动继续，不重做已经关闭的任务。**2026-10-31 完成**，写在 `tests/test_coord_dispatcher.py` 里：调度器在 worker 运行中和 worker 结束后被杀、worker 崩溃、超时。m2s-server 被杀和断网在调度器看来就是 worker 崩溃或没有提交，没有单独注入 | W1.3–W1.9 | M |
 | W1.11 | 等价运行：bookstore，`--max-workers 1`，真实的 worker | 一个新工作区（例如 `bookstore-v3a`） | 见下 | 以上全部 | M |
+
+**M1 实现时定下的几点（2026-10-31）**：
+- 以往 12 次运行一次都没有触发过的两条流程（S5 之后的测试复核、规格放宽），M1 先交给人处理，M3 起再接讨论室。
+- V1 的规格问题：最多 2 轮"S1 回炉、V1 重跑"。之后还剩阻塞级别的，交给人；非阻塞的带到后面。
+- V2 失败的路由：代码问题回 S2，模板问题回 S3c，规格问题回 S1；只转交失败的函数、出处、期望和实际结果。判断不了的开分诊案例。
+- 假 worker 的场景测试要将近 5 分钟，设 `M2S_RUN_SLOW=1` 才运行；单元测试和任务板测试默认运行。
 
 **M1 的验收标准**：
 - bookstore 跑到 gate(final) PASS，`verdict_A.json` PASS，打了 v0 tag，有 S5 报告。

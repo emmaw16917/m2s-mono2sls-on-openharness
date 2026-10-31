@@ -1,0 +1,35 @@
+# A four-task slice of the v1 template for dispatcher tests that exercise
+# generic mechanics (retries, scope, crashes, timeouts, restarts) rather than
+# the v1 rules, so they need fewer br calls.
+name: mini
+max_attempts: 3
+max_rework_rounds: 2
+max_spec_issue_rounds: 2
+tasks:
+  - id: P0
+    runner: dispatcher
+    action: analyze_project
+    scope: [storage/analysis_report.json, storage/symbol_table.json]
+    check: [analysis_report]
+
+  - id: S1
+    role: m2s-architect
+    line: impl
+    deps: [P0]
+    scope: [storage/blueprint.json, storage/DECISIONS.md, storage/stage_reports/S1.json]
+    check: [gate_blueprint]
+
+  - id: S2
+    role: m2s-code-developer
+    line: impl
+    deps: [S1]
+    scope: [output/lambdas/**, output/layers/**, storage/DECISIONS.md, storage/stage_reports/S2.json]
+    check: [gate_code]
+
+  - id: S4
+    role: m2s-validator
+    line: impl
+    deps: [S2]
+    scope: [output/consistency_report.json, storage/stage_reports/S4.json]
+    check: [gate_final]
+    on_stale: recheck

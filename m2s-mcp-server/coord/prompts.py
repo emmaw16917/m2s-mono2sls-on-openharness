@@ -1,0 +1,119 @@
+"""Prompts for workers and the exception handler.
+
+Worker prompts carry the elements of v1 SKILL §2 (stage id, absolute paths,
+what to produce, rework information, the network-retry reminder) and replace
+"print STAGE_COMPLETE" with the submit_task / report_blocked tools. The role
+itself comes from the agent definition, passed as the system prompt.
+"""
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from coord.checks import REPO
+from coord.template import TaskSpec
+
+MERGE = REPO / "m2s-mcp-server" / "m2s_merge.py"
+
+TASK_SUMMARIES = {
+    "S0": "补全每个端点的请求、响应、业务规则，每条注明出处。规格字段只能经 mcp__m2s-server__annotate_entry_point "
+          "和 annotate_global_middleware 写进 storage/analysis_report.json；写完自己用 check_provenance 自查。",
+    "S1": "按规格设计 serverless 架构：用 mcp__m2s-server__merge_blueprint_key 逐个顶层字段写 storage/blueprint.json，"
+          "设计决定记进 storage/DECISIONS.md；写完自己跑 run_gate(phase=\"blueprint\") 自查并修正。",
+    "V1": "STAGE_ID=V1：只看规格写测试计划、测试事件和故障场景（verification/test_plan.json、"
+          "verification/events/<function>/<case>.json、verification/faults/*.json）；预期写不出来的写进 test_plan.json 的 "
+          "spec_issues。写完用 run_validate(dry_run=true) 自查格式。",
+    "S2": "按 blueprint 写 output/lambdas/<domain>/<name>/（handler 和依赖声明），需要时写 output/layers/shared/；"
+          "写完自己跑 run_gate(phase=\"code\") 自查并修正。",
+    "S3a": "STAGE_ID=S3a：写 output/template.part1.yaml（AWSTemplateFormatVersion 到 Globals、Parameters、共享资源，"
+           "以第一次出现的 \"# --- END METADATA ---\" 结束）。",
+    "S3b": "STAGE_ID=S3b：写 output/template.part2.yaml（Function 资源、FUNCTIONS_METADATA 块、Outputs）。",
+    "S3c": "STAGE_ID=S3c：用 MERGE 合并 part1 和 part2 生成 output/template.yaml（python \"{merge}\" template \"{ws}\"），"
+           "然后自己跑 run_gate(phase=\"template\") 和 validate_sam 自查并修正合并后的模板。",
+    "S4": "做一致性检查，写 output/consistency_report.json。",
+    "V2": "STAGE_ID=V2：执行测试、失败分诊、白盒补测、记录故障行为基准（按你的角色说明里 V2 的部分）。"
+          "判定以 verification/verdict_A.json 为准；FAIL 时在工作报告的 routing 里写清退回对象。",
+    "S5": "STAGE_ID=S5：在 v0 上做语义保持的性能改动（按你的角色说明）。每个保留的改动单独提交到 WS 的 git；"
+          "写 output/perf_report.json。",
+}
+
+IMPL_NOTE = ("需要知道\"要保持哪些行为\"时，只引用规格本身：analysis_report.json 的出处、blueprint.json 的字段"
+             "（包括 metadata.spec_resolutions）。")
+
+
+def _feedback_block(feedback: list[dict[str, Any]]) -> str:
+    if not feedback:
+        return ""
+    parts = ["## 回炉信息（调度器转来的，请据此修正）"]
+    for index, item in enumerate(feedback, 1):
+        parts.append(f"### {index}. 来自 {item.get('source', 'dispatcher')}\n{item.get('text', '').strip()}")
+    return "\n\n".join(parts)
+
+
+def worker_prompt(spec: TaskSpec, ws: Path, monolith: Path, attempt: int,
+                  feedback: list[dict[str, Any]], extra: str = "") -> str:
+    summary = TASK_SUMMARIES.get(spec.id, f"STAGE_ID={spec.id}：按你的角色说明完成这一阶段。").format(merge=MERGE, ws=ws)
+    paths = [f"- MONOLITH = {monolith}", f"- WS = {ws}"]
+    if spec.id == "S3c":
+        paths.append(f"- MERGE = {MERGE}")
+    scope = "、".join(spec.scope) or "（无）"
+    sections = [
+        f"STAGE_ID: {spec.id}",
+        "这是 m2s 迁移流水线的一个任务，由 v3 调度器派发；你的角色说明已经在系统提示词里。"
+        f"这是这个任务第 {attempt} 次尝试。",
+        "## 绝对路径\n" + "\n".join(paths),
+        "## 任务\n" + summary + (f"\n\n{extra.strip()}" if extra.strip() else ""),
+    ]
+    if spec.line == "impl":
+        sections.append(IMPL_NOTE)
+    block = _feedback_block(feedback)
+    if block:
+        sections.append(block)
+    sections.append(
+        "## 完成方式\n"
+        f"1. 写工作报告 WS/storage/stage_reports/{spec.id}.json（格式按你的角色说明）。\n"
+        "2. 调用 mcp__m2s-server__submit_task(summary=...) 提交，然后结束会话。不需要再输出 STAGE_COMPLETE。\n"
+        "3. 做不下去时，调用 mcp__m2s-server__report_blocked(reason, evidence, suspected_module)，然后结束会话；"
+        "认为是更早阶段的问题时，在 suspected_module 写那个阶段（例如 S2），并在 evidence 里给出证据。\n"
+        f"4. 调度器会自己运行这个任务的检查（{', '.join(spec.check) or '无'}），你的自述不作为判定依据。"
+    )
+    sections.append(
+        "## 注意\n"
+        "- 如果调用工具或等待过程中遇到网络错误（例如 'Network error: Connection error'），重试 1-2 次再继续，"
+        "不要因为一次网络错误就直接放弃或提前结束。\n"
+        f"- 只改这个任务范围内的文件：{scope}。范围之外的改动会被撤销，这次尝试判为失败。\n"
+        "- 不要修改流水线自己的工具：m2s-mcp-server/、.openharness/、~/.openharness/ 下的文件。\n"
+        "- 不要读写 WS/coord/（调度器的内部状态）。不要调用 mcp_auth。\n"
+        "- 这份说明可以随时用 mcp__m2s-server__get_task_context 重新取回。"
+    )
+    return "\n\n".join(sections)
+
+
+HANDLER_SYSTEM_PROMPT = """你是 m2s 迁移流水线 v3 的异常处理者。调度器是确定性的程序，遇到它的规则判断不了的情况时，才会启动你。
+
+你的职责：读案情材料和本次运行的处理记录，做一个决定，然后结束会话。
+- 只能通过 mcp__m2s-server__handler_decide 输出决定，调用一次；
+- 不要修改工作区里的任何产物，不要修改流水线的工具；
+- 判断不了就选择 escalate（交给人），不要猜。
+
+可选的决定：
+- retry：让同一个任务再试一次，在 feedback 里写清这次要怎么改；
+- reroute：退回更早的任务（target 写任务编号，例如 S2），feedback 写清问题；
+- escalate：交给人，在 rationale 里写清要人判断什么；
+- ok：只用于阶段复查，表示没有发现需要处理的问题。
+
+给实现线任务（S1、S2、S3a、S3b、S3c、S4）的 feedback 只能用规格的语言：接口、字段、状态码、表状态、业务规则、gate 的检查项。
+不能写测试用例、fixture、断言写法或 verification/ 下的路径。"""
+
+
+def handler_prompt(case_id: str, case_file: Path, journal: Path, ws: Path, kind: str) -> str:
+    what = "阶段复查：检查到目前为止的运行有没有需要处理的问题" if kind == "review" else "一个调度器处理不了的异常"
+    return (
+        f"案例编号：{case_id}（{what}）\n\n"
+        f"- 案情材料：{case_file}\n"
+        f"- 本次运行之前的处理记录：{journal}（可能为空）\n"
+        f"- 工作区：{ws}（只读）\n\n"
+        "先读案情材料和处理记录，需要时再读工作区里的相关文件；然后调用一次 "
+        f"mcp__m2s-server__handler_decide(case=\"{case_id}\", action=..., target=..., feedback=..., rationale=...)，结束会话。\n"
+        "遇到网络错误时重试 1-2 次。"
+    )

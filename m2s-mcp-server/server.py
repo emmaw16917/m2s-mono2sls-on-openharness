@@ -33,6 +33,7 @@ import m2s_merge
 import provenance
 import verify
 import perf
+from coord import tools as coord_tools
 
 # Only import gates lazily / guard for P0: gates.py is a P1 deliverable.
 try:
@@ -398,6 +399,61 @@ def run_gate(phase: str) -> str:
         )
     result = _gates.run_gate(phase, str(_workspace()))
     return json.dumps(result, ensure_ascii=False)
+
+
+# --- v3 dispatcher coordination (PIPELINE_V3_PLAN.md §4.6) -------------------
+# These only work in a session started by coord.dispatcher (it sets
+# M2S_COORD_DIR / M2S_TASK_ID / M2S_ATTEMPT / M2S_ROLE on this process).
+
+
+@mcp.tool()
+def submit_task(summary: str, notes: str = "") -> str:
+    """Hand your finished task to the dispatcher. Call this once, after you have
+    written your stage report, then end the session. The dispatcher runs the
+    task's checks itself; your own success claim is not the verdict.
+
+    Args:
+        summary: one or two sentences on what you produced.
+        notes: anything the next attempt or a reviewer should know.
+    """
+    return json.dumps(coord_tools.safe(coord_tools.submit_task, summary, notes), ensure_ascii=False)
+
+
+@mcp.tool()
+def report_blocked(reason: str, evidence: str = "", suspected_module: str = "") -> str:
+    """Tell the dispatcher you cannot finish this task, then end the session.
+
+    Args:
+        reason: what stops you.
+        evidence: gate output, error text, file and line.
+        suspected_module: the earlier stage you believe caused it (e.g. "S2"
+            when the template is right but a handler is wrong); empty if it is
+            this task's own problem or you do not know.
+    """
+    return json.dumps(coord_tools.safe(coord_tools.report_blocked, reason, evidence, suspected_module), ensure_ascii=False)
+
+
+@mcp.tool()
+def get_task_context() -> str:
+    """Return the full instructions and feedback for your current task."""
+    return json.dumps(coord_tools.safe(coord_tools.get_task_context), ensure_ascii=False)
+
+
+@mcp.tool()
+def handler_decide(case: str, action: str, target: str = "", feedback: str = "", rationale: str = "") -> str:
+    """Exception handler only: record your decision for a case, then end the session.
+
+    Args:
+        case: the case id from your instructions.
+        action: "retry" (same task once more, with your feedback), "reroute"
+            (rework an earlier task, named in target), "escalate" (hand to a
+            person), or "ok" (phase review: nothing to do).
+        target: task id for reroute (e.g. "S2").
+        feedback: what the worker should do differently, in specification
+            language (no test cases or test file paths for implementation tasks).
+        rationale: why, citing the evidence in the case file.
+    """
+    return json.dumps(coord_tools.safe(coord_tools.handler_decide, case, action, target, feedback, rationale), ensure_ascii=False)
 
 
 if __name__ == "__main__":
