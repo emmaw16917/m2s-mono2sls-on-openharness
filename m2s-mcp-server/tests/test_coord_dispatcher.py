@@ -232,3 +232,50 @@ def test_stop_after_runs_the_upstream_slice_then_resumes(tmp_path: Path):
     resumed = make_dispatcher(tmp_path, {}, template=MINI)
     assert resumed.run() == EXIT_DONE
     assert [e["task"] for e in resumed.events.all() if e["type"] == "spawn"] == ["S1", "S2", "S4"]
+
+
+NET_FAIL = {"submit": None, "stream": [
+    {"type": "status", "message": "Request failed; retrying in 60.0s (attempt 9 of 9): Connection error."},
+    {"type": "error", "message": "Network error: Connection error.. Check your internet connection and try again.",
+     "recoverable": True}]}
+
+
+def test_api_failures_wait_and_do_not_use_attempts(tmp_path: Path, monkeypatch):
+    import coord.dispatcher as dispatcher_module
+    monkeypatch.setattr(dispatcher_module, "INFRA_BACKOFF_S", (1, 2))
+    d = make_dispatcher(tmp_path, {"S1": [NET_FAIL, NET_FAIL, NET_FAIL, ok_report("S1")]}, template=MINI)
+
+    assert d.run() == EXIT_DONE  # three API failures would exhaust max_attempts=3 if they counted
+
+    exits = d.events.of_task("S1", "worker_exit")
+    assert [bool(e.get("infra")) for e in exits] == [True, True, True, False]
+    spawns = d.events.of_task("S1", "spawn")
+    assert spawns[1]["started"] - exits[0]["retry_after"] >= -0.1  # waited out the backoff
+    assert spawns[3]["started"] - exits[2]["retry_after"] >= -0.1
+    assert "Network error" in exits[0]["api_error"]
+
+
+def test_api_failures_go_to_a_person_after_the_limit(tmp_path: Path, monkeypatch):
+    import coord.dispatcher as dispatcher_module
+    monkeypatch.setattr(dispatcher_module, "INFRA_BACKOFF_S", (0,))
+    monkeypatch.setattr(dispatcher_module, "MAX_INFRA_FAILURES", 2)
+    d = make_dispatcher(tmp_path, {"S1": [NET_FAIL]}, template=MINI)
+
+    assert d.run() == EXIT_HUMAN
+    assert d.board.status("S1") == "needs_human"
+    assert "模型 API" in d.events.last("S1", "escalate")["reason"]
+
+
+def test_worker_killed_while_dispatcher_down_is_a_crash(tmp_path: Path):
+    script = {"S1": [{"sleep": 60, **ok_report("S1")}, ok_report("S1")]}
+    d = make_dispatcher(tmp_path, script, template=MINI)
+    while "S1" not in d.running:
+        d.run(max_cycles=1)
+    d.running["S1"].kill()  # dispatcher and worker die together (e.g. the session that started them ends)
+    d.running["S1"].proc.wait(30)
+
+    restarted = make_dispatcher(tmp_path, script, template=MINI)
+    assert restarted.run() == EXIT_DONE
+    first = restarted.events.of_task("S1", "worker_exit")[0]
+    assert first["crashed"] is True and not first.get("infra")
+    assert _spawns(restarted, "S1") == 2

@@ -64,8 +64,11 @@ class EventLog:
         """Worker spawns in the current round; the next attempt number is spawns + 1."""
         return sum(1 for e in self._since_round_start(task_id) if e["type"] == "spawn")
 
-    def crashes(self, task_id: str) -> int:
-        return sum(1 for e in self._since_round_start(task_id) if e["type"] == "worker_exit" and e.get("crashed"))
+    def crashes(self, task_id: str, infra: bool | None = None) -> int:
+        """Crashed exits in the current round; infra=True / False keeps only model-API
+        (network) failures / only the others."""
+        return sum(1 for e in self._since_round_start(task_id) if e["type"] == "worker_exit" and e.get("crashed")
+                   and (infra is None or bool(e.get("infra")) == infra))
 
     def attempts(self, task_id: str) -> int:
         """Attempts that count against max_attempts: spawns minus crashes."""

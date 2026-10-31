@@ -12,7 +12,7 @@ of behaviours, one per attempt (the last one repeats):
 
 A behaviour may: write files (dicts become JSON), "submit" ("done",
 "blocked", or null for no submission), give "reason"/"evidence"/"suspected",
-"sleep" seconds, and "exit" with a code. Tasks missing from the script get
+"sleep" seconds, print "stream" events (a list of dicts) and "exit" with a code. Tasks missing from the script get
 {"write": {"storage/stage_reports/<task>.json": {"ok": true}}, "submit": "done"}.
 Handler behaviours are decisions passed to handler_decide.
 """
@@ -49,6 +49,8 @@ def main() -> int:
     plan = script.get(task) or [{"write": {f"storage/stage_reports/{task}.json": {"ok": True}}, "submit": "done"}]
     step = plan[min(attempt - 1, len(plan) - 1)]
     time.sleep(step.get("sleep", 0))
+    for event in step.get("stream") or []:  # stdout is the worker's stream.jsonl
+        print(json.dumps(event, ensure_ascii=False), flush=True)
     for rel, content in (step.get("write") or {}).items():
         path = ws / rel
         path.parent.mkdir(parents=True, exist_ok=True)

@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -50,11 +51,45 @@ ALWAYS_ALLOWED = ("coord/**", "storage/TODO.md", "**/node_modules/**", "**/__pyc
 ROUTING_TARGETS = {"code": "S2", "template": "S3c", "spec": "S1"}
 RELAY_FIELDS = ("function", "spec_refs", "expected_per_spec", "observed")
 MAX_CRASHES = 3
+# A worker whose session ended on a model-API failure (OpenHarness gave up after its own
+# retries) did not fail the task: it does not use an attempt, and the next spawn waits.
+INFRA_BACKOFF_S = (300, 600, 1200, 1800)
+MAX_INFRA_FAILURES = 8  # per round, about 2.5 hours of waiting before a person is asked
 MAX_SPAWNS_PER_TASK = 12  # backstop against a rule loop; normal limits are far lower
 HANDLER_TIMEOUT_S = 20 * 60
 HANDLER_MAX_TURNS = 60
 
 EXIT_DONE, EXIT_HUMAN, EXIT_STALLED, EXIT_ERROR, EXIT_STOPPED = 0, 3, 4, 1, 5
+
+
+_TRANSIENT_API = re.compile(r"\b(429|5\d\d|overloaded|rate.?limit(ed)?|time[sd]? ?out)\b", re.I)
+
+
+def stream_end_error(run_dir: Path) -> str | None:
+    """The message of the worker stream's last event when that event is an error, else None."""
+    try:
+        with (run_dir / "stream.jsonl").open("rb") as fh:
+            fh.seek(0, 2)
+            fh.seek(max(0, fh.tell() - 8192))
+            tail = fh.read().decode("utf-8", errors="replace")
+    except OSError:
+        return None
+    for line in reversed(tail.splitlines()):
+        if not line.strip():
+            continue
+        try:
+            event = json.loads(line)
+        except ValueError:
+            return None
+        return str(event.get("message") or "") if isinstance(event, dict) and event.get("type") == "error" else None
+    return None
+
+
+def is_infra_error(message: str | None) -> bool:
+    """OpenHarness ends a session with 'Network error: ...' or 'API error: ...' once its retries run out."""
+    if not message:
+        return False
+    return message.startswith("Network error:") or (message.startswith("API error:") and bool(_TRANSIENT_API.search(message)))
 
 
 def other_run_dirs(ws: Path, monolith: Path | None) -> tuple[str, ...]:
@@ -124,6 +159,7 @@ class Dispatcher:
         self.log = log
         self.cases = Casebook(self.coord, self.events)
         self.running: dict[str, WorkerHandle] = {}
+        self.waiting = False  # a ready task waits out an infra backoff
         self.foreign_runs = other_run_dirs(self.ws, self.monolith)
 
     # ------------------------------------------------------------------ setup / resume
@@ -203,14 +239,14 @@ class Dispatcher:
         while True:
             self._collect()
             started = self._start_ready()
-            if not self.running and not started:
+            if not self.running and not started and not self.waiting:
                 outcome = self._outcome()
                 if outcome is not None:
                     return self._finish(outcome)
             cycles += 1
             if max_cycles is not None and cycles >= max_cycles:
                 return -1
-            if self.running and not started:
+            if (self.running or self.waiting) and not started:
                 time.sleep(self.poll_s)
 
     def _spec(self, task_id: str) -> TaskSpec:
@@ -230,12 +266,20 @@ class Dispatcher:
     def _busy_workers(self) -> int:
         return sum(1 for h in self.running.values() if h.kind == "task")
 
+    def _backing_off(self, task_id: str) -> bool:
+        last = self.events.last(task_id, "worker_exit")
+        return bool(last and last.get("retry_after") and last["retry_after"] > time.time())
+
     def _start_ready(self) -> int:
+        self.waiting = False
         if self._paused() or self._busy_workers() >= self.max_workers:
             return 0
         started = 0
         ready = sorted((t for t in self.board.ready() if t not in self.running and self._in_stop_set(t)),
                        key=self.template.order)
+        held = [t for t in ready if self._backing_off(t)]
+        self.waiting = bool(held)
+        ready = [t for t in ready if t not in held]
         for task_id in ready:
             if self._busy_workers() >= self.max_workers:
                 break
@@ -247,7 +291,8 @@ class Dispatcher:
 
     def _start(self, task_id: str) -> None:
         spec = self._spec(task_id)
-        if self.events.count("spawn", task_id) >= MAX_SPAWNS_PER_TASK:
+        infra = sum(1 for e in self.events.of_task(task_id, "worker_exit") if e.get("infra"))
+        if self.events.count("spawn", task_id) - infra >= MAX_SPAWNS_PER_TASK:
             self._escalate(task_id, f"{task_id} 已经启动过 {MAX_SPAWNS_PER_TASK} 次 worker，调度器不再自动重试")
             return
         if self.events.reopen_mode(task_id) == "recheck":
@@ -337,13 +382,32 @@ class Dispatcher:
     def _on_exit(self, handle: WorkerHandle, timed_out: bool, rc: int | None) -> None:
         task_id, attempt = handle.task_id, handle.attempt
         sub = _read_json(submission_path(self.coord, task_id, attempt))
-        crashed = sub is None and not timed_out and rc not in (0, None)
+        api_error = stream_end_error(handle.run_dir) if sub is None and not timed_out else None
+        infra = is_infra_error(api_error)
+        # rc None / -1: the exit code is unknown (the worker died while the dispatcher was down)
+        crashed = sub is None and not timed_out and (infra or rc != 0)
+        extra: dict[str, Any] = {}
+        wait = 0
+        if infra:
+            n = self.events.crashes(task_id, infra=True) + 1
+            wait = INFRA_BACKOFF_S[min(n, len(INFRA_BACKOFF_S)) - 1]
+            extra = {"infra": True, "api_error": (api_error or "")[:300], "retry_after": time.time() + wait}
         self.events.append("worker_exit", task=task_id, attempt=attempt, rc=rc, timed_out=timed_out,
-                           submitted=sub is not None, crashed=crashed, duration_s=round(time.time() - handle.started))
+                           submitted=sub is not None, crashed=crashed, duration_s=round(time.time() - handle.started),
+                           **extra)
         spawn = self.events.last(task_id, "spawn")
+        if infra:
+            n = self.events.crashes(task_id, infra=True)
+            if n >= MAX_INFRA_FAILURES:
+                self.board.set_status(task_id, "checking")
+                self._escalate(task_id, f"连续 {n} 次因为模型 API 不可用而中断（最后一次：{(api_error or '')[:200]}），见 {handle.run_dir}")
+            else:
+                self.log(f"{task_id}: model API unreachable ({(api_error or '')[:80]}); next try in {wait // 60} min")
+                self.board.set_status(task_id, "open")
+            return
         if crashed:
             self.log(f"{task_id}: worker crashed (rc={rc})")
-            if self.events.crashes(task_id) >= MAX_CRASHES:
+            if self.events.crashes(task_id, infra=False) >= MAX_CRASHES:
                 self.board.set_status(task_id, "checking")
                 self._escalate(task_id, f"worker 连续崩溃 {MAX_CRASHES} 次（最后一次 rc={rc}），见 {handle.run_dir}")
             else:

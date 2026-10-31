@@ -222,3 +222,21 @@ def test_other_runs_are_closed_to_workers(tmp_path: Path):
     job = WorkerJob("S2", 1, "m2s-code-developer", ws, ws / "coord", "ROLE", "do it", (), 100, 60.0, deny_read=denied)
     rules = worker_settings(job, [])["permission"]["path_rules"]
     assert {"pattern": f"{runs / 'bookstore-v2'}/*", "allow": False} in rules
+
+
+def test_api_failure_detection(tmp_path: Path):
+    from coord.dispatcher import is_infra_error, stream_end_error
+    run = tmp_path / "run"
+    run.mkdir()
+    assert stream_end_error(run) is None  # no stream at all
+    lines = [{"type": "tool_completed", "tool_name": "bash", "output": "ok"},
+             {"type": "error", "message": "Network error: Connection error.. Check your internet connection.", "recoverable": True}]
+    (run / "stream.jsonl").write_text("\n".join(json.dumps(x) for x in lines) + "\n", encoding="utf-8")
+    assert is_infra_error(stream_end_error(run))
+    lines.append({"type": "assistant_complete", "text": "done"})
+    (run / "stream.jsonl").write_text("\n".join(json.dumps(x) for x in lines) + "\n", encoding="utf-8")
+    assert stream_end_error(run) is None  # recovered later: the session did not end on the error
+    assert is_infra_error("API error: Error code: 503 - service unavailable")
+    assert is_infra_error("API error: Error code: 429 - rate limited")
+    assert not is_infra_error("API error: Error code: 400 - invalid request")
+    assert not is_infra_error("Model returned an empty assistant message.")

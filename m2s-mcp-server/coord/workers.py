@@ -82,10 +82,11 @@ class WorkerHandle:
     meta: dict[str, Any] = field(default_factory=dict)
 
     def poll(self) -> int | None:
-        """Exit code, or None while running. Adopted handles (no Popen) report 0 when gone."""
+        """Exit code, or None while running. Adopted handles (no Popen) report -1 when gone:
+        the exit code is unknown, so an exit without a submission counts as a crash."""
         if self.proc is not None:
             return self.proc.poll()
-        return None if pid_alive(self.pid) else 0
+        return None if pid_alive(self.pid) else -1
 
     def timed_out(self, now: float | None = None) -> bool:
         return (now or time.time()) - self.started > self.timeout_s
