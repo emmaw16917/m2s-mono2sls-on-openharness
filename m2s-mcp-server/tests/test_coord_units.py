@@ -240,3 +240,11 @@ def test_api_failure_detection(tmp_path: Path):
     assert is_infra_error("API error: Error code: 429 - rate limited")
     assert not is_infra_error("API error: Error code: 400 - invalid request")
     assert not is_infra_error("Model returned an empty assistant message.")
+
+
+def test_a_content_refusal_is_not_an_outage():
+    from coord.dispatcher import is_content_refusal, is_infra_error
+    msg = ('API error: data: {"error":{"code":"data_inspection_failed","param":null,"message":"Input text data may '
+           'contain inappropriate content.","type":"data_inspection_failed"},"id":"chatcmpl-2dd8-500-af05"}')
+    assert is_content_refusal(msg) and not is_infra_error(msg)
+    assert not is_content_refusal("Network error: Connection error.")

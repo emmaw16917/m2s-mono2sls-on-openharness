@@ -371,7 +371,8 @@ S5（性能优化）有些改动没有保留，原因不在改动本身，而是
 
 ### 步骤
 
-1. 通读事实库：每个端点的 `responses`（每一项的 `when`）、`business_rules`、`auth`、`request`；`dynamodb_info` 的表和主键；`global_middleware`。
+1. 通读事实库：**用 `mcp__m2s-server__judge_facts()`**（可以按端点取：`judge_facts(endpoint="POST /api/cart")`）。它给出每个端点的 `responses`（每一项的 `ref` 和 `when`）、`business_rules`（带 `ref`）、`auth`、`request`，以及表和主键、`global_middleware`，去掉了出处里的代码片段。
+   - **不要整个打印 `storage/analysis_report.json`**，也不要读流水线工具的源码（`m2s-mcp-server/` 下的 `.py`、`.js`）：这一节已经写全了格式，`check_judge_assets` 的报错会告诉你哪里不对。一次读进太多内容，模型服务会拒绝继续（`data_inspection_failed`），这次尝试就白费了；
 2. 先写 `identities.json` 和 fixtures，再按端点写用例。一个用例可以覆盖同一端点的几个分支（几步），`fact_refs` 里列出它走到的每一个响应和业务规则。**`fact_refs` 引用的接口，必须有一步真的调用了它**。
 3. 覆盖要求（`check_judge_assets` 会查）：
    - 每个接口至少一个用例；

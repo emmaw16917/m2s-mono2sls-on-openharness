@@ -1593,3 +1593,46 @@ def freeze_judge(ws: Path | str, refreeze: bool = False) -> dict[str, Any]:
     _write(jd / MANIFEST, m)
     return {"status": "PASS", "version": m["version"], "cases": m["cases"], "files": len(m["files"]),
             "coverage": m["coverage"], "layers": m["layers"]}
+
+
+# ---------------------------------------------------------------------------
+# What J1 reads: the fact base without its citations
+# ---------------------------------------------------------------------------
+
+def fact_digest(ws: Path | str, endpoint: str | None = None) -> dict[str, Any]:
+    """The fact base as J1 needs it (judge_facts tool): per endpoint the auth
+    classification, the request fields, every response (index, status, kind,
+    when, body fields) and every business rule -- without the source
+    citations (code snippets J1 does not need) -- plus the tables and the
+    global middleware. Reading this instead of dumping analysis_report.json
+    keeps a J1 session small."""
+    facts = Facts(Path(ws))
+    eps = {}
+    for name, ep in facts.entry_points.items():
+        if endpoint and name != endpoint:
+            continue
+        req = ep.get("request") or {}
+        eps[name] = {
+            "auth": (ep.get("auth") or {}).get("classification"),
+            "request": {part: [{k: f.get(k) for k in ("name", "type", "required", "note") if f.get(k) not in (None, "")}
+                               for f in req.get(part) or [] if isinstance(f, dict)]
+                        for part in ("path_params", "query", "body", "headers") if req.get(part)},
+            "responses": [{"ref": f"{name}#responses[{i}]", "status": r.get("status"), "kind": r.get("kind"),
+                           "when": r.get("when"), "in_catch": bool(r.get("in_catch")),
+                           "body": {k: (r.get("body") or {}).get(k) for k in ("fields", "description")
+                                    if (r.get("body") or {}).get(k)},
+                           **({"note": r["note"]} if r.get("note") else {})}
+                          for i, r in enumerate(ep.get("responses") or []) if isinstance(r, dict)],
+            "data_access": [{"operation": d.get("operation"), "table": (d.get("table") or {}).get("default_name"),
+                             "index": d.get("index")} for d in ep.get("data_access") or [] if isinstance(d, dict)],
+            "business_rules": [{"ref": f"{name}#business_rules[{i}]", "id": b.get("id"), "rule": b.get("rule"),
+                                "kind": b.get("kind")} for i, b in enumerate(ep.get("business_rules") or [])
+                               if isinstance(b, dict)],
+        }
+    out: dict[str, Any] = {"endpoints": eps}
+    if not endpoint:
+        out["tables"] = {t: {"keys": s["keys"], "index_keys": s["index_keys"]} for t, s in facts.tables.items()}
+        out["global_middleware"] = [{"ref": f"global_middleware[{i}]", "kind": g.get("kind"), "headers": g.get("headers"),
+                                     "applies_to": g.get("applies_to")} for i, g in enumerate(facts.global_middleware)
+                                    if isinstance(g, dict)]
+    return out

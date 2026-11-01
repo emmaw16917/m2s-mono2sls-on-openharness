@@ -96,9 +96,15 @@ def stream_end_error(run_dir: Path) -> str | None:
 
 def is_infra_error(message: str | None) -> bool:
     """OpenHarness ends a session with 'Network error: ...' or 'API error: ...' once its retries run out."""
-    if not message:
+    if not message or is_content_refusal(message):
         return False
     return message.startswith("Network error:") or (message.startswith("API error:") and bool(_TRANSIENT_API.search(message)))
+
+
+def is_content_refusal(message: str | None) -> bool:
+    """The model service refused the input itself (DashScope content moderation,
+    seen on 2026-11-01 when J1 sessions had read 90-180K characters)."""
+    return bool(message) and "data_inspection_failed" in message
 
 
 def other_run_dirs(ws: Path, monolith: Path | None) -> tuple[str, ...]:
@@ -526,6 +532,13 @@ class Dispatcher:
         if timed_out:
             results.append(CheckResult("finished_in_time", False, f"killed after {spec.timeout_min} min",
                                        relay=f"上一次尝试超过了 {spec.timeout_min} 分钟的时间上限，被调度器结束。抓紧完成，并且一定要调用 submit_task。"))
+        elif sub is None and self._content_refusal(spec.id):
+            # The model service refused the session's input (DashScope content moderation):
+            # not a transient outage -- the same context would be refused again.
+            results.append(CheckResult("submitted", False, "the model service refused the session's input (data_inspection_failed)",
+                                       relay="上一次尝试被模型服务的内容审核中断了（data_inspection_failed：它拒绝了会话里累积的输入）。"
+                                       "这次少往会话里读东西：只读完成任务需要的内容，按需分段读，不要整个打印大文件，"
+                                       "不要读流水线工具的源码；完成后一定要调用 submit_task。"))
         elif sub is None:
             results.append(CheckResult("submitted", False, "ended without submit_task",
                                        relay="上一次尝试没有调用 submit_task 就结束了（可能只回复了文字，或者用完了轮数）。这次完成后一定要调用 submit_task。"))
@@ -1008,6 +1021,10 @@ class Dispatcher:
                            f"run_monolith {r.get('status')}: {r.get('cases')} cases, {r.get('fault_runs')} fault runs, "
                            f"{r.get('unstable_total', 0)} unstable, {len(r.get('problems') or [])} problems"
                            + (f", coverage {cov}" if cov else ""), detail=r)
+
+    def _content_refusal(self, task_id: str) -> bool:
+        spawn = self.events.last(task_id, "spawn")
+        return bool(spawn) and is_content_refusal(stream_end_error(Path(spawn["run_dir"])))
 
     def _judge_frozen(self) -> bool:
         return (self.ws / "judge" / "judge_manifest.json").is_file()

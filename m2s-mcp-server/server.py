@@ -226,6 +226,27 @@ def check_judge_assets() -> str:
 
 
 @mcp.tool()
+def judge_facts(endpoint: str = "") -> str:
+    """The fact base as J1 needs it, without source citations: per endpoint the
+    auth classification, request fields, every response (its fact ref such as
+    "POST /api/cart#responses[2]", status, kind, when, body fields), data
+    access and business rules (with their refs); plus the monolith's tables
+    (keys) and the global middleware. Read this instead of printing
+    storage/analysis_report.json.
+
+    Args:
+        endpoint: e.g. "POST /api/cart"; empty for every endpoint.
+
+    Returns: JSON {endpoints, tables?, global_middleware?}.
+    """
+    import judge
+    try:
+        return json.dumps(judge.fact_digest(_workspace(), endpoint or None), ensure_ascii=False)
+    except judge.JudgeError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
 def check_reconcile_classes() -> str:
     """J3 self-check: every difference in judge/reconcile.json has a class in
     judge/reconcile_classes.json ({difference id: {class, reason, fact_ref?,

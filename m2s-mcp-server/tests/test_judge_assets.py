@@ -314,3 +314,15 @@ def test_no_cases_and_no_facts(tmp_path: Path):
     assert out["status"] == "FAIL" and "has no cases" in out["errors"][0]
     with pytest.raises(judge.JudgeError, match="fact base"):
         judge.check_judge_assets(tmp_path / "empty")
+
+
+def test_fact_digest_drops_citations(tmp_path: Path):
+    ws = make_ws(tmp_path)
+    d = judge.fact_digest(ws)
+    cart = d["endpoints"]["POST /api/cart"]
+    assert cart["responses"][2] == {"ref": "POST /api/cart#responses[2]", "status": 200, "kind": "success",
+                                    "when": "when 200", "in_catch": False, "body": {}}
+    assert cart["business_rules"][1]["ref"] == "POST /api/cart#business_rules[1]"
+    assert "source" not in json.dumps(d) and d["tables"]["Shop-Cart"]["keys"] == {"customerId": "S", "bookId": "S"}
+    one = judge.fact_digest(ws, "GET /api/cart")
+    assert list(one["endpoints"]) == ["GET /api/cart"] and "tables" not in one

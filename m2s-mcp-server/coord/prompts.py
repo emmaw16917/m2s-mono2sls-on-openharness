@@ -42,7 +42,8 @@ TASK_SUMMARIES = {
 
 # v2 role modes (PIPELINE_V2_PLAN.md): the role doc has a section per mode.
 MODE_SUMMARIES = {
-    "J1": "MODE: J1。只看事实库 storage/analysis_report.json，写裁判用例：judge/cases/<接口 slug>/<用例>.json、"
+    "J1": "MODE: J1。只看事实库（用 mcp__m2s-server__judge_facts 读，不要整个打印 analysis_report.json，"
+          "也不要读工具源码），写裁判用例：judge/cases/<接口 slug>/<用例>.json、"
           "judge/fixtures/、judge/faults/、judge/identities.json（需要时 judge/uncovered.json）。按你的角色说明里"
           "\"J1\"一节写；写完用 mcp__m2s-server__check_judge_assets 自查，直到 PASS。单体源码对你是关闭的。",
     "J3": "MODE: J3。给 judge/reconcile.json 里的每一条差异（J1 按事实库写的 predicted 和单体实际输出对不上的地方）分类，"
