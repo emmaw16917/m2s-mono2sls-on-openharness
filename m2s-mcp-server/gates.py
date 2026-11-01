@@ -24,7 +24,7 @@ convention, rooted at $M2S_WORKSPACE instead of the M2S repo root):
 
 Only checks that cross-reference structured data (blueprint.json vs
 template.yaml vs the on-disk directory layout) produce a pass/fail verdict
-here: B0, C1, C2, C3, C7, C7b, C8, C9, C10, C11, C12, C13. C4/C5/C6 are
+here: B0, C1, C2, C3, C7, C7b, C8, C9, C10, C11, C12, C13, C14. C4/C5/C6 are
 "suspects": mechanically extracted data handed to the m2s-validator agent
 for semantic judgment, because they require interpreting arbitrary
 generated code (env var usage, IAM-relevant SDK calls, layer imports)
@@ -1562,6 +1562,150 @@ def check_c13(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]
     return findings
 
 
+# ---------------------------------------------------------------------------
+# C14 - Cognito settings stated in blueprint.cognito are in the template
+# ---------------------------------------------------------------------------
+
+_DURATION_UNITS = {"s": 1, "sec": 1, "second": 1, "seconds": 1, "m": 60, "min": 60, "minute": 60, "minutes": 60,
+                   "h": 3600, "hr": 3600, "hour": 3600, "hours": 3600, "d": 86400, "day": 86400, "days": 86400}
+_CFN_UNITS = {"seconds": 1, "minutes": 60, "hours": 3600, "days": 86400}
+# blueprint key -> (UserPoolClient property, TokenValidityUnits key, CFN default unit, Cognito default in seconds)
+_TOKEN_FIELDS = {
+    "access_token_validity": ("AccessTokenValidity", "AccessToken", "hours", 3600),
+    "id_token_validity": ("IdTokenValidity", "IdToken", "hours", 3600),
+    "refresh_token_validity": ("RefreshTokenValidity", "RefreshToken", "days", 30 * 86400),
+}
+_PASSWORD_FIELDS = {
+    "min_length": "MinimumLength", "minimum_length": "MinimumLength",
+    "require_uppercase": "RequireUppercase", "require_lowercase": "RequireLowercase",
+    "require_numbers": "RequireNumbers", "require_symbols": "RequireSymbols",
+    "temporary_password_validity_days": "TemporaryPasswordValidityDays",
+}
+# Cognito's policy when the template sets no PasswordPolicy at all
+_DEFAULT_PASSWORD_POLICY = {"MinimumLength": 8, "RequireUppercase": True, "RequireLowercase": True,
+                            "RequireNumbers": True, "RequireSymbols": True, "TemporaryPasswordValidityDays": 7}
+
+
+def _seconds(value: Any, default_unit: str) -> int | None:
+    """'7d', '1h', '30 minutes', 3600 (in default_unit) -> seconds; None when unreadable."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return int(value * _CFN_UNITS[default_unit])
+    m = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*([A-Za-z]*)\s*", str(value))
+    if not m:
+        return None
+    unit = m.group(2).lower()
+    factor = _CFN_UNITS[default_unit] if not unit else _DURATION_UNITS.get(unit)
+    return int(float(m.group(1)) * factor) if factor else None
+
+
+def _cfn_duration(seconds: int) -> tuple[int, str]:
+    for unit in ("days", "hours", "minutes"):
+        if seconds % _CFN_UNITS[unit] == 0:
+            return seconds // _CFN_UNITS[unit], unit
+    return seconds, "seconds"
+
+
+def _plain(value: Any) -> bool:
+    return isinstance(value, (bool, int, float, str))
+
+
+def _same(have: Any, want: Any) -> bool:
+    """YAML/JSON literals compared loosely: 'false' == False, '6' == 6 == 6.0."""
+    if isinstance(have, bool) or isinstance(want, bool):
+        return str(have).lower() == str(want).lower()
+    try:
+        return float(have) == float(want)
+    except (TypeError, ValueError):
+        return str(have) == str(want)
+
+
+def check_c14(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
+    """C14: what blueprint.cognito states about the user pool (token lifetimes,
+    password policy, sign-in attribute) is what the template deploys. No test
+    runs against real Cognito, so a setting left out here only shows up after
+    deployment (bookstore-v3a: refresh token 7d in the blueprint, Cognito's
+    30-day default in the template)."""
+    try:
+        blueprint = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []  # B0 / C9 report a missing or broken blueprint
+    cognito = blueprint.get("cognito") if isinstance(blueprint, dict) else None
+    if not isinstance(cognito, dict) or not cognito.get("enabled"):
+        return []
+    resources = template.get("Resources") or {}
+    pools = {n: r for n, r in resources.items() if isinstance(r, dict) and r.get("Type") == "AWS::Cognito::UserPool"}
+    clients = {n: r for n, r in resources.items() if isinstance(r, dict) and r.get("Type") == "AWS::Cognito::UserPoolClient"}
+    if not pools:
+        return [_finding("C14", "ERROR", "blueprint.cognito.enabled is true but the template has no AWS::Cognito::UserPool.", "cognito")]
+    findings: list[dict[str, Any]] = []
+
+    tokens = cognito.get("token_validity") if isinstance(cognito.get("token_validity"), dict) else {}
+    wanted_tokens = {k: tokens[k] for k in _TOKEN_FIELDS if tokens.get(k) not in (None, "")}
+    if wanted_tokens and not clients:
+        findings.append(_finding("C14", "ERROR", "blueprint.cognito.token_validity is set but the template has no "
+                                 "AWS::Cognito::UserPoolClient to carry it.", "cognito.token_validity"))
+    for logical, client in clients.items():
+        props = client.get("Properties") or {}
+        units = props.get("TokenValidityUnits") or {}
+        for key, raw in wanted_tokens.items():
+            prop, unit_key, default_unit, cognito_default = _TOKEN_FIELDS[key]
+            want = _seconds(raw, default_unit)
+            if want is None:
+                findings.append(_finding("C14", "WARNING", f"blueprint.cognito.token_validity.{key} = {raw!r} is not a "
+                                         "duration this check can read (use e.g. '1h', '7d').", f"cognito.token_validity.{key}"))
+                continue
+            unit = units.get(unit_key, default_unit) if isinstance(units, dict) else default_unit
+            value = props.get(prop)
+            if value is None:
+                have, where = cognito_default, f"no {prop} (Cognito default)"
+            elif _plain(value) and _plain(unit) and str(unit) in _CFN_UNITS and _seconds(value, str(unit)) is not None:
+                have, where = _seconds(value, str(unit)), f"{prop}: {value} {unit}"
+            else:
+                findings.append(_finding("C14", "WARNING", f"{logical}.{prop} is not a literal ({value!r}, unit {unit!r}); "
+                                         f"cannot compare it with blueprint.cognito.token_validity.{key} = {raw!r}.", logical))
+                continue
+            if have != want:
+                n, u = _cfn_duration(want)
+                findings.append(_finding(
+                    "C14", "ERROR",
+                    f"{logical}: blueprint.cognito.token_validity.{key} = {raw!r} ({want}s), but the template has {where} "
+                    f"= {have}s. Set {prop}: {n} with TokenValidityUnits.{unit_key}: {u} (CloudFormation takes a number "
+                    f"plus a unit, not the blueprint's string).", logical))
+
+    policy = cognito.get("password_policy") if isinstance(cognito.get("password_policy"), dict) else {}
+    wanted_policy = {_PASSWORD_FIELDS[k]: (k, v) for k, v in policy.items() if k in _PASSWORD_FIELDS and v is not None}
+    for logical, pool in pools.items():
+        props = pool.get("Properties") or {}
+        stated = ((props.get("Policies") or {}).get("PasswordPolicy")) if isinstance(props.get("Policies"), dict) else None
+        for prop, (key, want) in wanted_policy.items():
+            if prop == "TemporaryPasswordValidityDays" and want == 0:
+                continue  # "no temporary passwords"; CloudFormation only accepts 1-365, so leaving it out is right
+            if isinstance(stated, dict):
+                if prop not in stated:
+                    findings.append(_finding("C14", "ERROR", f"{logical}: blueprint.cognito.password_policy.{key} = {want!r}, "
+                                             f"but Policies.PasswordPolicy has no {prop}; set it explicitly.", logical))
+                    continue
+                have = stated[prop]
+            else:
+                have = _DEFAULT_PASSWORD_POLICY[prop]
+            if not _plain(have):
+                continue
+            if not _same(have, want):
+                source = "Policies.PasswordPolicy" if isinstance(stated, dict) else "Cognito's default policy (no PasswordPolicy in the template)"
+                findings.append(_finding("C14", "ERROR", f"{logical}: blueprint.cognito.password_policy.{key} = {want!r}, "
+                                         f"but {source} gives {prop} = {have!r}.", logical))
+
+        username = cognito.get("username_attribute")
+        if username in ("email", "phone_number"):
+            attrs = [str(a) for a in props.get("UsernameAttributes") or []]
+            if username not in attrs:
+                findings.append(_finding("C14", "ERROR", f"{logical}: blueprint.cognito.username_attribute = {username!r}, "
+                                         f"but UsernameAttributes is {attrs or 'not set'}.", logical))
+    return findings
+
+
 # Pipeline tools an agent must never modify during a run (TOOLS check). The
 # rule ledger is written by update_ledger during S5, so it is exempt.
 TOOL_DIRS = ("m2s-mcp-server", ".openharness")
@@ -1655,6 +1799,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c11(ws, template)
                 + check_c12(ws, template)
                 + check_c13(ws, template)
+                + check_c14(ws, template)
                 + check_gm_code(ws)
                 + check_gm_template(ws, template)
                 + check_api_type_template(ws, template)
@@ -1665,7 +1810,10 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 "C6": suspects_c6_layers(ws, template),
             }
             mechanical_errors = sum(1 for f in checks if f["severity"] == "ERROR")
-            severe = mechanical_errors > _MECHANICAL_LIMIT_FOR_SEVERE
+            # A C14 error alone fails the gate: nothing downstream can fix the template
+            # (S4 only reports), and no test runs against real Cognito to notice it.
+            severe = mechanical_errors > _MECHANICAL_LIMIT_FOR_SEVERE or any(
+                f["check_id"] == "C14" and f["severity"] == "ERROR" for f in checks)
 
     elif phase == "final":
         checks = check_b0(ws)
@@ -1685,6 +1833,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c11(ws, template)
                 + check_c12(ws, template)
                 + check_c13(ws, template)
+                + check_c14(ws, template)
                 + check_gm_code(ws)
                 + check_gm_template(ws, template)
             )

@@ -3,6 +3,10 @@
     python -m coord.dispatcher run     --ws WS --monolith DIR [--max-workers 1]
     python -m coord.dispatcher status  --ws WS
     python -m coord.dispatcher resolve --ws WS --task S2 (--accept | --reopen) --comment "..." [--feedback "..."]
+    python -m coord.dispatcher rework  --ws WS --task S3c --comment "..." [--feedback "..."] [--recheck]
+
+resolve and rework take --open-issue TEXT (repeatable): a question the person leaves
+open on purpose; it goes into the final report.
 
 Loop: take ready tasks from the board in template order, run dispatcher
 actions itself, start one worker per agent task, and when a worker exits,
@@ -60,6 +64,7 @@ HANDLER_TIMEOUT_S = 20 * 60
 HANDLER_MAX_TURNS = 60
 
 EXIT_DONE, EXIT_HUMAN, EXIT_STALLED, EXIT_ERROR, EXIT_STOPPED = 0, 3, 4, 1, 5
+HUMAN_KINDS = {"human_accept": "接受", "human_reopen": "重做", "human_rework": "退回"}
 
 
 _TRANSIENT_API = re.compile(r"\b(429|5\d\d|overloaded|rate.?limit(ed)?|time[sd]? ?out)\b", re.I)
@@ -296,9 +301,9 @@ class Dispatcher:
         if self.events.count("spawn", task_id) - infra >= MAX_SPAWNS_PER_TASK:
             self._escalate(task_id, f"{task_id} 已经启动过 {MAX_SPAWNS_PER_TASK} 次 worker，调度器不再自动重试")
             return
-        if self.events.reopen_mode(task_id) == "recheck":
+        if self.events.reopen_mode(task_id) == "recheck" and spec.runner == "agent":
             self._recheck(spec)
-        elif spec.runner == "dispatcher":
+        elif spec.runner == "dispatcher":  # actions are cheap and deterministic: a stale one runs again
             self._run_action(spec)
         else:
             self._spawn(spec)
@@ -512,7 +517,7 @@ class Dispatcher:
 
     def _rework_budget_ok(self, target: str) -> bool:
         used = sum(1 for e in self.events.of_task(target, "round_start")
-                   if e.get("cause") == "rework" and e.get("reason") != "spec_issues")
+                   if e.get("cause") == "rework" and e.get("reason") not in ("spec_issues", "human"))
         return used < self.template.max_rework_rounds
 
     def _request_rework(self, target: str, feedback: str, reason: str, by: str, mode: str = "rerun") -> None:
@@ -549,8 +554,14 @@ class Dispatcher:
         self.log(f"{task_id}: needs a person: {reason}")
 
     def _human_gate(self, gate_id: str, question: str, blocks: list[str]) -> None:
-        """A dispatcher task that waits in needs_human until a person resolves it."""
+        """A dispatcher task that waits in needs_human until a person resolves it. A gate
+        that a person closed earlier (e.g. a phase review before a rework moved v0) is
+        asked again; one that is still waiting keeps its first question."""
         if gate_id in self.board.tasks():
+            if self.board.status(gate_id) == "closed":
+                self.board.reopen(gate_id)
+                self.events.append("round_start", task=gate_id, cause="asked_again", mode="rerun")
+                self._escalate(gate_id, question)
             return
         spec = TaskSpec(id=gate_id, runner="dispatcher", action="human")
         self.board.add_task(spec.to_json())
@@ -821,7 +832,12 @@ class Dispatcher:
         carried = self.events.last("V1", "spec_issues_carried")
         if carried:
             rows.append(f"- 留到最终报告的 non_blocking spec_issues：{carried['issues']}")
+        rows += [f"- 人决定留到最终报告的未决问题：{e['text']}" for e in self.events.all() if e["type"] == "open_issue"]
+        rows += [f"- 人的决定（{e['task']}，{HUMAN_KINDS[e['type']]}）：{e.get('comment', '')}" for e in self._human_events()]
         return "\n".join(rows)
+
+    def _human_events(self) -> list[dict[str, Any]]:
+        return [e for e in self.events.all() if e["type"] in HUMAN_KINDS]
 
     def report(self, outcome: str) -> str:
         tasks = self.board.tasks()
@@ -856,9 +872,16 @@ class Dispatcher:
         escalations = [e for e in self.events.all() if e["type"] == "escalate"]
         if escalations:
             lines += ["", "## 交给人", ""] + [f"- {e['task']}：{e['reason']}" for e in escalations]
+        human = self._human_events()
+        if human:
+            lines += ["", "## 人的决定", ""] + [f"- {e.get('ts', '')[:16]} {e['task']}：{HUMAN_KINDS[e['type']]}。{e.get('comment', '')}"
+                                                for e in human]
         carried = self.events.last("V1", "spec_issues_carried")
         if carried:
             lines += ["", "## 仍然 open 的 non_blocking spec_issues", "", f"- {carried['issues']}"]
+        issues = [e for e in self.events.all() if e["type"] == "open_issue"]
+        if issues:
+            lines += ["", "## 人决定暂不处理的未决问题", ""] + [f"- {e['text']}（{e['task']}）" for e in issues]
         return "\n".join(lines) + "\n"
 
 
@@ -881,8 +904,49 @@ def _resolve(args: argparse.Namespace) -> int:
         if args.feedback:
             events.append("feedback", task=args.task, source="human", text=args.feedback)
         events.append("human_reopen", task=args.task, comment=args.comment)
+    _record_human(coord, events, args.task, "接受" if args.accept else "重做", args.comment, args.open_issue)
     print(f"{args.task}: {'accepted' if args.accept else 'reopened'}; run the dispatcher again to continue")
     return EXIT_DONE
+
+
+def _rework(args: argparse.Namespace) -> int:
+    """A person sends a closed task back (e.g. after adding a check that it now fails).
+    Closed tasks downstream go stale and follow their on_stale rule, as for any rework."""
+    ws = Path(args.ws).resolve()
+    events = EventLog(ws / "coord" / "events.jsonl")
+    start = next((e for e in events.all() if e["type"] == "run_start"), None)
+    if start is None:
+        print(f"{ws} has no run to rework", file=sys.stderr)
+        return EXIT_ERROR
+    dispatcher = Dispatcher(ws, template=start.get("template", "v1"), log=print)
+    if args.task not in {t.id for t in dispatcher.template.tasks}:
+        print(f"{args.task} is not a task of template {dispatcher.template.name}", file=sys.stderr)
+        return EXIT_ERROR
+    status = dispatcher.board.status(args.task)
+    if status != "closed":
+        print(f"{args.task} is {status}; only a closed task can be sent back (use resolve for needs_human)", file=sys.stderr)
+        return EXIT_ERROR
+    mode = "recheck" if args.recheck else "rerun"
+    dispatcher._request_rework(args.task, args.feedback or args.comment, reason="human", by="human", mode=mode)
+    events.append("human_rework", task=args.task, comment=args.comment, mode=mode)
+    _record_human(ws / "coord", events, args.task, f"退回（{mode}）", args.comment, args.open_issue)
+    reopened = [t for t in dispatcher.template.downstream(args.task) if dispatcher.board.status(t) == "open"]
+    print(f"{args.task}: sent back ({mode}); open downstream: {reopened}; run the dispatcher again to continue")
+    return EXIT_DONE
+
+
+def _record_human(coord: Path, events: EventLog, task: str, decision: str, comment: str, open_issues: list[str]) -> None:
+    """The journal is what the exception handler reads; a person's decisions belong there too,
+    so a later phase review does not ask the same question again."""
+    for text in open_issues:
+        events.append("open_issue", task=task, text=text)
+    journal = Casebook(coord, events).journal
+    if not journal.exists():
+        journal.write_text("# 异常处理记录\n\n本次运行中异常处理者和人做过的判断，按时间排列。\n\n", encoding="utf-8")
+    entry = f"## 人的决定（任务 {task}，{time.strftime('%Y-%m-%d %H:%M')}）\n\n- 决定：{decision}\n- 说明：{comment}\n"
+    entry += "".join(f"- 留到最终报告的未决问题：{t}\n" for t in open_issues) + "\n"
+    with journal.open("a", encoding="utf-8") as fh:
+        fh.write(entry)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -908,10 +972,22 @@ def main(argv: list[str] | None = None) -> int:
     group.add_argument("--reopen", action="store_true", help="run the task again")
     p_resolve.add_argument("--comment", required=True)
     p_resolve.add_argument("--feedback", default="")
+    p_resolve.add_argument("--open-issue", action="append", default=[], metavar="TEXT",
+                           help="a question left open on purpose; listed in the final report (repeatable)")
+    p_rework = sub.add_parser("rework", help="send a closed task back (downstream tasks go stale)")
+    p_rework.add_argument("--ws", required=True)
+    p_rework.add_argument("--task", required=True)
+    p_rework.add_argument("--comment", required=True)
+    p_rework.add_argument("--feedback", default="", help="text for the worker (default: the comment)")
+    p_rework.add_argument("--recheck", action="store_true",
+                          help="rerun the task's checks first; start a worker only if they fail (e.g. after adding a check)")
+    p_rework.add_argument("--open-issue", action="append", default=[], metavar="TEXT")
     args = parser.parse_args(argv)
 
     if args.cmd == "resolve":
         return _resolve(args)
+    if args.cmd == "rework":
+        return _rework(args)
     if args.cmd == "status":
         board = TaskBoard(Path(args.ws).resolve() / "coord")
         for task_id, info in board.tasks().items():

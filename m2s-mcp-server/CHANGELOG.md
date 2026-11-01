@@ -916,3 +916,19 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **延迟表 M 级**：`e2e_calibrate.py` + `e2e-tools/calibrate/`，一次性 AWS 标定，测完删栈；`latency-profile.json` 改为实测 p50（另存 p90 和旧的 E 级值）。`perf.py` 的说明文字改为读取表里的等级。这是人工运行的标定步骤，流水线本身不调用 AWS（§10.3 末尾的说明）。
 - **测试**：新增 6 个（CT7、PH1、缓存表的读、repeat、Model、缓存隔离集成测试）。
 
+## gate C14：Cognito 设置对账；调度器 `rework`（2026-11-01）
+
+- **起因**：bookstore-v3a 打 v0 之后的阶段复查发现，blueprint 写了 refresh 令牌 7 天（对齐单体的 JWT），模板的 `UserPoolClient` 没写，部署后会是 Cognito 默认的 30 天。C1–C13 都不检查 Cognito 资源的属性，测试也不连真实的 Cognito，所以这类遗漏只能在部署后发现。
+- **C14**（template 和 final 阶段）：`blueprint.cognito` 里写了的 `token_validity`、`password_policy`、`username_attribute`，模板必须一致。
+  - 令牌有效期按秒比较，单位用 `TokenValidityUnits`（默认 access/id 是小时、refresh 是天）；模板没写的，按 Cognito 默认值（1 小时、1 小时、30 天）比较。报错信息给出该写的数字和单位，因为 blueprint 里是 `"7d"` 这样的字符串，不能照抄；
+  - 模板完全没写 `PasswordPolicy` 时按 Cognito 的默认策略比较；写了但缺字段的，要求显式写出；`temporary_password_validity_days` 为 0 时允许不写（CloudFormation 只接受 1–365）；
+  - 值是内部函数、或者 blueprint 的时长读不懂时，只给 WARNING；
+  - template 阶段有一条 C14 错误就判 FAIL，因为后面的 S4 改不了模板。
+  - 在 18 个已有工作区上回放：只有 bookstore-v3a 报错，报的就是这一处。
+- **调度器**：
+  - `rework --task T [--recheck] --comment ...`：人把一个已关闭的任务退回，下游已关闭的任务按各自的 `on_stale` 处理。不占自动回炉的次数。`--recheck` 先重跑这个任务的检查，不通过才启动 worker，适合"刚加了一条检查"的情况；
+  - `resolve` 和 `rework` 支持 `--open-issue TEXT`：人决定暂不处理的问题，写进运行报告；
+  - 人的决定写进 `journal.md`，后面的异常处理者能看到。处理者的系统提示词加了一句：同一件事没有新证据时，照人的决定办；
+  - 修正：过期的调度器动作会重新执行。以前 TAG_V0 过期后只"复查"一个空的检查列表，不会重新打 tag；
+  - 修正：人已经关闭的关口，在阶段复查再次提出问题时重新打开。以前会被直接忽略。
+- **测试**：C14 新增 10 个测试函数，good workspace 的模板补了和 blueprint 一致的用户池；调度器新增"复查交给人 → 人接受 → 加检查后退回 S3c → V2 重跑、v0 重打 → 复查再次提问"的场景测试。

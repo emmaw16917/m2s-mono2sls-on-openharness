@@ -279,3 +279,45 @@ def test_worker_killed_while_dispatcher_down_is_a_crash(tmp_path: Path):
     first = restarted.events.of_task("S1", "worker_exit")[0]
     assert first["crashed"] is True and not first.get("infra")
     assert _spawns(restarted, "S1") == 2
+
+
+def test_person_sends_a_closed_task_back_after_a_new_check(tmp_path: Path):
+    """bookstore-v3a: the phase review after v0 found a gap no check covered. The person
+    accepts the review, adds a check, and sends S3c back with --recheck: S3c's recheck
+    fails, a worker fixes it, V2 reruns, v0 is tagged again and the review runs again."""
+    tags: list[str] = []
+
+    def tag_v0(spec):
+        from coord.checks import CheckResult
+        tags.append("v0")
+        return CheckResult("tag_v0", True, f"fake tag {len(tags)}")
+
+    script = {"handler": [{"action": "escalate", "rationale": "token validity missing"},
+                          {"action": "escalate", "rationale": "asked again"}]}
+    d = make_dispatcher(tmp_path, script, handler=True, phase_review=True, actions={"tag_v0": tag_v0})
+    assert d.run() == EXIT_HUMAN
+    assert d.board.status("HUMAN_TAG_V0") == "needs_human" and d.board.status("S5") == "open"
+
+    assert main(["resolve", "--ws", str(d.ws), "--task", "HUMAN_TAG_V0", "--accept", "--comment", "go on",
+                 "--open-issue", "SI-22: JSON scalar bodies"]) == EXIT_DONE
+    assert main(["rework", "--ws", str(d.ws), "--task", "S5", "--comment", "x"]) != EXIT_DONE  # only closed tasks
+    # the new check: S3c's gate now fails on the work it did
+    (d.ws / "storage" / "stage_reports" / "S3c.json").write_text(json.dumps({"ok": False}), encoding="utf-8")
+    assert main(["rework", "--ws", str(d.ws), "--task", "S3c", "--recheck", "--comment", "C14 added"]) == EXIT_DONE
+    assert d.board.status("S3c") == "open" and d.board.status("TAG_V0") == "open"
+
+    resumed = make_dispatcher(tmp_path, script, handler=True, phase_review=True, actions={"tag_v0": tag_v0})
+    assert resumed.run() == EXIT_HUMAN
+
+    assert _spawns(resumed, "S3c") == 2
+    assert "fake gate_template failed for S3c" in _prompt(resumed, "S3c", 2)
+    assert _spawns(resumed, "S4") == 1  # on_stale: recheck
+    assert _spawns(resumed, "V2") == 2 and len(tags) == 2  # V2 reran; the stale TAG_V0 ran its action again
+    assert resumed.events.count("case_open") == 2
+    assert resumed.board.status("HUMAN_TAG_V0") == "needs_human" and resumed.board.status("S5") == "open"
+    journal = (resumed.coord / "journal.md").read_text(encoding="utf-8")
+    assert "人的决定（任务 HUMAN_TAG_V0" in journal and "SI-22" in journal and "退回（recheck）" in journal
+    report = (resumed.coord / "report.md").read_text(encoding="utf-8")
+    assert "## 人的决定" in report and "## 人决定暂不处理的未决问题" in report and "SI-22" in report
+    case2 = sorted((resumed.coord / "cases").glob("C*review.md"))[-1].read_text(encoding="utf-8")
+    assert "SI-22" in case2  # the second review sees what the person left open
