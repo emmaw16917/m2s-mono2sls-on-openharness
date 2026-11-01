@@ -18,6 +18,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from coord import rulings
+
 HANDLER_ROLE = "handler"
 HANDLER_ACTIONS = ("retry", "reroute", "escalate", "ok")
 
@@ -85,6 +87,25 @@ def handler_decide(case: str, action: str, target: str = "", feedback: str = "",
               "time": time.strftime("%Y-%m-%dT%H:%M:%S%z")}
     write_json_atomic(Path(coord) / "cases" / f"{case}.decision.json", record)
     return {"ok": True, **record, "next": "Decision recorded. End the session now."}
+
+
+def record_ruling(question: str, conclusion: str, category: str, basis: str, raised_by: str = "",
+                  options: list[str] | None = None, relaxation: str = "", affected_cases: list[str] | None = None,
+                  layers: list[str] | None = None, affected_tasks: list[str] | None = None,
+                  deviates_from_monolith: bool = False) -> dict[str, Any]:
+    coord, task, attempt, role = _env()
+    raw = {"question": question, "conclusion": conclusion, "category": category, "basis": basis,
+           "raised_by": raised_by, "options": options or [], "relaxation": relaxation or None,
+           "affects": {"cases": affected_cases or [], "layers": layers or [], "tasks": affected_tasks or []},
+           "deviates_from_monolith": deviates_from_monolith}
+    try:
+        ruling = rulings.propose(coord, task, attempt, role, raw)
+    except rulings.RulingError as exc:
+        return {"ok": False, "error": str(exc)}
+    when = "after a person confirms it (it departs from the monolith)" if ruling["status"] == "proposed" else ""
+    return {"ok": True, "id": ruling["id"], "status": ruling["status"],
+            "next": f"Recorded. It takes effect when this task passes its checks{' and ' + when if when else ''}. "
+                    "Cite the id in your stage report."}
 
 
 def safe(fn, *args: Any, **kwargs: Any) -> dict[str, Any]:

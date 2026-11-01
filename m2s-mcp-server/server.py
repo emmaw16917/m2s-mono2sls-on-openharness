@@ -456,5 +456,38 @@ def handler_decide(case: str, action: str, target: str = "", feedback: str = "",
     return json.dumps(coord_tools.safe(coord_tools.handler_decide, case, action, target, feedback, rationale), ensure_ascii=False)
 
 
+@mcp.tool()
+def record_ruling(question: str, conclusion: str, category: str, basis: str, raised_by: str = "",
+                  options: list[str] | None = None, relaxation: str = "", affected_cases: list[str] | None = None,
+                  layers: list[str] | None = None, affected_tasks: list[str] | None = None,
+                  deviates_from_monolith: bool = False) -> str:
+    """Architect or exception handler only: record a ruling on a question the facts do
+    not settle (PIPELINE_V2_PLAN.md §4.6). It becomes part of storage/rulings.json when
+    your task passes its checks; one that departs from the monolith also needs a person.
+    Do not edit storage/rulings.json yourself.
+
+    Args:
+        question: the question, as raised (cite the case, difference or issue id).
+        conclusion: what is decided, precise enough to compare against.
+        category: "contract" (observable behaviour the target must keep),
+            "implementation-trace" (how the monolith happens to do it; not compared),
+            "migration-change" (changed on purpose by the migration, e.g. Cognito
+            replaces the login endpoints), or "spec-gap" (the facts say nothing).
+        basis: the evidence: fact refs, monolith output, design rules.
+        raised_by: the module that raised it (e.g. "J3"); default: this task.
+        options: the options that were considered.
+        relaxation: for a behaviour that may vary: "order", "freshness" or
+            "alternatives" (several acceptable results); compared on the R layer.
+        affected_cases: judge case ids the ruling changes.
+        layers: observation layers it concerns: "P", "R", "T".
+        affected_tasks: closed tasks that must be checked again because of it.
+        deviates_from_monolith: true when the target will NOT copy the monolith's
+            behaviour (e.g. fixing a monolith defect); a person must confirm it.
+    """
+    return json.dumps(coord_tools.safe(coord_tools.record_ruling, question, conclusion, category, basis, raised_by,
+                                       options, relaxation, affected_cases, layers, affected_tasks,
+                                       deviates_from_monolith), ensure_ascii=False)
+
+
 if __name__ == "__main__":
     mcp.run(transport="stdio")

@@ -2,11 +2,13 @@
 
     python -m coord.dispatcher run     --ws WS --monolith DIR [--max-workers 1]
     python -m coord.dispatcher status  --ws WS
-    python -m coord.dispatcher resolve --ws WS --task S2 (--accept | --reopen) --comment "..." [--feedback "..."]
+    python -m coord.dispatcher resolve --ws WS --task S2 (--accept | --reopen | --reject) --comment "..." [--feedback "..."]
     python -m coord.dispatcher rework  --ws WS --task S3c --comment "..." [--feedback "..."] [--recheck]
 
 resolve and rework take --open-issue TEXT (repeatable): a question the person leaves
-open on purpose; it goes into the final report.
+open on purpose; it goes into the final report. resolve also takes --ruling-file R.json
+(repeatable): a ruling the person makes (coord/rulings.py). A ruling gate
+(HUMAN_R-...) is resolved with --accept (confirm the ruling) or --reject.
 
 Loop: take ready tasks from the board in template order, run dispatcher
 actions itself, start one worker per agent task, and when a worker exits,
@@ -38,7 +40,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
-from coord import harness
+from coord import harness, rulings
 from coord.board import TaskBoard
 from coord.checks import CHECKS, CheckResult, ToolGuard, _clip, _read_json
 from coord.events import EventLog
@@ -53,7 +55,7 @@ from coord.workers import Launcher, OhLauncher, WorkerHandle, WorkerJob, role_pr
 # Changes no task is blamed for: dispatcher state, the v1 orchestrator's TODO, caches.
 ALWAYS_ALLOWED = ("coord/**", "storage/TODO.md", "**/node_modules/**", "**/__pycache__/**")
 # Workspace files only the dispatcher writes; rebuilt from the event log after every worker.
-DISPATCHER_FILES = (harness.WORKSPACE_FILE.as_posix(),)
+DISPATCHER_FILES = (harness.WORKSPACE_FILE.as_posix(), rulings.WORKSPACE_FILE.as_posix())
 ROUTING_TARGETS = {"code": "S2", "template": "S3c", "spec": "S1"}
 RELAY_FIELDS = ("function", "spec_refs", "expected_per_spec", "observed")
 MAX_CRASHES = 3
@@ -66,7 +68,7 @@ HANDLER_TIMEOUT_S = 20 * 60
 HANDLER_MAX_TURNS = 60
 
 EXIT_DONE, EXIT_HUMAN, EXIT_STALLED, EXIT_ERROR, EXIT_STOPPED = 0, 3, 4, 1, 5
-HUMAN_KINDS = {"human_accept": "接受", "human_reopen": "重做", "human_rework": "退回"}
+HUMAN_KINDS = {"human_accept": "接受", "human_reopen": "重做", "human_rework": "退回", "human_reject": "否决"}
 
 
 _TRANSIENT_API = re.compile(r"\b(429|5\d\d|overloaded|rate.?limit(ed)?|time[sd]? ?out)\b", re.I)
@@ -183,7 +185,7 @@ class Dispatcher:
             self.events.append("run_start", ws=str(self.ws), monolith=str(self.monolith),
                                template=self.template.name, max_workers=self.max_workers, stop_after=self.stop_after)
             self.events.append("tool_baseline", baseline=self.guard.capture())
-            self._write_harness_record()
+            self._write_dispatcher_files()
             self.shadow.init()
             self.log(f"new run: {len(self.template.tasks)} tasks on the board")
             return
@@ -197,13 +199,23 @@ class Dispatcher:
             self.guard.capture()
         self.events.append("run_resume", stop_after=self.stop_after)
         self.events.append("harness", stamp=self.stamp(), on="resume")  # the tools may have changed between segments
-        self._write_harness_record()
+        self._write_dispatcher_files()
         self._reconcile()
 
-    def _write_harness_record(self) -> bool:
-        """storage/harness_version.json is the dispatcher's: rebuilt from the event log, so a
-        worker that changes it changes nothing (see _evaluate)."""
-        return harness.write_workspace_record(self.ws, [e["stamp"] for e in self.events.all() if e["type"] == "harness"])
+    def _write_dispatcher_files(self) -> list[str]:
+        """DISPATCHER_FILES are rebuilt from the event log, so a worker that changes one
+        changes nothing (see _evaluate). Returns the files that had to be written."""
+        events = self.events.all()
+        changed = []
+        if harness.write_workspace_record(self.ws, [e["stamp"] for e in events if e["type"] == "harness"]):
+            changed.append(harness.WORKSPACE_FILE.as_posix())
+        entries = [e["entry"] for e in events if e["type"] == "ruling"]
+        if (entries or (self.ws / rulings.WORKSPACE_FILE).exists()) and rulings.write_workspace_file(self.ws, entries):
+            changed.append(rulings.WORKSPACE_FILE.as_posix())
+        return changed
+
+    def _ruling_entries(self) -> list[dict[str, Any]]:
+        return [e["entry"] for e in self.events.all() if e["type"] == "ruling"]
 
     def _reconcile(self) -> None:
         """Bring board and processes back in line after a dispatcher restart."""
@@ -439,8 +451,8 @@ class Dispatcher:
         # Files the dispatcher owns are rebuilt rather than reverted: the dispatcher itself may
         # have written one while this worker ran (a resume adopts live workers).
         changes = [(s, p) for s, p in changes if p not in DISPATCHER_FILES]
-        if self._write_harness_record():
-            self.events.append("dispatcher_file_rewritten", task=spec.id, attempt=attempt, path=DISPATCHER_FILES[0])
+        for path in self._write_dispatcher_files():
+            self.events.append("dispatcher_file_rewritten", task=spec.id, attempt=attempt, path=path)
         outside = [(s, p) for s, p in changes if not in_scope(p, spec.scope) and not in_scope(p, ALWAYS_ALLOWED)]
         if outside:
             self.shadow.restore(snapshot, outside)
@@ -475,6 +487,7 @@ class Dispatcher:
         # drives the rework rules (e.g. V2 reports blocked together with its routing).
         if results[0].ok and not tools_bad and not timed_out:
             results += self._done_checks(spec)
+            results += self._ruling_checks(spec, attempt)
         self.events.append("checks", task=spec.id, attempt=attempt, results=[r.to_event() for r in results])
 
         if tools["repo_changed"] or tools["agents"]:
@@ -482,6 +495,7 @@ class Dispatcher:
             return
         if all(r.ok for r in results):
             self.log(f"{spec.id}: attempt {attempt} passed")
+            self._accept_rulings(spec.id, attempt)
             self._pass(spec.id)
             return
         self.log(f"{spec.id}: attempt {attempt} failed: {[r.summary for r in results if not r.ok]}")
@@ -540,12 +554,69 @@ class Dispatcher:
         self.events.append("round_start", task=target, cause="rework", reason=reason, mode=mode, by=by)
         self._feedback(target, by, feedback)
         self.board.reopen(target)
-        for downstream in self.template.downstream(target):
-            if self.board.status(downstream) == "closed":
-                self.board.set_status(downstream, "stale")
-                self.board.set_status(downstream, "open")
-                self.events.append("round_start", task=downstream, cause="stale", mode=self._spec(downstream).on_stale, by=target)
+        self._make_stale(self.template.downstream(target), by=target)
         self.log(f"{target}: reworked ({reason}, requested by {by})")
+
+    def _make_stale(self, tasks: list[str], by: str) -> list[str]:
+        """The closed ones among `tasks`, and closed tasks downstream of them, go stale and
+        follow their on_stale rule (recheck or rerun)."""
+        hit: list[str] = []
+        for task in tasks:
+            for t in [task, *self.template.downstream(task)]:
+                if t not in hit and self.board.status(t) == "closed":
+                    self.board.set_status(t, "stale")
+                    self.board.set_status(t, "open")
+                    self.events.append("round_start", task=t, cause="stale", mode=self._spec(t).on_stale, by=by)
+                    hit.append(t)
+        return hit
+
+    # ------------------------------------------------------------------ rulings (v2 §4.6)
+
+    def _ruling_checks(self, spec: TaskSpec, attempt: int) -> list[CheckResult]:
+        found = rulings.proposals(self.coord, spec.id, attempt)
+        if not found:
+            return []
+        known = {t.id for t in self.template.tasks}
+        unknown = sorted({t for r in found for t in r["affects"]["tasks"] if t not in known})
+        return [CheckResult("rulings", not unknown,
+                            f"{len(found)} rulings recorded" if not unknown else f"rulings name unknown tasks {unknown}",
+                            relay="" if not unknown else
+                            f"record_ruling 的 affected_tasks 里有不存在的任务 {unknown}；任务只能是 {sorted(known)} 之一。")]
+
+    def _accept_rulings(self, task_id: str, attempt: int) -> None:
+        """The proposals of a passing attempt (or of a handler that decided) become rulings."""
+        found = rulings.proposals(self.coord, task_id, attempt)
+        if not found:
+            return
+        for ruling in found:
+            self.events.append("ruling", task=task_id, entry=ruling)
+        self._write_dispatcher_files()
+        for ruling in found:
+            if ruling["status"] == "proposed":
+                self._ruling_gate(ruling)
+            else:
+                self._apply_ruling(ruling, by=task_id)
+        self.log(f"{task_id}: {len(found)} rulings accepted: {[r['id'] for r in found]}")
+
+    def _ruling_gate(self, ruling: dict[str, Any]) -> None:
+        known = {t.id for t in self.template.tasks}
+        waiting = [t for t in ruling["affects"]["tasks"] if t in known and self.board.status(t) in ("open", "rework")]
+        question = (f"裁定 {ruling['id']} 不照搬单体的行为，要人确认（V2-20）。问题：{ruling['question']}；"
+                    f"结论：{ruling['conclusion']}；依据：{ruling['basis']}；影响的任务：{ruling['affects']['tasks']}，"
+                    f"用例：{ruling['affects']['cases']}。确认用 resolve --accept，否决（照搬单体）用 resolve --reject。")
+        self._human_gate(f"HUMAN_{ruling['id']}", question, waiting)
+
+    def _apply_ruling(self, ruling: dict[str, Any], by: str) -> list[str]:
+        """A ruling in force: the tasks it names get it as feedback; closed ones go stale."""
+        known = {t.id for t in self.template.tasks}
+        targets = [t for t in ruling["affects"]["tasks"] if t in known and t != ruling.get("task")]
+        text = (f"新的裁定 {ruling['id']}（{ruling['category']}）影响这个任务。问题：{ruling['question']}；"
+                f"结论：{ruling['conclusion']}；依据：{ruling['basis']}。见 storage/rulings.json。")
+        for task in targets:
+            self._feedback(task, f"ruling {ruling['id']}", text)
+        stale = self._make_stale(targets, by=ruling["id"])
+        self.events.append("ruling_applied", task=by, ruling=ruling["id"], stale=stale)
+        return stale
 
     def _wait_for_upstream(self, task_id: str, reason: str) -> None:
         """The current task failed because of an upstream stage; retry it fresh once that is fixed."""
@@ -619,6 +690,8 @@ class Dispatcher:
         decision = case.decision()
         task_id = case.task_id
         action = (decision or {}).get("action")
+        if decision is not None and not timed_out:
+            self._accept_rulings(case.case_id, 1)
         if case.kind == "review":
             if action == "escalate":
                 self._human_gate(f"HUMAN_{task_id}", f"阶段复查要求人确认：{decision.get('rationale', '')}", self._next_tasks(task_id))
@@ -771,7 +844,7 @@ class Dispatcher:
             return CheckResult("tag_v0", False, "acceptance failed: " + "; ".join(r.summary for r in results if not r.ok))
         if not (self.ws / ".git").is_dir():
             _git(self.ws, "init", "-q")
-        self._write_harness_record()  # v0 carries the harness it was built with
+        self._write_dispatcher_files()  # v0 carries the harness and rulings it was built with
         exclude = self.ws / ".git" / "info" / "exclude"
         exclude.parent.mkdir(parents=True, exist_ok=True)
         if "coord/" not in (exclude.read_text(encoding="utf-8") if exclude.exists() else ""):
@@ -888,6 +961,10 @@ class Dispatcher:
         escalations = [e for e in self.events.all() if e["type"] == "escalate"]
         if escalations:
             lines += ["", "## 交给人", ""] + [f"- {e['task']}：{e['reason']}" for e in escalations]
+        ruled = rulings.effective(self._ruling_entries())
+        if ruled:
+            lines += ["", "## 裁定", ""] + [f"- {r['id']}（{r['decider']}，{r['status']}，{r['category']}）：{_clip(r['question'], 200)} → "
+                                             f"{_clip(r['conclusion'], 200)}" for r in ruled]
         human = self._human_events()
         if human:
             lines += ["", "## 人的决定", ""] + [f"- {e.get('ts', '')[:16]} {e['task']}：{HUMAN_KINDS[e['type']]}。{e.get('comment', '')}"
@@ -904,6 +981,35 @@ class Dispatcher:
 # ---------------------------------------------------------------------- CLI
 
 
+def _load_run(ws: Path) -> Dispatcher | None:
+    events = EventLog(ws / "coord" / "events.jsonl")
+    start = next((e for e in events.all() if e["type"] == "run_start"), None)
+    if start is None:
+        print(f"{ws} has no run", file=sys.stderr)
+        return None
+    return Dispatcher(ws, template=start.get("template", "v1"), log=print)
+
+
+def _human_rulings(d: Dispatcher, files: list[str], seq: int) -> list[dict[str, Any]] | None:
+    """Read and check --ruling-file arguments before anything is changed; ids follow seq."""
+    out = []
+    for name in files:
+        try:
+            raw = json.loads(Path(name).read_text(encoding="utf-8"))
+            for item in raw if isinstance(raw, list) else [raw]:
+                seq += 1
+                out.append(rulings.human_ruling(item, seq))
+        except (OSError, json.JSONDecodeError, rulings.RulingError) as exc:
+            print(f"--ruling-file {name}: {exc}", file=sys.stderr)
+            return None
+    known = {t.id for t in d.template.tasks}
+    unknown = sorted({t for r in out for t in r["affects"]["tasks"] if t not in known})
+    if unknown:
+        print(f"--ruling-file names unknown tasks {unknown}", file=sys.stderr)
+        return None
+    return out
+
+
 def _resolve(args: argparse.Namespace) -> int:
     ws = Path(args.ws).resolve()
     coord = ws / "coord"
@@ -911,7 +1017,30 @@ def _resolve(args: argparse.Namespace) -> int:
     if board.status(args.task) != "needs_human":
         print(f"{args.task} is {board.status(args.task)}, not needs_human", file=sys.stderr)
         return EXIT_ERROR
-    if args.accept:
+    entries = [e["entry"] for e in events.all() if e["type"] == "ruling"]
+    gated = next((r for r in rulings.effective(entries) if f"HUMAN_{r['id']}" == args.task), None)
+    if gated is None and args.reject:
+        print(f"{args.task} is not a ruling gate; --reject is only for HUMAN_R-... gates", file=sys.stderr)
+        return EXIT_ERROR
+    if gated is not None and args.reopen:
+        print(f"{args.task} is a ruling gate: use --accept (confirm) or --reject", file=sys.stderr)
+        return EXIT_ERROR
+    d = _load_run(ws) if args.ruling_file or gated is not None else None
+    if (args.ruling_file or gated is not None) and d is None:
+        return EXIT_ERROR
+    seq = sum(1 for e in entries if e.get("decider") == "human") + (gated is not None)  # the settlement comes first
+    new_rulings = _human_rulings(d, args.ruling_file, seq) if args.ruling_file else []
+    if new_rulings is None:
+        return EXIT_ERROR
+    if gated is not None:
+        settle = rulings.settlement(gated["id"], rulings.CONFIRM if args.accept else rulings.REJECT, args.comment, seq)
+        board.close(args.task, comment=f"human: {args.comment}")
+        events.append("ruling", task=args.task, entry=settle)
+        events.append("human_accept" if args.accept else "human_reject", task=args.task, comment=args.comment)
+        d._write_dispatcher_files()
+        if args.accept:
+            d._apply_ruling(gated, by="human")
+    elif args.accept:
         board.close(args.task, comment=f"human: {args.comment}")
         events.append("human_accept", task=args.task, comment=args.comment)
     else:
@@ -920,8 +1049,21 @@ def _resolve(args: argparse.Namespace) -> int:
         if args.feedback:
             events.append("feedback", task=args.task, source="human", text=args.feedback)
         events.append("human_reopen", task=args.task, comment=args.comment)
-    _record_human(coord, events, args.task, "接受" if args.accept else "重做", args.comment, args.open_issue)
-    print(f"{args.task}: {'accepted' if args.accept else 'reopened'}; run the dispatcher again to continue")
+    for ruling in new_rulings:
+        events.append("ruling", task="human", entry=ruling)
+    if new_rulings:
+        d._write_dispatcher_files()
+        for ruling in new_rulings:
+            d._apply_ruling(ruling, by="human")
+    if gated is not None:
+        decision = f"{'确认' if args.accept else '否决'}裁定 {gated['id']}"
+    else:
+        decision = "接受" if args.accept else "重做"
+    if new_rulings:
+        decision += "；新的裁定 " + "、".join(r["id"] for r in new_rulings)
+    _record_human(coord, events, args.task, decision, args.comment, args.open_issue)
+    done = "accepted" if args.accept else "rejected" if args.reject else "reopened"
+    print(f"{args.task}: {done}; run the dispatcher again to continue")
     return EXIT_DONE
 
 
@@ -930,11 +1072,9 @@ def _rework(args: argparse.Namespace) -> int:
     Closed tasks downstream go stale and follow their on_stale rule, as for any rework."""
     ws = Path(args.ws).resolve()
     events = EventLog(ws / "coord" / "events.jsonl")
-    start = next((e for e in events.all() if e["type"] == "run_start"), None)
-    if start is None:
-        print(f"{ws} has no run to rework", file=sys.stderr)
+    dispatcher = _load_run(ws)
+    if dispatcher is None:
         return EXIT_ERROR
-    dispatcher = Dispatcher(ws, template=start.get("template", "v1"), log=print)
     if args.task not in {t.id for t in dispatcher.template.tasks}:
         print(f"{args.task} is not a task of template {dispatcher.template.name}", file=sys.stderr)
         return EXIT_ERROR
@@ -986,8 +1126,11 @@ def main(argv: list[str] | None = None) -> int:
     group = p_resolve.add_mutually_exclusive_group(required=True)
     group.add_argument("--accept", action="store_true", help="close the task as it is")
     group.add_argument("--reopen", action="store_true", help="run the task again")
+    group.add_argument("--reject", action="store_true", help="ruling gates only: the ruling does not take effect")
     p_resolve.add_argument("--comment", required=True)
     p_resolve.add_argument("--feedback", default="")
+    p_resolve.add_argument("--ruling-file", action="append", default=[], metavar="R.json",
+                           help="a ruling the person makes: one object or a list (coord/rulings.py fields)")
     p_resolve.add_argument("--open-issue", action="append", default=[], metavar="TEXT",
                            help="a question left open on purpose; listed in the final report (repeatable)")
     p_rework = sub.add_parser("rework", help="send a closed task back (downstream tasks go stale)")

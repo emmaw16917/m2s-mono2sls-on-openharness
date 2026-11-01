@@ -258,6 +258,66 @@ def test_workspace_keeps_the_harness_record(tmp_path: Path):
     assert record["started_with"]["m2s"]["commit"] == "a"
     assert [s["m2s"]["commit"] for s in record["resumed_with"]] == ["b"]
 
+
+RULING = {"question": "GET /api/books order", "conclusion": "any order", "category": "contract",
+          "basis": "Scan without sort", "relaxation": "order", "affected_tasks": ["S2"]}
+
+
+def _rulings_file(d) -> dict:
+    return json.loads((d.ws / "storage" / "rulings.json").read_text(encoding="utf-8"))
+
+
+def test_rulings_of_a_failed_attempt_are_dropped(tmp_path: Path):
+    """v2 N0.2: only the attempt that passes its checks puts rulings on record; the tasks
+    a ruling names get it as feedback."""
+    first = {**fail_report("S1"), "rulings": [{**RULING, "conclusion": "draft"}]}
+    second = {**ok_report("S1"), "rulings": [RULING]}
+    d = make_dispatcher(tmp_path, {"S1": [first, second],
+                                   "S2": [{**ok_report("S2"), "rulings": [RULING]}]}, template=MINI)
+
+    assert d.run() == EXIT_DONE
+
+    data = _rulings_file(d)
+    assert [r["id"] for r in data["rulings"]] == ["R-S1-a2-1"]  # S2 (code-developer) may not record
+    assert data["rulings"][0]["affects"]["layers"] == ["R"]
+    assert "新的裁定 R-S1-a2-1" in _prompt(d, "S2", 1)
+    report = (d.coord / "report.md").read_text(encoding="utf-8")
+    assert "## 裁定" in report and "R-S1-a2-1" in report
+
+
+def test_a_ruling_that_departs_from_the_monolith_waits_for_a_person(tmp_path: Path, monkeypatch):
+    """V2-20: the gate holds S2; the person confirms it and adds a ruling of their own,
+    which sends the closed S1 to a recheck."""
+    import coord.dispatcher as dispatcher_module
+    original = dispatcher_module.load_template
+    monkeypatch.setattr(dispatcher_module, "load_template",
+                        lambda name="v1", path=None: MINI if name == "mini" else original(name, path))
+    deviation = {**RULING, "deviates_from_monolith": True, "conclusion": "page through the scan"}
+    d = make_dispatcher(tmp_path, {"S1": [{**ok_report("S1"), "rulings": [deviation]}]}, template=MINI)
+
+    assert d.run() == EXIT_HUMAN
+    assert d.board.status("HUMAN_R-S1-a1-1") == "needs_human" and _spawns(d, "S2") == 0
+    assert _rulings_file(d)["rulings"][0]["status"] == "proposed"
+
+    mine = tmp_path / "mine.json"
+    mine.write_text(json.dumps({"question": "token lifetime", "conclusion": "7 days", "category": "spec-gap",
+                                "basis": "config.js", "affects": {"tasks": ["S1"]}}), encoding="utf-8")
+    ws = str(d.ws)
+    assert main(["resolve", "--ws", ws, "--task", "S2", "--reject", "--comment", "x"]) != EXIT_DONE  # not needs_human
+    assert main(["resolve", "--ws", ws, "--task", "HUMAN_R-S1-a1-1", "--reopen", "--comment", "x"]) != EXIT_DONE
+    assert main(["resolve", "--ws", ws, "--task", "HUMAN_R-S1-a1-1", "--accept", "--comment", "fix the defect",
+                 "--ruling-file", str(mine)]) == EXIT_DONE
+
+    status = {r["id"]: r["status"] for r in _rulings_file(d)["rulings"]}
+    assert status == {"R-S1-a1-1": "confirmed", "R-human-2": "decided"}  # R-human-1 is the confirmation
+    assert any(e.get("cause") == "stale" and e.get("by") == "R-human-2" for e in d.events.of_task("S1", "round_start"))
+
+    resumed = make_dispatcher(tmp_path, {}, template=MINI)
+    assert resumed.run() == EXIT_DONE
+    assert _spawns(resumed, "S1") == 1  # recheck passed, no new worker
+    assert "R-S1-a1-1" in _prompt(resumed, "S2", 1)
+    assert "确认裁定 R-S1-a1-1" in (d.coord / "journal.md").read_text(encoding="utf-8")
+
 NET_FAIL = {"submit": None, "stream": [
     {"type": "status", "message": "Request failed; retrying in 60.0s (attempt 9 of 9): Connection error."},
     {"type": "error", "message": "Network error: Connection error.. Check your internet connection and try again.",

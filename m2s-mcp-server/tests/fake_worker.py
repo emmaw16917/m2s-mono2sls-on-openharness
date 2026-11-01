@@ -12,7 +12,8 @@ of behaviours, one per attempt (the last one repeats):
 
 A behaviour may: write files (dicts become JSON), "submit" ("done",
 "blocked", or null for no submission), give "reason"/"evidence"/"suspected",
-"sleep" seconds, print "stream" events (a list of dicts) and "exit" with a code. Tasks missing from the script get
+"sleep" seconds, print "stream" events (a list of dicts), call record_ruling
+with each of "rulings" (a list of keyword dicts) and "exit" with a code. Tasks missing from the script get
 {"write": {"storage/stage_reports/<task>.json": {"ok": true}}, "submit": "done"}.
 Handler behaviours are decisions passed to handler_decide.
 """
@@ -55,6 +56,8 @@ def main() -> int:
         path = ws / rel
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(content, ensure_ascii=False) if not isinstance(content, str) else content, encoding="utf-8")
+    for kwargs in step.get("rulings") or []:  # through the real tool, with its role check
+        print(json.dumps({"type": "ruling_tool", "result": tools.record_ruling(**kwargs)}, ensure_ascii=False), flush=True)
     submit = step.get("submit", "done")
     if submit == "done":
         tools.submit_task(f"fake {task} attempt {attempt}")
