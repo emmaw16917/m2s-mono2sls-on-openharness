@@ -359,7 +359,7 @@ S5（性能优化）有些改动没有保留，原因不在改动本身，而是
   ```
 
   - 准备步骤用单体自己的接口（注册、登录），**`save` 必须取到 `id`**（单体给这个用户的 id）。准备步骤不计入比对；
-  - 另一种是 `sign`：用单体的密钥直接签发 HS256 令牌（`{"sign": {"secret", "claims"}, "id", "header"}`），用来造"令牌有效但用户不在表里"这种情况。**只有事实库里写明了密钥时才能用**；写不出来，就把那个响应写进 `judge/uncovered.json`；
+  - 身份只能这样准备（用单体自己的接口）。某个响应只有在单体的接口造不出来的前提下才会出现（例如"用户已经不在表里"），就把它写进 `judge/uncovered.json` 并说明原因；
   - 要测"别人的数据看不到、改不到"，就用两个别名（`u1`、`u2`）。
 - `judge/faults/<场景>.json`：`{"description", "cases": [用例 id], "rules": [{"match": {"table", "op"?, "item"?}, "nth"?, "kind"}]}`。`kind` 是 throttle / error / validation / conditional / network / tx_conflict。
   - 同一个场景以后还要在迁移后的版本上跑，所以**按表或按条目匹配，不按读操作名**（读用 `"op": "@read"` 或不写 `op`）；`nth` 不是 `all` 时必须有 `match.item`；

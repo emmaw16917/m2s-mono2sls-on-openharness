@@ -319,12 +319,15 @@ def _check_identities(facts: Facts, identities: Any) -> list[str]:
             errs.append(f"{w}: must be an object with monolith (and later target, from the adapter map)")
             continue
         mono = spec.get("monolith")
+        # J1 prepares identities through the monolith's own endpoints (steps); a
+        # `sign` entry is something only a person sets up, so the messages J1
+        # reads name steps only.
         if not isinstance(mono, dict):
-            errs.append(f"{w}: monolith {{steps, header}} or {{sign, id, header}} is required")
+            errs.append(f"{w}: monolith {{steps, header}} is required (steps call the monolith, e.g. register)")
             continue
         if ("steps" in mono) == ("sign" in mono):
-            errs.append(f"{w}.monolith: use exactly one of steps (call the monolith, e.g. register) or sign "
-                        "(issue a token with the monolith's own key)")
+            errs.append(f"{w}.monolith: steps is required: preparation requests to the monolith (e.g. register) "
+                        "that save the user's id")
             continue
         if set(mono) - {"steps", "sign", "id", "header", "note"}:
             errs.append(f"{w}.monolith: unknown keys {sorted(set(mono) - {'steps', 'sign', 'id', 'header', 'note'})}")

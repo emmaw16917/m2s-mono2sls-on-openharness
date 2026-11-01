@@ -247,7 +247,7 @@ def _ident(fn):
 
 @pytest.mark.parametrize("identities, message", [
     ({"U1": IDENTITIES["u1"]}, "an alias is lower case"),
-    ({"u1": {"monolith": {}}}, "use exactly one of steps"),
+    ({"u1": {"monolith": {}}}, "steps is required"),
     (_ident(lambda m: m["steps"][0]["save"].pop("id")), "must save id"),
     (_ident(lambda m: m.update(header={"Authorization": "Bearer ${jwt}"})), "${jwt} is not saved by the preparation"),
     (_ident(lambda m: m.pop("header")), "header must map header names"),
