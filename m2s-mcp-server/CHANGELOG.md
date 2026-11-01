@@ -932,3 +932,23 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
   - 修正：过期的调度器动作会重新执行。以前 TAG_V0 过期后只"复查"一个空的检查列表，不会重新打 tag；
   - 修正：人已经关闭的关口，在阶段复查再次提出问题时重新打开。以前会被直接忽略。
 - **测试**：C14 新增 10 个测试函数，good workspace 的模板补了和 blueprint 一致的用户池；调度器新增"复查交给人 → 人接受 → 加检查后退回 S3c → V2 重跑、v0 重打 → 复查再次提问"的场景测试。
+
+## v2 N0：工作区版本戳、裁定记录、共用的记录代理（2026-11-01，分支 `feat/v2-modules`）
+
+依据 `PIPELINE_V2_PLAN.md` §5 N0（V2P-01 至 V2P-12 已于同日确认）。
+
+- **N0.1 工作区版本戳**：`storage/harness_version.json` 记下运行开工时的 harness（`started_with`），以及之后每次续跑时 harness 不同的那几次（`resumed_with`）。
+  - 文件由调度器从事件日志重建：worker 改了它不算越界，也改不掉（下一次检查时重写，事件 `dispatcher_file_rewritten`）；
+  - 打 v0 时随 `storage/` 一起提交，所以 v0 带着它是用哪个 harness 做出来的。
+- **N0.2 裁定记录**（`coord/rulings.py`）：
+  - `record_ruling` 工具（m2s-server），只有 architect 和异常处理者能调用。字段按设计稿 §4.12：问题、结论、类别（contract / implementation-trace / migration-change / spec-gap）、放宽类型（order / freshness / alternatives，自动归到 R 层）、影响的用例、观测层和任务、依据、是否偏离单体；
+  - 工具只写一份提议到 `coord/rulings/`（worker 读写不到）。这次尝试通过检查后，调度器才把提议收进 `storage/rulings.json`；没通过的尝试，提议作废；
+  - `storage/rulings.json` 也由调度器从事件日志重建，只追加：人的确认或否决是一条新记录，指向它处理的裁定；
+  - 偏离单体的裁定（V2-20）先是 `proposed`，调度器建关口 `HUMAN_<裁定号>`，挡住它影响的、还没开始的任务。人用 `resolve --accept` 确认、`--reject` 否决（照搬单体）；
+  - 生效的裁定作为反馈交给它点名的任务；这些任务里已关闭的，连同下游一起失效，按各自的 `on_stale` 处理；
+  - 人可以用 `resolve ... --ruling-file R.json` 直接写裁定；
+  - 运行报告新增"裁定"一节。
+- **测试**：版本戳 3 个（含调度器场景），裁定 12 个单元测试和 2 个调度器场景（失败尝试的提议作废；偏离单体的裁定等人确认，同时人补一条裁定让已关闭的 S1 重新检查）。
+- **N0.3 共用的记录代理**：`verify-tools/ddb-proxy.js`，从 `controller.js` 原样移出 DynamoDB 后端（DynamoDB Local / dynalite）、记录代理、故障注入、事务冲突模拟和表的清空、写入、导出。`controller.js` 改为调用它（669 行 → 341 行）。N1.3 的 `run_monolith` 也用它，这样单体侧和目标侧的后端与记录方式一致（V2P-11）。
+  - 行为不变的核对：在 bookstore-v3a 的副本上，新旧 controller 各跑一遍。`run_validate` 在本机 + dynalite、本机 + DynamoDB Local、RIE + DynamoDB Local 三种组合下都是 128/128；`run_equivalence(diff)` 对 v0 基线（旧 controller 录的）158 次运行 EQUIVALENT；
+  - `test_tx_conflicts.py` 里按文本截取 `controller.js` 的测试改为直接 `require('./ddb-proxy')`。

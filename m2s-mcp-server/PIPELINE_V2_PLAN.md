@@ -352,6 +352,15 @@ F1 结构提取 → F2 语义标注 → F3 出处检查 ──► 事实库
 | N0.2 | 裁定记录：`rulings.json` 的结构、`record_ruling` 工具（按角色限制）、调度器 `resolve` 增加写裁定；裁定触发受影响任务失效 | `coord/rulings.py`、`server.py`、`coord/dispatcher.py` | 单元测试：写入、角色限制、只追加；假 worker 测试：裁定后受影响的任务重新检查 | — | M |
 | N0.3 | 共用的记录代理：把 `controller.js` 里的 dynalite / DynamoDB Local、记录代理、故障注入抽成 `ddb-proxy.js`，`controller.js` 改为调用它 | `verify-tools/ddb-proxy.js` | 现有的 `run_validate` 测试全部通过（行为不变） | — | M |
 
+**进展（2026-11-01）**：
+- N0.1 完成（commit 85af6e0）。目录约定没有另外写代码：`judge/` 的结构按 §4.1，由 N1 的工具创建；
+- N0.2 完成（commit a1a85d1）。实现上的取舍：
+  - `record_ruling` 只写提议到 `coord/rulings/`，这次尝试通过检查后才收进 `storage/rulings.json`。失败的尝试留下的裁定不算数；
+  - `storage/rulings.json` 和 `storage/harness_version.json` 都由调度器从事件日志重建，worker 改了没有效果；
+  - 裁定通过 `affects.tasks` 点名受影响的任务。按用例找任务（`affects.cases` → 哪个任务）要等 N1 有了裁判用例再做；
+  - 偏离单体的裁定在人确认之前不生效；N1.6 的 `freeze_judge` 要检查没有待确认的裁定。
+- N0.3 见 CHANGELOG。
+
 ### N1 裁判线最小闭环（bookstore）【必做】
 
 | 编号 | 内容 | 产出 | 验收 | 依赖 | 规模 |

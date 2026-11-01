@@ -109,18 +109,15 @@ def test_shim_rejects_overlapping_concurrent_transactions():
     assert out["sequentialConflicts"] == 0
 
 
-def test_controller_fault_match_item_ignores_call_order():
+def test_proxy_fault_match_item_ignores_call_order():
     """A case-level fault pinned with match.item hits the transaction that
-    writes that item whichever order the calls arrive in (controller.js)."""
-    src = (TOOLS / "controller.js").read_text(encoding="utf-8")
-    start, end = src.index("function stable("), src.index("function summarize(")
-    out = run_node("const job = {tables: []};\nconst TABLE_KEYS = {};\nconst UUID_RE = /x^/g;\nlet ctx = null;\n"
-                   + "\n".join(l for l in src[start:end].splitlines() if not l.startswith("const TABLE_KEYS") and not l.startswith("const UUID_RE"))
-                   + r"""
+    writes that item whichever order the calls arrive in (ddb-proxy.js)."""
+    out = run_node(r"""
+const { matchFault } = require('./ddb-proxy');
 const tx = (...pks) => ({ op: 'TransactWriteItems', transact: pks.map((pk) => ({ kind: 'Put', table: 'Idem', item: { pk, expiresAt: 1 } })) });
 const run = (calls) => {
-  ctx = { rules: [{ rule: { match: { op: 'TransactWriteItems', item: { pk: 'c#perm#1' } }, nth: 1, kind: 'validation' }, seen: 0 }] };
-  return calls.map((c) => matchFault(c));
+  const ctx = { rules: [{ rule: { match: { op: 'TransactWriteItems', item: { pk: 'c#perm#1' } }, nth: 1, kind: 'validation' }, seen: 0, fired: 0 }] };
+  return calls.map((c) => matchFault(ctx, c));
 };
 console.log(JSON.stringify({
   sequential: run([tx('c#perm#0'), tx('c#perm#1'), tx('c#ok')]),
