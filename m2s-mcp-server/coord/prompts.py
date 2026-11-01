@@ -37,6 +37,13 @@ TASK_SUMMARIES = {
           "写 output/perf_report.json。",
 }
 
+# v2 role modes (PIPELINE_V2_PLAN.md): the role doc has a section per mode.
+MODE_SUMMARIES = {
+    "J1": "MODE: J1。只看事实库 storage/analysis_report.json，写裁判用例：judge/cases/<接口 slug>/<用例>.json、"
+          "judge/fixtures/、judge/faults/、judge/identities.json（需要时 judge/uncovered.json）。按你的角色说明里"
+          "\"J1\"一节写；写完用 mcp__m2s-server__check_judge_assets 自查，直到 PASS。单体源码对你是关闭的。",
+}
+
 IMPL_NOTE = ("需要知道\"要保持哪些行为\"时，只引用规格本身：analysis_report.json 的出处、blueprint.json 的字段"
              "（包括 metadata.spec_resolutions）。")
 
@@ -52,13 +59,15 @@ def _feedback_block(feedback: list[dict[str, Any]]) -> str:
 
 def worker_prompt(spec: TaskSpec, ws: Path, monolith: Path, attempt: int,
                   feedback: list[dict[str, Any]], extra: str = "") -> str:
-    summary = TASK_SUMMARIES.get(spec.id, f"STAGE_ID={spec.id}：按你的角色说明完成这一阶段。").format(merge=MERGE, ws=ws)
-    paths = [f"- MONOLITH = {monolith}", f"- WS = {ws}"]
+    summary = (MODE_SUMMARIES.get(spec.mode or "") or TASK_SUMMARIES.get(spec.id)
+               or f"STAGE_ID={spec.id}：按你的角色说明完成这一阶段。").format(merge=MERGE, ws=ws)
+    # A task the monolith is closed to (deny_read: monolith) is not told where it is.
+    paths = ([] if "monolith" in spec.deny_read else [f"- MONOLITH = {monolith}"]) + [f"- WS = {ws}"]
     if spec.id == "S3c":
         paths.append(f"- MERGE = {MERGE}")
     scope = "、".join(spec.scope) or "（无）"
     sections = [
-        f"STAGE_ID: {spec.id}",
+        f"STAGE_ID: {spec.id}" + (f"\nMODE: {spec.mode}" if spec.mode else ""),
         "这是 m2s 迁移流水线的一个任务，由 v3 调度器派发；你的角色说明已经在系统提示词里。"
         f"这是这个任务第 {attempt} 次尝试。",
         "## 绝对路径\n" + "\n".join(paths),

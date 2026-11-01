@@ -46,7 +46,8 @@ class WorkerJob:
     max_turns: int
     timeout_s: float
     read_coord: bool = False  # only the exception handler may read WS/coord
-    deny_read: tuple[str, ...] = ()  # directories closed to the worker (other runs' workspaces)
+    deny_read: tuple[str, ...] = ()  # directories closed to the worker (other runs' workspaces, the monolith)
+    deny_commands: tuple[str, ...] = ()  # shell command patterns refused (a closed directory named in a command)
 
     @property
     def run_dir(self) -> Path:
@@ -199,6 +200,7 @@ def worker_settings(job: WorkerJob, other_servers: list[str]) -> dict[str, Any]:
     if not job.read_coord:
         path_rules.insert(0, {"pattern": f"{ws}/coord/*", "allow": False})
         denied_commands = ["*/coord/*", "*\\coord\\*"]
+    denied_commands += list(job.deny_commands)
     writable = [f"{ws}/{pattern.replace('**', '*')}" for pattern in job.scope] + [f"{tmp}/*"]
     return {
         "system_prompt": job.system_prompt,

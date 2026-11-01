@@ -116,6 +116,35 @@ def other_run_dirs(ws: Path, monolith: Path | None) -> tuple[str, ...]:
     return tuple(str(d) for d in sorted(found))
 
 
+def closed_to(spec: TaskSpec, ws: Path, monolith: Path | None) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Directories a task may not read (TaskSpec.deny_read) and the shell
+    command patterns that would name them (V2P-06).
+
+    "monolith" closes the monolith's source, and its parent directory too
+    unless that is an ancestor of WS: a grep started at the parent would read
+    the monolith's files (the checker sees only the root it is given). A bash
+    command naming the closed directory is refused; reads that do not name it
+    (a recursive grep from an ancestor) remain the known gap of W0.5."""
+    dirs: list[str] = []
+    cmds: list[str] = []
+    for entry in spec.deny_read:
+        if entry == "monolith":
+            if monolith is None:
+                continue
+            parent = monolith.parent
+            if parent != ws and parent not in ws.parents and parent.parent != parent:
+                dirs += [str(monolith), str(parent)]
+                cmds.append(f"*{parent.name}*")
+                continue
+            target = monolith
+        else:
+            target = ws / entry.replace("\\", "/").removesuffix("/**").removesuffix("/*")
+        dirs.append(str(target))
+        tail = f"{target.parent.name}/{target.name}"
+        cmds += [f"*{tail}*", "*" + tail.replace("/", "\\") + "*"]
+    return tuple(dict.fromkeys(dirs)), tuple(dict.fromkeys(cmds))
+
+
 def _git(ws: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", "-C", str(ws), *args], capture_output=True, text=True, encoding="utf-8", errors="replace")
 
@@ -351,12 +380,13 @@ class Dispatcher:
         # max_attempts is counted per round (events.attempts).
         attempt = self.events.count("spawn", spec.id) + 1
         feedback = [{"source": f.get("source"), "text": f.get("text", "")} for f in self.events.pending_feedback(spec.id)]
+        closed, closed_cmds = closed_to(spec, self.ws, self.monolith)
         job = WorkerJob(
             task_id=spec.id, attempt=attempt, role=spec.role, ws=self.ws, coord_dir=self.coord,
             system_prompt=self.role_prompts(spec.role),
             prompt=worker_prompt(spec, self.ws, self.monolith, attempt, feedback),
             scope=spec.scope, max_turns=spec.max_turns, timeout_s=spec.timeout_min * 60,
-            deny_read=self.foreign_runs,
+            deny_read=self.foreign_runs + closed, deny_commands=closed_cmds,
         )
         self.board.claim(spec.id, job.worker_name)
         snapshot = self.shadow.snapshot(f"before {spec.id} a{attempt}")

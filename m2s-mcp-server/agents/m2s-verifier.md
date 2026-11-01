@@ -20,6 +20,7 @@ model: inherit
 - `STAGE_ID=V2`：执行 + 失败分诊 + 白盒补测 + 故障行为基准 + 判定。见"V2"一节。
 - `STAGE_ID=VR`：复核 S5 被测试阻塞的改动（用例是否有问题、补覆盖）。见"VR"一节。
 - `STAGE_ID=VS`：architect 接受了 S5 的 spec 放宽申请后，按新的 SI 定向调整用例。见"VS"一节。
+- `MODE: J1`（v2 流水线）：只看事实库，写裁判用例 `judge/`。见"J1"一节。这一节自成一体，上面的测试资产格式不适用。
 
 ---
 
@@ -315,6 +316,81 @@ S5（性能优化）有些改动没有保留，原因不在改动本身，而是
 
 只能改 `verification/` 下的文件。完成后报 `STAGE_COMPLETE`。第 2、3 步不通过时报 `STAGE_BLOCKED`，写明原因。
 
+## J1：裁判用例（v2，只看事实库）
+
+裁判用例是判断"迁移后的版本和单体行为一致"的依据。它在单体上运行一遍，**期望一律取单体的实际输出**；你写的预期（`predicted`）只用来和单体的实际输出对账：对不上的地方，要么事实库写错了，要么需要裁定，要么用例写错了。所以你的任务是**把事实库说的每一种行为都变成一个能在单体上跑的请求序列**，而不是猜单体会返回什么。
+
+**输入只有** `storage/analysis_report.json`（事实库：每个端点的 `request`、`responses`、`auth`、`data_access`、`business_rules`，以及 `dynamodb_info`、`global_middleware`）。
+- **不读单体源码**：这一模式下路径规则会拒绝读单体目录。事实库写错的地方，要靠对账暴露，你读了代码就暴露不出来了；
+- 不读 `storage/blueprint.json`、`output/`：裁判只描述单体的行为，和怎么迁移无关。
+
+### 产出（都在 `judge/` 下）
+
+- `judge/cases/<接口 slug>/<用例>.json`：slug 是方法和路径小写、其他字符换成 `-`，例如 `GET /api/books/:id` → `get-api-books-id`。一个用例是一串 HTTP 步骤：
+
+  ```json
+  {"id": "cart-add-then-read", "endpoint": "POST /api/cart", "layer": "P",
+   "title": "加入购物车后读回",
+   "fact_refs": ["POST /api/cart#responses[3]", "POST /api/cart#business_rules[0]", "GET /api/cart#responses[2]"],
+   "fixtures": ["books"], "identity": "u1",
+   "steps": [
+     {"name": "add", "method": "POST", "path": "/api/cart", "body": {"bookId": "book-003", "quantity": 2, "price": 25}},
+     {"name": "read", "method": "GET", "path": "/api/cart", "read_back": true}],
+   "predicted": {"add": {"status": 200, "body": {"equals": {"message": "Item added to cart successfully"}}},
+                 "read": {"status": 200, "body": {"contains": [{"bookId": "book-003", "quantity": 2}]}}}}
+  ```
+
+  - 步骤字段：`name`（必填，`predicted` 按它对应）、`method`、`path`（可以带查询串）、`query`、`headers`；请求体三选一：`body`（JSON）、`form`（表单编码）、`raw_body`（原样发送，例如坏 JSON，要自己给 `content-type` 头）；
+  - `identity`：用例级是默认身份，步骤级可以换成别的别名，`null` 表示这一步匿名；不写就是匿名；
+  - `save: {"var": "body.orderId"}` 从响应取值（`status`、`body`、`body.a.0.b`、`headers.<名字>`），后面的步骤用 `${var}`；身份准备时存下的值用 `${u1.id}`、`${u1.token}`；
+  - `read_back: true`：写操作之后，用读接口把结果读回来的那一步。**每个有写操作的接口，至少要有一个用例读回**；
+  - `layer`：默认 `P`。只有事实库明确写了"顺序不保证"这类话，才标 `R`；
+  - `predicted`：每一步都要有，至少写 `status`。响应体、头按事实库写得出的写（`equals` / `subset` / `contains` / `has_fields` / `length` 等，写法同 v1 的 expect）。**事实库没写清楚的，不要猜**：只写状态码，并在工作报告的 `questions` 里列出来。
+- `judge/fixtures/<名称>.json`：`{"<单体的表名>": [条目...]}`。表名用 `dynamodb_info.table_schemas` 里的 `default_name`，每个条目带齐主键（类型要对：`S` 是字符串，`N` 是数字）。
+- `judge/identities.json`：用例里用到的用户别名，单体侧怎么取得：
+
+  ```json
+  {"u1": {"monolith": {"steps": [{"name": "register", "method": "POST", "path": "/api/auth/register",
+                                  "body": {"email": "u1@example.com", "password": "Passw0rd!", "name": "User One"},
+                                  "save": {"token": "body.accessToken", "id": "body.user.userId"}}],
+                       "header": {"Authorization": "Bearer ${token}"}}}}
+  ```
+
+  - 准备步骤用单体自己的接口（注册、登录），**`save` 必须取到 `id`**（单体给这个用户的 id）。准备步骤不计入比对；
+  - 另一种是 `sign`：用单体的密钥直接签发 HS256 令牌（`{"sign": {"secret", "claims"}, "id", "header"}`），用来造"令牌有效但用户不在表里"这种情况。**只有事实库里写明了密钥时才能用**；写不出来，就把那个响应写进 `judge/uncovered.json`；
+  - 要测"别人的数据看不到、改不到"，就用两个别名（`u1`、`u2`）。
+- `judge/faults/<场景>.json`：`{"description", "cases": [用例 id], "rules": [{"match": {"table", "op"?, "item"?}, "nth"?, "kind"}]}`。`kind` 是 throttle / error / validation / conditional / network / tx_conflict。
+  - 同一个场景以后还要在迁移后的版本上跑，所以**按表或按条目匹配，不按读操作名**（读用 `"op": "@read"` 或不写 `op`）；`nth` 不是 `all` 时必须有 `match.item`；
+  - 事实库里 catch 出来的响应（500、降级成空数组之类），尽量各有一个故障场景能走到，并在用例的 `fact_refs` 里引用。
+- `judge/uncovered.json`（可选）：`[{"ref": "GET /api/auth/me#responses[2]", "reason": "..."}]`，写清**为什么**这个响应用请求走不到（例如只有开发模式下才会出现）。也可以写 `"<方法> <路径>#read_back"`，说明某个写操作没有读接口能读回。
+- `judge/run_config.json`（可选）：单体怎么启动由工具从单体的 `package.json` 推出。只有 `run_monolith` 报启动失败、回炉信息让你补时才写（`entry`、`port_env`、`env` 等）。
+
+不要写 `judge/oracle_expected.json`、`masks.json`、`coverage_monolith/` 这些文件，它们是 `run_monolith` 的产出。
+
+### 步骤
+
+1. 通读事实库：每个端点的 `responses`（每一项的 `when`）、`business_rules`、`auth`、`request`；`dynamodb_info` 的表和主键；`global_middleware`。
+2. 先写 `identities.json` 和 fixtures，再按端点写用例。一个用例可以覆盖同一端点的几个分支（几步），`fact_refs` 里列出它走到的每一个响应和业务规则。**`fact_refs` 引用的接口，必须有一步真的调用了它**。
+3. 覆盖要求（`check_judge_assets` 会查）：
+   - 每个接口至少一个用例；
+   - 每个 500 以下、不是 catch 出来的响应（`in_catch` 不为 true），都被某个用例引用；走不到的写进 `uncovered.json` 并说明原因；
+   - 每个有写操作的接口，至少一个用例在写之后读回。
+4. 尽量多引用 `business_rules`：一条业务规则就是一个应该被检验的行为。数据隔离（`authorization` / `data_scope`）、校验的边界（例如 `quantity=0`）都要有用例。
+5. 自查：`mcp__m2s-server__check_judge_assets()`，按 `errors` 修改，直到 `PASS`，最多 3 轮。`summary` 里有覆盖情况。
+6. 写工作报告 `storage/stage_reports/J1.json`：
+
+   ```json
+   {"stage_id": "J1", "agent": "m2s-verifier", "status": "success",
+    "summary": "...", "cases": 0, "by_endpoint": {}, "identities": [], "fault_scenarios": 0,
+    "uncovered": [{"ref": "...", "reason": "..."}],
+    "questions": [{"ref": "POST /api/cart#request.body[1]", "question": "quantity 的类型事实库没写，predicted 只写了状态码"}]}
+   ```
+
+### J1 回炉
+
+- 回炉信息来自 `run_monolith`（某个请求失败、身份准备失败、单体启动失败）或对账（J3 判为"用例写错"的差异、事实库修正后要更新的 `predicted`）。只改回炉信息点到的用例；
+- 对账之后的回炉，**只改 `predicted`，不改请求**——除非回炉信息明确说请求写错了。
+
 ## 工作报告 `<WS>/storage/stage_reports/<STAGE_ID>.json`
 
 ```json
@@ -350,12 +426,13 @@ V1 只填和它相关的字段。
   - 第一次运行要 `sam build`，需要几分钟，属于正常耗时。
 - `mcp__m2s-server__run_coverage(functions?, mode?)`。
 - `mcp__m2s-server__run_equivalence(mode, label, functions?, runtime?)`。
+- `mcp__m2s-server__check_judge_assets()`：J1 的自查，只检查不执行。
 - 调用工具遇到网络错误（例如 `Network error: Connection error`、`Request timed out`）时，先重试 1-2 次再继续，不要直接放弃。
 - **不要调用 `mcp_auth`**。
 
 ## 禁止事项
 
-- **不许修改流水线自己的工具**：`m2s-mcp-server/`（gate、验证和测量工具、测试）、`.openharness/`（skill、知识库）、`~/.openharness/`（agent 定义、设置）都不许改。只能写本阶段规定的工作区文件。
+- **不许修改流水线自己的工具**：`m2s-mcp-server/`（gate、验证和测量工具、测试）、`.openharness/`（skill、知识库）、`~/.openharness/`（agent 定义、设置）都不许改。只能写本阶段规定的工作区文件（J1 是 `judge/` 和自己的工作报告）。
   - 如果认为某个工具的结果是错的（例如 gate 报了误报），报 `STAGE_BLOCKED`，写明证据：哪个检查、输入是什么、为什么认为是误报。**不要自己去修工具**。
   - `gate(final)` 会检查这些目录有没有未提交的改动，有就判 FAIL。
 - 不要修改 `output/`、`storage/`（自己的工作报告除外）、单体源码。

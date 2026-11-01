@@ -1,0 +1,98 @@
+"""J1 cannot read the monolith (PIPELINE_V2_PLAN.md §2, V2P-06, N1.4).
+
+The worker settings the dispatcher writes for a task with deny_read:
+[monolith] are evaluated by OpenHarness's own PermissionChecker -- the same
+code a real `oh -p` worker runs (the end-to-end probe with a real worker is
+test_coord_perm.py, behind M2S_RUN_LLM_TESTS).
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+checker_mod = pytest.importorskip("openharness.permissions.checker")
+settings_mod = pytest.importorskip("openharness.config.settings")
+
+from coord.dispatcher import closed_to  # noqa: E402
+from coord.prompts import worker_prompt  # noqa: E402
+from coord.template import TaskSpec, load_template  # noqa: E402
+from coord.workers import WorkerJob, worker_settings  # noqa: E402
+
+J1 = TaskSpec(id="J1", role="m2s-verifier", mode="J1", deny_read=("monolith",),
+              scope=("judge/**", "storage/stage_reports/J1.json"))
+
+
+@pytest.fixture
+def layout():
+    # The checker matches path strings only; paths outside the system temp
+    # directory, which workers may always write to.
+    root = Path("D:/perm-probe/artifacts")
+    return root / "M2S" / "runs" / "bookstore-j1", root / "mono_benchmark" / "bookstore"
+
+
+def _checker(spec: TaskSpec, ws: Path, mono: Path):
+    dirs, cmds = closed_to(spec, ws, mono)
+    job = WorkerJob(spec.id, 1, spec.role, ws, ws / "coord", "ROLE", "do it", spec.scope, 100, 60.0,
+                    deny_read=dirs, deny_commands=cmds)
+    perm = settings_mod.PermissionSettings(**worker_settings(job, [])["permission"])
+    return checker_mod.PermissionChecker(perm)
+
+
+def _allowed(checker, tool: str, *, read_only: bool, path: Path | None = None, command: str | None = None) -> bool:
+    return checker.evaluate(tool, is_read_only=read_only, file_path=str(path) if path else None, command=command).allowed
+
+
+def test_j1_cannot_read_the_monolith(layout):
+    ws, mono = layout
+    c = _checker(J1, ws, mono)
+    for tool in ("read_file", "grep", "glob"):
+        assert not _allowed(c, tool, read_only=True, path=mono / "routes" / "cart.js")
+        assert not _allowed(c, tool, read_only=True, path=mono)
+        assert not _allowed(c, tool, read_only=True, path=mono.parent)  # a grep from mono_benchmark/ would reach it
+    for cmd in (f"cat {mono / 'routes' / 'cart.js'}", f"cat {mono.as_posix()}/routes/cart.js",
+                "grep -rn price ../../../mono_benchmark/bookstore", "ls ..\\..\\..\\mono_benchmark"):
+        assert not _allowed(c, "bash", read_only=False, command=cmd), cmd
+    # What J1 does need stays open.
+    assert _allowed(c, "read_file", read_only=True, path=ws / "storage" / "analysis_report.json")
+    assert _allowed(c, "write_file", read_only=False, path=ws / "judge" / "cases" / "get-api-cart" / "c.json")
+    assert not _allowed(c, "write_file", read_only=False, path=ws / "storage" / "analysis_report.json")
+    assert _allowed(c, "bash", read_only=False, command="python -c \"print(1)\"")
+
+
+def test_other_tasks_still_read_the_monolith(layout):
+    ws, mono = layout
+    c = _checker(TaskSpec(id="J4", role="m2s-verifier", mode="J4", scope=("judge/**",)), ws, mono)
+    assert _allowed(c, "read_file", read_only=True, path=mono / "routes" / "cart.js")
+    assert _allowed(c, "bash", read_only=False, command=f"cat {mono / 'routes' / 'cart.js'}")
+
+
+def test_the_parent_stays_open_when_it_holds_the_workspace(tmp_path: Path):
+    """A monolith next to the workspace: only the monolith itself is closed."""
+    ws = tmp_path / "proj" / "ws"
+    mono = tmp_path / "proj" / "app"
+    dirs, cmds = closed_to(J1, ws, mono)
+    assert dirs == (str(mono),) and cmds == ("*proj/app*", "*proj\\app*")
+    ws_glob = TaskSpec(id="D1", role="m2s-verifier", deny_read=("output/lambdas/**",))
+    assert closed_to(ws_glob, ws, mono)[0] == (str(ws / "output" / "lambdas"),)
+
+
+def test_j1_prompt_names_the_mode_and_not_the_monolith(layout):
+    ws, mono = layout
+    text = worker_prompt(J1, ws, mono, 1, [])
+    assert "MODE: J1" in text and "check_judge_assets" in text
+    assert str(mono) not in text and "MONOLITH =" not in text
+    other = worker_prompt(TaskSpec(id="S1", role="m2s-architect"), ws, mono, 1, [])
+    assert f"MONOLITH = {mono}" in other
+
+
+def test_template_fields_round_trip(tmp_path: Path):
+    path = tmp_path / "t.yaml"
+    path.write_text("name: t\ntasks:\n  - id: J1\n    role: m2s-verifier\n    mode: J1\n    deny_read: [monolith]\n",
+                    encoding="utf-8")
+    spec = load_template("t", path).get("J1")
+    assert (spec.mode, spec.deny_read) == ("J1", ("monolith",))
+    assert TaskSpec.from_json(spec.to_json()) == spec

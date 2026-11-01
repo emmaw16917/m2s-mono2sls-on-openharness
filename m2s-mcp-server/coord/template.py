@@ -24,12 +24,17 @@ class TaskSpec:
     on_stale: str = "recheck"        # recheck | rerun
     max_turns: int = 200
     timeout_min: float = 120
+    mode: str | None = None          # role mode for the prompt and the role doc (v2: J1, J3, ...)
+    # Closed to the worker for reading: "monolith" (the monolith's source), or
+    # workspace-relative globs such as "output/lambdas/**" (v2 V2P-06).
+    deny_read: tuple[str, ...] = ()
 
     def to_json(self) -> dict[str, Any]:
         return {
             "id": self.id, "runner": self.runner, "role": self.role, "action": self.action, "line": self.line,
             "deps": list(self.deps), "scope": list(self.scope), "check": list(self.check),
             "on_stale": self.on_stale, "max_turns": self.max_turns, "timeout_min": self.timeout_min,
+            "mode": self.mode, "deny_read": list(self.deny_read),
         }
 
     @classmethod
@@ -39,6 +44,7 @@ class TaskSpec:
             line=data.get("line"), deps=tuple(data.get("deps") or ()), scope=tuple(data.get("scope") or ()),
             check=tuple(data.get("check") or ()), on_stale=data.get("on_stale", "recheck"),
             max_turns=int(data.get("max_turns", 200)), timeout_min=float(data.get("timeout_min", 120)),
+            mode=data.get("mode"), deny_read=tuple(data.get("deny_read") or ()),
         )
 
 
