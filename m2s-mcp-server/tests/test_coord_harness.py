@@ -87,3 +87,27 @@ def test_prompt_hash_changes_with_content(tmp_path: Path):
 def test_is_clean():
     assert harness.is_clean({"m2s": {"dirty": []}, "openharness": {"dirty": []}})
     assert not harness.is_clean({"m2s": {"dirty": ["m2s-mcp-server/gates.py"]}, "openharness": {"dirty": []}})
+
+
+def test_workspace_record_keeps_the_start_and_each_different_resume():
+    a1 = {"type": "harness", "time": "t1", "m2s": {"commit": "a"}}
+    a2 = {"type": "harness", "time": "t2", "m2s": {"commit": "a"}}  # same harness, later
+    b = {"type": "harness", "time": "t3", "m2s": {"commit": "b"}}
+    a3 = {"type": "harness", "time": "t4", "m2s": {"commit": "a"}}  # back to a: a change again
+
+    record = harness.workspace_record([a1, a2, b, b, a3])
+
+    assert record["started_with"] == a1
+    assert [s["time"] for s in record["resumed_with"]] == ["t3", "t4"]
+    assert harness.same_harness(a1, a2) and not harness.same_harness(a1, b)
+
+
+def test_write_workspace_record_rewrites_only_when_needed(tmp_path: Path):
+    stamps = [{"time": "t1", "m2s": {"commit": "a"}}]
+    path = tmp_path / "storage" / "harness_version.json"
+
+    assert harness.write_workspace_record(tmp_path, stamps)
+    assert not harness.write_workspace_record(tmp_path, stamps)
+    path.write_text("{}", encoding="utf-8")  # someone edited it: the event log wins
+    assert harness.write_workspace_record(tmp_path, stamps)
+    assert json.loads(path.read_text(encoding="utf-8"))["started_with"]["m2s"]["commit"] == "a"

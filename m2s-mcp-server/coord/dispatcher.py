@@ -52,6 +52,8 @@ from coord.workers import Launcher, OhLauncher, WorkerHandle, WorkerJob, role_pr
 
 # Changes no task is blamed for: dispatcher state, the v1 orchestrator's TODO, caches.
 ALWAYS_ALLOWED = ("coord/**", "storage/TODO.md", "**/node_modules/**", "**/__pycache__/**")
+# Workspace files only the dispatcher writes; rebuilt from the event log after every worker.
+DISPATCHER_FILES = (harness.WORKSPACE_FILE.as_posix(),)
 ROUTING_TARGETS = {"code": "S2", "template": "S3c", "spec": "S1"}
 RELAY_FIELDS = ("function", "spec_refs", "expected_per_spec", "observed")
 MAX_CRASHES = 3
@@ -176,10 +178,12 @@ class Dispatcher:
             self.board.init()
             for spec in self.template.tasks:
                 self.board.add_task(spec.to_json(), spec.deps)
-            self.events.append("harness", stamp=self.stamp())
+            stamp = self.stamp()
+            self.events.append("harness", stamp=stamp)
             self.events.append("run_start", ws=str(self.ws), monolith=str(self.monolith),
                                template=self.template.name, max_workers=self.max_workers, stop_after=self.stop_after)
             self.events.append("tool_baseline", baseline=self.guard.capture())
+            self._write_harness_record()
             self.shadow.init()
             self.log(f"new run: {len(self.template.tasks)} tasks on the board")
             return
@@ -193,7 +197,13 @@ class Dispatcher:
             self.guard.capture()
         self.events.append("run_resume", stop_after=self.stop_after)
         self.events.append("harness", stamp=self.stamp(), on="resume")  # the tools may have changed between segments
+        self._write_harness_record()
         self._reconcile()
+
+    def _write_harness_record(self) -> bool:
+        """storage/harness_version.json is the dispatcher's: rebuilt from the event log, so a
+        worker that changes it changes nothing (see _evaluate)."""
+        return harness.write_workspace_record(self.ws, [e["stamp"] for e in self.events.all() if e["type"] == "harness"])
 
     def _reconcile(self) -> None:
         """Bring board and processes back in line after a dispatcher restart."""
@@ -426,6 +436,11 @@ class Dispatcher:
         results: list[CheckResult] = []
 
         changes = self.shadow.changes(snapshot)
+        # Files the dispatcher owns are rebuilt rather than reverted: the dispatcher itself may
+        # have written one while this worker ran (a resume adopts live workers).
+        changes = [(s, p) for s, p in changes if p not in DISPATCHER_FILES]
+        if self._write_harness_record():
+            self.events.append("dispatcher_file_rewritten", task=spec.id, attempt=attempt, path=DISPATCHER_FILES[0])
         outside = [(s, p) for s, p in changes if not in_scope(p, spec.scope) and not in_scope(p, ALWAYS_ALLOWED)]
         if outside:
             self.shadow.restore(snapshot, outside)
@@ -756,6 +771,7 @@ class Dispatcher:
             return CheckResult("tag_v0", False, "acceptance failed: " + "; ".join(r.summary for r in results if not r.ok))
         if not (self.ws / ".git").is_dir():
             _git(self.ws, "init", "-q")
+        self._write_harness_record()  # v0 carries the harness it was built with
         exclude = self.ws / ".git" / "info" / "exclude"
         exclude.parent.mkdir(parents=True, exist_ok=True)
         if "coord/" not in (exclude.read_text(encoding="utf-8") if exclude.exists() else ""):

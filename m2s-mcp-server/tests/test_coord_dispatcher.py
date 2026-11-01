@@ -234,6 +234,30 @@ def test_stop_after_runs_the_upstream_slice_then_resumes(tmp_path: Path):
     assert [e["task"] for e in resumed.events.all() if e["type"] == "spawn"] == ["S1", "S2", "S4"]
 
 
+
+def test_workspace_keeps_the_harness_record(tmp_path: Path):
+    """storage/harness_version.json (v2 N0.1): written at the start, rebuilt when a worker
+    changes it (not blamed on the worker), extended when a later segment resumes with
+    a different harness."""
+    forged = {"write": {"storage/harness_version.json": {"forged": True},
+                        "storage/stage_reports/S1.json": {"ok": True}}, "submit": "done"}
+    d = make_dispatcher(tmp_path, {"S1": [forged]}, template=MINI, stop_after="S1")
+    d.stamp = lambda: {"type": "harness", "time": "t1", "m2s": {"commit": "a"}}
+    assert d.run() == EXIT_STOPPED
+
+    record_path = d.ws / "storage" / "harness_version.json"
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    assert record == {"started_with": {"type": "harness", "time": "t1", "m2s": {"commit": "a"}}, "resumed_with": []}
+    assert _spawns(d, "S1") == 1  # the forged write did not fail S1
+    assert d.events.of_task("S1", "dispatcher_file_rewritten")
+
+    resumed = make_dispatcher(tmp_path, {}, template=MINI)
+    resumed.stamp = lambda: {"type": "harness", "time": "t2", "m2s": {"commit": "b"}}
+    assert resumed.run() == EXIT_DONE
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    assert record["started_with"]["m2s"]["commit"] == "a"
+    assert [s["m2s"]["commit"] for s in record["resumed_with"]] == ["b"]
+
 NET_FAIL = {"submit": None, "stream": [
     {"type": "status", "message": "Request failed; retrying in 60.0s (attempt 9 of 9): Connection error."},
     {"type": "error", "message": "Network error: Connection error.. Check your internet connection and try again.",

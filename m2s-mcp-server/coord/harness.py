@@ -2,8 +2,9 @@
 
     python -m coord.harness            # print the stamp as JSON
 
-The stamp is the first event of every v3 run's event log, so a result can
-be traced to the exact harness that produced it:
+The stamp is the first event of every v3 run's event log, and is kept in the
+workspace as storage/harness_version.json (write_workspace_record), so a result
+can be traced to the exact harness that produced it:
 - the commits of this repository and of OpenHarness, with any uncommitted
   changes to the harness paths;
 - the pinned br / agent_mail versions;
@@ -149,6 +150,44 @@ def stamp() -> dict[str, Any]:
 def is_clean(harness: dict[str, Any]) -> bool:
     """True when no harness path has uncommitted changes in either repository."""
     return not harness["m2s"]["dirty"] and not harness["openharness"]["dirty"]
+
+
+def same_harness(a: dict[str, Any], b: dict[str, Any]) -> bool:
+    """True when two stamps describe the same harness; when they were taken does not count."""
+    def strip(s: dict[str, Any]) -> dict[str, Any]:
+        return {k: v for k, v in s.items() if k not in ("type", "time")}
+    return strip(a) == strip(b)
+
+
+WORKSPACE_FILE = Path("storage") / "harness_version.json"
+
+
+def workspace_record(stamps: list[dict[str, Any]]) -> dict[str, Any]:
+    """The content of WS/storage/harness_version.json (v2 design M0), from the run's
+    stamps in order (one per segment):
+    - started_with: the harness the run started with;
+    - resumed_with: each later segment that resumed with a different harness."""
+    resumed: list[dict[str, Any]] = []
+    for stamp in stamps[1:]:
+        if not same_harness(resumed[-1] if resumed else stamps[0], stamp):
+            resumed.append(stamp)
+    return {"started_with": stamps[0] if stamps else None, "resumed_with": resumed}
+
+
+def write_workspace_record(ws: Path, stamps: list[dict[str, Any]]) -> bool:
+    """Write the record next to the run's products, so they travel together (the v0 tag
+    commits storage/). The event log is the source; a changed or deleted file is simply
+    written again. Returns True when the file on disk changed."""
+    path = Path(ws) / WORKSPACE_FILE
+    text = json.dumps(workspace_record(stamps), ensure_ascii=False, indent=2) + "\n"
+    try:
+        if path.read_text(encoding="utf-8") == text:
+            return False
+    except OSError:
+        pass
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return True
 
 
 def main() -> int:
