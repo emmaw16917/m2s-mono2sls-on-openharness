@@ -27,7 +27,13 @@ function fromApp(name) {
 if (endpoint) {
   const AWS = fromApp('aws-sdk');
   if (AWS && AWS.config) {
-    AWS.config.update({ dynamodb: { endpoint }, sqs: { endpoint }, maxRetries: 0 });
+    // The SDK keeps its own retry count (DynamoDB: 10) -- whether a throttled
+    // call ends in success or in an error is the monolith's behaviour, and the
+    // target keeps its SDK's retries too. Only the backoff is shortened (5 ms
+    // base instead of 50 ms), so a fault that never clears does not take
+    // ~50 s per call; that changes timing, not outcomes.
+    AWS.config.update({ dynamodb: { endpoint, retryDelayOptions: { base: 5 } },
+                        sqs: { endpoint, retryDelayOptions: { base: 5 } } });
   }
   // aws-sdk v3 honours AWS_ENDPOINT_URL_DYNAMODB / AWS_ENDPOINT_URL_SQS, set by the runner.
 }

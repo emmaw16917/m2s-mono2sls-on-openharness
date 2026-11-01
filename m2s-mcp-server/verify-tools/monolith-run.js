@@ -1,41 +1,51 @@
 'use strict';
-// Runs the monolith itself against test cases and records its external effects
-// (PIPELINE_REDESIGN_v2.md J2 run_monolith; spike for open question Q4).
+// run_monolith (PIPELINE_V2_PLAN.md §4.3, J2): runs the monolith itself against
+// the judge cases and records what it does, for the judge's expectations.
 //
 //   node monolith-run.js <job.json>
 //
-// - dynalite (in-memory DynamoDB) behind a recording proxy; the monolith runs as a host
-//   process (node -r monolith-preload.js <entry>) with its SDK pointed at the proxy;
-// - before each case every table is emptied and seeded with the case's fixtures (written
-//   in the monolith's own table schema); the case's HTTP steps run in order, values can
-//   be saved from a response (save: {var: "body.path"}) and used later as ${var};
-// - after each case: every response, every recorded SDK call, a dump of every table and,
-//   with job.coverage, the V8 coverage of exactly this case (the preload resets the
-//   counters on each take);
-// - job.repeat runs every case that many times; fields that differ between runs are
-//   reported as volatile (candidates for the mask table).
+// job (built by judge.py):
+//   monolith_root, run {entry, args, port_env, env, ready_path, startup_timeout_s},
+//   backend / ddb_local / tables      the DynamoDB backend (ddb-proxy.js), the
+//                                     same kind run_judge uses (V2P-11)
+//   identities {alias: monolith spec} how each alias is obtained (judge/identities.json)
+//   units [{id, fixtures {table: [items]}, identity, aliases [..], steps [..], rules [..]}]
+//                                     one unit = one case, or one case of a fault scenario
+//   passes, coverage, settle_ms, settle_max_ms, pass_gap_ms, out_dir
 //
-// Output: <job.out_dir>/monolith_raw.json
+// Every pass starts the monolith afresh (node -r monolith-preload.js <entry>,
+// TZ=UTC, no proxy variables, its SDK pointed at the recording proxy) and
+// runs every unit in order:
+//   - every table is emptied and seeded with the unit's fixtures;
+//   - each alias the unit uses is prepared (its steps, e.g. register, or a
+//     token signed with the monolith's key) -- not part of the record;
+//   - the steps run in order; values can be saved (save {var: "body.a.b"})
+//     and used as ${var}, an alias's values as ${alias.var};
+//   - after each step the runner waits until the backend has been quiet for
+//     settle_ms (fire-and-forget work of that request), so a later read-back
+//     step sees it -- the target side delivers queued messages between steps;
+//   - recorded: every step's request and response, the SDK calls and SQS
+//     messages of the steps, which fault rules fired, every table afterwards,
+//     and (first pass, job.coverage) the lines this unit ran.
+// Passes start at least pass_gap_ms apart, so second-resolution timestamps
+// differ between passes and are recognised as volatile.
+//
+// Output: <out_dir>/monolith_raw.json
 
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const net = require('net');
+const crypto = require('crypto');
+const { fileURLToPath } = require('url');
 const { spawn } = require('child_process');
-const dynalite = require('dynalite');
-const { DynamoDBClient, CreateTableCommand, ScanCommand, DeleteItemCommand } = require('@aws-sdk/client-dynamodb');
-const { DynamoDBDocumentClient, PutCommand } = require('@aws-sdk/lib-dynamodb');
-const { unmarshall } = require('@aws-sdk/util-dynamodb');
+const { startBackend, cleanup } = require('./ddb-proxy');
 
 const job = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const OUT = job.out_dir;
 fs.mkdirSync(OUT, { recursive: true });
 const log = (...a) => process.stderr.write('[monolith-run] ' + a.join(' ') + '\n');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-function listen(server, host) {
-  return new Promise((resolve) => server.listen(0, host, () => resolve(server.address().port)));
-}
 
 function freePort() {
   return new Promise((resolve) => {
@@ -44,120 +54,66 @@ function freePort() {
   });
 }
 
-// ---------------------------------------------------------------- backend + recording proxy
-
-let calls = null; // SDK calls of the running case
-
-async function startBackend() {
-  const dyn = dynalite({ createTableMs: 0, deleteTableMs: 0, updateTableMs: 0 });
-  const dynPort = await listen(dyn, '127.0.0.1');
-  const proxy = http.createServer((req, res) => {
-    const chunks = [];
-    req.on('data', (c) => chunks.push(c));
-    req.on('end', () => {
-      const raw = Buffer.concat(chunks);
-      const target = req.headers['x-amz-target'] || '';
-      let body = {};
-      try { body = raw.length ? JSON.parse(raw.toString('utf8')) : {}; } catch (e) { /* not JSON */ }
-      const call = { op: target.split('.')[1] || '(unknown)', table: body.TableName || null };
-      if (body.Key) call.key = unmarshall(body.Key);
-      if (body.IndexName) call.index = body.IndexName;
-      if (calls) calls.push(call);
-      const fwd = http.request({ host: '127.0.0.1', port: dynPort, method: req.method, path: req.url,
-        headers: { ...req.headers, host: '127.0.0.1:' + dynPort } }, (up) => {
-        const out = [];
-        up.on('data', (c) => out.push(c));
-        up.on('end', () => {
-          const buf = Buffer.concat(out);
-          if (up.statusCode >= 400) {
-            try { call.backend_error = JSON.parse(buf.toString('utf8')).__type; } catch (e) { call.backend_error = String(up.statusCode); }
-          }
-          res.writeHead(up.statusCode, up.headers);
-          res.end(buf);
-        });
-      });
-      fwd.on('error', (e) => { res.writeHead(500); res.end(String(e)); });
-      fwd.end(raw);
-    });
-  });
-  const proxyPort = await listen(proxy, '127.0.0.1');
-  const admin = new DynamoDBClient({ region: 'us-east-1', endpoint: 'http://127.0.0.1:' + dynPort,
-    credentials: { accessKeyId: 'x', secretAccessKey: 'x' } });
-  return { dyn, proxy, proxyPort, admin, doc: DynamoDBDocumentClient.from(admin) };
-}
-
-async function scanAll(be, table) {
-  const items = [];
-  let start;
-  do {
-    const r = await be.admin.send(new ScanCommand({ TableName: table, ExclusiveStartKey: start }));
-    items.push(...(r.Items || []));
-    start = r.LastEvaluatedKey;
-  } while (start);
-  return items;
-}
-
-async function resetAndSeed(be, fixtures) {
-  for (const t of job.tables) {
-    const keys = t.create.KeySchema.map((k) => k.AttributeName);
-    for (const item of await scanAll(be, t.name)) {
-      const key = Object.fromEntries(keys.map((k) => [k, item[k]]));
-      await be.admin.send(new DeleteItemCommand({ TableName: t.name, Key: key }));
-    }
-  }
-  for (const [table, items] of Object.entries(fixtures || {})) {
-    for (const item of items) await be.doc.send(new PutCommand({ TableName: table, Item: item }));
-  }
-}
-
-async function dumpTables(be) {
-  const out = {};
-  for (const t of job.tables) {
-    const keys = t.create.KeySchema.map((k) => k.AttributeName);
-    out[t.name] = (await scanAll(be, t.name)).map(unmarshall)
-      .sort((a, b) => JSON.stringify(keys.map((k) => a[k])).localeCompare(JSON.stringify(keys.map((k) => b[k]))));
-  }
-  return out;
-}
-
 // ---------------------------------------------------------------- the monolith process
 
 async function startMonolith(proxyPort) {
+  const run = job.run || {};
   const port = await freePort();
   const covPort = job.coverage ? await freePort() : 0;
-  const env = { ...process.env, ...(job.env || {}) };
-  for (const k of ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'NODE_OPTIONS']) delete env[k];
-  Object.assign(env, {
-    PORT: String(port), TZ: 'UTC',
+  const env = { ...process.env };
+  for (const k of ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 'ALL_PROXY', 'all_proxy', 'NODE_OPTIONS',
+    'AWS_PROFILE', 'AWS_SESSION_TOKEN']) delete env[k];
+  const region = (run.env || {}).AWS_REGION || 'us-east-1';
+  Object.assign(env, run.env || {}, {
+    [run.port_env || 'PORT']: String(port), TZ: 'UTC', NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost',
     M2S_DDB_ENDPOINT: 'http://127.0.0.1:' + proxyPort,
     AWS_ENDPOINT_URL_DYNAMODB: 'http://127.0.0.1:' + proxyPort,
     AWS_ENDPOINT_URL_SQS: 'http://127.0.0.1:' + proxyPort,
-    AWS_REGION: env.AWS_REGION || 'us-east-1', AWS_ACCESS_KEY_ID: 'x', AWS_SECRET_ACCESS_KEY: 'x',
+    AWS_REGION: region, AWS_DEFAULT_REGION: region, AWS_ACCESS_KEY_ID: 'x', AWS_SECRET_ACCESS_KEY: 'x',
     M2S_COV_PORT: String(covPort),
   });
   const preload = path.join(__dirname, 'monolith-preload.js');
-  const proc = spawn(process.execPath, ['-r', preload, job.entry], { cwd: job.monolith_root, env,
-    stdio: ['ignore', 'pipe', 'pipe'] });
+  const proc = spawn(process.execPath, ['-r', preload, run.entry, ...(run.args || [])],
+    { cwd: job.monolith_root, env, stdio: ['ignore', 'pipe', 'pipe'] });
   const logs = [];
   proc.stdout.on('data', (d) => logs.push(d.toString()));
   proc.stderr.on('data', (d) => logs.push(d.toString()));
-  let exited = null;
-  proc.on('exit', (code) => { exited = code; });
-  for (let i = 0; i < 200; i++) {
-    if (exited !== null) throw new Error('monolith exited (' + exited + ') before listening:\n' + logs.join('').slice(-2000));
-    const up = await new Promise((r) => http.get({ host: '127.0.0.1', port, path: '/' }, (res) => { res.resume(); r(true); })
-      .on('error', () => r(false)));
-    if (up) return { proc, port, covPort, logs };
+  const mono = { proc, port, covPort, logs, exited: null };
+  mono.done = new Promise((r) => proc.on('exit', (code) => { mono.exited = code === null ? 'signal' : code; r(); }));
+  const deadline = Date.now() + 1000 * (run.startup_timeout_s || 30);
+  while (Date.now() < deadline) {
+    if (mono.exited !== null) throw new Error('the monolith exited (' + mono.exited + ') before listening:\n' + logs.join('').slice(-3000));
+    const up = await new Promise((r) => http.get({ host: '127.0.0.1', port, path: run.ready_path || '/', agent: false },
+      (res) => { res.resume(); r(true); }).on('error', () => r(false)));
+    if (up) return mono;
     await sleep(100);
   }
   proc.kill();
-  throw new Error('monolith did not listen on port ' + port + ' within 20s');
+  throw new Error('the monolith did not listen on ' + (run.port_env || 'PORT') + '=' + port + ' within ' +
+    (run.startup_timeout_s || 30) + 's:\n' + logs.join('').slice(-3000));
 }
+
+// One retry: a start that fails once (a cold node_modules, a port taken in
+// between) is not yet the monolith's problem.
+async function startMonolithRetry(proxyPort) {
+  try {
+    return await startMonolith(proxyPort);
+  } catch (e) {
+    log('start failed, retrying once:', String(e.message || e).split('\n')[0]);
+    return startMonolith(proxyPort);
+  }
+}
+
+async function stopMonolith(mono) {
+  if (mono.exited === null) { mono.proc.kill(); await Promise.race([mono.done, sleep(5000)]); }
+}
+
+// ---------------------------------------------------------------- coverage
 
 function takeCoverage(mono) {
   if (!mono.covPort) return Promise.resolve(null);
   return new Promise((resolve) => {
-    const req = http.request({ host: '127.0.0.1', port: mono.covPort, method: 'POST', path: '/take' }, (res) => {
+    const req = http.request({ host: '127.0.0.1', port: mono.covPort, method: 'POST', path: '/take', agent: false }, (res) => {
       const out = [];
       res.on('data', (c) => out.push(c));
       res.on('end', () => { try { resolve(JSON.parse(Buffer.concat(out).toString('utf8')).result); } catch (e) { resolve(null); } });
@@ -167,110 +123,233 @@ function takeCoverage(mono) {
   });
 }
 
-// Per file: the functions and blocks that ran at least once (byte ranges), plus counts.
-function summarizeCoverage(result) {
+const sources = new Map();
+
+function sourceOf(file) {
+  if (!sources.has(file)) {
+    let text = null;
+    try { text = fs.readFileSync(file, 'utf8'); } catch (e) { /* gone */ }
+    sources.set(file, text);
+  }
+  return sources.get(file);
+}
+
+// Per file (relative to the monolith root): the lines that ran ("ran") and
+// the lines inside code V8 reported with a zero count ("zero"). The innermost
+// range decides the count of a character (ranges sorted outer to inner); a
+// line ran when a non-blank character of it ran.
+function lineCoverage(result) {
   if (!result) return null;
   const files = {};
   for (const script of result) {
-    const rel = path.relative(job.monolith_root, decodeURIComponent(script.url.replace(/^file:\/\/\/?/, ''))).replace(/\\/g, '/');
-    const ran = [];
-    for (const fn of script.functions) {
-      for (const r of fn.ranges) {
-        if (r.count > 0) ran.push([fn.functionName || '(anonymous)', r.startOffset, r.endOffset, r.count]);
-      }
+    let file;
+    try { file = fileURLToPath(script.url); } catch (e) { continue; }
+    const text = sourceOf(file);
+    if (text === null) continue;
+    const counts = new Int32Array(text.length).fill(-1);
+    const ranges = [];
+    for (const fn of script.functions) for (const r of fn.ranges) ranges.push(r);
+    ranges.sort((a, b) => a.startOffset - b.startOffset || b.endOffset - a.endOffset);
+    for (const r of ranges) counts.fill(r.count, r.startOffset, Math.min(r.endOffset, text.length));
+    const ran = new Set();
+    const zero = new Set();
+    let line = 1;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text.charCodeAt(i);
+      if (ch === 10) { line += 1; continue; }
+      if (ch === 32 || ch === 9 || ch === 13) continue;
+      if (counts[i] > 0) ran.add(line);
+      else if (counts[i] === 0) zero.add(line);
     }
-    if (ran.length) files[rel] = ran;
+    for (const l of ran) zero.delete(l);
+    const rel = path.relative(job.monolith_root, file).replace(/\\/g, '/');
+    files[rel] = { ran: [...ran].sort((a, b) => a - b), zero: [...zero].sort((a, b) => a - b) };
   }
   return files;
 }
 
-// ---------------------------------------------------------------- cases
+// ---------------------------------------------------------------- requests
 
 function subst(value, vars) {
-  if (typeof value === 'string') return value.replace(/\$\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m));
+  if (typeof value === 'string') return value.replace(/\$\{([^}]+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m));
   if (Array.isArray(value)) return value.map((v) => subst(v, vars));
-  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, subst(v, vars)]));
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [subst(k, vars), subst(v, vars)]));
   return value;
 }
 
-function pick(obj, dotted) {
-  return dotted.split('.').reduce((o, k) => (o == null ? undefined : o[k]), obj);
+// A saved value: "status", "body", "body.a.0.b", "headers.<name>".
+function pick(response, dotted) {
+  if (dotted === 'status') return response.status;
+  const [head, ...rest] = dotted.split('.');
+  if (head === 'headers') return (response.headers || {})[rest.join('.').toLowerCase()];
+  return rest.reduce((o, k) => (o == null ? undefined : o[k]), response.body);
 }
 
-function request(port, step) {
+function send(port, step) {
   return new Promise((resolve) => {
-    const body = step.body === undefined ? null : (typeof step.body === 'string' ? step.body : JSON.stringify(step.body));
+    let p = step.path;
+    if (step.query && Object.keys(step.query).length) {
+      p += (p.includes('?') ? '&' : '?') + new URLSearchParams(Object.entries(step.query).map(([k, v]) => [k, String(v)])).toString();
+    }
     const headers = { ...(step.headers || {}) };
-    if (body !== null && !Object.keys(headers).some((h) => h.toLowerCase() === 'content-type')) headers['content-type'] = 'application/json';
-    const req = http.request({ host: '127.0.0.1', port, method: step.method, path: step.path, headers }, (res) => {
+    const has = (h) => Object.keys(headers).some((k) => k.toLowerCase() === h);
+    let body = null;
+    if ('body' in step) {
+      body = JSON.stringify(step.body);
+      if (!has('content-type')) headers['content-type'] = 'application/json';
+    } else if ('form' in step) {
+      body = new URLSearchParams(Object.entries(step.form).map(([k, v]) => [k, String(v)])).toString();
+      if (!has('content-type')) headers['content-type'] = 'application/x-www-form-urlencoded';
+    } else if ('raw_body' in step) {
+      body = step.raw_body;
+    }
+    // Always say how long the body is: without it Node sends a DELETE (or
+    // GET / OPTIONS) body with neither Content-Length nor chunked encoding,
+    // and the server reads no body at all. Real clients send the length.
+    if (body !== null && !has('content-length')) headers['content-length'] = String(Buffer.byteLength(body));
+    const request = { method: step.method.toUpperCase(), path: p, headers, body };
+    const req = http.request({ host: '127.0.0.1', port, method: request.method, path: p, headers, agent: false }, (res) => {
       const out = [];
       res.on('data', (c) => out.push(c));
       res.on('end', () => {
         const text = Buffer.concat(out).toString('utf8');
         let parsed = text;
-        try { parsed = JSON.parse(text); } catch (e) { /* not JSON */ }
-        const h = { ...res.headers };
-        delete h.date; delete h.connection; delete h['keep-alive'];
-        resolve({ status: res.statusCode, headers: h, body: parsed });
+        let kind = text.length ? 'text' : 'empty';
+        if (text.length && /json/i.test(res.headers['content-type'] || '')) {
+          try { parsed = JSON.parse(text); kind = 'json'; } catch (e) { /* malformed JSON stays text */ }
+        }
+        resolve({ request, response: { status: res.statusCode, headers: { ...res.headers }, body: kind === 'empty' ? null : parsed, body_kind: kind } });
       });
     });
-    req.on('error', (e) => resolve({ error: String(e) }));
+    // The error code, not the message: the message names the (random) port.
+    req.on('error', (e) => resolve({ request, response: { error: String(e && (e.code || e.message) || e) } }));
     if (body !== null) req.write(body);
     req.end();
   });
 }
 
-async function runCase(be, mono, c) {
-  await resetAndSeed(be, c.fixtures);
-  await takeCoverage(mono); // drop what seeding / the previous case left
-  calls = [];
-  const vars = {};
-  const steps = [];
-  for (const raw of c.steps) {
-    const step = subst(raw, vars);
-    const r = await request(mono.port, step);
-    for (const [k, p] of Object.entries(raw.save || {})) vars[k] = pick(r, p);
-    steps.push({ name: raw.name || step.method + ' ' + step.path, request: { method: step.method, path: step.path }, response: r });
+// Wait until the backend has been quiet for settle_ms: the request's
+// fire-and-forget work is done (or settle_max_ms passed).
+async function settle(ctx) {
+  const quiet = job.settle_ms || 80;
+  const t0 = Date.now();
+  await sleep(quiet);
+  while (Date.now() - t0 < (job.settle_max_ms || 3000)) {
+    if (ctx.inflight === 0 && Date.now() - ctx.last >= quiet) return;
+    await sleep(10);
   }
-  await sleep(job.settle_ms || 50); // fire-and-forget work of the last request
-  const recorded = calls;
-  calls = null;
-  const coverage = summarizeCoverage(await takeCoverage(mono));
-  return { id: c.id, steps, calls: recorded, tables: await dumpTables(be), coverage };
 }
 
-// Leaf paths whose values differ between two runs of the same case.
-function volatile(a, b, at = '', out = []) {
-  if (a && b && typeof a === 'object' && typeof b === 'object' && Array.isArray(a) === Array.isArray(b)) {
-    for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) volatile(a[k], b[k], at ? at + '.' + k : k, out);
-  } else if (JSON.stringify(a) !== JSON.stringify(b)) {
-    out.push(at);
+function b64url(buf) {
+  return Buffer.from(buf).toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+function signHS256(sign, vars) {
+  const now = Math.floor(Date.now() / 1000);
+  const payload = { ...subst(sign.claims, vars), iat: now, exp: now + (sign.expires_in_s || 3600) };
+  const head = b64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' })) + '.' + b64url(JSON.stringify(payload));
+  return head + '.' + b64url(crypto.createHmac('sha256', sign.secret).update(head).digest());
+}
+
+// ---------------------------------------------------------------- units
+
+async function prepare(be, mono, alias) {
+  const spec = job.identities[alias];
+  const own = {};
+  const steps = [];
+  if (spec.sign) {
+    own.id = spec.id;
+    own.token = signHS256(spec.sign, { id: spec.id });
+  } else {
+    const ctx = be.beginCase([]);
+    for (const raw of spec.steps) {
+      const r = await send(mono.port, subst(raw, own));
+      await settle(ctx);
+      for (const [k, p] of Object.entries(raw.save || {})) own[k] = pick(r.response, p);
+      steps.push({ name: raw.name || null, status: r.response.status, error: r.response.error });
+    }
+    be.endCase();
   }
-  return out;
+  return { vars: own, header: subst(spec.header, own), steps };
+}
+
+async function runUnit(be, mono, unit, withCoverage) {
+  await be.resetTables(unit.fixtures);
+  if (withCoverage) await takeCoverage(mono); // what the previous unit left
+  const vars = {};
+  const prep = {};
+  for (const alias of unit.aliases) {
+    const p = await prepare(be, mono, alias);
+    prep[alias] = p;
+    for (const [k, v] of Object.entries(p.vars)) vars[alias + '.' + k] = v;
+  }
+  if (withCoverage) await takeCoverage(mono); // preparation is not the unit's
+  const ctx = be.beginCase(unit.rules);
+  const steps = [];
+  for (const raw of unit.steps) {
+    const alias = 'identity' in raw ? raw.identity : unit.identity;
+    const step = subst(raw, vars);
+    if (alias) step.headers = { ...prep[alias].header, ...(step.headers || {}) };
+    const r = await send(mono.port, step);
+    await settle(ctx);
+    for (const [k, p] of Object.entries(raw.save || {})) vars[k] = pick(r.response, p);
+    steps.push({ name: raw.name, identity: alias || null, request: r.request, response: r.response });
+  }
+  be.endCase();
+  const coverage = withCoverage ? lineCoverage(await takeCoverage(mono)) : undefined;
+  return {
+    id: unit.id,
+    identities: Object.fromEntries(Object.entries(prep).map(([a, p]) => [a, { vars: p.vars, steps: p.steps }])),
+    steps, calls: ctx.calls, messages: ctx.messages, rules_fired: ctx.rules.map((r) => r.fired),
+    tables: await be.dumpTables(), coverage, monolith_exited: mono.exited !== null,
+  };
 }
 
 async function main() {
-  const be = await startBackend();
-  for (const t of job.tables) await be.admin.send(new CreateTableCommand(t.create));
-  const mono = await startMonolith(be.proxyPort);
-  log('monolith on', mono.port, 'proxy on', be.proxyPort, 'coverage', mono.covPort || 'off');
-  const results = { monolith_root: job.monolith_root, entry: job.entry, backend: 'dynalite', node: process.version, cases: [] };
+  const be = await startBackend({ backend: job.backend, ddbLocal: job.ddb_local, tables: job.tables, bindHost: '127.0.0.1' });
+  await be.createTables();
+  const out = { backend: job.backend === 'ddblocal' ? 'ddblocal' : 'dynalite', node: process.version, passes: [],
+                load_coverage: null, monolith_logs: [] };
   try {
-    for (const c of job.cases) {
-      const runs = [];
-      for (let i = 0; i < (job.repeat || 1); i++) runs.push(await runCase(be, mono, c));
-      const strip = (r) => ({ steps: r.steps, calls: r.calls, tables: r.tables });
-      const varying = runs.length > 1 ? volatile(strip(runs[0]), strip(runs[1])) : [];
-      results.cases.push({ id: c.id, runs, volatile: varying });
-      log(c.id, runs.map((r) => r.steps.map((s) => s.response.status).join('/')).join(' | '), 'volatile', varying.length);
+    let lastStart = 0;
+    for (let pass = 0; pass < (job.passes || 3); pass++) {
+      await sleep(Math.max(0, lastStart + (job.pass_gap_ms || 1100) - Date.now()));
+      lastStart = Date.now();
+      let mono = await startMonolithRetry(be.proxyPort);
+      const withCoverage = Boolean(job.coverage) && pass === 0;
+      if (withCoverage) out.load_coverage = lineCoverage(await takeCoverage(mono));
+      const results = [];
+      try {
+        for (const unit of job.units) {
+          let restarted = false;
+          if (mono.exited !== null) {
+            // The previous unit brought the monolith down (recorded there as
+            // monolith_exited); the next unit gets a fresh one.
+            log('the monolith exited (' + mono.exited + ') during pass ' + (pass + 1) + '; restarting before ' + unit.id);
+            out.monolith_logs.push(mono.logs.join('').slice(-4000));
+            mono = await startMonolithRetry(be.proxyPort);
+            restarted = true;
+          }
+          const r = await runUnit(be, mono, unit, withCoverage);
+          if (restarted) r.restarted_before = true;
+          results.push(r);
+        }
+      } finally {
+        await stopMonolith(mono);
+        out.monolith_logs.push(mono.logs.join('').slice(-4000));
+      }
+      out.passes.push(results);
+      log('pass', pass + 1, 'done:', results.length, 'units');
     }
   } finally {
-    results.monolith_log = mono.logs.join('').slice(-4000);
-    mono.proc.kill();
-    be.proxy.close();
-    be.dyn.close();
+    be.close();
   }
-  fs.writeFileSync(path.join(OUT, 'monolith_raw.json'), JSON.stringify(results, null, 1));
+  fs.writeFileSync(path.join(OUT, 'monolith_raw.json'), JSON.stringify(out, null, 1));
 }
 
-main().then(() => process.exit(0), (e) => { log(e && e.stack || e); process.exit(1); });
+main().then(() => process.exit(0), (e) => {
+  log('FATAL', e && e.stack || e);
+  cleanup();
+  try { fs.writeFileSync(path.join(OUT, 'monolith_error.txt'), String(e && e.stack || e)); } catch (x) { /* ignore */ }
+  process.exit(1);
+});

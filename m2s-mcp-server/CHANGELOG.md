@@ -952,3 +952,26 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **N0.3 共用的记录代理**：`verify-tools/ddb-proxy.js`，从 `controller.js` 原样移出 DynamoDB 后端（DynamoDB Local / dynalite）、记录代理、故障注入、事务冲突模拟和表的清空、写入、导出。`controller.js` 改为调用它（669 行 → 341 行）。N1.3 的 `run_monolith` 也用它，这样单体侧和目标侧的后端与记录方式一致（V2P-11）。
   - 行为不变的核对：在 bookstore-v3a 的副本上，新旧 controller 各跑一遍。`run_validate` 在本机 + dynalite、本机 + DynamoDB Local、RIE + DynamoDB Local 三种组合下都是 128/128；`run_equivalence(diff)` 对 v0 基线（旧 controller 录的）158 次运行 EQUIVALENT；
   - `test_tx_conflicts.py` 里按文本截取 `controller.js` 的测试改为直接 `require('./ddb-proxy')`。
+
+## v2 N1.1–N1.3：裁判资产、身份、`run_monolith`（2026-11-01，分支 `feat/v2-modules`）
+
+依据 `PIPELINE_V2_PLAN.md` §4.1–§4.4、§5 N1。新模块 `judge.py`。
+
+- **N1.1 裁判资产格式和 `check_judge_assets`**（MCP 工具，也是 J1 的完成检查）：
+  - 目录：`judge/cases/<接口 slug>/<用例>.json`（`GET /api/books/:id` 的 slug 是 `get-api-books-id`）、`judge/fixtures/`（按单体的表）、`judge/faults/`、`judge/identities.json`、可选的 `judge/run_config.json` 和 `judge/uncovered.json`；
+  - 用例是一串 HTTP 步骤：`body`（JSON）、`form`（表单）、`raw_body`（原样发送）三选一；`save` 取值，`${var}` 和 `${别名.var}` 引用；`read_back` 标写后读回；`predicted` 每一步都要有，只用于对账；
+  - 检查：格式；事实出处存在，而且出处所在的接口确实有步骤调用；fixtures 用单体的表、带齐主键、键类型对；身份、fixtures、变量都有定义；每个接口有用例；每个 500 以下、不是 catch 出来的响应都被某个用例引用；写操作的接口有读回的用例。做不到的写进 `judge/uncovered.json` 并说明原因；
+  - 故障场景按目标侧的规则写：不按读操作名匹配（用 `@read` 或表名），`nth` 不是 `all` 时要有 `match.item`——同一场景要在单体和目标两边跑，两边的调用方式不同。
+- **N1.2 身份**：`identities.json` 的单体侧两种取得方式：准备步骤（例如注册，`save` 必须取到 `id`），或用单体的密钥签发 HS256 令牌（`sign`，用来造"令牌有效但用户不在表里"这类情况）。准备步骤的请求和 SDK 调用不进记录，覆盖率也不算。
+- **N1.3 `run_monolith`**（MCP 工具）：`verify-tools/monolith-run.js` 改写，后端用 `ddb-proxy.js`（和 `run_validate` 同一种，有 Docker 用 DynamoDB Local）：
+  - 每一遍重新启动单体（`node -r monolith-preload.js <入口>`，`TZ=UTC`，清掉代理变量），每个用例前清表、写 fixtures、准备身份；每一步之后等后端安静 80 ms，让即发即忘的写入落地，后面的读回才看得到；
+  - 启动方式从单体的 `package.json` 推出（入口、端口变量），`judge/run_config.json` 可以覆盖；启动超时 90 s，失败重试一次；
+  - 单体在某个用例里退出：在普通用例里是问题，在故障场景里是单体在该故障下的行为；下一个用例换一个新进程；
+  - 产出 `judge/oracle_expected.json`（每一步的状态、头（去掉 `date`、`etag` 等框架头）、响应体，以及读回后的表）、`fault_baseline_monolith.json`、`masks.json`、`monolith_calls.json`、`coverage_monolith/`（按用例的行覆盖率，加上启动时执行的行）。
+- **符号化屏蔽**（V2P-05）：第 1、2 遍之间不同的值换成符号（`<uuid#1>`、`<time#2>`、`<token#3>`、`<hash#4>`），同一个值在响应、字符串内部、表里都用同一个符号；身份的值用 `<id:u1>`。第 3 遍用 `unify` 按模板核对。id 类的符号要求处处相等；时间、令牌、哈希类的符号只表示"这里是一个易变值"——同一秒里签发的两个 JWT 完全相同，两遍里一遍相等一遍不等，按相等去要求会误判。
+- **手写 bookstore 裁判上的验收**（不用 LLM，27 个用例 + 2 个故障场景，覆盖 66 个必须的响应里的 65 个，1 个要 `AUTH_DEV_MODE` 的列入 `uncovered.json`）：3 遍共 97 s，第 3 遍核对 0 处不稳定；购物车的 `customerId` 是 `<id:u1>`，下单响应和订单列表里的 `orderId` 是同一个符号；表单提交存成字符串 `"1"`、`"10.5"`；下单后读畅销榜能看到即发即忘的更新；行覆盖率 89.0%，没覆盖到的基本是 catch 块和开发模式分支。
+- **过程中修掉的问题**：
+  - spike 的预加载把单体的 SDK 设成 `maxRetries: 0`，改变了单体的行为（"限流一次"在真实单体里会重试成功）。改为保留 SDK 自己的重试次数，只把退避从 50 ms 缩到 5 ms；
+  - Node 的 http 客户端发 DELETE 请求体时既不带 `Content-Length` 也不分块，单体读不到请求体，`DELETE /api/cart` 全部 400。现在有请求体就带长度。是覆盖率报告发现的；
+  - 第一次运行时单体 30 s 内没监听（推测是冷的 `node_modules` 加载慢），之后复现不了；超时改为 90 s 并重试一次。
+- **测试**：`test_judge_assets.py` 63 个（每条检查一个），`test_judge_monolith.py` 12 个（符号化、`unify`、启动方式、用例展开；一个小单体上端到端跑三遍，包括屏蔽不了的值、单体崩溃后换新进程、DELETE 请求体）。

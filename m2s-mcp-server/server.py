@@ -198,6 +198,61 @@ def check_provenance() -> str:
     return json.dumps(provenance.check_provenance(str(_workspace())), ensure_ascii=False)
 
 
+@mcp.tool()
+def check_judge_assets() -> str:
+    """Check the judge assets under judge/ (J1's completion check).
+
+    Layout: judge/cases/<endpoint slug>/<case>.json (slug of "GET /api/books/:id"
+    is "get-api-books-id"), judge/fixtures/<name>.json ({monolith table:
+    [items]}), judge/faults/<scenario>.json ({description, cases, rules}),
+    judge/identities.json, optional judge/run_config.json and
+    judge/uncovered.json ([{ref, reason}]).
+
+    Checks: the format of every file; every fact_ref exists in the fact base
+    and its endpoint is called by a step; fixtures use the monolith's tables
+    with their key attributes; identities, fixtures and ${vars} used are
+    defined; every endpoint has a case; every response below 500 that is not
+    a caught exception is cited by some case; every endpoint that writes has
+    a case that reads the effect back (a later GET step with read_back: true).
+    Coverage J1 cannot provide goes in judge/uncovered.json with the reason.
+
+    Returns: JSON {status: PASS|FAIL, errors, warnings, summary}.
+    """
+    import judge
+    try:
+        return json.dumps(judge.check_judge_assets(_workspace()), ensure_ascii=False)
+    except judge.JudgeError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
+def run_monolith(passes: int = 3, coverage: bool = True) -> str:
+    """J2: run every judge case, and every case of every fault scenario, on the
+    monolith itself, `passes` times (at least 3), and write the judge's
+    expectations. Needs check_judge_assets to pass.
+
+    Each pass starts the monolith afresh on a local DynamoDB (DynamoDB Local
+    with Docker, else dynalite) behind the recording proxy; before each case
+    the tables are emptied and seeded with its fixtures and its identities
+    are prepared (not recorded). Values that differ between passes 1 and 2
+    become symbols (<uuid#1>, <time#2>, <id:u1>, ...); pass 3 is checked
+    against them.
+
+    Writes judge/oracle_expected.json, judge/fault_baseline_monolith.json,
+    judge/masks.json, judge/monolith_calls.json, judge/coverage_monolith/.
+
+    Returns: JSON {status: PASS|FAIL|ERROR, problems (failed requests,
+    identity preparation, monolith exits), unstable (values that cannot be
+    masked), coverage, ...}.
+    """
+    import judge
+    try:
+        return json.dumps(judge.run_monolith(_workspace(), passes=passes, coverage=coverage), ensure_ascii=False,
+                          default=str)
+    except judge.JudgeError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
 def _verify_call(fn, *args, **kwargs) -> str:
     try:
         return json.dumps(fn(str(_workspace()), *args, **kwargs), ensure_ascii=False)
