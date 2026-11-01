@@ -50,6 +50,7 @@ reconciliation; the judge's expectation is always the monolith's output.
 
 from __future__ import annotations
 
+import copy
 import json
 import re
 from pathlib import Path
@@ -781,6 +782,9 @@ class Symbolizer:
         self.symbols: dict[str, dict[str, Any]] = {}
         self.positions: list[list[str]] = []
         self.unstable: list[dict[str, Any]] = []
+        # Lists the monolith returns in a different order from pass to pass (sorted
+        # by a random key, e.g. two orders by their uuid): compared as multisets.
+        self.unordered: list[str] = []
 
     def seed(self, symbol: str, a: Any, b: Any, cls: str = "identity") -> None:
         ka, kb = _jkey(a), _jkey(b)
@@ -858,7 +862,22 @@ class Symbolizer:
             if len(a) != len(b):
                 self.unstable.append({"path": path, "why": f"{len(a)} vs {len(b)} items between passes"})
                 return a
-            return [self.walk(x, y, f"{path}[{i}]") for i, (x, y) in enumerate(zip(a, b))]
+            before = copy.deepcopy(self.__dict__)
+            out = [self.walk(x, y, f"{path}[{i}]") for i, (x, y) in enumerate(zip(a, b))]
+            if len(self.unstable) == len(before["unstable"]) or len(a) < 2:
+                if _sorted_by_volatile_id(a, out):
+                    self.unordered.append(path)
+                return out
+            ordered = self.__dict__
+            self.__dict__ = copy.deepcopy(before)
+            perm = self._pairing(a, b, path)
+            if perm is not None:
+                paired = [self.walk(a[i], b[j], f"{path}[{i}]") for i, j in enumerate(perm)]
+                if len(self.unstable) == len(before["unstable"]):
+                    self.unordered.append(path)
+                    return paired
+            self.__dict__ = ordered  # the order really differs in content: report it
+            return out
         if _scalar(a) and _scalar(b):
             seeded = self.pairs.get((_jkey(a), _jkey(b)))
             if seeded:
@@ -883,8 +902,44 @@ class Symbolizer:
                               "first": a, "second": b})
         return a
 
+    def _pairing(self, a: list[Any], b: list[Any], path: str) -> list[int] | None:
+        """For each element of a, an element of b it can be masked against (each used once)."""
+        remaining = list(range(len(b)))
+        perm = []
+        for i, x in enumerate(a):
+            found = None
+            for j in remaining:
+                state = copy.deepcopy(self.__dict__)
+                n = len(self.unstable)
+                self.walk(x, b[j], f"{path}[{i}]")
+                ok = len(self.unstable) == n
+                self.__dict__ = state
+                if ok:
+                    found = j
+                    break
+            if found is None:
+                return None
+            perm.append(found)
+            remaining.remove(found)
+        return perm
+
     def known(self, side: str) -> dict[str, str]:
         return self.by_a if side == "a" else self.by_b
+
+
+def _sorted_by_volatile_id(items: list[Any], template: list[Any]) -> bool:
+    """The list is ordered by a field whose values are random ids (a DynamoDB
+    Query by a uuid sort key): its order is random even when the passes agree."""
+    if len(items) < 2 or not all(isinstance(x, dict) for x in items + template):
+        return False
+    for k in template[0]:
+        syms = [t.get(k) for t in template]
+        if not all(isinstance(v, str) and WHOLE_SYMBOL_RE.match(v) and not free_symbol(v) for v in syms):
+            continue
+        vals = [x.get(k) for x in items]
+        if all(isinstance(v, str) for v in vals) and len(set(vals)) == len(vals) and                 (vals == sorted(vals) or vals == sorted(vals, reverse=True)):
+            return True
+    return False
 
 
 def _same(bound: Any, value: Any) -> bool:
@@ -897,9 +952,14 @@ def _same(bound: Any, value: Any) -> bool:
     return (isinstance(bound, str) or isinstance(value, str)) and str(bound) == str(value)
 
 
+TABLE_LIST_RE = re.compile(r"^tables_after\.[^.\[]+$")
+
+
 def unify(template: Any, actual: Any, bindings: dict[str, Any], path: str = "",
-          out: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
-    """Mismatches of `actual` against a template; binds symbols as it goes."""
+          out: list[dict[str, Any]] | None = None, unordered: set[str] | frozenset[str] = frozenset()
+          ) -> list[dict[str, Any]]:
+    """Mismatches of `actual` against a template; binds symbols as it goes. Lists
+    at `unordered` paths, and the item lists of tables_after, match as multisets."""
     out = [] if out is None else out
 
     def miss(why: str) -> list[dict[str, Any]]:
@@ -947,13 +1007,32 @@ def unify(template: Any, actual: Any, bindings: dict[str, Any], path: str = "",
                         "extra": sorted(set(actual) - set(template))})
         for k in template:
             if k in actual:
-                unify(template[k], actual[k], bindings, f"{path}.{k}" if path else k, out)
+                unify(template[k], actual[k], bindings, f"{path}.{k}" if path else k, out, unordered)
         return out
     if isinstance(template, list):
         if not isinstance(actual, list) or len(actual) != len(template):
             return miss(f"expected {len(template)} items")
+        if path in unordered or TABLE_LIST_RE.match(path):
+            snapshot = dict(bindings)
+            remaining = list(range(len(actual)))
+            for i, t in enumerate(template):
+                hit = None
+                for j in remaining:
+                    trial = dict(bindings)
+                    if not unify(t, actual[j], trial, f"{path}[{i}]", [], unordered):
+                        hit = (j, trial)
+                        break
+                if hit is None:
+                    break
+                bindings.clear()
+                bindings.update(hit[1])
+                remaining.remove(hit[0])
+            else:
+                return out
+            bindings.clear()
+            bindings.update(snapshot)  # no pairing: report the elementwise mismatches
         for i, (t, x) in enumerate(zip(template, actual)):
-            unify(t, x, bindings, f"{path}[{i}]", out)
+            unify(t, x, bindings, f"{path}[{i}]", out, unordered)
         return out
     return out if _jkey(template) == _jkey(actual) else miss("differs")
 
@@ -1087,8 +1166,10 @@ def _observed(facts: Facts, r: dict[str, Any], symbols: dict[str, str] | None = 
         return _jkey([known.get(_jkey(item.get(k)), item.get(k)) for k in keys] + [item])
 
     tables = {t: sorted(items, key=lambda i, t=t: order(t, i)) for t, items in sorted((r.get("tables") or {}).items())}
-    out = {"steps": steps, "messages": r.get("messages") or [], "rules_fired": r.get("rules_fired") or [],
-           "tables_after": tables}
+    # whether each fault rule hit at all: how many calls it hit is the SDK's
+    # retrying (an implementation trace), and varies with timing
+    out = {"steps": steps, "messages": r.get("messages") or [],
+           "rules_fired": [bool(n) for n in r.get("rules_fired") or []], "tables_after": tables}
     if r.get("monolith_exited"):
         out["monolith_exited"] = True
     return out
@@ -1125,10 +1206,10 @@ def mask_unit(facts: Facts, runs: list[dict[str, Any]], rules: list[dict[str, An
     for n, later in enumerate(runs[2:], start=3):
         bindings = _identity_bindings(later)
         o = _observed(facts, later, {_jkey(v): k for k, v in bindings.items()})
-        mism = unify(template, o, bindings)
+        mism = unify(template, o, bindings, unordered=frozenset(sym.unordered))
         checks.append({"pass": n, "mismatches": mism})
     return {"template": template, "symbols": sym.symbols, "positions": sym.positions, "unstable": sym.unstable,
-            "checks": checks}
+            "unordered": sym.unordered, "checks": checks}
 
 
 def _coverage_summary(raw: dict[str, Any]) -> tuple[dict[str, Any], dict[str, dict[str, list[int]]]]:
@@ -1238,7 +1319,8 @@ def run_monolith(ws: Path | str, passes: int = 3, coverage: bool = True, timeout
     _write(jd / "fault_baseline_monolith.json", {"meta": meta, "scenarios": scenarios})
     _write(jd / "masks.json", {"meta": {"backend": raw["backend"], "passes": passes},
                                "units": {uid: {"symbols": m["symbols"], "positions": m["positions"],
-                                               "unstable": m["unstable"]} for uid, m in masked.items()}})
+                                               "unordered": m["unordered"], "unstable": m["unstable"]}
+                                         for uid, m in masked.items()}})
     _write(jd / "monolith_calls.json", {"note": "SDK calls of the first pass (T layer: for reading, never compared)",
                                         "units": {r["id"]: r["calls"] for r in raw["passes"][0]}})
     cov_note = None

@@ -53,6 +53,51 @@ def test_a_coincidental_equality_gets_its_own_symbol():
     assert s.symbols["<token#1>"]["note"].startswith("equals another volatile value") and s.unstable == []
 
 
+O3, O4 = "2a4c6e80-0000-4000-8000-000000000001", "9f8e7d6c-0000-4000-8000-000000000002"
+
+
+def _run(body, tables=None):
+    return {"id": "c", "identities": {}, "steps": [{"name": "read", "response": {
+        "status": 200, "headers": {}, "body_kind": "json", "body": body}}], "tables": tables or {}}
+
+
+def test_a_list_in_a_different_order_between_passes_is_unordered():
+    facts = type("F", (), {"tables": {}})()
+    a = [{"orderId": O1, "book": "b1"}, {"orderId": O2, "book": "b3"}]
+    b = [{"orderId": O4, "book": "b3"}, {"orderId": O3, "book": "b1"}]  # swapped, other ids
+    m = judge.mask_unit(facts, [_run(a), _run(b), _run(list(reversed(a)))])
+    assert m["unstable"] == [] and m["unordered"] == ["steps.read.body"]
+    assert m["checks"][0]["mismatches"] == []
+
+
+def test_a_list_sorted_by_a_random_id_is_unordered_even_when_the_passes_agree():
+    facts = type("F", (), {"tables": {}})()
+    a = sorted([{"orderId": O1, "book": "b1"}, {"orderId": O2, "book": "b3"}], key=lambda x: x["orderId"])
+    b = sorted([{"orderId": O3, "book": "b1"}, {"orderId": O4, "book": "b3"}], key=lambda x: x["orderId"])
+    third = [{"orderId": "ffff0000-0000-4000-8000-000000000001", "book": "b1"},
+             {"orderId": "00000000-0000-4000-8000-000000000002", "book": "b3"}]
+    m = judge.mask_unit(facts, [_run(a), _run(b), _run(sorted(third, key=lambda x: x["orderId"]))])
+    assert m["unordered"] == ["steps.read.body"] and m["checks"][0]["mismatches"] == []
+
+
+def test_a_list_in_time_order_stays_ordered():
+    facts = type("F", (), {"tables": {}})()
+    run = lambda t1, t2, first="b1", second="b3": _run([{"at": t1, "book": first}, {"at": t2, "book": second}])
+    m = judge.mask_unit(facts, [run("2026-11-01T00:00:01Z", "2026-11-01T00:00:02Z"),
+                                run("2026-11-01T00:00:05Z", "2026-11-01T00:00:06Z"),
+                                run("2026-11-01T00:00:08Z", "2026-11-01T00:00:09Z", "b3", "b1")])
+    assert m["unordered"] == [] and m["checks"][0]["mismatches"]  # the order of the books is behaviour
+
+
+def test_table_items_match_as_a_set_and_rules_fired_is_whether_it_hit():
+    facts = type("F", (), {"tables": {"T": {"keys": {"k": "S"}, "index_keys": {}}}})()
+    run = lambda items, fired: {**_run([], {"T": items}), "rules_fired": [fired]}
+    m = judge.mask_unit(facts, [run([{"k": O1, "v": 1}, {"k": O2, "v": 2}], 20),
+                                run([{"k": O3, "v": 1}, {"k": O4, "v": 2}], 21),
+                                run([{"k": "f" + O1[1:], "v": 1}, {"k": "0" + O2[1:], "v": 2}], 11)])
+    assert m["template"]["rules_fired"] == [True] and m["checks"][0]["mismatches"] == []
+
+
 def test_unify_binds_symbols_consistently():
     tpl = {"id": "<uuid#1>", "again": "<uuid#1>", "who": "<id:u1>", "msg": "order <uuid#1> for <id:u1>", "n": 2}
     ok = {"id": "x-1", "again": "x-1", "who": "u-9", "msg": "order x-1 for u-9", "n": 2}
@@ -266,8 +311,8 @@ def test_run_monolith_end_to_end(tmp_path: Path, monkeypatch):
     assert oracle["cases"]["echo"]["steps"]["echo"]["body"] == {"bookId": "b1"}
     fault = json.loads((ws / "judge" / "fault_baseline_monolith.json").read_text(encoding="utf-8"))
     failed = fault["scenarios"]["notes-write-fails"]["note-add-read"]
-    # The SDK's own retries hit the rule again (v3 default: 3 attempts), then the app answers 500.
-    assert failed["rules_fired"] == [3] and failed["steps"]["add"]["status"] == 500
+    # The rule hit (how many times is the SDK's retrying, not compared), then the app answers 500.
+    assert failed["rules_fired"] == [True] and failed["steps"]["add"]["status"] == 500
     cov = json.loads((ws / "judge" / "coverage_monolith" / "summary.json").read_text(encoding="utf-8"))
     assert "app.js" in cov["files"] and cov["files"]["app.js"]["covered"] > 0
     per_case = json.loads((ws / "judge" / "coverage_monolith" / "units" / "notes-anonymous.json").read_text(encoding="utf-8"))
