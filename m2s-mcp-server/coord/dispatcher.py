@@ -127,7 +127,14 @@ def closed_to(spec: TaskSpec, ws: Path, monolith: Path | None) -> tuple[tuple[st
     (a recursive grep from an ancestor) remain the known gap of W0.5."""
     dirs: list[str] = []
     cmds: list[str] = []
+    entries: list[str] = []
     for entry in spec.deny_read:
+        if entry == "judge_outputs":  # what the monolith did and the reconciliation (judge.MONOLITH_OUTPUTS)
+            import judge
+            entries += [f"judge/{name}" for name in judge.MONOLITH_OUTPUTS]
+        else:
+            entries.append(entry)
+    for entry in entries:
         if entry == "monolith":
             if monolith is None:
                 continue
@@ -186,7 +193,9 @@ class Dispatcher:
         self.launcher = launcher or OhLauncher()
         self.checks = checks if checks is not None else CHECKS
         self.actions = {"analyze_project": self._act_analyze, "tag_v0": self._act_tag_v0,
-                        "final": self._act_final, "human": self._act_human, **(actions or {})}
+                        "final": self._act_final, "human": self._act_human,
+                        "run_monolith": self._act_run_monolith, "reconcile_spec": self._act_reconcile,
+                        "freeze_judge": self._act_freeze, **(actions or {})}
         self.max_workers = max_workers
         self.poll_s = poll_s
         self.handler_enabled = handler
@@ -352,7 +361,9 @@ class Dispatcher:
         if self.events.count("spawn", task_id) - infra >= MAX_SPAWNS_PER_TASK:
             self._escalate(task_id, f"{task_id} 已经启动过 {MAX_SPAWNS_PER_TASK} 次 worker，调度器不再自动重试")
             return
-        if self.events.reopen_mode(task_id) == "recheck" and spec.runner == "agent":
+        reopen = self.events.reopen_mode(task_id)
+        first_start = reopen is None and not self.events.of_task(task_id, "spawn", "recheck")
+        if spec.runner == "agent" and (reopen == "recheck" or (first_start and spec.start == "recheck")):
             self._recheck(spec)
         elif spec.runner == "dispatcher":  # actions are cheap and deterministic: a stale one runs again
             self._run_action(spec)
@@ -387,6 +398,7 @@ class Dispatcher:
             prompt=worker_prompt(spec, self.ws, self.monolith, attempt, feedback),
             scope=spec.scope, max_turns=spec.max_turns, timeout_s=spec.timeout_min * 60,
             deny_read=self.foreign_runs + closed, deny_commands=closed_cmds,
+            deny_write=(str(self.ws / "judge"),) if self._judge_frozen() else (), mode=spec.mode or "",
         )
         self.board.claim(spec.id, job.worker_name)
         snapshot = self.shadow.snapshot(f"before {spec.id} a{attempt}")
@@ -430,7 +442,7 @@ class Dispatcher:
             self._pass(spec.id)
         elif result.detail.get("escalate"):
             self._escalate(spec.id, result.summary)
-        else:
+        elif not self._flow_action_failed(spec, result):
             self.board.report_gate(spec.id, False)
             self._open_case("exhausted", spec.id, f"调度器执行 {spec.action} 没有通过",
                             {"检查结果": self._results_text(results)})
@@ -500,6 +512,16 @@ class Dispatcher:
         results.append(CheckResult("tools_unchanged", not tools_bad,
                                    "pipeline tools untouched" if not tools_bad else f"tools changed: {tools_bad}",
                                    relay="" if not tools_bad else f"上一次尝试修改了流水线自己的工具（{tools_bad}），已撤销。不要修改工具。"))
+        if self._judge_frozen():
+            # v2 §4.7: nobody changes the frozen judge, whatever the task's scope says.
+            touched = [(s, p) for s, p in changes if p.startswith("judge/")]
+            if touched:
+                self.shadow.restore(snapshot, touched)
+            results.append(CheckResult("judge_unchanged", not touched,
+                                       "frozen judge untouched" if not touched else f"{len(touched)} judge files changed, reverted",
+                                       detail={"paths": [p for _, p in touched]},
+                                       relay="" if not touched else f"裁判已经冻结，上一次尝试改了 judge/ 下的文件，已被撤销："
+                                       f"{[p for _, p in touched]}。冻结之后不能改裁判。"))
 
         if timed_out:
             results.append(CheckResult("finished_in_time", False, f"killed after {spec.timeout_min} min",
@@ -575,8 +597,9 @@ class Dispatcher:
         self.events.append("feedback", task=task_id, source=source, text=text)
 
     def _rework_budget_ok(self, target: str) -> bool:
+        # spec_issues and reconcile rounds have their own limits
         used = sum(1 for e in self.events.of_task(target, "round_start")
-                   if e.get("cause") == "rework" and e.get("reason") not in ("spec_issues", "human"))
+                   if e.get("cause") == "rework" and e.get("reason") not in ("spec_issues", "human", "reconcile"))
         return used < self.template.max_rework_rounds
 
     def _request_rework(self, target: str, feedback: str, reason: str, by: str, mode: str = "rerun") -> None:
@@ -630,7 +653,11 @@ class Dispatcher:
 
     def _ruling_gate(self, ruling: dict[str, Any]) -> None:
         known = {t.id for t in self.template.tasks}
-        waiting = [t for t in ruling["affects"]["tasks"] if t in known and self.board.status(t) in ("open", "rework")]
+        # A ruling task the dispatcher created (J3) also holds the tasks that wait for it.
+        held = next((e.get("blocks") or [] for e in reversed(self.events.all())
+                     if e["type"] == "ruling_task" and e.get("task") == ruling.get("task")), [])
+        waiting = [t for t in dict.fromkeys([*ruling["affects"]["tasks"], *held])
+                   if t in known and self.board.status(t) in ("open", "rework")]
         question = (f"裁定 {ruling['id']} 不照搬单体的行为，要人确认（V2-20）。问题：{ruling['question']}；"
                     f"结论：{ruling['conclusion']}；依据：{ruling['basis']}；影响的任务：{ruling['affects']['tasks']}，"
                     f"用例：{ruling['affects']['cases']}。确认用 resolve --accept，否决（照搬单体）用 resolve --reject。")
@@ -759,6 +786,8 @@ class Dispatcher:
         return rounds[-1] if rounds and rounds[-1]["type"] == "spec_round" else None
 
     def _flow_extra_checks(self, spec: TaskSpec) -> list[CheckResult]:
+        if spec.mode == "ruling":
+            return [self._ruling_task_check(spec)]
         if spec.id != "S1":
             return []
         active = self._active_spec_round()
@@ -773,7 +802,9 @@ class Dispatcher:
                             relay="" if not missing else f"这些 spec_issues 在 blueprint.json 的 metadata.spec_resolutions 里还没有裁定：{missing}")]
 
     def _flow_after_close(self, task_id: str) -> None:
-        if task_id == "V1":
+        if self._spec(task_id).mode == "J3":
+            self._after_j3(task_id)
+        elif task_id == "V1":
             self._after_v1()
         elif task_id == "TAG_V0" and self.phase_review:
             self._open_case("review", "TAG_V0", "v0 已打 tag，进入 S5 前的阶段复查",
@@ -850,6 +881,154 @@ class Dispatcher:
         self._request_rework(target, text, reason="blocked", by=spec.id)
         self._wait_for_upstream(spec.id, "blocked")
         return True
+
+    # ------------------------------------------------------------------ v2 judge line (PIPELINE_V2_PLAN.md §4.5)
+
+    def _task_by(self, *, mode: str | None = None, action: str | None = None, role: str | None = None,
+                 upstream_of: str | None = None) -> str | None:
+        pool = set(self.template.upstream(upstream_of)) if upstream_of else {t.id for t in self.template.tasks}
+        return next((t.id for t in self.template.tasks if t.id in pool and (mode is None or t.mode == mode)
+                     and (action is None or t.action == action) and (role is None or t.role == role)), None)
+
+    def _flow_action_failed(self, spec: TaskSpec, result: CheckResult) -> bool:
+        """run_monolith FAIL is about the cases (a request or an identity preparation
+        failed, a value that cannot be masked): J1 gets the details and J2 waits."""
+        if spec.action != "run_monolith" or result.detail.get("status") != "FAIL":
+            return False
+        j1 = self._task_by(mode="J1", upstream_of=spec.id)
+        if not j1 or not self._rework_budget_ok(j1):
+            return False
+        detail = {k: result.detail[k] for k in ("error", "errors", "problems", "unstable") if result.detail.get(k)}
+        self._request_rework(j1, "run_monolith（在单体上运行裁判用例）没有通过，按下面的问题修改用例或身份：\n"
+                             + _clip(json.dumps(detail, ensure_ascii=False, indent=1)), reason="monolith_run", by=spec.id)
+        self._wait_for_upstream(spec.id, "monolith_run")
+        return True
+
+    def _after_j3(self, j3: str) -> None:
+        """Route the classified differences of a reconciliation (one round each time):
+        fact_error -> F2 corrects the facts and J1 updates its predictions;
+        case_error -> J1; mask_gap -> J2 again (with judge/mask_rules.json);
+        needs_ruling -> an architect ruling task the next tasks wait for.
+        After max_reconcile_rounds, what is left goes to a person."""
+        import judge
+
+        diffs, classes, _ = judge.reconcile_classes(self.ws)
+        if not diffs:
+            return
+        groups = {k: [{**d, **(classes.get(d["id"]) or {})} for d in diffs if (classes.get(d["id"]) or {}).get("class") == k]
+                  for k in judge.RECONCILE_CLASSES}
+        blocks = self._next_tasks(j3)
+        done = self.events.count("reconcile_round")
+        if done >= self.template.max_reconcile_rounds:
+            self._human_gate("HUMAN_RECONCILE", f"规格对账经过 {done} 轮，仍有 {len(diffs)} 条差异（见 judge/reconcile.json 和 "
+                             f"judge/reconcile_classes.json）：" + json.dumps({k: [d["id"] for d in v] for k, v in groups.items() if v},
+                                                                               ensure_ascii=False), blocks)
+            return
+        rnd = done + 1
+        self.events.append("reconcile_round", task=j3, round=rnd, counts={k: len(v) for k, v in groups.items()},
+                           ids={k: [d["id"] for d in v] for k, v in groups.items() if v})
+        j1 = self._task_by(mode="J1", upstream_of=j3)
+        j2 = self._task_by(action="run_monolith", upstream_of=j3)
+        f2 = self._task_by(role="m2s-spec-annotator", upstream_of=j1) if j1 else None
+        keys = ("id", "case", "step", "request", "check", "predicted", "actual", "fact_refs", "reason", "fact_ref", "fix")
+
+        def show(items: list[dict[str, Any]]) -> str:
+            return _clip(json.dumps([{k: d[k] for k in keys if d.get(k) is not None} for d in items], ensure_ascii=False, indent=1))
+
+        unrouted: list[dict[str, Any]] = []
+        if groups["fact_error"] and f2:
+            self._request_rework(f2, "规格对账（J3）发现事实库和单体的实际行为不一致（判为事实错误）。按单体代码核实，用 "
+                                 "annotate_entry_point 修正下面这些事实（每条都要有出处），不要改动无关的事实；改完 "
+                                 "check_provenance 必须 PASS。`predicted` 是按事实库推出的预期，`actual` 是单体的实际输出：\n"
+                                 + show(groups["fact_error"]), reason="reconcile", by=j3)
+        else:
+            unrouted += groups["fact_error"]
+        j1_parts = []
+        if groups["fact_error"] and f2:
+            j1_parts.append("事实库已按下面这些差异修正。只更新这些用例的 predicted，使它符合修正后的事实库（重新读事实库），"
+                            "不改请求：\n" + show(groups["fact_error"]))
+        if groups["case_error"]:
+            j1_parts.append("规格对账（J3）判定下面这些用例写错了，按 reason 修改：\n" + show(groups["case_error"]))
+        if j1_parts and j1:
+            text = "\n\n".join(j1_parts)
+            if self.board.status(j1) == "closed":
+                self._request_rework(j1, text, reason="reconcile", by=j3)
+            else:  # already stale: F2 was reworked above
+                self.events.append("round_start", task=j1, cause="rework", reason="reconcile", mode="rerun", by=j3)
+                self._feedback(j1, j3, text)
+        elif groups["case_error"]:
+            unrouted += groups["case_error"]
+        if groups["mask_gap"] and not (j1_parts and j1):  # a J1 rework reruns J2 anyway
+            if j2:
+                self._make_stale([j2], by=j3)
+            else:
+                unrouted += groups["mask_gap"]
+        if groups["needs_ruling"]:
+            self._ruling_task(j3, rnd, groups["needs_ruling"], blocks, show(groups["needs_ruling"]))
+        if unrouted:
+            self._human_gate("HUMAN_RECONCILE", "规格对账的这些差异在模板里没有可以退回的任务：" + show(unrouted), blocks)
+        self.log(f"{j3}: reconcile round {rnd}: " + ", ".join(f"{k} {len(v)}" for k, v in groups.items() if v))
+
+    def _ruling_task(self, j3: str, rnd: int, items: list[dict[str, Any]], blocks: list[str], shown: str) -> None:
+        """Differences that need a ruling go to an architect task created for them;
+        the tasks after J3 wait for it (and for a person when a ruling departs from the monolith)."""
+        task_id = f"RULE_{j3}_{rnd}"
+        spec = TaskSpec(id=task_id, role="m2s-architect", mode="ruling", scope=(f"storage/stage_reports/{task_id}.json",),
+                        max_turns=120, timeout_min=60)
+        self.board.add_task(spec.to_json())
+        for task in blocks:
+            self.board.add_dep(task, task_id)
+        self.events.append("ruling_task", task=task_id, by=j3, round=rnd, blocks=blocks,
+                           differences=[{"id": d["id"], "case": d["case"]} for d in items])
+        self._feedback(task_id, j3, "规格对账（J3）发现下面这些地方需要裁定（单体本身的缺陷，或者可能可以放宽的行为）。"
+                       "逐条用 mcp__m2s-server__record_ruling 裁定，affected_cases 写差异所在的用例：\n" + shown)
+
+    def _ruling_task_check(self, spec: TaskSpec) -> CheckResult:
+        made = next((e for e in reversed(self.events.all()) if e["type"] == "ruling_task" and e.get("task") == spec.id), None)
+        if not made:
+            return CheckResult("rulings_cover", True, "no differences to rule on")
+        spawn = self.events.last(spec.id, "spawn")
+        found = rulings.proposals(self.coord, spec.id, spawn["attempt"]) if spawn else []
+        standing = [r for r in rulings.effective(self._ruling_entries()) if r["status"] in ("decided", "confirmed", "proposed")]
+        covered = {c for r in [*found, *standing] for c in r["affects"]["cases"]}
+        missing = [d["id"] for d in made["differences"] if d["case"] not in covered]
+        return CheckResult("rulings_cover", not missing,
+                           "every difference has a ruling" if not missing else f"no ruling names the case of {missing}",
+                           relay="" if not missing else f"这些差异还没有裁定（record_ruling 的 affected_cases 里要有它们的用例）：{missing}")
+
+    def _act_run_monolith(self, spec: TaskSpec) -> CheckResult:
+        import judge
+
+        try:
+            r = judge.run_monolith(self.ws)
+        except judge.JudgeError as exc:
+            return CheckResult("run_monolith", False, f"run_monolith: {exc}", detail={"status": "ERROR", "error": str(exc)})
+        cov = (r.get("coverage") or {}).get("lines")
+        return CheckResult("run_monolith", r.get("status") == "PASS",
+                           f"run_monolith {r.get('status')}: {r.get('cases')} cases, {r.get('fault_runs')} fault runs, "
+                           f"{r.get('unstable_total', 0)} unstable, {len(r.get('problems') or [])} problems"
+                           + (f", coverage {cov}" if cov else ""), detail=r)
+
+    def _judge_frozen(self) -> bool:
+        return (self.ws / "judge" / "judge_manifest.json").is_file()
+
+    def _act_freeze(self, spec: TaskSpec) -> CheckResult:
+        import judge
+
+        r = judge.freeze_judge(self.ws)
+        if r["status"] != "PASS":
+            return CheckResult("freeze_judge", False, f"freeze_judge: {r.get('error')}: {r.get('problems', '')}", detail=r)
+        self.events.append("judge_frozen", task=spec.id, version=r["version"], unchanged=bool(r.get("unchanged")))
+        return CheckResult("freeze_judge", True, f"judge v{r['version']} frozen" + (" (unchanged)" if r.get("unchanged") else
+                           f": {r.get('cases')} cases, {r.get('files')} files, coverage {(r.get('coverage') or {}).get('lines')}"),
+                           detail=r)
+
+    def _act_reconcile(self, spec: TaskSpec) -> CheckResult:
+        import judge
+
+        r = judge.reconcile(self.ws)
+        return CheckResult("reconcile_spec", True, f"{r['differences']} differences, "
+                           f"{r['resolved_by_rulings']} settled by rulings, {r['steps']} steps", detail=r)
 
     # ------------------------------------------------------------------ dispatcher actions
 
@@ -991,6 +1170,13 @@ class Dispatcher:
         escalations = [e for e in self.events.all() if e["type"] == "escalate"]
         if escalations:
             lines += ["", "## 交给人", ""] + [f"- {e['task']}：{e['reason']}" for e in escalations]
+        rounds = [e for e in self.events.all() if e["type"] == "reconcile_round"]
+        frozen = [e for e in self.events.all() if e["type"] == "judge_frozen" and not e.get("unchanged")]
+        if rounds or frozen:
+            lines += ["", "## 裁判线", ""]
+            lines += [f"- 规格对账第 {e['round']} 轮：" + "，".join(f"{k} {v}" for k, v in e["counts"].items() if v)
+                      for e in rounds]
+            lines += [f"- 裁判 v{e['version']} 已冻结（{e.get('ts', '')[:16]}），见 judge/judge_manifest.json" for e in frozen]
         ruled = rulings.effective(self._ruling_entries())
         if ruled:
             lines += ["", "## 裁定", ""] + [f"- {r['id']}（{r['decider']}，{r['status']}，{r['category']}）：{_clip(r['question'], 200)} → "

@@ -1744,6 +1744,18 @@ def check_tools_unmodified(repo: Path | None = None, home_agents: Path | None = 
     return findings
 
 
+def check_judge_frozen(ws: Path) -> list[dict[str, Any]]:
+    """JUDGE (v2 §4.7): once judge/judge_manifest.json exists, every file under
+    judge/ must still have the hash the manifest froze."""
+    import judge
+    changes = judge.judge_changes(ws)
+    if not changes:
+        return []
+    return [_finding("JUDGE", "ERROR", f"frozen judge file {kind}: {path} (the judge may only change with a person's "
+                     "approval and a new version)", path)
+            for kind in ("changed", "added", "removed") for path in changes[kind]]
+
+
 def run_gate(phase: str, workspace: str) -> dict[str, Any]:
     ws = Path(workspace).resolve()
     template_path = ws / "output" / "template.yaml"
@@ -1837,7 +1849,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_gm_code(ws)
                 + check_gm_template(ws, template)
             )
-        checks += check_tools_unmodified() + check_spec_relaxations(ws) + check_dm(ws)
+        checks += check_tools_unmodified() + check_spec_relaxations(ws) + check_dm(ws) + check_judge_frozen(ws)
         report_path = ws / "output" / "consistency_report.json"
         report = None
         if report_path.exists():

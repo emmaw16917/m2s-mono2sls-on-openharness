@@ -62,6 +62,7 @@ def test_stamp_resolves_inherited_models_without_secrets(tmp_path: Path, monkeyp
     (config / "agents" / "m2s-architect.md").write_text("---\nname: m2s-architect\nmodel: inherit\n---\nbody\n", encoding="utf-8")
     (config / "agents" / "m2s-verifier.md").write_text("---\nname: m2s-verifier\nmodel: qwen-max\n---\nbody\n", encoding="utf-8")
     monkeypatch.setenv("OPENHARNESS_CONFIG_DIR", str(config))
+    monkeypatch.setattr(harness, "AGENTS_DIR", config / "agents")  # the role definitions workers get
 
     stamp = harness.stamp()
 

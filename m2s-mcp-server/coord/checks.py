@@ -154,7 +154,49 @@ def s5_report(ws: Path) -> CheckResult:
                        relay="" if ok else f"perf_report.json 里有 {len(kept)} 个保留的改动（{kept}），但 v0 之后只有 {commits} 个提交；每个保留的改动都要单独提交。")
 
 
+def judge_assets(ws: Path) -> CheckResult:
+    """J1's completion check (v2 §4.1)."""
+    import judge
+
+    try:
+        result = judge.check_judge_assets(ws)
+    except judge.JudgeError as exc:
+        return CheckResult("judge_assets", False, f"check_judge_assets error: {exc}", relay=f"check_judge_assets 报错：{exc}")
+    ok = result["status"] == "PASS"
+    s = result.get("summary") or {}
+    summary = (f"check_judge_assets {result['status']}: {s.get('cases', 0)} cases, required responses "
+               f"{s.get('required_responses', '?')}" + ("" if ok else f", {len(result['errors'])} errors"))
+    return CheckResult("judge_assets", ok, summary, detail={"summary": s},
+                       relay="" if ok else "check_judge_assets 报告的问题：\n" + _clip("\n".join(result["errors"])))
+
+
+def reconcile_classified(ws: Path) -> CheckResult:
+    """J3: every difference of judge/reconcile.json is classified (v2 §4.5)."""
+    import judge
+
+    result = judge.check_reconcile_classified(ws)
+    ok = result["status"] == "PASS"
+    return CheckResult("reconcile_classified", ok,
+                       f"{result['differences']} differences" + (f", classes {result['classes']}" if ok else
+                                                                  f", {len(result['errors'])} problems"),
+                       detail=result, relay="" if ok else "judge/reconcile_classes.json 的问题：\n" + _clip("\n".join(result["errors"])))
+
+
+def judge_unchanged(ws: Path) -> CheckResult:
+    """The frozen judge still has the hashes of its manifest (v2 §4.7)."""
+    import judge
+
+    changes = judge.judge_changes(ws)
+    bad = [p for kind in ("changed", "added", "removed") for p in (changes or {}).get(kind, [])]
+    return CheckResult("judge_unchanged", not bad, "judge not frozen" if changes is None else
+                       ("frozen judge unchanged" if not bad else f"frozen judge changed: {bad[:10]}"),
+                       relay="" if not bad else f"冻结后的裁判文件被改动了：{bad[:20]}。裁判冻结之后谁都不能改 judge/。")
+
+
 CHECKS: dict[str, Callable[[Path], CheckResult]] = {
+    "judge_assets": judge_assets,
+    "judge_unchanged": judge_unchanged,
+    "reconcile_classified": reconcile_classified,
     "analysis_report": analysis_report,
     "check_provenance": check_provenance,
     "blueprint_keys": blueprint_keys,

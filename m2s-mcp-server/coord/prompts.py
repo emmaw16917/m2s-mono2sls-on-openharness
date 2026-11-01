@@ -18,6 +18,9 @@ MERGE = REPO / "m2s-mcp-server" / "m2s_merge.py"
 TASK_SUMMARIES = {
     "S0": "补全每个端点的请求、响应、业务规则，每条注明出处。规格字段只能经 mcp__m2s-server__annotate_entry_point "
           "和 annotate_global_middleware 写进 storage/analysis_report.json；写完自己用 check_provenance 自查。",
+    "F2": "补全每个端点的请求、响应、业务规则，每条注明出处（同 S0）。规格字段只能经 mcp__m2s-server__annotate_entry_point "
+          "和 annotate_global_middleware 写进 storage/analysis_report.json；写完自己用 check_provenance 自查。"
+          "回炉信息来自规格对账（J3）时，按你的角色说明里的\"修正模式\"只改点到的事实。",
     "S1": "按规格设计 serverless 架构：用 mcp__m2s-server__merge_blueprint_key 逐个顶层字段写 storage/blueprint.json，"
           "设计决定记进 storage/DECISIONS.md；写完自己跑 run_gate(phase=\"blueprint\") 自查并修正。",
     "V1": "STAGE_ID=V1：只看规格写测试计划、测试事件和故障场景（verification/test_plan.json、"
@@ -42,6 +45,11 @@ MODE_SUMMARIES = {
     "J1": "MODE: J1。只看事实库 storage/analysis_report.json，写裁判用例：judge/cases/<接口 slug>/<用例>.json、"
           "judge/fixtures/、judge/faults/、judge/identities.json（需要时 judge/uncovered.json）。按你的角色说明里"
           "\"J1\"一节写；写完用 mcp__m2s-server__check_judge_assets 自查，直到 PASS。单体源码对你是关闭的。",
+    "J3": "MODE: J3。给 judge/reconcile.json 里的每一条差异（J1 按事实库写的 predicted 和单体实际输出对不上的地方）分类，"
+          "写进 judge/reconcile_classes.json：fact_error / needs_ruling / case_error / mask_gap，每条写 reason（证据）。"
+          "mask_gap 要同时在 judge/mask_rules.json 里补屏蔽规则。按你的角色说明里\"J3\"一节做。",
+    "ruling": "MODE: ruling。规格对账发现单体的某些行为需要裁定，差异清单在下面的回炉信息里。按你的角色说明里"
+              "\"ruling\"一节，逐条用 mcp__m2s-server__record_ruling 裁定。",
 }
 
 IMPL_NOTE = ("需要知道\"要保持哪些行为\"时，只引用规格本身：analysis_report.json 的出处、blueprint.json 的字段"

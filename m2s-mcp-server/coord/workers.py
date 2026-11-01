@@ -28,7 +28,12 @@ from coord.checks import REPO
 from coord.tools import run_dir as task_run_dir
 
 OH_EXE = Path(sys.executable).parent / "Scripts" / "oh.exe"
-AGENTS_DIR = Path.home() / ".openharness" / "agents"
+# Role definitions and the m2s-server come from the repository the dispatcher
+# runs from, so a run uses one consistent set of tools and prompts (a worktree
+# with new tools runs those, not the copies deployed for another branch). On
+# master the deployed copies in ~/.openharness/agents equal these (gate TOOLS).
+AGENTS_DIR = REPO / "m2s-mcp-server" / "agents"
+SERVER_PY = REPO / "m2s-mcp-server" / "server.py"
 SETTINGS_FILE = Path.home() / ".openharness" / "settings.json"
 INLINE_PROMPT_LIMIT = 20000
 
@@ -48,6 +53,8 @@ class WorkerJob:
     read_coord: bool = False  # only the exception handler may read WS/coord
     deny_read: tuple[str, ...] = ()  # directories closed to the worker (other runs' workspaces, the monolith)
     deny_commands: tuple[str, ...] = ()  # shell command patterns refused (a closed directory named in a command)
+    deny_write: tuple[str, ...] = ()  # directories closed to writes (the frozen judge)
+    mode: str = ""  # the task's role mode (M2S_MODE: m2s-server tools can refuse a mode)
 
     @property
     def run_dir(self) -> Path:
@@ -65,6 +72,7 @@ class WorkerJob:
             "M2S_TASK_ID": self.task_id,
             "M2S_ATTEMPT": str(self.attempt),
             "M2S_ROLE": self.role,
+            "M2S_MODE": self.mode,
             "PYTHONUTF8": "1",
         }
 
@@ -186,6 +194,11 @@ def base_m2s_server(settings_file: Path = SETTINGS_FILE) -> dict[str, Any]:
     return server
 
 
+def this_repo_server(args: list[str]) -> list[str]:
+    """The configured m2s-server arguments with its server.py replaced by this repository's."""
+    return [str(SERVER_PY) if str(a).replace("\\", "/").endswith("m2s-mcp-server/server.py") else a for a in args]
+
+
 def worker_settings(job: WorkerJob, other_servers: list[str]) -> dict[str, Any]:
     ws = str(job.ws)
     home = str(Path.home())
@@ -195,7 +208,9 @@ def worker_settings(job: WorkerJob, other_servers: list[str]) -> dict[str, Any]:
         {"pattern": f"{REPO}/.openharness/*", "allow": False, "access": "write"},
         {"pattern": f"{home}/.openharness/*", "allow": False, "access": "write"},
     ]
-    path_rules += [{"pattern": f"{d}/*", "allow": False} for d in job.deny_read]
+    # the path itself (a closed file, or a directory given as a tool's root) and everything under it
+    path_rules += [{"pattern": p, "allow": False} for d in job.deny_read for p in (d, f"{d}/*")]
+    path_rules += [{"pattern": f"{d}/*", "allow": False, "access": "write"} for d in job.deny_write]
     denied_commands: list[str] = []
     if not job.read_coord:
         path_rules.insert(0, {"pattern": f"{ws}/coord/*", "allow": False})
@@ -227,6 +242,7 @@ class OhLauncher:
         settings = json.loads(self.settings_file.read_text(encoding="utf-8"))
         others = [name for name in (settings.get("mcp_servers") or {}) if name != "m2s-server"]
         server = dict(base_m2s_server(self.settings_file))
+        server["args"] = this_repo_server(server.get("args") or [])
         server["env"] = {**(server.get("env") or {}), **job.env()}
 
         (job.run_dir / "prompt.md").write_text(job.prompt, encoding="utf-8")

@@ -21,6 +21,7 @@ model: inherit
 - `STAGE_ID=VR`：复核 S5 被测试阻塞的改动（用例是否有问题、补覆盖）。见"VR"一节。
 - `STAGE_ID=VS`：architect 接受了 S5 的 spec 放宽申请后，按新的 SI 定向调整用例。见"VS"一节。
 - `MODE: J1`（v2 流水线）：只看事实库，写裁判用例 `judge/`。见"J1"一节。这一节自成一体，上面的测试资产格式不适用。
+- `MODE: J3`（v2 流水线）：给规格对账的差异分类。见"J3"一节。
 
 ---
 
@@ -322,6 +323,7 @@ S5（性能优化）有些改动没有保留，原因不在改动本身，而是
 
 **输入只有** `storage/analysis_report.json`（事实库：每个端点的 `request`、`responses`、`auth`、`data_access`、`business_rules`，以及 `dynamodb_info`、`global_middleware`）。
 - **不读单体源码**：这一模式下路径规则会拒绝读单体目录。事实库写错的地方，要靠对账暴露，你读了代码就暴露不出来了；
+- 同样的道理，单体的运行结果（`judge/oracle_expected.json`、`masks.json`、`reconcile.json` 等）对你也是关闭的，`run_monolith` 你也不能调用。回炉时需要的差异，回炉信息里会给出；
 - 不读 `storage/blueprint.json`、`output/`：裁判只描述单体的行为，和怎么迁移无关。
 
 ### 产出（都在 `judge/` 下）
@@ -390,6 +392,30 @@ S5（性能优化）有些改动没有保留，原因不在改动本身，而是
 
 - 回炉信息来自 `run_monolith`（某个请求失败、身份准备失败、单体启动失败）或对账（J3 判为"用例写错"的差异、事实库修正后要更新的 `predicted`）。只改回炉信息点到的用例；
 - 对账之后的回炉，**只改 `predicted`，不改请求**——除非回炉信息明确说请求写错了。
+
+## J3：规格对账的分类（v2）
+
+裁判在单体上跑过之后，调度器把每一步的 `predicted`（J1 按事实库写的）和单体的实际输出（`judge/oracle_expected.json`，易变值已换成 `<uuid#1>`、`<time#2>` 这样的符号）逐条比较，对不上的写进 `judge/reconcile.json`。你的任务是给**每一条差异**分类。这一模式可以读单体源码，用来判断差异从哪里来。
+
+每条差异有 `id`、`case`、`step`、`request`、`check`（哪一项预期没对上，例如 `status`、`body.subset`）、`predicted`、`actual`、`fact_refs`。
+
+分类写进 `judge/reconcile_classes.json`：
+
+```json
+{"cart-add/add-form/body.contains[0]": {"class": "fact_error", "reason": "routes/cart.js:83 原样写入 quantity，表单提交时是字符串；事实库 POST /api/cart#request.body[1] 写的是数字",
+                                        "fact_ref": "POST /api/cart#request"}}
+```
+
+- `fact_error`：单体就是这样，事实库写错或漏了。`reason` 写清代码在哪里、事实库哪一项要改（`fact_ref`）。之后 annotator 修正事实库，J1 更新预期；
+- `needs_ruling`：单体本身的缺陷（例如 Scan 没有翻页），或者迁移后可能可以放宽的行为（例如列表顺序依赖表扫描）。之后交给 architect 裁定；
+- `case_error`：用例写错了：请求写错（路径、字段名、身份），或者预期写得比事实库说的还具体（例如 `equals` 了一个易变值）。`reason` 写清怎么改；
+- `mask_gap`：屏蔽不完整造成的假差异：一个两遍里碰巧相同、但实际上会变的值（例如当天的日期）。同时在 `judge/mask_rules.json` 里加规则：`[{"path": "steps.*.body.date", "class": "time", "reason": "...", "cases": ["..."]}]`（`path` 里 `*` 匹配任意字符；`cases` 不写表示所有用例）。
+
+要点：
+- 每条都要有 `class` 和 `reason`。判断不了是事实错误还是需要裁定时，选 `needs_ruling` 并写明你的疑问；
+- 不要为了消掉差异去改用例或事实库：你只分类，改动由后续任务做；
+- 写完用 `mcp__m2s-server__check_reconcile_classes()` 自查，直到 `PASS`；
+- 工作报告 `storage/stage_reports/J3.json`：每一类的数量和 id。
 
 ## 工作报告 `<WS>/storage/stage_reports/<STAGE_ID>.json`
 

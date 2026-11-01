@@ -9,7 +9,8 @@ can be traced to the exact harness that produced it:
   changes to the harness paths;
 - the pinned br / agent_mail versions;
 - the model each agent role will use;
-- sha256 of the agent definitions and project skills (the prompts).
+- sha256 of the agent definitions workers get (this repository's
+  m2s-mcp-server/agents, coord/workers.py) and of the project skills.
 
 No secrets are recorded: from the OpenHarness settings only the model,
 profile, provider and base URL are read.
@@ -30,7 +31,20 @@ import yaml
 from coord.toolchain import installed_versions
 
 REPO = Path(__file__).resolve().parents[2]
-OPENHARNESS_REPO = REPO / "OpenHarness"
+
+
+def _openharness_repo() -> Path:
+    """The checkout the installed openharness package runs from (a worktree of
+    this repository has no OpenHarness checkout of its own)."""
+    try:
+        import openharness
+        return Path(openharness.__file__).resolve().parents[2]
+    except ImportError:
+        return REPO / "OpenHarness"
+
+
+OPENHARNESS_REPO = _openharness_repo()
+AGENTS_DIR = REPO / "m2s-mcp-server" / "agents"  # the role definitions workers get (coord/workers.py)
 # Paths whose uncommitted edits change the harness (same scope as the v1 TOOLS gate).
 HARNESS_PATHS = ("m2s-mcp-server", ".openharness")
 # Written by S5's update_ledger during runs; not a harness change.
@@ -113,9 +127,9 @@ def _model_settings(config_dir: Path) -> dict[str, Any]:
     }
 
 
-def _agents(config_dir: Path, default_model: str | None) -> dict[str, dict[str, Any]]:
+def _agents(agents_dir: Path, default_model: str | None) -> dict[str, dict[str, Any]]:
     out: dict[str, dict[str, Any]] = {}
-    for path in sorted((config_dir / "agents").glob("*.md")):
+    for path in sorted(agents_dir.glob("*.md")):
         meta = _frontmatter(path)
         declared = meta.get("model")
         out[str(meta.get("name") or path.stem)] = {
@@ -138,7 +152,7 @@ def stamp() -> dict[str, Any]:
         "tools": {name: {"version": info["version"], "installed": info["path"] is not None}
                   for name, info in installed_versions().items()},
         "models": models,
-        "agents": _agents(config_dir, models.get("model")),
+        "agents": _agents(AGENTS_DIR, models.get("model")),
         "prompts": {
             "project_skills_sha256": _tree_sha256(REPO / ".openharness" / "skills"),
             "user_skills_sha256": _tree_sha256(config_dir / "skills"),

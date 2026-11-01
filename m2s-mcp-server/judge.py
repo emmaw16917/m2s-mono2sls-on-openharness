@@ -58,6 +58,10 @@ from typing import Any
 import verify
 
 JUDGE_DIR = "judge"
+# What the monolith did (J2) and the reconciliation (J3): closed to J1, whose
+# predictions must come from the fact base alone (coord deny_read "judge_outputs").
+MONOLITH_OUTPUTS = ("oracle_expected.json", "fault_baseline_monolith.json", "masks.json", "monolith_calls.json",
+                    "coverage_monolith", "reconcile.json", "reconcile_classes.json")
 METHODS = ("GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS")
 LAYERS = ("P", "R")
 FAULT_KINDS = verify.FAULT_KINDS
@@ -610,6 +614,8 @@ def check_judge_assets(ws: Path | str) -> dict[str, Any]:
         errs += _check_fault(facts, f, set(ids))
     if a["run_config"] is not None:
         errs += _check_run_config(facts, a["run_config"])
+    if (judge_dir(ws) / "mask_rules.json").is_file():
+        errs += _check_mask_rules(_read(judge_dir(ws) / "mask_rules.json"), set(ids))
 
     # Exemptions J1 states for coverage it cannot provide.
     exempt: dict[str, str] = {}
@@ -762,7 +768,9 @@ def _classify(v: Any) -> str:
 class Symbolizer:
     """Builds the template of one unit from two passes (a, b)."""
 
-    def __init__(self) -> None:
+    def __init__(self, forced: list[tuple[re.Pattern[str], str]] | None = None) -> None:
+        # judge/mask_rules.json: paths masked even when both passes agree (J3 mask_gap)
+        self.forced = forced or []
         self.pairs: dict[tuple[str, str], str] = {}
         self.by_a: dict[str, str] = {}
         self.by_b: dict[str, str] = {}
@@ -776,7 +784,7 @@ class Symbolizer:
         self.pairs[(ka, kb)] = symbol
         self.by_a[ka] = symbol
         self.by_b[kb] = symbol
-        self.symbols[symbol] = {"class": cls, "first": None}
+        self.symbols[symbol] = {"class": cls, "first": None, "type": verify._type_of(a)}
 
     def _pair(self, a: Any, b: Any, path: str, cls: str | None = None) -> str | None:
         ka, kb = _jkey(a), _jkey(b)
@@ -787,7 +795,8 @@ class Symbolizer:
         cls = cls or _classify(a)
         s = f"<{cls}#{self.n}>"
         self.pairs[(ka, kb)] = s
-        self.symbols[s] = {"class": cls, "first": path}
+        # the JSON type the symbol stands for (a number becomes a symbol string)
+        self.symbols[s] = {"class": cls, "first": path, "type": verify._type_of(a)}
         if ka in self.by_a or kb in self.by_b:
             # In one pass this value equals another volatile value, in the
             # other it does not (two tokens issued within the same second):
@@ -851,6 +860,9 @@ class Symbolizer:
             seeded = self.pairs.get((_jkey(a), _jkey(b)))
             if seeded:
                 return self._note(path, seeded)
+            forced = next((cls for rx, cls in self.forced if rx.match(path)), None)
+            if forced is not None and a is not None and b is not None:
+                return self._note(path, self._pair(a, b, path, forced))
             if _jkey(a) == _jkey(b):
                 return a
             if isinstance(a, str) and isinstance(b, str):
@@ -1084,11 +1096,15 @@ def _identity_bindings(r: dict[str, Any]) -> dict[str, Any]:
             for var, val in (p.get("vars") or {}).items()}
 
 
-def mask_unit(facts: Facts, runs: list[dict[str, Any]]) -> dict[str, Any]:
+def mask_unit(facts: Facts, runs: list[dict[str, Any]], rules: list[dict[str, Any]] | None = None,
+              case_id: str | None = None) -> dict[str, Any]:
     """Template and masks of one unit from its passes; the third and later
-    passes are checked against the template."""
+    passes are checked against the template. `rules` (judge/mask_rules.json)
+    that name no cases, or name `case_id`, force masks on their paths."""
     a, b = runs[0], runs[1]
-    sym = Symbolizer()
+    sym = Symbolizer([(_glob_re(r["path"]), r.get("class", "v")) for r in rules or []
+                      if isinstance(r, dict) and isinstance(r.get("path"), str)
+                      and (not r.get("cases") or case_id in r["cases"])])
     ia, ib = _identity_bindings(a), _identity_bindings(b)
     for s in ia:
         if s in ib:
@@ -1154,6 +1170,7 @@ def run_monolith(ws: Path | str, passes: int = 3, coverage: bool = True, timeout
     if passes < 3:
         raise JudgeError("passes must be at least 3: two to find the volatile values, one to check the masks")
     assets = load_assets(ws)
+    inputs = inputs_sha(ws)  # freeze_judge refuses an oracle made from other inputs
     rc = effective_run_config(facts, assets["run_config"])
     units = build_units(assets)
     identities = {alias: spec["monolith"] for alias, spec in (assets["identities"] or {}).items()}
@@ -1197,14 +1214,16 @@ def run_monolith(ws: Path | str, passes: int = 3, coverage: bool = True, timeout
     for results in raw["passes"]:
         for r in results:
             runs_of.setdefault(r["id"], []).append(r)
-    masked = {uid: mask_unit(facts, rs) for uid, rs in runs_of.items()}
+    rules = load_mask_rules(ws)
+    case_of = {u["id"]: u["case"] for u in units}
+    masked = {uid: mask_unit(facts, rs, rules, case_of.get(uid)) for uid, rs in runs_of.items()}
     unstable = []
     for uid, m in masked.items():
         unstable += [{"unit": uid, "between": "passes 1 and 2", **u} for u in m["unstable"]]
         for c in m["checks"]:
             unstable += [{"unit": uid, "between": f"pass {c['pass']} and the masks", **x} for x in c["mismatches"]]
 
-    meta = {"backend": raw["backend"], "node": raw["node"], "passes": passes, "run_config": rc,
+    meta = {"backend": raw["backend"], "node": raw["node"], "passes": passes, "run_config": rc, "inputs_sha": inputs,
             "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "monolith_root": job["monolith_root"]}
     jd = judge_dir(ws)
     case_units = [u for u in units if not u["rules"]]
@@ -1245,3 +1264,332 @@ def run_monolith(ws: Path | str, passes: int = 3, coverage: bool = True, timeout
         ("fix the cases or identities whose requests failed" if problems else
          "values that change from run to run and cannot be masked: see unstable"),
     }
+
+
+# ---------------------------------------------------------------------------
+# J3: reconciling the fact base with the monolith (§4.5)
+# ---------------------------------------------------------------------------
+#
+# reconcile() compares each step's `predicted` (what J1 read in the fact base)
+# with what the monolith did (oracle_expected.json, masked) and writes the
+# differences to judge/reconcile.json. A verifier in J3 mode classifies each
+# one in judge/reconcile_classes.json:
+#   fact_error    the monolith does this and the fact base says otherwise -> F2 fixes the facts
+#   needs_ruling  a defect of the monolith, or behaviour that may be relaxed -> an architect rules
+#   case_error    J1 wrote the case wrong (the request, or a prediction the facts do not support)
+#   mask_gap      a volatile value the masks missed -> a rule in judge/mask_rules.json, J2 again
+# The dispatcher routes the classes (coord/dispatcher.py, J3 flow).
+
+RECONCILE_CLASSES = ("fact_error", "needs_ruling", "case_error", "mask_gap")
+
+
+def _glob_re(pattern: str) -> re.Pattern[str]:
+    """A mask-rule path: "*" matches anything (dots and brackets included), the rest is literal."""
+    return re.compile("^" + ".*".join(re.escape(p) for p in pattern.split("*")) + "$")
+
+
+def load_mask_rules(ws: Path | str) -> list[dict[str, Any]]:
+    path = judge_dir(ws) / "mask_rules.json"
+    data = _read(path) if path.is_file() else []
+    return data if isinstance(data, list) else []
+
+
+def _check_mask_rules(rules: Any, case_ids: set[str]) -> list[str]:
+    where = "judge/mask_rules.json"
+    if not isinstance(rules, list):
+        return [f"{where}: must be a list of {{path, reason, cases?, class?}}"]
+    errs = []
+    for i, r in enumerate(rules):
+        w = f"{where}[{i}]"
+        if not isinstance(r, dict) or set(r) - {"path", "reason", "cases", "class"}:
+            errs.append(f"{w}: only path, reason, cases, class")
+            continue
+        if not isinstance(r.get("path"), str) or not r["path"].strip():
+            errs.append(f"{w}: path is required, e.g. \"steps.*.body.date\" (\"*\" matches anything)")
+        if not str(r.get("reason") or "").strip():
+            errs.append(f"{w}: reason is required")
+        if "cases" in r and not (isinstance(r["cases"], list) and all(c in case_ids for c in r["cases"])):
+            errs.append(f"{w}: cases must list existing case ids")
+        if "class" in r and r["class"] not in {n for n, _ in VOLATILE_PATTERNS} | {"v"}:
+            errs.append(f"{w}: class must be one of {[n for n, _ in VOLATILE_PATTERNS] + ['v']}")
+    return errs
+
+
+def _type_name(v: Any) -> str:
+    return verify._type_of(v)
+
+
+def _header_values(headers: dict[str, Any], name: str) -> list[str]:
+    v = (headers or {}).get(name.lower())
+    if v is None:
+        return []
+    return [str(x) for x in v] if isinstance(v, list) else [str(v)]
+
+
+def compare_step(predicted: dict[str, Any], actual: dict[str, Any], symbol_types: dict[str, str] | None = None
+                 ) -> list[dict[str, Any]]:
+    """Where one step's prediction (v1 expect grammar) does not hold on the
+    monolith's masked output. A whole-symbol value has the type of the value
+    it stands for."""
+    types = symbol_types or {}
+    if "error" in actual:
+        return [{"check": "request", "predicted": predicted.get("status"), "actual": actual["error"]}]
+    out = []
+
+    def diff(check: str, want: Any, got: Any) -> None:
+        out.append({"check": check, "predicted": want, "actual": got})
+
+    if predicted.get("status") != actual.get("status"):
+        diff("status", predicted.get("status"), actual.get("status"))
+    h = predicted.get("headers") or {}
+    got_h = actual.get("headers") or {}
+    for name, want in (h.get("equals") or {}).items():
+        if want not in _header_values(got_h, name):
+            diff(f"headers.equals.{name.lower()}", want, _header_values(got_h, name) or None)
+    for name, parts in (h.get("contains") or {}).items():
+        parts = [parts] if isinstance(parts, str) else parts
+        if not any(all(p in v for p in parts) for v in _header_values(got_h, name)):
+            diff(f"headers.contains.{name.lower()}", parts, _header_values(got_h, name) or None)
+    for name in h.get("absent") or []:
+        if _header_values(got_h, name):
+            diff(f"headers.absent.{name.lower()}", None, _header_values(got_h, name))
+    for name, n in (h.get("count") or {}).items():
+        if len(_header_values(got_h, name)) != n:
+            diff(f"headers.count.{name.lower()}", n, len(_header_values(got_h, name)))
+    b = predicted.get("body") or {}
+    body = actual.get("body")
+    if "equals" in b and _jkey(b["equals"]) != _jkey(body):
+        diff("body.equals", b["equals"], body)
+    if "subset" in b and not verify._subset(b["subset"], body):
+        diff("body.subset", b["subset"], body)
+    for i, item in enumerate(b.get("contains") or []):
+        if not (isinstance(body, list) and any(verify._subset(item, x) for x in body)):
+            diff(f"body.contains[{i}]", item, body)
+    for i, item in enumerate(b.get("not_contains") or []):
+        if isinstance(body, list) and any(verify._subset(item, x) for x in body):
+            diff(f"body.not_contains[{i}]", item, body)
+    for f in b.get("has_fields") or []:
+        if not verify._get(body, f)[0]:
+            diff(f"body.has_fields.{f}", f, body)
+    for f, t in (b.get("types") or {}).items():
+        ok, v = verify._get(body, f)
+        got = (types.get(v) or _type_name(v)) if ok and isinstance(v, str) and WHOLE_SYMBOL_RE.match(v) else \
+            (_type_name(v) if ok else "missing")
+        if got != t:
+            diff(f"body.types.{f}", t, got)
+    if "length" in b and (not isinstance(body, list) or len(body) != b["length"]):
+        diff("body.length", b["length"], len(body) if isinstance(body, list) else _type_name(body))
+    return out
+
+
+def _rulings_by_case(ws: Path) -> dict[str, list[dict[str, Any]]]:
+    """Rulings in force or waiting for a person, by the cases they name."""
+    data = _read(ws / "storage" / "rulings.json") if (ws / "storage" / "rulings.json").is_file() else {}
+    out: dict[str, list[dict[str, Any]]] = {}
+    for r in (data.get("rulings") or []) if isinstance(data, dict) else []:
+        if r.get("status") in ("decided", "confirmed", "proposed"):
+            for c in (r.get("affects") or {}).get("cases") or []:
+                out.setdefault(c, []).append({"id": r["id"], "status": r["status"]})
+    return out
+
+
+def reconcile(ws: Path | str) -> dict[str, Any]:
+    """reconcile_spec (J3 step 1): differences between the predictions and the
+    monolith, to judge/reconcile.json. Clears judge/reconcile_classes.json: the
+    classification is made afresh for every reconciliation."""
+    ws = Path(ws)
+    jd = judge_dir(ws)
+    oracle_path = jd / "oracle_expected.json"
+    if not oracle_path.is_file():
+        raise JudgeError("judge/oracle_expected.json not found: run_monolith (J2) comes first")
+    oracle = _read(oracle_path)
+    masks = (_read(jd / "masks.json") if (jd / "masks.json").is_file() else {}) or {}
+    assets = load_assets(ws)
+    ruled = _rulings_by_case(ws)
+    differences, resolved, steps = [], [], 0
+    for case in sorted((c for c in assets["cases"] if "_load_error" not in c), key=lambda c: c["id"]):
+        cid = case["id"]
+        observed = (oracle.get("cases") or {}).get(cid)
+        if observed is None:
+            raise JudgeError(f"case {cid} is not in judge/oracle_expected.json: the cases changed after run_monolith")
+        types = {s: info.get("type") for s, info in ((masks.get("units") or {}).get(cid) or {}).get("symbols", {}).items()}
+        for step in case["steps"]:
+            name = step["name"]
+            steps += 1
+            for d in compare_step((case.get("predicted") or {}).get(name) or {}, observed["steps"].get(name) or {}, types):
+                d = {"id": f"{cid}/{name}/{d['check']}", "case": cid, "step": name,
+                     "request": {k: step[k] for k in ("method", "path") if k in step}, **d,
+                     "fact_refs": case.get("fact_refs") or [], "file": case.get("_file")}
+                if cid in ruled:
+                    resolved.append({**d, "rulings": ruled[cid]})
+                else:
+                    differences.append(d)
+    out = {"meta": {"cases": len(assets["cases"]), "steps": steps,
+                    "oracle_generated_at": (oracle.get("meta") or {}).get("generated_at")},
+           "differences": differences, "resolved_by_rulings": resolved}
+    _write(jd / "reconcile.json", out)
+    classes = jd / "reconcile_classes.json"
+    if classes.is_file():
+        classes.unlink()
+    return {"status": "PASS" if not differences else "DIFFERENCES", "differences": len(differences),
+            "resolved_by_rulings": len(resolved), "steps": steps,
+            "by_check": {k: sum(1 for d in differences if d["check"].split(".")[0].split("[")[0] == k)
+                         for k in ("status", "headers", "body", "request")}}
+
+
+def reconcile_classes(ws: Path | str) -> tuple[list[dict[str, Any]], dict[str, Any], list[str]]:
+    """(differences, classes, errors): the J3 classification and what is wrong with it."""
+    jd = judge_dir(ws)
+    rec = _read(jd / "reconcile.json") if (jd / "reconcile.json").is_file() else None
+    if not isinstance(rec, dict):
+        return [], {}, ["judge/reconcile.json not found (reconcile_spec has not run)"]
+    diffs = rec.get("differences") or []
+    path = jd / "reconcile_classes.json"
+    classes = _read(path) if path.is_file() else {}
+    errs = []
+    if not isinstance(classes, dict) or "_load_error" in classes:
+        return diffs, {}, [f"judge/reconcile_classes.json: {classes.get('_load_error') if isinstance(classes, dict) else 'must be an object {difference id: {class, reason}}'}"]
+    ids = {d["id"] for d in diffs}
+    for d in diffs:
+        c = classes.get(d["id"])
+        if not isinstance(c, dict):
+            errs.append(f"{d['id']}: not classified")
+        elif c.get("class") not in RECONCILE_CLASSES:
+            errs.append(f"{d['id']}: class must be one of {RECONCILE_CLASSES}")
+        elif not str(c.get("reason") or "").strip():
+            errs.append(f"{d['id']}: reason is required (the evidence for the class)")
+    errs += [f"{k}: no such difference in judge/reconcile.json" for k in classes if k not in ids]
+    if any(isinstance(classes.get(d["id"]), dict) and classes[d["id"]].get("class") == "mask_gap" for d in diffs):
+        rules = _read(jd / "mask_rules.json") if (jd / "mask_rules.json").is_file() else None
+        if not rules:
+            errs.append("mask_gap differences need a rule in judge/mask_rules.json ({path, reason, cases?, class?})")
+        else:
+            errs += _check_mask_rules(rules, {c.get("id") for c in load_assets(ws)["cases"]})
+    return diffs, classes, errs
+
+
+def check_reconcile_classified(ws: Path | str) -> dict[str, Any]:
+    diffs, classes, errs = reconcile_classes(ws)
+    counts = {k: sum(1 for d in diffs if (classes.get(d["id"]) or {}).get("class") == k) for k in RECONCILE_CLASSES}
+    return {"status": "PASS" if not errs else "FAIL", "differences": len(diffs), "classes": counts, "errors": errs[:60]}
+
+
+# ---------------------------------------------------------------------------
+# J6: freezing the judge (§4.7)
+# ---------------------------------------------------------------------------
+#
+# freeze_judge writes judge/judge_manifest.json: the judge's version, the hash
+# of every file under judge/, and its size and strength. From then on the
+# judge does not change: the dispatcher reverts any attempt that touches
+# judge/ (and closes judge/ to workers' writes), gate(final) checks the hashes.
+# Changing a frozen judge needs a person (and a new version).
+
+MANIFEST = "judge_manifest.json"
+# The case-side inputs of run_monolith: the oracle is stale when any of these changed.
+INPUT_GLOBS = ("cases/*/*.json", "fixtures/*.json", "faults/*.json", "identities.json", "run_config.json",
+               "mask_rules.json")
+
+
+def _sha_file(path: Path) -> str:
+    import hashlib
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def judge_files(ws: Path | str) -> dict[str, str]:
+    """judge/<rel> -> sha256 for every file under judge/ but the manifest."""
+    jd = judge_dir(ws)
+    if not jd.is_dir():
+        return {}
+    return {f"{JUDGE_DIR}/{p.relative_to(jd).as_posix()}": _sha_file(p) for p in sorted(jd.rglob("*"))
+            if p.is_file() and p.relative_to(jd).as_posix() != MANIFEST and "__pycache__" not in p.parts}
+
+
+def inputs_sha(ws: Path | str) -> str:
+    """One hash over run_monolith's case-side inputs (recorded in the oracle's meta)."""
+    import hashlib
+    jd = judge_dir(ws)
+    h = hashlib.sha256()
+    for pattern in INPUT_GLOBS:
+        for p in sorted(jd.glob(pattern)):
+            h.update(p.relative_to(jd).as_posix().encode() + b"\0" + p.read_bytes() + b"\0")
+    return h.hexdigest()
+
+
+def manifest(ws: Path | str) -> dict[str, Any] | None:
+    path = judge_dir(ws) / MANIFEST
+    data = _read(path) if path.is_file() else None
+    return data if isinstance(data, dict) and "files" in data else None
+
+
+def judge_changes(ws: Path | str) -> dict[str, list[str]] | None:
+    """What differs from the frozen judge (None when the judge is not frozen)."""
+    m = manifest(ws)
+    if m is None:
+        return None
+    now, then = judge_files(ws), m["files"]
+    return {"changed": sorted(p for p in now if p in then and now[p] != then[p]),
+            "added": sorted(p for p in now if p not in then),
+            "removed": sorted(p for p in then if p not in now)}
+
+
+def _pending_rulings(ws: Path) -> list[str]:
+    data = _read(ws / "storage" / "rulings.json") if (ws / "storage" / "rulings.json").is_file() else {}
+    return [r["id"] for r in (data.get("rulings") or []) if isinstance(data, dict) and r.get("status") == "proposed"]
+
+
+def freeze_judge(ws: Path | str, refreeze: bool = False) -> dict[str, Any]:
+    """J6. Refuses while the judge is not ready: assets failing their check, an
+    oracle older than the cases, a difference with the fact base that no ruling
+    settles, a ruling still waiting for a person. Freezing again an unchanged
+    judge is a no-op; a changed frozen judge needs refreeze=True (a person)."""
+    import time
+    ws = Path(ws)
+    jd = judge_dir(ws)
+    prev = manifest(ws)
+    if prev is not None:
+        changes = judge_changes(ws) or {}
+        if not any(changes.values()):
+            return {"status": "PASS", "version": prev["version"], "unchanged": True}
+        if not refreeze:
+            return {"status": "FAIL", "error": "the judge is frozen and has changed since; only a person can freeze "
+                    f"a new version (refreeze): {changes}"}
+    problems: list[str] = []
+    check = check_judge_assets(ws)
+    if check["status"] != "PASS":
+        problems.append(f"check_judge_assets FAIL ({len(check['errors'])} errors)")
+    oracle = _read(jd / "oracle_expected.json") if (jd / "oracle_expected.json").is_file() else None
+    if not isinstance(oracle, dict):
+        problems.append("judge/oracle_expected.json missing: run_monolith first")
+    elif (oracle.get("meta") or {}).get("inputs_sha") != inputs_sha(ws):
+        problems.append("the cases changed after run_monolith: run it again")
+    rec = None
+    if not problems:
+        rec = reconcile(ws)
+        if rec["differences"]:
+            problems.append(f"{rec['differences']} differences with the fact base that no ruling settles (judge/reconcile.json)")
+    pending = _pending_rulings(ws)
+    if pending:
+        problems.append(f"rulings waiting for a person: {pending}")
+    if problems:
+        return {"status": "FAIL", "error": "the judge cannot be frozen yet", "problems": problems}
+    cov = _read(jd / "coverage_monolith" / "summary.json") if (jd / "coverage_monolith" / "summary.json").is_file() else {}
+    rulings_data = _read(ws / "storage" / "rulings.json") if (ws / "storage" / "rulings.json").is_file() else {}
+    s = check["summary"]
+    m = {
+        "version": (prev["version"] + 1) if prev else 1,
+        "frozen_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "backend": (oracle.get("meta") or {}).get("backend"),
+        "facts_sha": _sha_file(ws / "storage" / "analysis_report.json"),
+        "cases": s["cases"], "layers": s["layers"], "fault_scenarios": s["fault_scenarios"],
+        "required_responses": s["required_responses"], "business_rules": s["business_rules"],
+        "exempted": s["exempted"],
+        "coverage": {k: cov.get(k) for k in ("lines", "percent")} if isinstance(cov, dict) and cov else None,
+        "mutation_score": None,  # J5, N3
+        "reconcile": {"differences": 0, "settled_by_rulings": rec["resolved_by_rulings"] if rec else 0},
+        "rulings": [r["id"] for r in (rulings_data.get("rulings") or []) if r.get("status") in ("decided", "confirmed")]
+        if isinstance(rulings_data, dict) else [],
+        "files": judge_files(ws),
+    }
+    _write(jd / MANIFEST, m)
+    return {"status": "PASS", "version": m["version"], "cases": m["cases"], "files": len(m["files"]),
+            "coverage": m["coverage"], "layers": m["layers"]}

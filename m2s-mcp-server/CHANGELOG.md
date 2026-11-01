@@ -975,3 +975,27 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
   - Node 的 http 客户端发 DELETE 请求体时既不带 `Content-Length` 也不分块，单体读不到请求体，`DELETE /api/cart` 全部 400。现在有请求体就带长度。是覆盖率报告发现的；
   - 第一次运行时单体 30 s 内没监听（推测是冷的 `node_modules` 加载慢），之后复现不了；超时改为 90 s 并重试一次。
 - **测试**：`test_judge_assets.py` 63 个（每条检查一个），`test_judge_monolith.py` 12 个（符号化、`unify`、启动方式、用例展开；一个小单体上端到端跑三遍，包括屏蔽不了的值、单体崩溃后换新进程、DELETE 请求体）。
+
+## v2 N1.4–N1.6：J1 模式和隔离、J3 对账和流转、J6 冻结（2026-11-01，分支 `feat/v2-modules`）
+
+- **N1.4 J1 模式**：
+  - 模板的任务可以写 `mode`（写进提示词，对应角色说明的一节）和 `deny_read`。`deny_read: [monolith]` 让调度器关闭单体目录；单体的上一级目录不包含工作区时也一并关闭，因为从那里开始的 grep 会读到单体。提到这些目录的 bash 命令一律拒绝，提示词里也不再给出单体路径；
+  - `deny_read: [judge_outputs]` 把单体的运行结果和对账（`oracle_expected.json`、`masks.json`、`reconcile.json` 等）也对 J1 关闭；worker 的环境里有 `M2S_MODE`，`run_monolith` 工具拒绝 J1 调用。否则 J1 回炉时可以照抄单体的输出当预期，对账就失去了意义；
+  - `m2s-verifier.md` 加"J1"一节：只看事实库写 `judge/`，包括格式、覆盖要求、身份、故障场景、`uncovered.json`、工作报告和回炉；
+  - 测试：用 OpenHarness 自己的 `PermissionChecker` 检查调度器生成的 worker 设置。J1 用 read_file / grep / glob 都读不到单体，bash 命令里提到它也会被拒绝；事实库和 `judge/` 照常可用；其他任务照常能读单体。不从被关闭的目录名入手的递归读取（例如在更上层目录 `grep -r`）仍是 W0.5 记下的已知漏洞。
+- **N1.5 J3 规格对账**：
+  - `reconcile_spec`（调度器动作）逐个用例、逐步比较 `predicted` 和单体的实际输出（屏蔽后），差异写进 `judge/reconcile.json`。差异的 id 是"用例/步骤/哪一项"，每轮不变。已经被裁定覆盖的用例，它的差异单列为已解决；
+  - J3（verifier 的 J3 模式）给每条差异分类，写进 `judge/reconcile_classes.json`：`fact_error`、`needs_ruling`、`case_error`、`mask_gap`。`mask_gap` 要同时写 `judge/mask_rules.json`，`run_monolith` 按这些规则在两遍值相同的位置也强制换成符号。完成检查是 `reconcile_classified`，自查工具是 `check_reconcile_classes`；
+  - 流转（J3 关闭之后，每次算一轮）：事实错误交给 F2（annotator 的修正模式），同时 J1 重做、只更新这些用例的 `predicted`；用例写错交给 J1；屏蔽不完整让 J2 重跑；需要裁定的，调度器新建一个 architect 的裁定任务（`RULE_J3_<轮>`，ruling 模式，用 `record_ruling` 逐条裁定，`affected_cases` 写差异所在的用例），J3 之后的任务等它完成。偏离单体的裁定要人确认，确认之前这些任务一直等着；
+  - 最多 2 轮（模板的 `max_reconcile_rounds`），之后还有差异就建关口 `HUMAN_RECONCILE` 交给人；
+  - `run_monolith` 因为用例的问题失败（请求失败、身份准备失败、屏蔽不了的值）时，把详情交给 J1 重做；
+  - 模板的任务可以写 `start: recheck`：第一次启动先跑检查，不通过才派 worker。从别的运行复制来的事实库直接通过 F2；没有差异时 J3 也直接关闭；
+  - 角色说明：verifier 加"J3"一节，architect 加"MODE: ruling"一节，annotator 加"修正模式"一节。
+- **N1.6 J6 冻结**：
+  - `freeze_judge`（调度器动作）写 `judge/judge_manifest.json`：版本号、`judge/` 下每个文件的 hash、用例数和 P/R 层数量、故障场景数、覆盖率、后端、事实库的 hash，以及生效的裁定；
+  - 冻结前必须满足：`check_judge_assets` 通过；单体的预期是用当前用例跑出来的（`oracle_expected.json` 的 `meta.inputs_sha`）；重新对账没有裁定之外的差异；没有等人确认的裁定；
+  - 裁判没变时再冻结一次不做任何事；裁判变了，只有人可以冻结新版本；
+  - 冻结之后：调度器撤销任何尝试对 `judge/` 的改动，并判这次尝试失败（不管任务范围怎么写）；worker 的路径规则禁止写 `judge/`；`gate(final)` 新增 JUDGE 检查，核对每个文件的 hash。
+- **worker 用调度器所在仓库的工具和角色说明**：worker 的 m2s-server 改为调度器所在仓库的 `m2s-mcp-server/server.py`，角色说明改从同一仓库的 `m2s-mcp-server/agents/` 读，版本戳也记这一份的 hash。在 worktree 里运行时，worker 用的就是这个分支的工具，而不是为主分支部署的那一套。在主分支上两者本来就一致（gate TOOLS 保证）。版本戳里 OpenHarness 的位置改为按已安装的包找。
+- **N1.7 的分段模板** `coord/templates/v2-judge.yaml`：F2（recheck）→ J1 → J2 → RC → J3（recheck）→ J6。
+- **测试**：`test_judge_reconcile.py` 8 个（逐项比较、对账、裁定覆盖、分类检查、屏蔽规则、冻结的前提条件和 hash 核对、gate JUDGE）；`test_coord_judge_flow.py` 6 个假 worker 场景（四类差异各自的去向、只有屏蔽问题时重跑 J2、分类缺屏蔽规则时检查不通过、2 轮之后交给人、`run_monolith` 失败退回 J1、冻结后改用例被撤销）；`test_coord_j1_perm.py` 8 个。

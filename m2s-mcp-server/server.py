@@ -226,6 +226,19 @@ def check_judge_assets() -> str:
 
 
 @mcp.tool()
+def check_reconcile_classes() -> str:
+    """J3 self-check: every difference in judge/reconcile.json has a class in
+    judge/reconcile_classes.json ({difference id: {class, reason, fact_ref?,
+    fix?}}), class one of fact_error / needs_ruling / case_error / mask_gap,
+    with a reason; mask_gap needs rules in judge/mask_rules.json.
+
+    Returns: JSON {status: PASS|FAIL, differences, classes (counts), errors}.
+    """
+    import judge
+    return json.dumps(judge.check_reconcile_classified(_workspace()), ensure_ascii=False)
+
+
+@mcp.tool()
 def run_monolith(passes: int = 3, coverage: bool = True) -> str:
     """J2: run every judge case, and every case of every fault scenario, on the
     monolith itself, `passes` times (at least 3), and write the judge's
@@ -246,6 +259,10 @@ def run_monolith(passes: int = 3, coverage: bool = True) -> str:
     masked), coverage, ...}.
     """
     import judge
+    if os.environ.get("M2S_MODE") == "J1":
+        # J1's predictions come from the fact base alone; the monolith's output is what they are checked against.
+        return json.dumps({"status": "REFUSED", "error": "J1 writes predictions from the fact base only; run_monolith "
+                           "is run by the dispatcher after J1 (J2)"}, ensure_ascii=False)
     try:
         return json.dumps(judge.run_monolith(_workspace(), passes=passes, coverage=coverage), ensure_ascii=False,
                           default=str)

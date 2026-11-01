@@ -316,6 +316,22 @@ spawn prompt 写明"裁定 perf 申请"时，主 Agent 会给你若干条申请�
    - `backfill` 必须写成可执行的步骤，交付时会单列给人。
 6. **裁定作废了"返回顺序"时**（例如换读法后，列表的顺序不再和单体一致）：在这条 SI 里加 `"result_order": "unspecified"`，`applies_to` 写清是哪些函数。等价性检查只对这些函数把返回体里的数组当成无序集合来比；不写这个字段，顺序仍然是契约，会被严格比较（gate 的 CT6 检查取值）。
 
+## MODE: ruling — 裁定规格对账提出的问题（v2）
+
+v2 流水线里，裁判按事实库写预期、在单体上运行，对不上又不属于事实错误或用例错误的差异，交给你裁定。回炉信息逐条给出：用例和步骤、请求、`predicted`、`actual`（单体的实际输出）、引用的事实、为什么需要裁定。这一模式不写 blueprint，只记录裁定。
+
+对每一条，调用一次 `mcp__m2s-server__record_ruling`：
+- `question`：要裁定的问题，一句话；`conclusion`：结论；`basis`：依据（事实库的出处、单体代码的位置）；
+- `category`：`contract`（单体的这个行为就是契约，迁移后照样做）、`implementation-trace`（只是单体的实现方式，不是契约）、`migration-change`（迁移本身带来的变化，例如登录改由 Cognito 负责）、`spec-gap`（规格没有规定）；
+- `relaxation`：迁移后的版本可以在一定范围内和单体不同时才写：`order`（列表顺序不作要求）、`alternatives`（允许几种结果之一，`options` 列出）、`freshness`（允许读到稍旧的数据）。写了放宽，这条就归 R 层比较；
+- `affected_cases`：**必须写差异所在的用例 id**，调度器靠它判断哪些差异已经裁定；
+- `deviates_from_monolith`：结论是"迁移后不照搬单体"（例如单体的缺陷要修掉）时写 `true`。这种裁定要人确认后才生效（V2-20），确认之前裁判不会冻结。
+
+原则：
+- 默认照搬单体（`contract`）。只有能说明单体的行为是缺陷、或者属于实现方式时，才选别的；
+- 放宽只放到必要的程度：例如 Scan 没有排序时只放宽顺序，不要放宽内容；
+- 写完在工作报告 `storage/stage_reports/<任务编号>.json` 里逐条列出差异和你的裁定编号。
+
 ## 输出契约：逐字段调用 merge_blueprint_key 构建 blueprint.json
 
 `storage/blueprint.json` 只能有这 10 个顶层 key，`merge_blueprint_key` 会拒绝其他任何 key 名——不要发明新字段：

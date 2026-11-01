@@ -22,7 +22,7 @@ from coord.prompts import worker_prompt  # noqa: E402
 from coord.template import TaskSpec, load_template  # noqa: E402
 from coord.workers import WorkerJob, worker_settings  # noqa: E402
 
-J1 = TaskSpec(id="J1", role="m2s-verifier", mode="J1", deny_read=("monolith",),
+J1 = TaskSpec(id="J1", role="m2s-verifier", mode="J1", deny_read=("monolith", "judge_outputs"),
               scope=("judge/**", "storage/stage_reports/J1.json"))
 
 
@@ -56,6 +56,12 @@ def test_j1_cannot_read_the_monolith(layout):
     for cmd in (f"cat {mono / 'routes' / 'cart.js'}", f"cat {mono.as_posix()}/routes/cart.js",
                 "grep -rn price ../../../mono_benchmark/bookstore", "ls ..\\..\\..\\mono_benchmark"):
         assert not _allowed(c, "bash", read_only=False, command=cmd), cmd
+    # Nor what the monolith did: J1's predictions come from the fact base alone.
+    for rel in ("judge/oracle_expected.json", "judge/masks.json", "judge/coverage_monolith/summary.json",
+                "judge/reconcile.json"):
+        assert not _allowed(c, "read_file", read_only=True, path=ws / rel), rel
+    assert not _allowed(c, "bash", read_only=False, command="cat judge/oracle_expected.json")
+    assert _allowed(c, "read_file", read_only=True, path=ws / "judge" / "cases" / "get-api-cart" / "c.json")
     # What J1 does need stays open.
     assert _allowed(c, "read_file", read_only=True, path=ws / "storage" / "analysis_report.json")
     assert _allowed(c, "write_file", read_only=False, path=ws / "judge" / "cases" / "get-api-cart" / "c.json")
@@ -74,7 +80,7 @@ def test_the_parent_stays_open_when_it_holds_the_workspace(tmp_path: Path):
     """A monolith next to the workspace: only the monolith itself is closed."""
     ws = tmp_path / "proj" / "ws"
     mono = tmp_path / "proj" / "app"
-    dirs, cmds = closed_to(J1, ws, mono)
+    dirs, cmds = closed_to(TaskSpec(id="J1", role="m2s-verifier", deny_read=("monolith",)), ws, mono)
     assert dirs == (str(mono),) and cmds == ("*proj/app*", "*proj\\app*")
     ws_glob = TaskSpec(id="D1", role="m2s-verifier", deny_read=("output/lambdas/**",))
     assert closed_to(ws_glob, ws, mono)[0] == (str(ws / "output" / "lambdas"),)
@@ -96,3 +102,33 @@ def test_template_fields_round_trip(tmp_path: Path):
     spec = load_template("t", path).get("J1")
     assert (spec.mode, spec.deny_read) == ("J1", ("monolith",))
     assert TaskSpec.from_json(spec.to_json()) == spec
+
+
+def test_the_frozen_judge_is_closed_to_writes(layout):
+    ws, mono = layout
+    job = WorkerJob("A1", 1, "m2s-architect", ws, ws / "coord", "ROLE", "do it", ("judge/**",), 100, 60.0,
+                    deny_write=(str(ws / "judge"),))
+    c = checker_mod.PermissionChecker(settings_mod.PermissionSettings(**worker_settings(job, [])["permission"]))
+    assert not _allowed(c, "write_file", read_only=False, path=ws / "judge" / "cases" / "x" / "c.json")
+    assert _allowed(c, "read_file", read_only=True, path=ws / "judge" / "cases" / "x" / "c.json")
+
+
+def test_workers_use_this_repositorys_server_and_role_definitions():
+    from coord import workers
+    assert workers.this_repo_server(["D:\Emma\MyLab\Mono2SLs\m2s-mcp-server\server.py"]) == [str(workers.SERVER_PY)]
+    assert workers.this_repo_server(["-u", "other.py"]) == ["-u", "other.py"]
+    assert workers.AGENTS_DIR == workers.REPO / "m2s-mcp-server" / "agents"
+    assert "## J1" in workers.role_prompt("m2s-verifier") and "MODE: ruling" in workers.role_prompt("m2s-architect")
+
+
+def test_the_v2_judge_template():
+    t = load_template("v2-judge")
+    assert [s.id for s in t.tasks] == ["F2", "J1", "J2", "RC", "J3", "J6"]
+    assert t.get("J1").deny_read == ("monolith", "judge_outputs") and t.get("F2").start == "recheck" and t.get("J3").mode == "J3"
+    assert t.max_reconcile_rounds == 2
+
+
+def test_the_mode_reaches_the_m2s_server(layout):
+    ws, _ = layout
+    job = WorkerJob("J1", 1, "m2s-verifier", ws, ws / "coord", "ROLE", "do it", (), 100, 60.0, mode="J1")
+    assert job.env()["M2S_MODE"] == "J1"

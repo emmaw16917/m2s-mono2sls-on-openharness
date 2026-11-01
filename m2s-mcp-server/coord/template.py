@@ -28,13 +28,16 @@ class TaskSpec:
     # Closed to the worker for reading: "monolith" (the monolith's source), or
     # workspace-relative globs such as "output/lambdas/**" (v2 V2P-06).
     deny_read: tuple[str, ...] = ()
+    # "recheck": the first start runs the checks and spends a worker only if they
+    # fail (a fact base copied from an earlier run; a J3 with nothing to classify).
+    start: str = "spawn"
 
     def to_json(self) -> dict[str, Any]:
         return {
             "id": self.id, "runner": self.runner, "role": self.role, "action": self.action, "line": self.line,
             "deps": list(self.deps), "scope": list(self.scope), "check": list(self.check),
             "on_stale": self.on_stale, "max_turns": self.max_turns, "timeout_min": self.timeout_min,
-            "mode": self.mode, "deny_read": list(self.deny_read),
+            "mode": self.mode, "deny_read": list(self.deny_read), "start": self.start,
         }
 
     @classmethod
@@ -44,7 +47,7 @@ class TaskSpec:
             line=data.get("line"), deps=tuple(data.get("deps") or ()), scope=tuple(data.get("scope") or ()),
             check=tuple(data.get("check") or ()), on_stale=data.get("on_stale", "recheck"),
             max_turns=int(data.get("max_turns", 200)), timeout_min=float(data.get("timeout_min", 120)),
-            mode=data.get("mode"), deny_read=tuple(data.get("deny_read") or ()),
+            mode=data.get("mode"), deny_read=tuple(data.get("deny_read") or ()), start=data.get("start", "spawn"),
         )
 
 
@@ -55,6 +58,7 @@ class Template:
     max_attempts: int = 3
     max_rework_rounds: int = 2
     max_spec_issue_rounds: int = 2
+    max_reconcile_rounds: int = 2  # v2 J3: fact-base <-> monolith reconciliation rounds
     extra: dict[str, Any] = field(default_factory=dict)
 
     def get(self, task_id: str) -> TaskSpec:
@@ -118,6 +122,7 @@ def load_template(name: str = "v1", path: Path | None = None) -> Template:
         max_attempts=int(data.get("max_attempts", 3)),
         max_rework_rounds=int(data.get("max_rework_rounds", 2)),
         max_spec_issue_rounds=int(data.get("max_spec_issue_rounds", 2)),
+        max_reconcile_rounds=int(data.get("max_reconcile_rounds", 2)),
     )
 
 
