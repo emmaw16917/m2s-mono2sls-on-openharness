@@ -1102,3 +1102,12 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **分段模板** `v2-gaps`：G1 → G2 → A1 → D1 → I1 → I2 → V3。I1、I2 先复查，只有 V3 退回或目标没过 gate 才派 worker（新的 `MODE: fix`）。
 - **路径规则**：工作区顶层目录（例如 `output/**`）也拦相对路径的 bash 命令（`cat output/lambdas/x`）。
 - **测试**：`test_gaps.py`（信号、清单、AG、增量测试的检查）、`test_coord_gap_flow.py`（假 worker 覆盖 §4.13 的每条路由和 B0）、`test_coord_j1_perm.py` 增加 D1 的权限测试。
+
+## v2 N4.7：bookstore 上的真实运行，N4 验收（2026-11-03，`bookstore-n4`）
+
+- G1 10 条，G2 核实并补 11 条，A1 全部决定（裁判 15、不需要 5、增量 1），D1 写 15 个用例和 7 个故障场景，V3 在 bookstore-v3a 的 v0 上 15/15 通过，产出 `verdict_delta.json`、覆盖率和 `fault_baseline_B0.json`。worker 都是第一次尝试通过。
+- **测试先于代码**不靠约定：先用 `--stop-after D1` 跑到 D1，工作区里没有 `output/`，再放入代码、接着跑。`storage/N4_SOURCE.json` 记录了测试的摘要和两个时间。
+- **修掉的问题**：要人确认的决定写在工作报告 `issues` 里没有人读。角色说明改为外部可观察的偏离都走 `record_ruling(deviates_from_monolith=true)`；运行报告增加"缺口清单"和"工作报告里要人看的内容"。
+- **对照**（临时副本，不是流水线的一部分）：去掉幂等条件、去掉发消息都被抓住；去掉发消息的 `await` 没有被抓住（V2P-22）。
+- 抽查"由裁判验证"的决定：15 条里 14 条没有写出用例（V2P-23）。
+- `bookstore-j2` 的裁判升到 v2（V2P-18）：v3a 上 12 个只差 stack 的故障场景不再失败，还有 15 个用例失败，都是迁移变化，要在 N5 裁定。
