@@ -499,3 +499,22 @@ def test_records_do_not_name_the_proxys_random_port():
             "127.0.0.1:557670 http://127.0.0.1:5000/ localhost:55767', 55767));")
     out = subprocess.run([NODE, "-e", code], cwd=TOOLS, capture_output=True, text=True, encoding="utf-8", check=True).stdout.strip()
     assert out == 'URL: "http://m2s-proxy/". http://m2s-proxy/q 127.0.0.1:557670 http://127.0.0.1:5000/ http://m2s-proxy'
+
+
+def test_a_stack_trace_is_masked_and_the_target_only_needs_a_string():
+    """V2P-18: the monolith's stack is the same in every pass, and no target can repeat it."""
+    stack = "ValidationException: nope\n    at Request.extractError (D:\\mono\\json.js:80:27)\n    at emit (x.js:1:2)"
+    py = 'Traceback (most recent call last):\n  File "app.py", line 3, in f\nValueError: x'
+    s = judge.Symbolizer()
+    body = {"error": "nope", "stack": stack, "py": py, "text": "line one\nline two at the end"}
+    t = s.walk(body, dict(body))
+    assert t["error"] == "nope" and t["text"] == body["text"]
+    assert t["stack"].startswith("<trace#") and t["py"].startswith("<trace#")
+    assert judge.free_symbol(t["stack"]) and s.unstable == []
+    other = "ValidationException: nope\n    at ProtocolLib.get (/var/task/x.js:79:67)"
+    assert judge.unify(t, {**body, "stack": other, "py": "whatever"}, {}) == []
+    # the error text is still compared, and so is whether there is a stack at all
+    assert judge.unify(t, {**body, "error": "other", "stack": other}, {})[0]["path"] == "error"
+    assert judge.unify(t, {**body, "stack": 5}, {})[0]["why"].startswith("expected a string")
+    missing = {k: v for k, v in body.items() if k != "stack"}
+    assert judge.unify(t, missing, {})[0]["missing"] == ["stack"]

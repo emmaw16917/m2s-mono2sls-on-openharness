@@ -792,6 +792,10 @@ def check_judge_assets(ws: Path | str) -> dict[str, Any]:
 # each occurrence only says "a volatile value here", because two of them can
 # be equal by coincidence (a refresh issued within the same second as the
 # login returns the very same JWT; createdAt == updatedAt).
+#
+# A stack trace in a response (V2P-18) is the same in every pass, yet it is the
+# monolith's own file paths and lines, which no target can repeat: it is masked
+# as a free symbol too, and the target only needs a string in that place.
 
 SYMBOL_PAT = r"<(?:[a-z]+#\d+|[A-Za-z_]\w*:[a-z][a-z0-9_]*)>"
 SYMBOL_RE = re.compile(SYMBOL_PAT)
@@ -805,7 +809,8 @@ VOLATILE_PATTERNS = (
     ("num", r"(?<!\d)\d{9,}(?!\d)"),
 )
 TOKEN_RE = re.compile("|".join(f"(?P<{n}>{p})" for n, p in VOLATILE_PATTERNS))
-FREE_CLASSES = frozenset({"time", "token", "hash", "num"})
+FREE_CLASSES = frozenset({"time", "token", "hash", "num", "trace"})
+STACK_RE = re.compile(r"\n\s+at \S|^Traceback \(most recent call last\):\n")
 
 
 def free_symbol(symbol: str) -> bool:
@@ -954,6 +959,8 @@ class Symbolizer:
             forced = next((cls for rx, cls in self.forced if rx.match(path)), None)
             if forced is not None and a is not None and b is not None:
                 return self._note(path, self._pair(a, b, path, forced))
+            if isinstance(a, str) and isinstance(b, str) and STACK_RE.search(a) and STACK_RE.search(b):
+                return self._note(path, self._pair(a, b, path, "trace"))
             if _jkey(a) == _jkey(b):
                 return a
             if isinstance(a, str) and isinstance(b, str):
@@ -1038,6 +1045,8 @@ def unify(template: Any, actual: Any, bindings: dict[str, Any], path: str = "",
     if isinstance(template, str) and SYMBOL_RE.search(template):
         if WHOLE_SYMBOL_RE.match(template):
             if free_symbol(template):
+                if template.startswith("<trace#") and not isinstance(actual, str):
+                    return miss("expected a string (a stack trace in the monolith)")
                 return out if _scalar(actual) else miss("expected a single value")
             if template in bindings:
                 return out if _same(bindings[template], actual) else miss(f"{template} is {bindings[template]!r} elsewhere")
