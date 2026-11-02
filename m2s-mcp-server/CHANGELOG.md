@@ -1028,10 +1028,17 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
   - 比对（P 层）：状态码；声明过的响应头（全局中间件的头、事实库里写了的头、`content-type`），两边任一方有就比，`content-type` 只比媒体类型；响应体逐个符号比对，屏蔽表里的无序列表按集合比较；表内容只比没有任何端点读的表（V2P-03），其余的差别只列在 `table_differences` 里供分诊参考；
   - R 层和裁定：用例上有生效的 `order` 裁定时所有列表按集合比较；`migration-change` 裁定覆盖的失败记为 `migration-change`；`alternatives` 和 `implementation-trace` 记为 `ruled`；
   - 产出 `verification/verdict_judge.json`：逐个用例（和故障场景下的用例）、逐步的结果，失败的写明函数、端点、事实出处、期望、实际和原因。
-- **N2.4 `check_adapter`**（`judge.py`，MCP 工具同名，V1）：用裁判里只读、并且写了 fixtures 的用例，在目标上读同一份数据，只看"单体返回 2xx、目标由函数作答"的读数据步骤；错误、校验、鉴权这些步骤的差别和映射无关，单列出来交给 `run_judge`。写 `verification/check_adapter.json`。
+- **N2.4 `check_adapter`**（`judge.py`，MCP 工具同名，V1）：用裁判里只读、并且写了 fixtures 的用例，在目标上读同一份数据，只看"单体返回 2xx、目标由函数作答"的读数据步骤的状态码和响应体；头的差别、以及错误、校验、鉴权这些步骤的差别都和映射无关，单列出来交给 `run_judge`（头这一条是 N2.5 里补的，见下节）。写 `verification/check_adapter.json`。
 - **调度器**：新动作 `check_adapter`（V1）和 `run_judge`（V2），新检查 `adapter_map`；分段模板 `coord/templates/v2-adapter.yaml`：AM（architect 的 adapter 模式，`output/lambdas/**` 对它关闭）→ V1 → V2。
 - **在 bookstore-v3a 的 v0 上验证**（开发用的工作区：v0 的代码、bookstore-j1 冻结的裁判、手写的映射）：
   - N2.2：手写的多步用例"两本书加入购物车 → 下单 → 读畅销榜 → 再下单 → 再读"在 RIE 里通过，两次读到的顺序随订单变化，畅销榜的计数来自投递给 bestsellers-update 的 SQS 消息；
   - N2.4：正确的映射 `check_adapter` 通过（15 个用例、26 个读数据步骤）；把图书的 `name` 故意映射成 `title` 之后，10 个用例失败，每处都报"少了 name、多了 title"；
   - 全量 `run_judge`：91 个单元（68 个用例 + 23 个故障场景下的用例）在 RIE 里 138 秒。结果和分诊见 N2.5。
 - **测试**：`test_adapter.py` 9 个（bookstore 的映射能表达 users → Cognito 和身份映射、各种字段变换的正反向、缺表缺键、拒绝代码、复合键没有分隔符、往返不一致）；`test_judge_target.py` 10 个（符号比对、声明过的头和媒体类型、无序列表、R 层 order 裁定和 migration-change、不运行的步骤和只写不读的表、路由和网关的回答、身份和故障规则的映射、AM 检查、模板；另有一个 judge-run.js 的集成测试：本机 Node + dynalite 上的合成 API，覆盖路由、共用表、带重投递的 SQS、匿名和伪造令牌的 401、没有路由和去掉的端点）。
+
+## v2 N2.5：冻结的裁判检验两个 v1 产物（2026-11-02，`bookstore-v3a-n2`、`bookstore-v2-n2`）
+
+- 两个检验用的工作区从各自的 `v0` tag 取出代码和蓝图，裁判和事实库取自 `bookstore-j1`；模板 `v2-adapter`，真实 worker。两份适配映射都是 architect 第一次尝试写成，`check_adapter` 都通过；
+- 结果和逐条分诊写在 `judge_on_v1.md`：bookstore-v3a 的不过全部是 v1 裁定过的迁移变化和一类裁判本身的问题（单体的调用栈内容）；bookstore-v2 找到 5 类 v1 测试漏掉的实现缺陷（缺 `Access-Control-Allow-Credentials`、网关 401 没有 CORS 头、错误体缺 `stack`、解析失败的 JSON 回 500、form 编码的请求体回 500）；
+- **修掉的问题**：`check_adapter` 把读数据步骤上的头差异也算成映射错误，bookstore-v2 的 V1 因此不过，处理者把它交给人（映射本身没问题）。现在 `check_adapter` 只看读数据步骤的状态码和响应体（`adapter_failures`），其余列在 `other_differences`；测试 1 个；
+- 提议 V2P-16（`content-type` 只比媒体类型）、V2P-17（`check_adapter` 的判定范围）、V2P-18（单体的调用栈按实现轨迹处理，需要重新冻结裁判），见方案 §11。
