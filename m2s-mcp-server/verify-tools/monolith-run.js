@@ -58,7 +58,7 @@ function freePort() {
 
 // ---------------------------------------------------------------- the monolith process
 
-async function startMonolith(proxyPort) {
+async function startMonolith(proxyPort, root = job.monolith_root) {
   const run = job.run || {};
   const port = await freePort();
   const covPort = job.coverage ? await freePort() : 0;
@@ -81,12 +81,12 @@ async function startMonolith(proxyPort) {
     // PYTHONDONTWRITEBYTECODE: no __pycache__ is written into the monolith's source tree.
     Object.assign(env, { PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' });
     delete env.PYTHONPATH; delete env.PYTHONHOME;
-    proc = spawn(run.python, [path.join(__dirname, 'py', 'm2s_monolith.py'), job.monolith_root, run.app, String(port),
-      run.debug ? '1' : '0'], { cwd: job.monolith_root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+    proc = spawn(run.python, [path.join(__dirname, 'py', 'm2s_monolith.py'), root, run.app, String(port),
+      run.debug ? '1' : '0'], { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
   } else {
     const preload = path.join(__dirname, 'monolith-preload.js');
     proc = spawn(process.execPath, ['-r', preload, run.entry, ...(run.args || [])],
-      { cwd: job.monolith_root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+      { cwd: root, env, stdio: ['ignore', 'pipe', 'pipe'] });
   }
   const logs = [];
   proc.stdout.on('data', (d) => logs.push(d.toString()));
@@ -108,12 +108,12 @@ async function startMonolith(proxyPort) {
 
 // One retry: a start that fails once (a cold node_modules, a port taken in
 // between) is not yet the monolith's problem.
-async function startMonolithRetry(proxyPort) {
+async function startMonolithRetry(proxyPort, root) {
   try {
-    return await startMonolith(proxyPort);
+    return await startMonolith(proxyPort, root);
   } catch (e) {
     log('start failed, retrying once:', String(e.message || e).split('\n')[0]);
-    return startMonolith(proxyPort);
+    return startMonolith(proxyPort, root);
   }
 }
 
@@ -325,12 +325,55 @@ async function runUnit(be, mono, unit, withCoverage) {
   };
 }
 
+// J5 (run_mutants): each mutant is a copy of the monolith (job.mutants[i].root) with
+// one change, or the original with extra proxy rules ("drop" a write) or with the
+// proxy taking one request at a time (serial). One pass of the listed units each.
+async function runMutants(be, out) {
+  const byId = Object.fromEntries(job.units.map((u) => [u.id, u]));
+  out.mutants = [];
+  for (const m of job.mutants) {
+    const res = { id: m.id, units: [] };
+    let mono;
+    try {
+      mono = await startMonolithRetry(be.proxyPort, m.root || job.monolith_root);
+    } catch (e) {
+      res.start_error = String(e.message || e).slice(-3000);
+      out.mutants.push(res);
+      continue;
+    }
+    be.setSerial(Boolean(m.serial));
+    try {
+      for (const uid of m.units) {
+        if (mono.exited !== null) {
+          res.restarts = (res.restarts || 0) + 1;
+          mono = await startMonolithRetry(be.proxyPort, m.root || job.monolith_root);
+        }
+        const unit = byId[uid];
+        res.units.push(await runUnit(be, mono, { ...unit, rules: [...(unit.rules || []), ...(m.rules || [])] }, false));
+      }
+    } catch (e) {
+      res.error = String(e.stack || e).slice(-3000);
+    } finally {
+      be.setSerial(false);
+      await stopMonolith(mono);
+      res.logs_tail = mono.logs.join('').slice(-1500);
+    }
+    out.mutants.push(res);
+    log('mutant', m.id, 'done:', res.units.length, 'units');
+  }
+}
+
 async function main() {
   const be = await startBackend({ backend: job.backend, ddbLocal: job.ddb_local, tables: job.tables, bindHost: '127.0.0.1' });
   await be.createTables();
   const out = { backend: job.backend === 'ddblocal' ? 'ddblocal' : 'dynalite', node: process.version, passes: [],
                 load_coverage: null, monolith_logs: [] };
   try {
+    if (job.mutants) {
+      await runMutants(be, out);
+      fs.writeFileSync(path.join(OUT, 'monolith_raw.json'), JSON.stringify(out, null, 1));
+      return;
+    }
     let lastStart = 0;
     for (let pass = 0; pass < (job.passes || 3); pass++) {
       await sleep(Math.max(0, lastStart + (job.pass_gap_ms || 1100) - Date.now()));

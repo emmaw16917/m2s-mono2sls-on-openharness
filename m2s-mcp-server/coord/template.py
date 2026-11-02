@@ -59,6 +59,7 @@ class Template:
     max_rework_rounds: int = 2
     max_spec_issue_rounds: int = 2
     max_reconcile_rounds: int = 2  # v2 J3: fact-base <-> monolith reconciliation rounds
+    max_strength_rounds: int = 2  # v2 J4/J5: white-box cases for the mutants the judge missed
     extra: dict[str, Any] = field(default_factory=dict)
 
     def get(self, task_id: str) -> TaskSpec:
@@ -123,6 +124,7 @@ def load_template(name: str = "v1", path: Path | None = None) -> Template:
         max_rework_rounds=int(data.get("max_rework_rounds", 2)),
         max_spec_issue_rounds=int(data.get("max_spec_issue_rounds", 2)),
         max_reconcile_rounds=int(data.get("max_reconcile_rounds", 2)),
+        max_strength_rounds=int(data.get("max_strength_rounds", 2)),
     )
 
 

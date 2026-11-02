@@ -195,6 +195,17 @@ def adapter_map(ws: Path) -> CheckResult:
                        detail=result, relay="" if ok else "check_adapter_map 报告的问题：\n" + _clip("\n".join(result["errors"])))
 
 
+def mutant_classes(ws: Path) -> CheckResult:
+    """J5: every mutant the judge did not catch is classified (equivalent / gap)."""
+    import mutants
+
+    result = mutants.check_mutant_classes(ws)
+    ok = result["status"] == "PASS"
+    return CheckResult("mutant_classes", ok, f"{result.get('survivors', 0)} uncaught mutants"
+                       + (f", classes {result.get('classes')}" if ok else f", {len(result['errors'])} problems"),
+                       detail=result, relay="" if ok else "judge/mutant_classes.json 的问题：\n" + _clip("\n".join(result["errors"])))
+
+
 def judge_unchanged(ws: Path) -> CheckResult:
     """The frozen judge still has the hashes of its manifest (v2 §4.7)."""
     import judge
@@ -211,6 +222,7 @@ CHECKS: dict[str, Callable[[Path], CheckResult]] = {
     "judge_unchanged": judge_unchanged,
     "reconcile_classified": reconcile_classified,
     "adapter_map": adapter_map,
+    "mutant_classes": mutant_classes,
     "analysis_report": analysis_report,
     "check_provenance": check_provenance,
     "blueprint_keys": blueprint_keys,

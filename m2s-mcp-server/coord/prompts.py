@@ -51,6 +51,11 @@ MODE_SUMMARIES = {
           "mask_gap 要同时在 judge/mask_rules.json 里补屏蔽规则。按你的角色说明里\"J3\"一节做。",
     "ruling": "MODE: ruling。规格对账发现单体的某些行为需要裁定，差异清单在下面的回炉信息里。按你的角色说明里"
               "\"ruling\"一节，逐条用 mcp__m2s-server__record_ruling 裁定。",
+    "J4": "MODE: J4。白盒补测：可以读单体源码。按 judge/coverage_monolith/summary.json 里还没走到的行（第二轮起还有"
+          "回炉信息里的 gap 变异体）补用例 judge/cases/<接口 slug>/wb-*.json；代码里有、事实库没有的规则写进 "
+          "judge/spec_issues.json。按你的角色说明里\"J4\"一节做，用 mcp__m2s-server__check_judge_assets 自查到 PASS。",
+    "J5": "MODE: J5。给 judge/judge_validation.json 里没被抓住的变异体分类（equivalent / gap），写进 "
+          "judge/mutant_classes.json。按你的角色说明里\"J5\"一节做，用 mcp__m2s-server__check_mutant_classes 自查到 PASS。",
     "adapter": "MODE: adapter。迁移已经完成（blueprint 和 output/ 都在），只缺适配映射：按你的角色说明里"
                "\"适配映射\"和\"MODE: adapter\"两节，写 storage/adapter_map.json，用 "
                "mcp__m2s-server__check_adapter_map 自查到 PASS。不改 blueprint，不读 output/lambdas/ 下的代码，不改 judge/。",

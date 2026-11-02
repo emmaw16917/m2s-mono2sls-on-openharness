@@ -303,6 +303,18 @@ def run_judge(ref: str = "", mode: str = "auto", cases: list[str] | None = None)
 
 
 @mcp.tool()
+def check_mutant_classes() -> str:
+    """J5 self-check: every mutant judge/judge_validation.json lists as not caught
+    (survived, not_covered, trace_only) has a class in judge/mutant_classes.json
+    ({mutant id: {class: equivalent | gap, reason, suggest?}}).
+
+    Returns: JSON {status: PASS|FAIL, survivors, classes (counts), errors}.
+    """
+    import mutants
+    return json.dumps(mutants.check_mutant_classes(_workspace()), ensure_ascii=False)
+
+
+@mcp.tool()
 def check_reconcile_classes() -> str:
     """J3 self-check: every difference in judge/reconcile.json has a class in
     judge/reconcile_classes.json ({difference id: {class, reason, fact_ref?,

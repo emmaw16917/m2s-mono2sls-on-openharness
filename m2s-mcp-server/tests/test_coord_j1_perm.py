@@ -123,9 +123,11 @@ def test_workers_use_this_repositorys_server_and_role_definitions():
 
 def test_the_v2_judge_template():
     t = load_template("v2-judge")
-    assert [s.id for s in t.tasks] == ["F2", "J1", "J2", "RC", "J3", "J6"]
+    assert [s.id for s in t.tasks] == ["F2", "J1", "J2", "RC", "J3", "J4", "J5", "J5C", "J6"]
     assert t.get("J1").deny_read == ("monolith", "judge_outputs") and t.get("F2").start == "recheck" and t.get("J3").mode == "J3"
-    assert t.max_reconcile_rounds == 2
+    assert t.get("J1").start == "recheck" and t.get("J4").deny_read == () and t.get("J4").on_stale == "recheck"
+    assert (t.get("J5").action, t.get("J5C").mode, t.get("J6").deps) == ("run_mutants", "J5", ("J5C",))
+    assert t.max_reconcile_rounds == 2 and t.max_strength_rounds == 2
 
 
 def test_the_mode_reaches_the_m2s_server(layout):

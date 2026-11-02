@@ -215,11 +215,22 @@ async function startBackend(opts) {
     dynPort = await listen(dyn, '127.0.0.1');
   }
 
+  // J5's reverse mutant ("parallel -> serial"): with serial on, the proxy takes
+  // one request at a time, in arrival order -- the calls a monolith makes
+  // concurrently take effect one after the other.
+  let serial = false;
+  let queue = Promise.resolve();
   const proxy = http.createServer((req, res) => {
     const chunks = [];
     req.on('data', (c) => chunks.push(c));
     req.on('end', () => {
       const raw = Buffer.concat(chunks);
+      const run = () => new Promise((resolve) => { res.on('close', resolve); handle(req, res, raw); });
+      if (serial) queue = queue.then(run, run); else run();
+    });
+  });
+
+  function handle(req, res, raw) {
       const target = req.headers['x-amz-target'] || '';
       const [prefix, op] = target.split('.');
       const service = prefix === 'AmazonSQS' ? 'sqs' : prefix.startsWith('DynamoDB') ? 'dynamodb' : 'unknown';
@@ -249,6 +260,11 @@ async function startBackend(opts) {
       if (fault) call.fault = fault;
       ctx && ctx.calls.push(call);
       if (fault === 'network') { req.socket.destroy(); return; }
+      if (fault === 'drop' && service === 'dynamodb') {
+        // J5's "remove a write" mutant: the write is answered as done, never applied.
+        res.writeHead(200, { 'content-type': 'application/x-amz-json-1.0' });
+        return res.end(op === 'BatchWriteItem' ? '{"UnprocessedItems":{}}' : '{}');
+      }
       if (fault === 'tx_conflict' && service === 'dynamodb') {
         // What real DynamoDB returns when an overlapping transaction is in
         // flight: the transaction is cancelled; the conflicting item's reason
@@ -320,8 +336,7 @@ async function startBackend(opts) {
       });
       fwd.on('error', (e) => { done(); res.writeHead(500); res.end(String(e)); });
       fwd.end(raw);
-    });
-  });
+  }
   const proxyPort = await listen(proxy, opts.bindHost || '127.0.0.1');
 
   const admin = new DynamoDBClient({ region: 'us-east-1', endpoint: 'http://127.0.0.1:' + dynPort, credentials: { accessKeyId: 'x', secretAccessKey: 'x' } });
@@ -341,6 +356,7 @@ async function startBackend(opts) {
   return {
     proxyPort, dynPort, admin, doc, proxy, dyn,
     get ctx() { return ctx; },
+    setSerial(on) { serial = Boolean(on); },
     // Start recording a case: its calls, its SQS messages, its fault rules.
     beginCase(rules) {
       ctx = { calls: [], messages: [], seen: {}, inflight: 0, last: Date.now(), returned: false,

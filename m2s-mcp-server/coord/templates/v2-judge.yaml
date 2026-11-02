@@ -1,5 +1,9 @@
-# The v2 judge line as a segment template (PIPELINE_V2_PLAN.md §5 N1.7):
-# fact base -> J1 cases -> J2 run on the monolith -> J3 reconcile -> J6 freeze.
+# The v2 judge line as a segment template (PIPELINE_V2_PLAN.md §5 N1.7, N3):
+# fact base -> J1 cases -> J2 run on the monolith -> J3 reconcile -> J4 white-box cases
+# -> J5 mutants (run_mutants, then J5C classifies the survivors) -> J6 freeze.
+# J4's spec issues go to F2; its new cases make J2 run again; J5C's gaps go back to J4
+# (max_strength_rounds). J1 starts with a recheck too: a workspace that already has
+# passing cases (an earlier judge) spends no J1 worker.
 #
 # The workspace starts from an earlier run's fact base (storage/analysis_report.json
 # and symbol_table.json copied, F3 passed), so there is no F1 here and F2 starts
@@ -13,6 +17,7 @@ name: v2-judge
 max_attempts: 3
 max_rework_rounds: 2
 max_reconcile_rounds: 2
+max_strength_rounds: 2
 tasks:
   - id: F2
     role: m2s-spec-annotator
@@ -25,6 +30,7 @@ tasks:
   - id: J1
     role: m2s-verifier
     mode: J1
+    start: recheck
     deps: [F2]
     deny_read: [monolith, judge_outputs]
     scope: [judge/cases/**, judge/fixtures/**, judge/faults/**, judge/identities.json, judge/run_config.json,
@@ -56,8 +62,34 @@ tasks:
     max_turns: 200
     timeout_min: 120
 
+  - id: J4
+    role: m2s-verifier
+    mode: J4
+    deps: [J3]
+    on_stale: recheck
+    scope: [judge/cases/**, judge/fixtures/**, judge/faults/**, judge/spec_issues.json, storage/stage_reports/J4.json]
+    check: [judge_assets]
+    max_turns: 250
+    timeout_min: 150
+
+  - id: J5
+    runner: dispatcher
+    action: run_mutants
+    deps: [J4]
+    scope: [judge/judge_validation.json]
+
+  - id: J5C
+    role: m2s-verifier
+    mode: J5
+    start: recheck
+    deps: [J5]
+    scope: [judge/mutant_classes.json, storage/stage_reports/J5C.json]
+    check: [mutant_classes]
+    max_turns: 150
+    timeout_min: 90
+
   - id: J6
     runner: dispatcher
     action: freeze_judge
-    deps: [J3]
+    deps: [J5C]
     scope: [judge/judge_manifest.json, judge/reconcile.json, judge/reconcile_classes.json]

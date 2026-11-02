@@ -72,7 +72,9 @@ BODY_OPS = ("equals", "subset", "contains", "not_contains", "has_fields", "types
 HEADER_OPS = ("equals", "contains", "absent", "count")
 STEP_KEYS = {"name", "method", "path", "query", "headers", "body", "form", "raw_body", "identity", "save",
              "read_back", "note"}
-CASE_KEYS = {"id", "endpoint", "layer", "title", "fact_refs", "fixtures", "identity", "steps", "predicted", "note"}
+CASE_KEYS = {"id", "endpoint", "layer", "title", "fact_refs", "fixtures", "identity", "steps", "predicted", "note",
+             # J4: the spec issues (judge/spec_issues.json) a white-box case depends on
+             "spec_issues"}
 RUN_CONFIG_KEYS = {"runtime": str, "entry": str, "args": list, "port_env": str, "env": dict, "ready_path": str,
                    "startup_timeout_s": int, "note": str,
                    # Python monoliths: the interpreter (default: a venv from requirements.txt),
@@ -139,7 +141,7 @@ def load_assets(ws: Path | str) -> dict[str, Any]:
             f = {"_file": _rel(ws, p), "_load_error": "a fault scenario must be a JSON object"}
         faults.append(f)
     opt = {name: (_read(jd / f"{name}.json") if (jd / f"{name}.json").is_file() else None)
-           for name in ("identities", "run_config", "uncovered")}
+           for name in ("identities", "run_config", "uncovered", "spec_issues")}
     return {"cases": cases, "fixtures": fixtures, "faults": faults, **opt}
 
 
@@ -596,6 +598,52 @@ def _check_run_config(facts: Facts, rc: Any) -> list[str]:
     return errs
 
 
+SPEC_ISSUE_KINDS = ("missing", "wrong")
+
+
+def _check_spec_issues(facts: Facts, issues: Any) -> tuple[list[str], set[str]]:
+    """judge/spec_issues.json (J4): rules the monolith's code has and the fact base
+    lacks (missing) or states otherwise (wrong); F2 puts them into the facts."""
+    where = "judge/spec_issues.json"
+    if not isinstance(issues, list):
+        return [f"{where}: must be a list of {{id, endpoint, kind, rule, evidence, status?}}"], set()
+    errs, ids = [], set()
+    for i, x in enumerate(issues):
+        w = f"{where}[{i}]"
+        if not isinstance(x, dict):
+            errs.append(f"{w}: must be an object")
+            continue
+        if set(x) - {"id", "endpoint", "kind", "rule", "evidence", "status", "cases", "note"}:
+            errs.append(f"{w}: unknown keys {sorted(set(x) - {'id', 'endpoint', 'kind', 'rule', 'evidence', 'status', 'cases', 'note'})}")
+        if not isinstance(x.get("id"), str) or not NAME_RE.match(x["id"]) or x["id"] in ids:
+            errs.append(f"{w}: id must be a unique name (e.g. \"J4-1\")")
+        else:
+            ids.add(x["id"])
+        if x.get("endpoint") not in facts.entry_points:
+            errs.append(f"{w}: endpoint {x.get('endpoint')!r} is not an entry point of the fact base")
+        if x.get("kind") not in SPEC_ISSUE_KINDS:
+            errs.append(f"{w}: kind must be one of {SPEC_ISSUE_KINDS}")
+        if not str(x.get("rule") or "").strip():
+            errs.append(f"{w}: rule (what the code does) is required")
+        ev = x.get("evidence")
+        if not isinstance(ev, list) or not ev or not all(isinstance(e, dict) and isinstance(e.get("file"), str)
+                                                         and isinstance(e.get("line"), int) for e in ev):
+            errs.append(f"{w}: evidence must be a non-empty list of {{file, line}} in the monolith's code")
+        if x.get("status", "open") not in ("open", "routed", "resolved"):
+            errs.append(f"{w}: status is open, routed or resolved")
+    return errs, ids
+
+
+def _mutation_summary(jd: Path) -> dict[str, Any] | None:
+    """The J5 result frozen into the manifest (judge/judge_validation.json)."""
+    v = _read(jd / "judge_validation.json") if (jd / "judge_validation.json").is_file() else None
+    if not isinstance(v, dict) or "summary" not in v:
+        return None
+    s = v["summary"]
+    return {k: s.get(k) for k in ("score", "mutants", "killed", "survived", "not_covered", "trace_only", "invalid",
+                                  "equivalent", "reverse", "reverse_ok")}
+
+
 def check_judge_assets(ws: Path | str) -> dict[str, Any]:
     """J1's completion check: format, references, and coverage of the fact base."""
     ws = Path(ws)
@@ -629,6 +677,16 @@ def check_judge_assets(ws: Path | str) -> dict[str, Any]:
         errs += _check_fault(facts, f, set(ids))
     if a["run_config"] is not None:
         errs += _check_run_config(facts, a["run_config"])
+    issue_ids = set()
+    if a.get("spec_issues") is not None:
+        e, issue_ids = _check_spec_issues(facts, a["spec_issues"])
+        errs += e
+    for c in a["cases"]:
+        si = c.get("spec_issues")
+        if si is not None and not (isinstance(si, list) and all(isinstance(x, str) for x in si)):
+            errs.append(f"{c.get('_file')}: spec_issues must be a list of issue ids (judge/spec_issues.json)")
+        elif si:
+            errs += [f"{c.get('_file')}: spec issue {x!r} is not in judge/spec_issues.json" for x in si if x not in issue_ids]
     if (judge_dir(ws) / "mask_rules.json").is_file():
         errs += _check_mask_rules(_read(judge_dir(ws) / "mask_rules.json"), set(ids))
 
@@ -1789,7 +1847,7 @@ def freeze_judge(ws: Path | str, refreeze: bool = False) -> dict[str, Any]:
         "required_responses": s["required_responses"], "business_rules": s["business_rules"],
         "exempted": s["exempted"],
         "coverage": {k: cov.get(k) for k in ("lines", "percent")} if isinstance(cov, dict) and cov else None,
-        "mutation_score": None,  # J5, N3
+        "mutation_score": _mutation_summary(jd),
         "reconcile": {"differences": 0, "settled_by_rulings": rec["resolved_by_rulings"] if rec else 0},
         "rulings": [r["id"] for r in (rulings_data.get("rulings") or []) if r.get("status") in ("decided", "confirmed")]
         if isinstance(rulings_data, dict) else [],

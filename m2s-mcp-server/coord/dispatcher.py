@@ -202,7 +202,7 @@ class Dispatcher:
                         "final": self._act_final, "human": self._act_human,
                         "run_monolith": self._act_run_monolith, "reconcile_spec": self._act_reconcile,
                         "freeze_judge": self._act_freeze, "check_adapter": self._act_check_adapter,
-                        "run_judge": self._act_run_judge, **(actions or {})}
+                        "run_judge": self._act_run_judge, "run_mutants": self._act_run_mutants, **(actions or {})}
         self.max_workers = max_workers
         self.poll_s = poll_s
         self.handler_enabled = handler
@@ -613,7 +613,7 @@ class Dispatcher:
     def _rework_budget_ok(self, target: str) -> bool:
         # spec_issues and reconcile rounds have their own limits
         used = sum(1 for e in self.events.of_task(target, "round_start")
-                   if e.get("cause") == "rework" and e.get("reason") not in ("spec_issues", "human", "reconcile"))
+                   if e.get("cause") == "rework" and e.get("reason") not in ("spec_issues", "human", "reconcile", "spec_issues_j4", "strength"))
         return used < self.template.max_rework_rounds
 
     def _request_rework(self, target: str, feedback: str, reason: str, by: str, mode: str = "rerun") -> None:
@@ -818,6 +818,10 @@ class Dispatcher:
     def _flow_after_close(self, task_id: str) -> None:
         if self._spec(task_id).mode == "J3":
             self._after_j3(task_id)
+        elif self._spec(task_id).mode == "J4":
+            self._after_j4(task_id)
+        elif self._spec(task_id).mode == "J5":
+            self._after_j5(task_id)
         elif task_id == "V1":
             self._after_v1()
         elif task_id == "TAG_V0" and self.phase_review:
@@ -983,6 +987,58 @@ class Dispatcher:
             self._human_gate("HUMAN_RECONCILE", "规格对账的这些差异在模板里没有可以退回的任务：" + show(unrouted), blocks)
         self.log(f"{j3}: reconcile round {rnd}: " + ", ".join(f"{k} {len(v)}" for k, v in groups.items() if v))
 
+    def _after_j4(self, j4: str) -> None:
+        """J4 added white-box cases (§4.10): rules the code has and the facts lack
+        (judge/spec_issues.json, status open) go to F2, which puts them into the fact
+        base; new or changed cases make J2 run the monolith again (and what follows).
+        J4 itself rechecks when it goes stale, so this does not loop."""
+        import judge
+
+        jd = judge.judge_dir(self.ws)
+        issues = judge._read(jd / "spec_issues.json") if (jd / "spec_issues.json").is_file() else []
+        routed = {i for e in self.events.all() if e["type"] == "spec_issues_routed" for i in e.get("ids") or []}
+        fresh = [i for i in issues if isinstance(i, dict) and i.get("status", "open") == "open" and i.get("id") not in routed] \
+            if isinstance(issues, list) else []
+        j2 = self._task_by(action="run_monolith", upstream_of=j4)
+        f2 = self._task_by(role="m2s-spec-annotator", upstream_of=j4)
+        if fresh:
+            if f2:
+                self.events.append("spec_issues_routed", task=j4, to=f2, ids=[i["id"] for i in fresh])
+                self._request_rework(f2, "白盒补测（J4）在单体代码里发现了事实库没有、或者写错了的规则（judge/spec_issues.json）。"
+                                     "按代码核实，用 annotate_entry_point 补进或修正事实库（每条都带出处），不要改动无关的事实；"
+                                     "改完 check_provenance 必须 PASS：\n" + _clip(json.dumps(fresh, ensure_ascii=False, indent=1)),
+                                     reason="spec_issues_j4", by=j4)
+                self.log(f"{j4}: {len(fresh)} spec issues -> {f2}")
+                return  # F2's rework makes everything after it stale, J2 included
+            self._human_gate("HUMAN_SPEC_ISSUES_J4", f"J4 报了 {len(fresh)} 条规格问题，模板里没有 annotator 任务可以退回："
+                             + json.dumps([i.get("id") for i in fresh], ensure_ascii=False), self._next_tasks(j4))
+            return
+        oracle = judge._read(jd / "oracle_expected.json") if (jd / "oracle_expected.json").is_file() else {}
+        if j2 and (oracle.get("meta") or {}).get("inputs_sha") != judge.inputs_sha(self.ws):
+            self.events.append("strength_cases", task=j4)
+            self._make_stale([j2], by=j4)
+            self.log(f"{j4}: new or changed cases -> {j2} runs the monolith again")
+
+    def _after_j5(self, j5c: str) -> None:
+        """Mutants the J5 classification calls gaps go back to J4 (max_strength_rounds);
+        after that the judge freezes with the score as it is."""
+        import mutants
+
+        found = mutants.gaps(self.ws)
+        if not found:
+            return
+        j4 = self._task_by(mode="J4", upstream_of=j5c)
+        done = self.events.count("strength_round")
+        if not j4 or done >= self.template.max_strength_rounds:
+            self.events.append("strength_gaps_left", task=j5c, ids=[g["id"] for g in found])
+            self.log(f"{j5c}: {len(found)} gaps left after {done} rounds; the score is frozen as it is")
+            return
+        self.events.append("strength_round", task=j5c, round=done + 1, ids=[g["id"] for g in found])
+        self._request_rework(j4, "变异检验（J5）有这些变异体没被现有用例抓住，分类判为 gap（改动会改变外部行为）。"
+                             "为每一个补一个能看出差别的用例（`suggest` 是分类时的建议）：\n"
+                             + _clip(json.dumps(found, ensure_ascii=False, indent=1)), reason="strength", by=j5c)
+        self.log(f"{j5c}: strength round {done + 1}: {len(found)} gaps -> {j4}")
+
     def _ruling_task(self, j3: str, rnd: int, items: list[dict[str, Any]], blocks: list[str], shown: str) -> None:
         """Differences that need a ruling go to an architect task created for them;
         the tasks after J3 wait for it (and for a person when a ruling departs from the monolith)."""
@@ -1047,6 +1103,23 @@ class Dispatcher:
         r = judge.reconcile(self.ws)
         return CheckResult("reconcile_spec", True, f"{r['differences']} differences, "
                            f"{r['resolved_by_rulings']} settled by rulings, {r['steps']} steps", detail=r)
+
+    def _act_run_mutants(self, spec: TaskSpec) -> CheckResult:
+        """J5 (v2 §4.10): mutants of the monolith against the judge. The reverse check
+        (parallel -> serial) must not be caught: if it is, the judge compares an
+        implementation trace and a person looks at it."""
+        import judge
+        import mutants
+
+        try:
+            r = mutants.run_mutants(self.ws)
+        except judge.JudgeError as exc:
+            return CheckResult("run_mutants", False, f"run_mutants: {exc}", detail={"status": "ERROR", "error": str(exc)})
+        s = r["summary"]
+        return CheckResult("run_mutants", r["status"] == "PASS",
+                           f"run_mutants: score {s.get('score')} ({s.get('killed')} killed of {s.get('mutants')}; "
+                           f"{s.get('survived')} survived, {s.get('not_covered')} not covered, {s.get('trace_only')} trace only, "
+                           f"{s.get('invalid')} invalid); reverse {s.get('reverse')}", detail=r)
 
     def _act_check_adapter(self, spec: TaskSpec) -> CheckResult:
         """V1 (v2 §4.8): the target's reads over the judge's fixtures, written

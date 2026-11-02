@@ -418,6 +418,54 @@ S5（性能优化）有些改动没有保留，原因不在改动本身，而是
 - 写完用 `mcp__m2s-server__check_reconcile_classes()` 自查，直到 `PASS`；
 - 工作报告 `storage/stage_reports/J3.json`：每一类的数量和 id。
 
+## J4：白盒补测（v2，可以读单体代码）
+
+J1 只看事实库写用例，有些分支没走到，或者代码里有事实库没写的规则。这一模式**可以读单体源码**，任务是补用例，让裁判看得更全。
+
+输入：
+- `judge/coverage_monolith/summary.json`：单体每个文件的行覆盖，`uncovered` 是还没走到的行号；`judge/coverage_monolith/units/<用例>.json` 是每个用例走到的行；
+- 第二轮起，回炉信息里还有变异检验（J5）没抓住、被判为 `gap` 的变异体：改了哪一行、改成什么、为什么现有用例看不出来；
+- 已有的用例、fixtures、身份、故障场景（`judge/` 下），以及事实库（用 `mcp__m2s-server__judge_facts`）。
+
+产出：
+- 新用例 `judge/cases/<接口 slug>/wb-<名称>.json`，格式和 J1 一样（`fact_refs`、`steps`、`predicted` 都要有）。`predicted` 按你读到的代码写；
+- 需要的话补 fixtures 和故障场景（文件名同样用 `wb-` 开头）；
+- **代码里有、事实库里没有（或者写错了）的规则，必须写进 `judge/spec_issues.json`**，不能只写成用例：
+
+  ```json
+  [{"id": "J4-1", "endpoint": "POST /api/cart", "kind": "missing",
+    "rule": "quantity 是字符串时原样写入，不转成数字",
+    "evidence": [{"file": "bookstore/routes/cart.js", "line": 83}],
+    "cases": ["wb-cart-add-string-quantity"]}]
+  ```
+
+  `kind` 是 `missing`（事实库没写）或 `wrong`（事实库写的和代码不一样）。依赖这条规则的用例写 `"spec_issues": ["J4-1"]`。之后 annotator 把它补进事实库（带出处），这一步由调度器安排。
+
+要点：
+- 只补"外部看得见"的行为：状态码、响应体、读回的数据、故障下的结果。日志、内部变量这类看不见的，不用补；
+- 先补未覆盖的行里有业务含义的（校验分支、错误分支、权限检查）；启动代码、只在开发模式下才走到的代码可以不补，在工作报告里说明；
+- 不改已有的用例（它们已经和单体对过账），只加新的；
+- 写完用 `mcp__m2s-server__check_judge_assets()` 自查，直到 `PASS`；
+- 工作报告 `storage/stage_reports/J4.json`：新用例的 id 和它们要走到的行、`spec_issues` 的 id、有意不补的行和原因。
+
+## J5：变异检验的分类（v2）
+
+调度器在单体的副本上做了一批小改动（变异体），每个变异体只跑能看到这处改动的用例，结果在 `judge/judge_validation.json`：每个变异体的 `operator`（改状态码、条件取反、关掉分支、改响应字段名、去掉鉴权、去掉一次写入）、`file`、`line`、`before`、`after`、`refs`（引用这一行的事实）、`outcome`。
+
+你的任务是给每个**没被抓住**的变异体（`outcome` 是 `survived`、`not_covered` 或 `trace_only`）分类，写进 `judge/mutant_classes.json`：
+
+```json
+{"negate:routes/cart.js:72": {"class": "gap", "reason": "quantity=0 和 price=0 的分支没有用例走到", "suggest": "加一个 price=0 的请求，期望 400"},
+ "branch_off:middleware/auth.js:19": {"class": "equivalent", "reason": "只在 AUTH_DEV_MODE 下才进这个分支，裁判的单体不开开发模式"}}
+```
+
+- `equivalent`：这处改动对外部行为没有影响（例如只在开发模式下才走的代码、改的是日志），或者在裁判运行的条件下走不到。`reason` 写清为什么；
+- `gap`：改动会改变外部行为，只是现有用例没看出来。`suggest` 写一个能看出来的请求，之后 J4 补用例；
+- `trace_only` 的变异体只改变了错误响应里的调用栈（单体自己的文件路径和行号），一般是 `equivalent`；
+- 不要分类 `serial`（反向检查，调度器自己判断）；
+- 写完用 `mcp__m2s-server__check_mutant_classes()` 自查，直到 `PASS`；
+- 工作报告 `storage/stage_reports/<STAGE_ID>.json`：每一类的数量和 id。
+
 ## 工作报告 `<WS>/storage/stage_reports/<STAGE_ID>.json`
 
 ```json
