@@ -316,3 +316,23 @@ def test_the_v2_adapter_template_and_its_actions(tmp_path):
     d = Dispatcher.__new__(Dispatcher)
     d.actions = {}
     assert hasattr(Dispatcher, "_act_check_adapter") and hasattr(Dispatcher, "_act_run_judge")
+
+
+def test_check_adapter_counts_status_and_body_of_data_steps_only():
+    st = lambda m, t: {"monolith": m, "target": t}
+    cases = {
+        "list": {"verdict": "fail", "steps": {
+            "ok": {"verdict": "pass", "status": st(200, 200)},
+            "hdr": {"verdict": "fail", "status": st(200, 200), "mismatches": [
+                {"path": "steps.hdr.headers.access-control-allow-credentials", "why": "header missing"}]},
+            "anon": {"verdict": "fail", "status": st(401, 401), "answered_by": "API Gateway (unauthorized)",
+                     "mismatches": [{"path": "steps.anon.body", "why": "keys differ"}]},
+            "dup": {"verdict": "fail", "status": st(500, 200), "mismatches": [{"path": "steps.dup.status", "why": "differs"}]}}},
+        "one": {"verdict": "fail", "steps": {
+            "hit": {"verdict": "fail", "status": st(200, 200), "mismatches": [
+                {"path": "steps.hit.body", "why": "keys differ", "missing": ["name"], "extra": ["title"]},
+                {"path": "steps.hit.headers.x", "why": "header missing"}]}}}}
+    failed, other, n = judge.adapter_failures(cases)
+    assert n == 3
+    assert list(failed) == ["one"] and [m["path"] for m in failed["one"]["hit"]] == ["steps.hit.body"]
+    assert other == {"list": ["anon", "dup", "hdr"]}

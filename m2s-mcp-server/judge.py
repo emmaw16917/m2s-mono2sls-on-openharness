@@ -2215,12 +2215,43 @@ def _data_step(s: dict[str, Any]) -> bool:
     return isinstance(st, int) and st < 400 and not s.get("answered_by")
 
 
+def adapter_failures(cases: dict[str, Any]) -> tuple[dict[str, Any], dict[str, list[str]], int]:
+    """(failed, other_differences, data steps) of check_adapter's case results:
+    a failure is a status or body mismatch on a data-reading step; header
+    mismatches and the other steps' differences are not about the mapping."""
+    failed: dict[str, Any] = {}
+    other: dict[str, list[str]] = {}
+    data_steps = 0
+    for cid, r in cases.items():
+        if r["verdict"] == "infra_error":
+            failed[cid] = {"error": r.get("error")}
+            continue
+        steps = r.get("steps") or {}
+        data_steps += sum(1 for s in steps.values() if _data_step(s))
+        bad, rest = {}, []
+        for n, s in steps.items():
+            if s["verdict"] != "fail":
+                continue
+            data = [m for m in s.get("mismatches") or [] if not str(m.get("path", "")).startswith(f"steps.{n}.headers.")]
+            if _data_step(s) and data:
+                bad[n] = data
+            else:
+                rest.append(n)
+        if bad:
+            failed[cid] = bad
+        if rest:
+            other[cid] = sorted(rest)
+    return failed, other, data_steps
+
+
 def check_adapter(ws: Path | str, ref: str | None = None, mode: str = "auto") -> dict[str, Any]:
     """V1: the adapter map is right when the target's read endpoints, on the
     judge's fixtures written through the map, answer what the monolith answered
-    on the same data -- the data-reading steps (2xx on the monolith, answered by
-    a function) of the judge's read-only cases that seed fixtures. Plus the
-    static check (every table, keys produced, fixtures round-trip)."""
+    on the same data -- status and body of the data-reading steps (2xx on the
+    monolith, answered by a function) of the judge's read-only cases that seed
+    fixtures. Plus the static check (every table, keys produced, fixtures
+    round-trip). Everything else (headers, errors, validation, auth) is listed
+    under other_differences and left to run_judge."""
     ws = Path(ws).resolve()
     try:
         facts = Facts(ws)
@@ -2230,25 +2261,12 @@ def check_adapter(ws: Path | str, ref: str | None = None, mode: str = "auto") ->
     except (JudgeError, verify.VerifyError, adapter.AdapterError) as exc:
         return {"status": "ERROR", "error": str(exc)}
     res = _judge_results(ws, raw, info)
-    failed, other = {}, {}
-    data_steps = 0
-    for cid, r in res["cases"].items():
-        if r["verdict"] == "infra_error":
-            failed[cid] = {"error": r.get("error")}
-            continue
-        steps = r.get("steps") or {}
-        data_steps += sum(1 for s in steps.values() if _data_step(s))
-        bad = {n: s.get("mismatches") for n, s in steps.items() if s["verdict"] == "fail" and _data_step(s)}
-        rest = sorted(n for n, s in steps.items() if s["verdict"] == "fail" and not _data_step(s))
-        if bad:
-            failed[cid] = bad
-        if rest:
-            other[cid] = rest
+    failed, other, data_steps = adapter_failures(res["cases"])
     status = "PASS" if data_steps and not failed else "FAIL"
     doc = {"meta": _meta(ws, raw, info, ref), "status": status, "cases": sorted(picked), "data_steps": data_steps,
            "note": "data-reading steps of read-only judge cases over fixtures: a failure means the adapter map, or "
                    "the read itself, differs from the monolith on the same data; differences of other steps "
-                   "(errors, validation, auth) are listed under other_differences and left to run_judge",
+                   "(headers, errors, validation, auth) are listed under other_differences and left to run_judge",
            "failed": failed, "other_differences": other, "results": res["cases"]}
     _write(ws.joinpath(*CHECK_ADAPTER_FILE), doc)
     return {"status": status, "cases": len(picked), "data_steps": data_steps, "failed": sorted(failed),
