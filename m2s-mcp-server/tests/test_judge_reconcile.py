@@ -164,6 +164,14 @@ def test_an_identity_id_the_same_in_every_pass_is_compared_as_its_value(tmp_path
     judge._write(ws / "judge" / "masks.json", masks)
     assert not [d for d in judge.reconcile(ws) and json.loads((ws / "judge" / "reconcile.json").read_text(encoding="utf-8"))["differences"]
                 if d["case"] == "cart-add-then-read"]
+    # a prediction may also name the symbol itself (J1 told so by a reconciliation)
+    raw["predicted"][name]["body"]["contains"][0]["customerId"] = "<id:u1>"
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    judge.reconcile(ws)
+    rec = json.loads((ws / "judge" / "reconcile.json").read_text(encoding="utf-8"))
+    assert not [d for d in rec["differences"] if d["case"] == "cart-add-then-read"]
+    raw["predicted"][name]["body"]["contains"][0]["customerId"] = "judge-u1"
+    path.write_text(json.dumps(raw), encoding="utf-8")
     masks["units"]["cart-add-then-read"]["symbols"]["<id:u1>"] = symbol  # a volatile id: no value, the literal cannot match
     judge._write(ws / "judge" / "masks.json", masks)
     judge.reconcile(ws)

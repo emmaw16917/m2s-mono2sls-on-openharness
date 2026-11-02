@@ -1704,7 +1704,8 @@ def reconcile(ws: Path | str) -> dict[str, Any]:
         for step in case["steps"]:
             name = step["name"]
             steps += 1
-            for d in compare_step((case.get("predicted") or {}).get(name) or {},
+            # Both sides: a prediction may name the symbol itself or the literal.
+            for d in compare_step(_with_values((case.get("predicted") or {}).get(name) or {}, values),
                                   _with_values(observed["steps"].get(name) or {}, values), types):
                 d = {"id": f"{cid}/{name}/{d['check']}", "case": cid, "step": name,
                      "request": {k: step[k] for k in ("method", "path") if k in step}, **d,
