@@ -1042,3 +1042,14 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - 结果和逐条分诊写在 `judge_on_v1.md`：bookstore-v3a 的不过全部是 v1 裁定过的迁移变化和一类裁判本身的问题（单体的调用栈内容）；bookstore-v2 找到 5 类 v1 测试漏掉的实现缺陷（缺 `Access-Control-Allow-Credentials`、网关 401 没有 CORS 头、错误体缺 `stack`、解析失败的 JSON 回 500、form 编码的请求体回 500）；
 - **修掉的问题**：`check_adapter` 把读数据步骤上的头差异也算成映射错误，bookstore-v2 的 V1 因此不过，处理者把它交给人（映射本身没问题）。现在 `check_adapter` 只看读数据步骤的状态码和响应体（`adapter_failures`），其余列在 `other_differences`；测试 1 个；
 - 提议 V2P-16（`content-type` 只比媒体类型）、V2P-17（`check_adapter` 的判定范围）、V2P-18（单体的调用栈按实现轨迹处理，需要重新冻结裁判），见方案 §11。
+
+## v2 N3.1：`run_monolith` 支持 Flask（2026-11-02，分支 `feat/v2-modules`）
+
+- **选定的应用**：airline-booking（18 个接口、4 张表、自签 JWT、没有 cookie；没有 Stripe 密钥时支付走模拟模式，不联网；已有 c2/c3/e0 三个 v1 迁移可供以后对照）。shopping-cart 接口更少，但购物车靠 cookie，两边的运行器都要先支持 cookie；ecommerce 有 30 个接口、6 张表；
+- **可行性**：应用自己钉的 boto3 1.34.0 认 `AWS_ENDPOINT_URL_DYNAMODB`；在 Windows 上启动前设 `TZ=UTC`，`datetime.now()` 就是 UTC；coverage.py 的动态上下文可以按用例切换。手写的 3 个单元在 airline-booking 上跑三遍（23 秒）：注册 → 登录 → 读个人资料能读回，按用例的覆盖率各不相同；
+- **单体的环境**：`python_env` 按单体的 `requirements.txt`（加上 coverage.py）建一个 venv，放在 `TMP_ROOT/pyenv/<应用>-<hash>`，只建一次；`judge/run_config.json` 可以用 `python` 指定别的解释器；
+- **启动**（新的 `verify-tools/py/m2s_monolith.py`）：用 werkzeug 的 `run_simple` 起应用对象（`app`，形如 `module:attr` 或 `module:create_app()`，自动从顶层的 `app = Flask(...)` 或 `create_app` 找），多线程、不开重载器（它会再起一个进程）、不开交互式调试器，`app.debug` 由 `run_config.debug` 决定（默认关）；`PYTHONDONTWRITEBYTECODE`，不在单体目录里写 `__pycache__`；
+- **SDK 重试**：和 Node 一样保留 botocore 的重试次数（legacy 模式下 DynamoDB 是 10 次），每次等待不超过 20 ms；
+- **覆盖率**：coverage.py 在导入应用之前启动；`POST /take` 切换到新的动态上下文，返回上一个上下文里每个文件跑过的行和没跑的可执行行，格式和 Node 一致。只列进程真正加载过的文件（coverage.py 默认还会列出从没导入的脚本）；
+- **表名里的占位符**：事实库里的表名是 `Airline-Flight-{stage}` 这种形式时，按单体代码里该变量的默认值（`os.environ.get('STAGE', 'dev')`、`process.env.STAGE || 'dev'`）换成实际的表名建表；fixtures 和故障规则换成实际名字，记录下来的表内容和 SDK 调用再换回事实库的名字。`run_config.table_names` 可以直接指定；
+- **测试**：Python 的运行配置、表名换算、`run_config` 新字段的检查；一个小 Flask 单体的端到端测试（dynalite，表名带占位符，故障场景）。

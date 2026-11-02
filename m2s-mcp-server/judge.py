@@ -74,7 +74,13 @@ STEP_KEYS = {"name", "method", "path", "query", "headers", "body", "form", "raw_
              "read_back", "note"}
 CASE_KEYS = {"id", "endpoint", "layer", "title", "fact_refs", "fixtures", "identity", "steps", "predicted", "note"}
 RUN_CONFIG_KEYS = {"runtime": str, "entry": str, "args": list, "port_env": str, "env": dict, "ready_path": str,
-                   "startup_timeout_s": int, "note": str}
+                   "startup_timeout_s": int, "note": str,
+                   # Python monoliths: the interpreter (default: a venv from requirements.txt),
+                   # the WSGI app ("module:attr"), Flask's app.debug
+                   "python": str, "app": str, "debug": bool,
+                   # fact-base table name -> the name the monolith uses (default: placeholders
+                   # such as {stage} take the variable's default in the monolith's code)
+                   "table_names": dict}
 NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 VAR_RE = re.compile(r"^[A-Za-z_]\w*$")
 ALIAS_RE = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -575,10 +581,13 @@ def _check_run_config(facts: Facts, rc: Any) -> list[str]:
         ty = RUN_CONFIG_KEYS.get(k)
         if ty is None:
             errs.append(f"{where}: unknown key {k!r} (allowed: {sorted(RUN_CONFIG_KEYS)})")
-        elif not isinstance(v, ty) or isinstance(v, bool):
+        elif not isinstance(v, ty) or (isinstance(v, bool) and ty is not bool):
             errs.append(f"{where}: {k} must be {ty.__name__}")
-    if isinstance(rc.get("env"), dict) and not all(isinstance(v, str) for v in rc["env"].values()):
-        errs.append(f"{where}: env values must be strings")
+    for k in ("env", "table_names"):
+        if isinstance(rc.get(k), dict) and not all(isinstance(v, str) for v in rc[k].values()):
+            errs.append(f"{where}: {k} values must be strings")
+    if isinstance(rc.get("table_names"), dict):
+        errs += [f"{where}: table_names: {t!r} is not a table of the fact base" for t in rc["table_names"] if t not in facts.tables]
     if rc.get("runtime") not in (None, "node", "python"):
         errs.append(f"{where}: runtime must be node or python")
     if isinstance(rc.get("entry"), str) and facts.monolith_root \
@@ -1058,8 +1067,9 @@ def derive_run_config(facts: Facts) -> dict[str, Any]:
             if cand and (root / cand).is_file():
                 rc["entry"] = cand
                 break
-    elif any(root.glob("*.py")):
+    elif any(root.glob("*.py")) or (root / "requirements.txt").is_file():
         rc["runtime"] = "python"
+        rc.update({"entry": None, "app": _python_app(root), "python": None, "debug": False})
     if rc["runtime"] == "node":
         if rc["entry"] is None:
             rc["entry"] = next((n for n in ("server.js", "app.js", "index.js") if (root / n).is_file()), None)
@@ -1073,19 +1083,96 @@ def derive_run_config(facts: Facts) -> dict[str, Any]:
     return rc
 
 
-def effective_run_config(facts: Facts, overrides: dict[str, Any] | None) -> dict[str, Any]:
+def _python_app(root: Path) -> str | None:
+    """The WSGI application as "module:attr" (or "module:factory()"): a
+    top-level `app = Flask(...)`, else a create_app() factory."""
+    for p in sorted(root.glob("*.py")):
+        if re.search(r"^(\w+)\s*=\s*Flask\(", p.read_text(encoding="utf-8", errors="replace"), re.M):
+            name = re.search(r"^(\w+)\s*=\s*Flask\(", p.read_text(encoding="utf-8", errors="replace"), re.M).group(1)
+            return f"{p.stem}:{name}"
+    for p in sorted(root.glob("*/__init__.py")) + sorted(root.glob("*.py")):
+        if re.search(r"^def create_app\(", p.read_text(encoding="utf-8", errors="replace"), re.M):
+            module = p.parent.name if p.name == "__init__.py" else p.stem
+            return f"{module}:create_app()"
+    return None
+
+
+# Packages run_monolith adds to a Python monolith's venv: per-case coverage.
+MONOLITH_PY_EXTRA = (verify.COVERAGE_PY,)
+
+
+def python_env(root: Path) -> Path:
+    """The monolith's own venv (its requirements.txt, plus coverage.py), made once
+    under TMP_ROOT/pyenv/<app>-<hash of requirements.txt>; returns its python."""
+    import hashlib
+    req = root / "requirements.txt"
+    if not req.is_file():
+        raise JudgeError(f"{root} has no requirements.txt: set python (an interpreter with the app's packages) "
+                         "in judge/run_config.json")
+    digest = hashlib.sha256(req.read_bytes() + "\n".join(MONOLITH_PY_EXTRA).encode()).hexdigest()[:10]
+    env_dir = verify.TMP_ROOT / "pyenv" / f"{re.sub(r'[^A-Za-z0-9_-]', '_', root.name)}-{digest}"
+    py = env_dir / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
+    if (env_dir / "M2S_OK").is_file() and py.is_file():
+        return py
+    env_dir.parent.mkdir(parents=True, exist_ok=True)
+    for cmd in ([sys.executable, "-m", "venv", "--clear", str(env_dir)],
+                [str(py), "-m", "pip", "install", "-q", "--disable-pip-version-check", "-r", str(req), *MONOLITH_PY_EXTRA]):
+        p = verify._run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=900)
+        if p.returncode != 0:
+            raise JudgeError(f"could not prepare the monolith's Python environment ({' '.join(cmd[:4])}...): "
+                             f"{(p.stdout + p.stderr)[-1500:]}")
+    (env_dir / "M2S_OK").write_text(digest, encoding="utf-8")
+    return py
+
+
+def effective_run_config(facts: Facts, overrides: dict[str, Any] | None, prepare: bool = False) -> dict[str, Any]:
+    """derive_run_config with judge/run_config.json's overrides. prepare: make
+    the Python monolith's venv when run_config names no interpreter."""
     rc = derive_run_config(facts)
     for k, v in (overrides or {}).items():
         if k == "env":
             rc["env"] = {**rc["env"], **v}
         elif k != "note":
             rc[k] = v
+    if rc["runtime"] == "python":
+        if not rc.get("app"):
+            raise JudgeError("cannot tell which WSGI application to serve (no `app = Flask(...)` at the top of a "
+                             "module, no create_app()): set app (\"module:attr\") in judge/run_config.json")
+        if prepare and not rc.get("python"):
+            rc["python"] = str(python_env(Path(facts.monolith_root)))
+        return rc
     if rc["runtime"] != "node":
-        raise JudgeError(f"run_monolith supports Node monoliths so far (Flask is N3); runtime is {rc['runtime']!r}")
+        raise JudgeError(f"run_monolith supports Node and Python monoliths; runtime is {rc['runtime']!r}")
     if not rc.get("entry"):
         raise JudgeError("cannot tell how the monolith starts (no package.json main / start script, no server.js, "
                          "app.js or index.js): set entry in judge/run_config.json")
     return rc
+
+
+TABLE_VAR_RE = re.compile(r"\{(\w+)\}")
+
+
+def monolith_table_names(facts: Facts, overrides: dict[str, str] | None = None) -> dict[str, str]:
+    """Fact-base table name -> the name the monolith actually uses. A name with
+    a placeholder ("Airline-Flight-{stage}") takes the default of the variable
+    in the monolith's code (os.environ.get('STAGE', 'dev'), process.env.STAGE ||
+    'dev'); judge/run_config.json table_names overrides."""
+    root = Path(facts.monolith_root or "")
+    defaults: dict[str, str] = {}
+    if root.is_dir():
+        for p in sorted([*root.rglob("*.py"), *root.rglob("*.js")]):
+            if "node_modules" in p.parts or "site-packages" in p.parts:
+                continue
+            text = p.read_text(encoding="utf-8", errors="replace")
+            for var, val in re.findall(r"(?:os\.environ\.get|os\.getenv)\(\s*['\"](\w+)['\"]\s*,\s*['\"]([^'\"]*)['\"]", text):
+                defaults.setdefault(var.lower(), val)
+            for var, val in re.findall(r"process\.env\.(\w+)\s*\|\|\s*['\"]([^'\"]*)['\"]", text):
+                defaults.setdefault(var.lower(), val)
+    out = {}
+    for name in facts.tables:
+        out[name] = TABLE_VAR_RE.sub(lambda m: defaults.get(m.group(1).lower(), m.group(0)), name)
+    out.update(overrides or {})
+    return out
 
 
 def _table_create(name: str, schema: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
@@ -1107,13 +1194,34 @@ def _table_create(name: str, schema: dict[str, Any], raw: dict[str, Any]) -> dic
     return create
 
 
-def _monolith_tables(facts: Facts) -> list[dict[str, Any]]:
+def _monolith_tables(facts: Facts, names: dict[str, str] | None = None) -> list[dict[str, Any]]:
+    """The monolith's tables to create, under the names it actually uses."""
     out = []
     for t in (facts.report.get("dynamodb_info") or {}).get("table_schemas") or []:
         name = (t.get("table") or {}).get("default_name")
         if name in facts.tables:
-            out.append({"name": name, "create": _table_create(name, facts.tables[name], t)})
+            actual = (names or {}).get(name, name)
+            out.append({"name": actual, "create": _table_create(actual, facts.tables[name], t)})
     return out
+
+
+def _rename_tables(value: Any, names: dict[str, str]) -> Any:
+    """Table names in fixtures / fault rules / records, through `names`
+    (dict keys and "table" fields)."""
+    if isinstance(value, list):
+        return [_rename_tables(v, names) for v in value]
+    if isinstance(value, dict):
+        out = {}
+        for k, v in value.items():
+            k2 = names.get(k, k)
+            if k in ("table", "queue") and isinstance(v, str):
+                out[k2] = names.get(v, v)
+            elif k == "tables" and isinstance(v, list):
+                out[k2] = [names.get(x, x) if isinstance(x, str) else x for x in v]
+            else:
+                out[k2] = _rename_tables(v, names)
+        return out
+    return value
 
 
 def _aliases(case: dict[str, Any]) -> list[str]:
@@ -1257,14 +1365,19 @@ def run_monolith(ws: Path | str, passes: int = 3, coverage: bool = True, timeout
         raise JudgeError("passes must be at least 3: two to find the volatile values, one to check the masks")
     assets = load_assets(ws)
     inputs = inputs_sha(ws)  # freeze_judge refuses an oracle made from other inputs
-    rc = effective_run_config(facts, assets["run_config"])
+    rc = effective_run_config(facts, assets["run_config"], prepare=True)
+    names = monolith_table_names(facts, rc.get("table_names"))
+    actual_of = {k: v for k, v in names.items() if k != v}
+    fact_of = {v: k for k, v in actual_of.items()}
     units = build_units(assets)
+    run_units = [{**u, "fixtures": _rename_tables(u["fixtures"], actual_of), "rules": _rename_tables(u["rules"], actual_of)}
+                 for u in units] if actual_of else units
     identities = {alias: spec["monolith"] for alias, spec in (assets["identities"] or {}).items()}
     out_dir = verify.TMP_ROOT / re.sub(r"[^A-Za-z0-9_-]", "_", ws.name) / "monolith" / time.strftime("%Y%m%d-%H%M%S")
     out_dir.mkdir(parents=True, exist_ok=True)
     backend = verify.ddb_backend()
-    job = {"monolith_root": str(Path(facts.monolith_root)), "run": rc, **backend, "tables": _monolith_tables(facts),
-           "identities": identities, "units": units, "passes": passes, "coverage": coverage, "out_dir": str(out_dir)}
+    job = {"monolith_root": str(Path(facts.monolith_root)), "run": rc, **backend, "tables": _monolith_tables(facts, names),
+           "identities": identities, "units": run_units, "passes": passes, "coverage": coverage, "out_dir": str(out_dir)}
     job_path = out_dir / "job.json"
     job_path.write_text(json.dumps(job, ensure_ascii=False, indent=1), encoding="utf-8")
     node = shutil.which("node", path=verify._env()["PATH"]) or "node"
@@ -1276,6 +1389,11 @@ def run_monolith(ws: Path | str, passes: int = 3, coverage: bool = True, timeout
         return {"status": "ERROR", "error": f"monolith-run failed (exit {proc.returncode})",
                 "stderr": proc.stderr[-3000:], "out_dir": str(out_dir)}
     raw = json.loads(raw_path.read_text(encoding="utf-8"))
+    if fact_of:  # records name the tables as the fact base does
+        for results in raw["passes"]:
+            for r in results:
+                r["tables"] = {fact_of.get(t, t): items for t, items in (r.get("tables") or {}).items()}
+                r["calls"] = _rename_tables(r.get("calls") or [], fact_of)
 
     # A request that fails or a monolith that exits is a problem in a case;
     # in a fault run it is the monolith's behaviour under that fault.

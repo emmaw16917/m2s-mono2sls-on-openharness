@@ -136,8 +136,9 @@ def test_derive_run_config(tmp_path: Path):
     assert eff["env"] == {"A": "1"} and eff["startup_timeout_s"] == 5 and "note" not in eff
     (root / "package.json").unlink()
     (root / "app.py").write_text("")
-    with pytest.raises(judge.JudgeError, match="Flask is N3"):
+    with pytest.raises(judge.JudgeError, match="which WSGI application"):
         judge.effective_run_config(facts, None)
+    assert judge.effective_run_config(facts, {"app": "app:app", "python": "py"})["runtime"] == "python"
 
 
 def test_build_units_orders_aliases_and_adds_fault_runs():
@@ -354,3 +355,119 @@ def test_run_monolith_needs_passing_assets(tmp_path: Path):
     (ws / "storage" / "analysis_report.json").write_text(json.dumps({"entry_points": []}))
     out = judge.run_monolith(ws)
     assert out["status"] == "FAIL" and "check_judge_assets" in out["error"]
+
+
+# ---------------------------------------------------------------------------
+# Python (Flask) monoliths (N3.1)
+# ---------------------------------------------------------------------------
+
+FLASK_APP = r'''
+import os, uuid, datetime
+import boto3
+from flask import Flask, request, jsonify
+
+app = Flask(__name__)
+table = boto3.resource("dynamodb", region_name="us-east-1").Table(
+    os.environ.get("NOTES_TABLE", "Notes-" + os.environ.get("STAGE", "test")))
+users = {}
+
+
+@app.route("/api/users", methods=["POST"])
+def signup():
+    user_id, token = str(uuid.uuid4()), "tok-" + str(uuid.uuid4())
+    users[token] = user_id
+    return jsonify({"userId": user_id, "token": token}), 201
+
+
+@app.route("/api/notes", methods=["POST", "GET"])
+def notes():
+    who = users.get(request.headers.get("Authorization", "").replace("Bearer ", ""))
+    if not who:
+        return jsonify({"error": "no"}), 401
+    try:
+        if request.method == "POST":
+            note_id = str(uuid.uuid4())
+            table.put_item(Item={"userId": who, "noteId": note_id, "text": request.get_json()["text"],
+                                 "createdAt": datetime.datetime.now().isoformat()})
+            return jsonify({"noteId": note_id}), 201
+        items = table.query(KeyConditionExpression="userId = :u", ExpressionAttributeValues={":u": who})["Items"]
+        return jsonify(items)
+    except Exception as e:
+        return jsonify({"error": type(e).__name__}), 500
+'''
+
+
+def test_python_run_config_and_table_names(tmp_path: Path):
+    mono = tmp_path / "mono"
+    (mono / "pkg").mkdir(parents=True)
+    (mono / "requirements.txt").write_text("Flask==3.0.0\n")
+    (mono / "server.py").write_text("from flask import Flask\napplication = Flask(__name__)\n"
+                                    "T = os.environ.get('STAGE', 'dev')\n")
+    ws = tmp_path / "ws"
+    (ws / "storage").mkdir(parents=True)
+    (ws / "storage" / "analysis_report.json").write_text(json.dumps({
+        "spec_meta": {"monolith_root": str(mono)}, "entry_points": [],
+        "dynamodb_info": {"table_schemas": [{"table": {"default_name": "Flights-{stage}"}, "partition_key": {"name": "id"}},
+                                            {"table": {"default_name": "Plain"}, "partition_key": {"name": "id"}}]}}))
+    facts = judge.Facts(ws)
+    rc = judge.derive_run_config(facts)
+    assert (rc["runtime"], rc["app"], rc["python"], rc["debug"]) == ("python", "server:application", None, False)
+    (mono / "server.py").write_text("x = 1\n")
+    (mono / "pkg" / "__init__.py").write_text("def create_app():\n    pass\n")
+    assert judge.derive_run_config(facts)["app"] == "pkg:create_app()"
+    (mono / "pkg" / "config.py").write_text("STAGE = os.environ.get('STAGE', 'dev')\n")
+    assert judge.monolith_table_names(facts) == {"Flights-{stage}": "Flights-dev", "Plain": "Plain"}
+    assert judge.monolith_table_names(facts, {"Plain": "Plain-x"})["Plain"] == "Plain-x"
+    renamed = judge._rename_tables({"Flights-{stage}": [{"id": "1"}], "x": {"table": "Flights-{stage}", "tables": ["Plain"]}},
+                                   {"Flights-{stage}": "Flights-dev", "Plain": "P2"})
+    assert renamed == {"Flights-dev": [{"id": "1"}], "x": {"table": "Flights-dev", "tables": ["P2"]}}
+    errs = judge._check_run_config(facts, {"debug": True, "python": "py", "app": "a:b", "table_names": {"Nope": "x"}})
+    assert errs == ["judge/run_config.json: table_names: 'Nope' is not a table of the fact base"]
+
+
+def _has(*mods):
+    import importlib.util
+    return all(importlib.util.find_spec(m) for m in mods)
+
+
+@needs_node
+@pytest.mark.skipif(not _has("flask", "boto3", "werkzeug"), reason="needs flask and boto3 in this interpreter")
+def test_run_monolith_on_a_flask_monolith(tmp_path: Path, monkeypatch):
+    import sys as _sys
+    monkeypatch.setenv("M2S_DDB_BACKEND", "dynalite")
+    monkeypatch.setattr(judge.verify, "TMP_ROOT", tmp_path / "tmp")
+    ws = _monolith_ws(tmp_path)
+    mono = tmp_path / "mono"
+    (mono / "package.json").unlink()
+    (mono / "app.js").unlink()
+    (mono / "app.py").write_text(FLASK_APP)
+    (mono / "requirements.txt").write_text("Flask\nboto3\n")
+    facts_path = ws / "storage" / "analysis_report.json"
+    facts = json.loads(facts_path.read_text())
+    facts["dynamodb_info"]["table_schemas"][0]["table"]["default_name"] = "Notes-{stage}"
+    for ep in facts["entry_points"]:
+        for d in ep["data_access"]:
+            d["table"]["default_name"] = "Notes-{stage}"
+    facts["entry_points"] = facts["entry_points"][:3]
+    facts_path.write_text(json.dumps(facts))
+    jd = ws / "judge"
+    (jd / "cases" / "delete-api-echo" / "echo.json").unlink()
+    fault = json.loads((jd / "faults" / "notes-write-fails.json").read_text())
+    fault["rules"][0]["match"]["table"] = "Notes-{stage}"
+    (jd / "faults" / "notes-write-fails.json").write_text(json.dumps(fault))
+    (jd / "run_config.json").write_text(json.dumps({"python": _sys.executable}))
+    coverage = _has("coverage")
+    out = judge.run_monolith(ws, coverage=coverage)
+    assert out["status"] == "PASS", json.dumps(out, indent=1)[:3000]
+    oracle = json.loads((jd / "oracle_expected.json").read_text(encoding="utf-8"))
+    assert oracle["meta"]["run_config"]["app"] == "app:app"
+    case = oracle["cases"]["note-add-read"]
+    item = case["steps"]["read"]["body"][0]
+    assert item["userId"] == "<id:u1>" and item["noteId"] == case["steps"]["add"]["body"]["noteId"]
+    # the monolith used Notes-test; the record names the table as the fact base does
+    assert case["tables_after"]["Notes-{stage}"][0]["userId"] == "<id:u1>"
+    failed = json.loads((jd / "fault_baseline_monolith.json").read_text(encoding="utf-8"))["scenarios"]["notes-write-fails"]
+    assert failed["note-add-read"]["rules_fired"] == [True] and failed["note-add-read"]["steps"]["add"]["status"] == 500
+    if coverage:
+        cov = json.loads((jd / "coverage_monolith" / "summary.json").read_text(encoding="utf-8"))
+        assert cov["files"]["app.py"]["covered"] > 0

@@ -5,7 +5,8 @@
 //   node monolith-run.js <job.json>
 //
 // job (built by judge.py):
-//   monolith_root, run {entry, args, port_env, env, ready_path, startup_timeout_s},
+//   monolith_root, run {runtime, entry, args, port_env, env, ready_path, startup_timeout_s;
+//                       Python: python (the venv's interpreter), app ("module:attr"), debug},
 //   backend / ddb_local / tables      the DynamoDB backend (ddb-proxy.js), the
 //                                     same kind run_judge uses (V2P-11)
 //   identities {alias: monolith spec} how each alias is obtained (judge/identities.json)
@@ -13,7 +14,8 @@
 //                                     one unit = one case, or one case of a fault scenario
 //   passes, coverage, settle_ms, settle_max_ms, pass_gap_ms, out_dir
 //
-// Every pass starts the monolith afresh (node -r monolith-preload.js <entry>,
+// Every pass starts the monolith afresh (node -r monolith-preload.js <entry>, or for
+// Python py/m2s_monolith.py in the monolith's venv,
 // TZ=UTC, no proxy variables, its SDK pointed at the recording proxy) and
 // runs every unit in order:
 //   - every table is emptied and seeded with the unit's fixtures;
@@ -72,9 +74,20 @@ async function startMonolith(proxyPort) {
     AWS_REGION: region, AWS_DEFAULT_REGION: region, AWS_ACCESS_KEY_ID: 'x', AWS_SECRET_ACCESS_KEY: 'x',
     M2S_COV_PORT: String(covPort),
   });
-  const preload = path.join(__dirname, 'monolith-preload.js');
-  const proc = spawn(process.execPath, ['-r', preload, run.entry, ...(run.args || [])],
-    { cwd: job.monolith_root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  let proc;
+  if (run.runtime === 'python') {
+    // The monolith's own venv; m2s_monolith.py serves its WSGI app (no reloader,
+    // no debugger), caps botocore's retry backoff and measures coverage.
+    // PYTHONDONTWRITEBYTECODE: no __pycache__ is written into the monolith's source tree.
+    Object.assign(env, { PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8', PYTHONDONTWRITEBYTECODE: '1' });
+    delete env.PYTHONPATH; delete env.PYTHONHOME;
+    proc = spawn(run.python, [path.join(__dirname, 'py', 'm2s_monolith.py'), job.monolith_root, run.app, String(port),
+      run.debug ? '1' : '0'], { cwd: job.monolith_root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  } else {
+    const preload = path.join(__dirname, 'monolith-preload.js');
+    proc = spawn(process.execPath, ['-r', preload, run.entry, ...(run.args || [])],
+      { cwd: job.monolith_root, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  }
   const logs = [];
   proc.stdout.on('data', (d) => logs.push(d.toString()));
   proc.stderr.on('data', (d) => logs.push(d.toString()));
@@ -116,7 +129,13 @@ function takeCoverage(mono) {
     const req = http.request({ host: '127.0.0.1', port: mono.covPort, method: 'POST', path: '/take', agent: false }, (res) => {
       const out = [];
       res.on('data', (c) => out.push(c));
-      res.on('end', () => { try { resolve(JSON.parse(Buffer.concat(out).toString('utf8')).result); } catch (e) { resolve(null); } });
+      res.on('end', () => {
+        try {
+          const data = JSON.parse(Buffer.concat(out).toString('utf8'));
+          // Node: V8 script coverage (result); Python: lines per file already (files)
+          resolve(data.files ? { files: data.files } : data.result);
+        } catch (e) { resolve(null); }
+      });
     });
     req.on('error', () => resolve(null));
     req.end();
@@ -140,6 +159,7 @@ function sourceOf(file) {
 // line ran when a non-blank character of it ran.
 function lineCoverage(result) {
   if (!result) return null;
+  if (result.files) return result.files; // coverage.py (m2s_monolith.py) did this already
   const files = {};
   for (const script of result) {
     let file;
