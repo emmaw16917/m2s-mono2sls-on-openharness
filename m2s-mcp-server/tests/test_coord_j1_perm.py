@@ -86,6 +86,35 @@ def test_the_parent_stays_open_when_it_holds_the_workspace(tmp_path: Path):
     assert closed_to(ws_glob, ws, mono)[0] == (str(ws / "output" / "lambdas"),)
 
 
+def test_d1_cannot_read_the_code_or_the_monolith(layout):
+    """N4.4's acceptance: delta tests are written from the decisions, with the implementation
+    and the monolith's source closed; what the monolith answered stays open (V2-08)."""
+    ws, mono = layout
+    d1 = load_template("v2-gaps").get("D1")
+    checker = _checker(d1, ws, mono)
+    for path in (ws / "output" / "lambdas" / "orders" / "handler.js", ws / "output" / "template.yaml", mono / "routes" / "orders.js"):
+        assert not _allowed(checker, "read_file", read_only=True, path=path), path
+        assert not _allowed(checker, "write_file", read_only=False, path=path), path
+    for tool in ("grep", "glob"):
+        assert not _allowed(checker, tool, read_only=True, path=ws / "output" / "lambdas")
+    for command in (f"cat {ws / 'output' / 'lambdas' / 'orders' / 'handler.js'}", "cat output/lambdas/orders/handler.js",
+                    "type output\\lambdas\\orders\\handler.js", f"ls {mono}"):
+        assert not _allowed(checker, "bash", read_only=False, command=command), command
+    for path in (ws / "judge" / "oracle_expected.json", ws / "storage" / "gap_inventory.json", ws / "storage" / "blueprint.json"):
+        assert _allowed(checker, "read_file", read_only=True, path=path), path
+    assert _allowed(checker, "write_file", read_only=False, path=ws / "verification" / "delta" / "events" / "f" / "c.json")
+    text = worker_prompt(d1, ws, mono, 1, [])
+    assert "MODE: D1" in text and "verification/delta" in text and str(mono) not in text and "MONOLITH =" not in text
+
+
+def test_gap_template_is_in_order():
+    t = load_template("v2-gaps")
+    assert [s.id for s in t.tasks] == ["G1", "G2", "A1", "D1", "I1", "I2", "V3"]
+    assert t.get("I1").start == t.get("I2").start == "recheck" and t.get("V3").on_stale == "rerun"
+    assert "gate_blueprint" in t.get("A1").check and "gap_decisions" in t.get("A1").check
+    assert t.upstream("V3").index("D1") < t.upstream("V3").index("I1")
+
+
 def test_j1_prompt_names_the_mode_and_not_the_monolith(layout):
     ws, mono = layout
     text = worker_prompt(J1, ws, mono, 1, [])

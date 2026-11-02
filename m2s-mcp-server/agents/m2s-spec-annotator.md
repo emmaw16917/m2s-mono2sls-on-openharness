@@ -132,6 +132,34 @@ v2 流水线里，裁判用例先按事实库写预期，再在单体上运行�
 3. 你核实下来认为事实库没错、是单体的运行结果不对劲（例如请求本身写错了），不要硬改事实库：在工作报告的 `issues` 里写清楚是哪条差异、为什么；
 4. 照常 `check_provenance()` 自查到 `PASS`，工作报告的 `fixes` 列出每条差异改了哪一项。
 
+## MODE: G2 — 补充缺口清单（v2）
+
+`storage/gap_inventory.json` 是"单体作为一个长期运行的进程白得的东西，换到 Serverless 就要明确处理"的清单。调度器的 `gap_scan` 已经按事实库的机械信号写好了（`source: "G1"`）。你只做两件事：**核对机械信号有没有认错**，**补上信号认不出来的缺口**。这一模式不改事实库。
+
+要补的是这些类型（代码能证明才写）：
+
+| 类别 `category` | 机械信号认不出的例子 |
+|---|---|
+| `multi_write` | 写操作分散在几个函数里，事实库的 `data_access` 只记到一部分；失败时前面的写已经生效 |
+| `process_state` | 闭包里的计数器或限流状态、挂在 `app` 对象上的数据、请求之间共享的对象 |
+| `fire_and_forget` | 回调或 Promise 链上的副作用，失败不影响响应 |
+| `order_and_consistency` | 依赖 Scan 返回顺序、依赖"刚写完就能读到"（强一致读被默认读替换时会变） |
+| `time` | 依赖进程时区、依赖进程启动时间、过期判断 |
+| `global_middleware` | P0 漏掉的全局行为：统一错误处理（把异常变成某种响应）、404 处理器、body 解析的上限 |
+| `auth_semantics` | 令牌过期时间、刷新、谁可以看谁的数据这类不在路由上的规则 |
+| `files_and_connections` | 连接池、启动时一次性的初始化、读本地文件 |
+| `monolith_defect` | 单体自身的缺陷：竞态（先读后写没有条件）、错误被吞掉、分页不完整 |
+| `new` | 不属于以上任何一类：写 `candidate_name`（新类别的名字），人会看 |
+
+规则：
+- 新增的条目用 `write_file` 追加到 `gaps` 列表，保留所有已有条目。格式：`{"id": "GAP-<下一个编号>", "key": "g2:<类别>:<简短标识>", "category": ..., "summary": "一句话", "evidence": [{"file", "line", "symbol"}], "endpoints": ["POST /api/orders"], "source": "G2", "status": "open"}`。`rulebook_rule`、`default` 不知道就不写；
+- `evidence` 和其他标注一样会被机械检查：文件带应用名前缀，`symbol` 必须在那一行上下 2 行内逐字出现。`endpoints` 必须和事实库里的写法一致（`方法 路径`）；
+- G1 的条目你认为认错了（例如这个排序根本不影响响应）：不要删除，也不要改 `evidence`，在条目上写 `note` 说明理由，architect 会看；
+- **只写单体现在是什么样，不写迁移后怎么办**。`decision` 是 architect 的事，你不写，`status` 保持 `open`；
+- 不属于"换到 Serverless 就会变"的行为不是缺口。普通的校验规则、普通的业务逻辑已经在事实库里，不要重复。
+
+写完调 `mcp__m2s-server__check_gap_inventory()`，直到 `PASS`（最多 3 次修改）。工作报告写 `storage/stage_reports/<任务编号>.json`，字段照常，`summary` 写明核对了几条、补了几条、每条补的依据。
+
 ## 自查循环（标注完之后，不要跳过）
 
 1. 调用 `mcp__m2s-server__check_provenance()`。

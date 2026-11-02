@@ -206,6 +206,69 @@ def mutant_classes(ws: Path) -> CheckResult:
                        detail=result, relay="" if ok else "judge/mutant_classes.json 的问题：\n" + _clip("\n".join(result["errors"])))
 
 
+def gap_inventory(ws: Path) -> CheckResult:
+    """G2: the inventory's format and evidence hold (each cited line really is there)."""
+    import gaps
+
+    try:
+        result = gaps.check_inventory(ws)
+    except gaps.GapError as exc:
+        return CheckResult("gap_inventory", False, f"gap inventory: {exc}", relay=f"storage/gap_inventory.json 的问题：{exc}")
+    ok = result["status"] == "PASS"
+    return CheckResult("gap_inventory", ok, f"{result['gaps']} gaps, {len(result['open'])} undecided"
+                       + ("" if ok else f", {len(result['errors'])} problems"), detail=result,
+                       relay="" if ok else "storage/gap_inventory.json 的问题：\n" + _clip("\n".join(result["errors"])))
+
+
+def gap_decisions(ws: Path) -> CheckResult:
+    """A1/A2: every gap has a decision, and storage/DECISIONS.md mentions it."""
+    import gaps
+
+    try:
+        result = gaps.check_inventory(ws, require_decided=True)
+    except gaps.GapError as exc:
+        return CheckResult("gap_decisions", False, f"gap inventory: {exc}", relay=f"storage/gap_inventory.json 的问题：{exc}")
+    ok = result["status"] == "PASS"
+    return CheckResult("gap_decisions", ok, f"{result['gaps']} gaps decided" if ok else f"{len(result['errors'])} problems, {len(result['open'])} undecided",
+                       detail=result, relay="" if ok else "缺口决定的问题：\n" + _clip("\n".join(result["errors"])))
+
+
+def delta_assets(ws: Path) -> CheckResult:
+    """D1: the delta tests pass the dry run (format, names, sources, where expectations come from)."""
+    import verify
+
+    try:
+        result = verify.run_validate(str(ws), dry_run=True, assets=verify.DELTA_ASSETS)
+    except verify.VerifyError as exc:
+        return CheckResult("delta_assets", False, f"delta tests: {exc}", relay=f"run_validate(dry_run, assets) 报错：{exc}")
+    ok = result.get("status") == "PASS"
+    return CheckResult("delta_assets", ok, f"{result.get('cases')} delta cases, {result.get('fault_scenarios')} fault scenarios"
+                       + ("" if ok else f", {len(result.get('schema_errors') or [])} problems"),
+                       detail={k: v for k, v in result.items() if k != "note"},
+                       relay="" if ok else "增量测试的问题：\n" + _clip("\n".join(result.get("schema_errors") or [])))
+
+
+def verdict_delta(ws: Path) -> CheckResult:
+    """V3: the delta tests pass on the code as it is, and coverage and the fault baseline are there."""
+    import verify
+
+    verdict = _read_json(ws / "verification" / "verdict_delta.json")
+    problems = []
+    if not isinstance(verdict, dict):
+        problems.append("verification/verdict_delta.json 不存在：要跑不带过滤条件的 run_validate(assets=\"verification/delta\")")
+    else:
+        if verdict.get("status") != "PASS":
+            problems.append(f"verdict_delta 的 status 是 {verdict.get('status')!r}，失败 {[f.get('id') for f in verdict.get('failed') or []]}")
+        if verdict.get("assets_digest") != verify.assets_digest(ws, verify.DELTA_ASSETS):
+            problems.append("verdict_delta 之后增量测试又改过：要重新跑 run_validate(assets=\"verification/delta\")")
+    if not (ws / "verification" / "coverage" / "summary.json").is_file():
+        problems.append("verification/coverage/summary.json 不存在：要跑 run_coverage(assets=\"verification/delta\")")
+    if not (ws / "verification" / "fault_baseline_B0.json").is_file():
+        problems.append("verification/fault_baseline_B0.json 不存在：要跑 run_equivalence(mode=\"record\", label=\"B0\", assets=\"verification/delta\")")
+    summary = (f"verdict_delta PASS: {verdict.get('passed')}/{verdict.get('total')}" if not problems else f"{len(problems)} problems: {problems[0][:120]}")
+    return CheckResult("verdict_delta", not problems, summary, relay="" if not problems else "V3 的问题：\n" + "\n".join(problems))
+
+
 def judge_unchanged(ws: Path) -> CheckResult:
     """The frozen judge still has the hashes of its manifest (v2 §4.7)."""
     import judge
@@ -218,6 +281,10 @@ def judge_unchanged(ws: Path) -> CheckResult:
 
 
 CHECKS: dict[str, Callable[[Path], CheckResult]] = {
+    "gap_inventory": gap_inventory,
+    "gap_decisions": gap_decisions,
+    "delta_assets": delta_assets,
+    "verdict_delta": verdict_delta,
     "judge_assets": judge_assets,
     "judge_unchanged": judge_unchanged,
     "reconcile_classified": reconcile_classified,

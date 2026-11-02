@@ -1085,3 +1085,20 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **bookstore-j2**（j1 的用例 + J4 的补充，在新工作区重新跑、重新冻结；j1 的 v1 不动）：74 个用例（6 个 `wb-`）、24 个故障场景，必须的响应 63/66，业务规则 114/126，行覆盖率 95.6%；93 个变异体抓住 86 个，7 个判为 equivalent，串行的反向检查没有被抓住；
 - J4 找到的规格问题已补进事实库：bookstore 3 条（`books` 元素不是对象时的两种 500、`quantity` 是字符串时畅销榜不新增行、`x-customer-id` 在默认配置下被忽略），airline 5 条；
 - 提议 V2P-19、V2P-20、V2P-21 见方案 §11。
+
+## v2 N4.1-N4.6：缺口盘点、增量测试和分诊的工具（2026-11-03）
+
+- **F1 补信号**（新模块 `runtime_signals.py`，`analyze_project` 写进 `report["runtime_signals"]`，其他字段不变）：Scan 是否处理分页（JS 只看同一个顶层语句、前后 40 行之内，Python 看所在函数）、进程内状态、时间和排序、文件和长连接、后台工作、自己签发令牌。JS 按模式匹配，Python 按语法树，漏的留给 G2。
+- **G1 `gap_scan`**（新模块 `gaps.py`，调度器动作）：事实库的信号 → `storage/gap_inventory.json`，九个已知类别，每条带出处、涉及的端点、规则手册的出处和默认做法。重跑保留编号和决定，信号消失的标 `no_longer_detected`，G2 的条目不动。读旧事实库时直接扫单体代码，不改事实库。bookstore 上认出 10 条，包括方案要求的三个已知缺口。
+- **G2、A1、A2**：标注员的 `MODE: G2`（核对、补充，不写决定）；architect 的"缺口决定"一节（A1 的第三项产出）和 `MODE: gaps`（只决定缺口，不改蓝图）；`gate(blueprint)` 的 AG 检查：有清单时，每条都要有决定、`DECISIONS.md` 要提到编号。新工具 `check_gap_inventory`。
+- **D1**：verifier 的 `MODE: D1`。`run_validate`、`run_coverage`、`run_equivalence` 增加 `assets` 参数（`verification/delta`）。增量测试和 v1 的资产同一种格式，多两个必填字段：`source`（`GAP-n` 或 `rule:...`）、`expected_from`（`monolith:<用例>/<步骤>`、`decision:GAP-n`、`ruling:<编号>`、`rulebook:<规则>`）。工具检查引用能解析，取自单体的状态码等于单体的状态码，每条 `test: delta` 的缺口都有用例。GM3 不适用于增量测试。
+- **V3**：verifier 的 `MODE: V3`，产出 `verdict_delta.json`、`coverage/`、`fault_baseline_B0.json`。新检查 `verdict_delta` 要求三个文件都在，判定时的测试和现在的一致（`assets_digest`）。
+- **V4 流转**（§4.13）：
+  - 路由目标按角色找（`_route_target`）：`code` → 写代码的任务，`template` → 最后一个 SAM 任务，`spec`/`blueprint` → architect，`assets` → D1；v1 的结果不变（S2、S3c、S1）。找不到目标的开分诊案例；
+  - `check_adapter`：映射没过静态检查 → A1（新异常 `AdapterMapError`）；读回不一致 → 分诊案例；
+  - `run_judge`：函数启动不了、构建失败 → I2；其他 → 分诊案例，处理者不能写 `judge/`；
+  - V3：按工作报告的 `routing` 退回，实现线只收到函数、出处、期望和实际；
+  - `tag_b0`：`verdict_judge`、`verdict_delta` 都通过并且裁判没改，才提交并打 tag。
+- **分段模板** `v2-gaps`：G1 → G2 → A1 → D1 → I1 → I2 → V3。I1、I2 先复查，只有 V3 退回或目标没过 gate 才派 worker（新的 `MODE: fix`）。
+- **路径规则**：工作区顶层目录（例如 `output/**`）也拦相对路径的 bash 命令（`cat output/lambdas/x`）。
+- **测试**：`test_gaps.py`（信号、清单、AG、增量测试的检查）、`test_coord_gap_flow.py`（假 worker 覆盖 §4.13 的每条路由和 B0）、`test_coord_j1_perm.py` 增加 D1 的权限测试。

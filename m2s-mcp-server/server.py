@@ -303,6 +303,22 @@ def run_judge(ref: str = "", mode: str = "auto", cases: list[str] | None = None)
 
 
 @mcp.tool()
+def check_gap_inventory(require_decided: bool = False) -> str:
+    """Check storage/gap_inventory.json: format, categories, evidence (each
+    {file, line, symbol} really is in the monolith), endpoints in the fact base; a
+    decided gap has decision {choice, why, test: delta | judge | none}. With
+    require_decided (architect): every gap decided and mentioned in storage/DECISIONS.md.
+
+    Returns: JSON {status: PASS|FAIL, errors, gaps, open}.
+    """
+    import gaps
+    try:
+        return json.dumps(gaps.check_inventory(_workspace(), require_decided), ensure_ascii=False)
+    except gaps.GapError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
 def check_mutant_classes() -> str:
     """J5 self-check: every mutant judge/judge_validation.json lists as not caught
     (survived, not_covered, trace_only) has a class in judge/mutant_classes.json
@@ -368,7 +384,8 @@ def _verify_call(fn, *args, **kwargs) -> str:
 
 @mcp.tool()
 def run_validate(functions: list[str] | None = None, cases: list[str] | None = None,
-                 dry_run: bool = False, mode: str = "auto", ref: str | None = None) -> str:
+                 dry_run: bool = False, mode: str = "auto", ref: str | None = None,
+                 assets: str | None = None) -> str:
     """Run the verification test cases (verification/events/<function>/*.json)
     and judge each one against its expectations.
 
@@ -383,6 +400,9 @@ def run_validate(functions: list[str] | None = None, cases: list[str] | None = N
         ref: run the current test assets against the code of this git ref
             of the workspace repo (e.g. "v0" after test cases were revised)
             instead of the working tree's code.
+        assets: the delta tests, "verification/delta" (v2 D1, V3). Their cases also
+            need source and expected_from, every gap decided with test: "delta"
+            needs a case, and a full run writes verification/verdict_delta.json.
 
     A full run (no functions/cases filter, not dry_run) also writes
     verification/verdict_A.json, the stage-A verdict. The first run does a
@@ -396,11 +416,12 @@ def run_validate(functions: list[str] | None = None, cases: list[str] | None = N
         touched an item of an ongoing transaction, as real DynamoDB does;
         sdk_calls mark them "!conflict"), mode, disclaimer} or {status, dry_run, schema_errors, ...}.
     """
-    return _verify_call(verify.run_validate, functions, cases, dry_run, mode, ref)
+    return _verify_call(verify.run_validate, functions, cases, dry_run, mode, ref, assets=assets)
 
 
 @mcp.tool()
-def run_coverage(functions: list[str] | None = None, mode: str = "auto", changed_since: str | None = None) -> str:
+def run_coverage(functions: list[str] | None = None, mode: str = "auto", changed_since: str | None = None,
+                 assets: str | None = None) -> str:
     """Run the test cases with V8 coverage and report branch/statement
     coverage per function. Every uncovered branch and statement (file, line,
     code) is written to verification/coverage/<function>.json -- use it to
@@ -412,17 +433,19 @@ def run_coverage(functions: list[str] | None = None, mode: str = "auto", changed
         changed_since: a git ref of the workspace repo (e.g. "HEAD"); also
             report whether every executable line changed since that ref was
             executed by at least one test (changed_lines.all_covered).
+        assets: run the delta tests, "verification/delta" (v2 V3).
 
     Returns: JSON string {mode, functions: {name: {statements_pct,
         branches_pct, functions_pct, files, uncovered_count}},
         changed_lines?}.
     """
-    return _verify_call(verify.run_coverage, functions, mode, changed_since)
+    return _verify_call(verify.run_coverage, functions, mode, changed_since, assets=assets)
 
 
 @mcp.tool()
 def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str] | None = None,
-                    runtime: str = "auto", speculative_reads: list[str] | None = None) -> str:
+                    runtime: str = "auto", speculative_reads: list[str] | None = None,
+                    assets: str | None = None) -> str:
     """Fault-injection runs (verification/faults/*.json).
 
     Args:
@@ -444,11 +467,13 @@ def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str
             extra reads on runs the baseline answered with an error other
             than 401/403, provided writes, messages and every baseline read
             are unchanged; the extra reads are reported, not hidden.
+        assets: use the delta tests, "verification/delta" (v2 V3 records
+            label "B0" on them).
 
     Returns: JSON string {status: RECORDED|EQUIVALENT|DIFFERENT|..., runs,
         differences, infra_errors[, speculative_reads, extra_reads_total]}.
     """
-    return _verify_call(verify.run_equivalence, mode, label, functions, runtime, speculative_reads=speculative_reads)
+    return _verify_call(verify.run_equivalence, mode, label, functions, runtime, speculative_reads=speculative_reads, assets=assets)
 
 
 @mcp.tool()

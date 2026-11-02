@@ -1774,6 +1774,19 @@ def check_adapter_map(ws: Path) -> list[dict[str, Any]]:
     return [_finding("AM", "ERROR", e, "storage/adapter_map.json") for e in res["errors"]]
 
 
+def check_gaps(ws: Path) -> list[dict[str, Any]]:
+    """AG (v2 A2, PIPELINE_V2_PLAN.md §4.11): when the workspace has a gap inventory,
+    every gap has a decision and DECISIONS.md mentions it. No inventory: no check."""
+    import gaps
+    if not gaps.inventory_path(ws).exists():
+        return []
+    try:
+        res = gaps.check_inventory(ws, require_decided=True)
+    except gaps.GapError as exc:
+        return [_finding("AG", "ERROR", f"gap inventory cannot be checked: {exc}", "storage/gap_inventory.json")]
+    return [_finding("AG", "ERROR", e, "storage/gap_inventory.json") for e in res["errors"]]
+
+
 def run_gate(phase: str, workspace: str) -> dict[str, Any]:
     ws = Path(workspace).resolve()
     template_path = ws / "output" / "template.yaml"
@@ -1790,7 +1803,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
     severe = False
 
     if phase == "blueprint":
-        checks = check_b0(ws) + check_contract(ws) + check_dm(ws) + check_api_type(ws) + check_adapter_map(ws)
+        checks = check_b0(ws) + check_contract(ws) + check_dm(ws) + check_api_type(ws) + check_adapter_map(ws) + check_gaps(ws)
         severe = any(f["severity"] == "ERROR" for f in checks)
 
     elif phase == "code":

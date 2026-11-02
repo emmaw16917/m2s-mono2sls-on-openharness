@@ -1,0 +1,82 @@
+# The gap and delta-test segment of v2 (PIPELINE_V2_PLAN.md §4.11-4.13, N4): the gap
+# inventory, its decisions, delta tests written before the code, then V3 on a target.
+#
+# The workspace holds a fact base, a frozen judge, a blueprint, DECISIONS.md and an adapter
+# map. For the delta tests to be written before the code, run with --stop-after D1 on a
+# workspace without output/, put the target's output/ in place, and run again.
+# I1 and I2 start by checking: they only spend a worker when V3 sends a failure back or
+# the target does not pass its gate. V1, V2 and B0 are left to the full template (N5).
+name: v2-gaps
+max_attempts: 3
+max_rework_rounds: 2
+tasks:
+  - id: G1
+    runner: dispatcher
+    action: gap_scan
+    scope: [storage/gap_inventory.json]
+    check: [gap_inventory]
+
+  - id: G2
+    role: m2s-spec-annotator
+    mode: G2
+    deps: [G1]
+    deny_read: ["output/**"]
+    scope: [storage/gap_inventory.json, storage/stage_reports/G2.json]
+    check: [gap_inventory]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: A1
+    role: m2s-architect
+    mode: gaps
+    deps: [G2]
+    deny_read: ["output/**"]
+    scope: [storage/gap_inventory.json, storage/DECISIONS.md, storage/stage_reports/A1.json]
+    check: [gap_decisions, gate_blueprint, judge_unchanged]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: D1
+    role: m2s-verifier
+    mode: D1
+    line: verify
+    deps: [A1]
+    deny_read: [monolith, "output/**"]
+    scope: ["verification/delta/**", storage/stage_reports/D1.json]
+    check: [delta_assets, judge_unchanged]
+    max_turns: 200
+    timeout_min: 120
+
+  - id: I1
+    role: m2s-code-developer
+    mode: fix
+    line: impl
+    deps: [D1]
+    start: recheck
+    scope: ["output/lambdas/**", "output/layers/**", storage/DECISIONS.md, storage/stage_reports/I1.json]
+    check: [gate_code]
+    max_turns: 200
+    timeout_min: 120
+
+  - id: I2
+    role: m2s-sam-engineer
+    mode: fix
+    line: impl
+    deps: [I1]
+    start: recheck
+    scope: [output/template.yaml, storage/DECISIONS.md, storage/stage_reports/I2.json]
+    check: [gate_template]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: V3
+    role: m2s-verifier
+    mode: V3
+    line: verify
+    deps: [I2]
+    on_stale: rerun
+    scope: [verification/verdict_delta.json, "verification/results/**", "verification/coverage/**",
+            verification/fault_baseline_B0.json, storage/stage_reports/V3.json]
+    check: [verdict_delta, judge_unchanged]
+    max_turns: 150
+    timeout_min: 120

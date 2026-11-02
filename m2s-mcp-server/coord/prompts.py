@@ -56,6 +56,18 @@ MODE_SUMMARIES = {
           "judge/spec_issues.json。按你的角色说明里\"J4\"一节做，用 mcp__m2s-server__check_judge_assets 自查到 PASS。",
     "J5": "MODE: J5。给 judge/judge_validation.json 里没被抓住的变异体分类（equivalent / gap），写进 "
           "judge/mutant_classes.json。按你的角色说明里\"J5\"一节做，用 mcp__m2s-server__check_mutant_classes 自查到 PASS。",
+    "G2": "MODE: G2。storage/gap_inventory.json 已由 gap_scan 按机械信号写好。按你的角色说明里\"MODE: G2\"一节：核对这些条目，"
+          "读单体代码补上信号认不出来的缺口。不写决定，不改事实库。用 mcp__m2s-server__check_gap_inventory 自查到 PASS。",
+    "gaps": "MODE: gaps。按你的角色说明里\"缺口决定\"和\"MODE: gaps\"两节，对 storage/gap_inventory.json 的每一条写决定，"
+            "并写进 storage/DECISIONS.md。不改 blueprint，不读 output/lambdas/ 下的代码，不改 judge/。"
+            "用 mcp__m2s-server__check_gap_inventory(require_decided=true) 自查到 PASS。",
+    "D1": "MODE: D1。在写代码之前，按缺口决定和规则手册的必须规则写增量测试：verification/delta/events/<函数>/<用例>.json、"
+          "verification/delta/faults/*.json。按你的角色说明里\"D1\"一节写；实现代码和单体源码对你都是关闭的。"
+          "用 mcp__m2s-server__run_validate(dry_run=true, assets=\"verification/delta\") 自查到 PASS。",
+    "V3": "MODE: V3。实现已经有了。在增量测试上跑 run_validate、run_coverage、run_equivalence(record, label=B0)，都带 "
+          "assets=\"verification/delta\"。按你的角色说明里\"V3\"一节做；失败要分诊，写进工作报告的 routing。不改测试、不改代码。",
+    "fix": "MODE: fix。实现已经有了（output/）。按下面的回炉信息只改点到的地方，不要重写。其余按你的角色说明，写完照常用 "
+           "run_gate 自查。工作报告的 fixes 列出每一条回炉信息改了什么。",
     "adapter": "MODE: adapter。迁移已经完成（blueprint 和 output/ 都在），只缺适配映射：按你的角色说明里"
                "\"适配映射\"和\"MODE: adapter\"两节，写 storage/adapter_map.json，用 "
                "mcp__m2s-server__check_adapter_map 自查到 PASS。不改 blueprint，不读 output/lambdas/ 下的代码，不改 judge/。",
@@ -131,7 +143,9 @@ HANDLER_SYSTEM_PROMPT = """你是 m2s 迁移流水线 v3 的异常处理者。�
 - ok：只用于阶段复查，表示没有发现需要处理的问题。
 
 给实现线任务（S1、S2、S3a、S3b、S3c、S4）的 feedback 只能用规格的语言：接口、字段、状态码、表状态、业务规则、gate 的检查项。
-不能写测试用例、fixture、断言写法或 verification/ 下的路径。"""
+不能写测试用例、fixture、断言写法或 verification/ 下的路径。
+v2 流水线（任务 A1、I1、I2）里裁判用例对实现线可见，可以引用 judge/ 下的用例；增量测试 verification/delta/ 仍然不能写给实现线。
+裁判冻结之后谁都不能改 judge/，分诊也不能。"""
 
 
 def handler_prompt(case_id: str, case_file: Path, journal: Path, ws: Path, kind: str) -> str:

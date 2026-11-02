@@ -56,8 +56,15 @@ from coord.workers import Launcher, OhLauncher, WorkerHandle, WorkerJob, role_pr
 ALWAYS_ALLOWED = ("coord/**", "storage/TODO.md", "**/node_modules/**", "**/__pycache__/**")
 # Workspace files only the dispatcher writes; rebuilt from the event log after every worker.
 DISPATCHER_FILES = (harness.WORKSPACE_FILE.as_posix(), rulings.WORKSPACE_FILE.as_posix())
-ROUTING_TARGETS = {"code": "S2", "template": "S3c", "spec": "S1"}
+# Who fixes what a verification failure points at, by role: v1 S2 / S3c / S1, v2 I1 / I2 / A1.
+ROUTE_ROLES = {"code": "m2s-code-developer", "template": "m2s-sam-engineer", "spec": "m2s-architect", "blueprint": "m2s-architect"}
 RELAY_FIELDS = ("function", "spec_refs", "expected_per_spec", "observed")
+# run_judge: a function that cannot start is a packaging problem, whatever else failed.
+_START_FAILURE = re.compile(r"could not be started|Cannot find module|ImportModuleError|ModuleNotFoundError|"
+                            r"No module named|ERR_MODULE_NOT_FOUND|sam build failed")
+JUDGE_TRIAGE_RULES = ("裁判已经冻结，分诊不能改裁判（judge/），也不能放宽它的比较。可以退回的任务：代码的问题给 I1，打包和模板的问题给 I2，"
+                      "蓝图和适配映射的问题给 A1；单体的这个行为其实是迁移带来的变化、需要裁定的，交给人。"
+                      "feedback 写失败的函数、事实库或规则的出处、期望和实际；裁判用例对实现线可见，可以直接引用。")
 MAX_CRASHES = 3
 # A worker whose session ended on a model-API failure (OpenHarness gave up after its own
 # retries) did not fail the task: it does not use an attempt, and the next spawn waits.
@@ -152,6 +159,8 @@ def closed_to(spec: TaskSpec, ws: Path, monolith: Path | None) -> tuple[tuple[st
             target = monolith
         else:
             target = ws / entry.replace("\\", "/").removesuffix("/**").removesuffix("/*")
+            if target.parent == ws:  # a command run in the workspace names it by its relative path
+                cmds += [f"*{target.name}/*", f"*{target.name}\\*"]
         dirs.append(str(target))
         tail = f"{target.parent.name}/{target.name}"
         cmds += [f"*{tail}*", "*" + tail.replace("/", "\\") + "*"]
@@ -202,7 +211,8 @@ class Dispatcher:
                         "final": self._act_final, "human": self._act_human,
                         "run_monolith": self._act_run_monolith, "reconcile_spec": self._act_reconcile,
                         "freeze_judge": self._act_freeze, "check_adapter": self._act_check_adapter,
-                        "run_judge": self._act_run_judge, "run_mutants": self._act_run_mutants, **(actions or {})}
+                        "run_judge": self._act_run_judge, "run_mutants": self._act_run_mutants,
+                        "gap_scan": self._act_gap_scan, "tag_b0": self._act_tag_b0, **(actions or {})}
         self.max_workers = max_workers
         self.poll_s = poll_s
         self.handler_enabled = handler
@@ -747,7 +757,7 @@ class Dispatcher:
                         system_prompt=HANDLER_SYSTEM_PROMPT,
                         prompt=handler_prompt(case.case_id, case.path, self.cases.journal, self.ws, kind),
                         scope=(), max_turns=HANDLER_MAX_TURNS, timeout_s=HANDLER_TIMEOUT_S, read_coord=True,
-                        deny_read=self.foreign_runs)
+                        deny_read=self.foreign_runs, deny_write=(str(self.ws / "judge"),) if self._judge_frozen() else ())
         handle = self.launcher.start(job)
         handle.kind = "handler"
         handle.meta = {"case": case}
@@ -856,31 +866,48 @@ class Dispatcher:
             self.events.append("spec_issues_carried", task="V1", issues=ids)
             self.log(f"V1: {len(ids)} non-blocking spec issues stay open; they go into the final report")
 
+    def _route_target(self, kind: Any, task_id: str) -> str | None:
+        """The nearest earlier task that fixes what a verification failure points at:
+        code, template, spec / blueprint by role; assets (the delta tests) is D1."""
+        earlier = [t for t in self.template.tasks if t.id in self.template.upstream(task_id) and t.id != task_id]
+        if kind == "assets":
+            found = [t.id for t in earlier if t.mode == "D1"]
+        else:
+            found = [t.id for t in earlier if kind in ROUTE_ROLES and t.role == ROUTE_ROLES[kind]]
+        return found[-1] if found else None
+
     def _flow_failed(self, spec: TaskSpec, results: list[CheckResult]) -> bool:
-        if spec.id != "V2" or not any(r.name == "validate_full" and not r.ok for r in results):
+        """The verifier's acceptance failed (v1 V2, v2 V3): its report's routing says
+        whose it is. Implementation-line tasks get the behaviour, not the tests."""
+        verdict = "verdict_delta" if spec.mode == "V3" else "validate_full" if spec.id == "V2" else None
+        if not verdict or not any(r.name == verdict and not r.ok for r in results):
             return False
-        report = _read_json(self.ws / "storage" / "stage_reports" / "V2.json") or {}
+        report = _read_json(self.ws / "storage" / "stage_reports" / f"{spec.id}.json") or {}
         routing = [r for r in report.get("routing") or [] if isinstance(r, dict)]
         if not routing:
             return False
-        if any(r.get("to") not in ROUTING_TARGETS for r in routing):
+        if any(self._route_target(r.get("to"), spec.id) is None for r in routing):
             self.board.report_gate(spec.id, False)
-            self._open_case("triage", spec.id, "V2 的分诊里有判断不了归因的失败",
-                            {"V2 的 routing": json.dumps(routing, ensure_ascii=False, indent=1),
+            self._open_case("triage", spec.id, f"{spec.id} 的分诊里有判断不了归因的失败",
+                            {f"{spec.id} 的 routing": json.dumps(routing, ensure_ascii=False, indent=1),
                              "检查结果": self._results_text(results)})
             return True
         targets: dict[str, list[dict[str, Any]]] = {}
         for entry in routing:
-            targets.setdefault(ROUTING_TARGETS[entry["to"]], []).append(entry)
+            targets.setdefault(self._route_target(entry["to"], spec.id), []).append(entry)
         over = [t for t in targets if not self._rework_budget_ok(t)]
         if over:
             self.board.report_gate(spec.id, False)
-            self._escalate(spec.id, f"V2 要求再次退回 {over}，但这些阶段的回炉次数已用完")
+            self._escalate(spec.id, f"{spec.id} 要求再次退回 {over}，但这些阶段的回炉次数已用完")
             return True
         for target in sorted(targets, key=self.template.order):
+            if self._spec(target).mode == "D1":
+                self._request_rework(target, "V3 判断下面这些增量测试本身写错了。按依据改用例，不要为了通过而放宽预期：\n"
+                                     + json.dumps(targets[target], ensure_ascii=False, indent=1), reason="verification", by=spec.id)
+                continue
             relay = [{k: e.get(k) for k in RELAY_FIELDS if k in e} for e in targets[target]]
             self._request_rework(target, "验收发现下面这些行为和规格不符，请修正：\n" + json.dumps(relay, ensure_ascii=False, indent=1),
-                                 reason="verification", by="V2")
+                                 reason="verification", by=spec.id)
         self._wait_for_upstream(spec.id, "verification")
         return True
 
@@ -888,7 +915,7 @@ class Dispatcher:
         raw = str(sub.get("suspected_module") or "").strip()
         ids = {t.id.upper(): t.id for t in self.template.tasks}
         roles = {t.role: t.id for t in self.template.tasks if t.role}
-        target = ids.get(raw.upper()) or roles.get(raw) or ROUTING_TARGETS.get(raw.lower())
+        target = ids.get(raw.upper()) or roles.get(raw) or self._route_target(raw.lower(), spec.id)
         if not target or target == spec.id or spec.id not in self.template.downstream(target):
             return False
         if spec.line == "verify" and self._spec(target).line == "impl":
@@ -910,7 +937,12 @@ class Dispatcher:
 
     def _flow_action_failed(self, spec: TaskSpec, result: CheckResult) -> bool:
         """run_monolith FAIL is about the cases (a request or an identity preparation
-        failed, a value that cannot be masked): J1 gets the details and J2 waits."""
+        failed, a value that cannot be masked): J1 gets the details and J2 waits.
+        check_adapter and run_judge follow §4.13."""
+        if spec.action == "check_adapter":
+            return self._adapter_failed(spec, result)
+        if spec.action == "run_judge":
+            return self._judge_failed(spec, result)
         if spec.action != "run_monolith" or result.detail.get("status") != "FAIL":
             return False
         j1 = self._task_by(mode="J1", upstream_of=spec.id)
@@ -920,6 +952,42 @@ class Dispatcher:
         self._request_rework(j1, "run_monolith（在单体上运行裁判用例）没有通过，按下面的问题修改用例或身份：\n"
                              + _clip(json.dumps(detail, ensure_ascii=False, indent=1)), reason="monolith_run", by=spec.id)
         self._wait_for_upstream(spec.id, "monolith_run")
+        return True
+
+    def _adapter_failed(self, spec: TaskSpec, result: CheckResult) -> bool:
+        """V1 (§4.13). A map that fails its static check is the architect's. A read that
+        differs from the monolith may be the map or the code: an exception case."""
+        detail = result.detail
+        a1 = self._route_target("blueprint", spec.id)
+        if detail.get("map_error") and a1 and self._rework_budget_ok(a1):
+            self._request_rework(a1, "适配映射 storage/adapter_map.json 没有通过检查，请修正：\n" + str(detail.get("error")),
+                                 reason="adapter_map", by=spec.id)
+            self._wait_for_upstream(spec.id, "adapter_map")
+            return True
+        self.board.report_gate(spec.id, False)
+        self._open_case("triage", spec.id, "check_adapter 读回的结果和单体不一致",
+                        {"check_adapter 的结果": _clip(json.dumps(detail, ensure_ascii=False, indent=1)),
+                         "怎么判断": "映射写错了（表、键、属性、身份）退回 A1；读接口的代码不对退回 I1；分不清就交给人。" + JUDGE_TRIAGE_RULES})
+        return True
+
+    def _judge_failed(self, spec: TaskSpec, result: CheckResult) -> bool:
+        """V2 (§4.13). A function that cannot start goes to I2 at once, and the rest of the
+        failures are looked at when it can. Everything else is an exception case; SDK
+        decode errors too, since they may be the map or the code."""
+        detail = result.detail
+        dumped = json.dumps({"failures": detail.get("failures"), "error": detail.get("error")}, ensure_ascii=False)
+        signals = sorted({m.group(0)[:300] for m in re.finditer(rf"[^\"]*(?:{_START_FAILURE.pattern})[^\"]*", dumped)})
+        i2 = self._route_target("template", spec.id)
+        if signals and i2 and self._rework_budget_ok(i2):
+            self.events.append("judge_start_failures", task=spec.id, to=i2, signals=signals[:20])
+            self._request_rework(i2, "目标版本的函数启动不了（打包或模板的问题），请修正：\n" + "\n".join(signals[:20]),
+                                 reason="packaging", by=spec.id)
+            self._wait_for_upstream(spec.id, "packaging")
+            return True
+        self.board.report_gate(spec.id, False)
+        self._open_case("triage", spec.id, "裁判在目标版本上没有通过",
+                        {"run_judge 的结果": _clip(json.dumps(detail, ensure_ascii=False, indent=1)),
+                         "完整判定": "verification/verdict_judge.json", "规则": JUDGE_TRIAGE_RULES})
         return True
 
     def _after_j3(self, j3: str) -> None:
@@ -1125,6 +1193,16 @@ class Dispatcher:
         return CheckResult("reconcile_spec", True, f"{r['differences']} differences, "
                            f"{r['resolved_by_rulings']} settled by rulings, {r['steps']} steps", detail=r)
 
+    def _act_gap_scan(self, spec: TaskSpec) -> CheckResult:
+        """G1 (v2 §4.11): the gap inventory from the fact base's signals."""
+        import gaps
+
+        try:
+            r = gaps.gap_scan(self.ws)
+        except gaps.GapError as exc:
+            return CheckResult("gap_scan", False, f"gap_scan: {exc}", detail={"status": "ERROR", "error": str(exc)})
+        return CheckResult("gap_scan", True, f"gap_scan: {r['gaps']} gaps ({r['added']} new): {r['by_category']}", detail=r)
+
     def _act_run_mutants(self, spec: TaskSpec) -> CheckResult:
         """J5 (v2 §4.10): mutants of the monolith against the judge. The reverse check
         (parallel -> serial) must not be caught: if it is, the judge compares an
@@ -1184,25 +1262,47 @@ class Dispatcher:
         results.append(CheckResult("verdict_A", verdict.get("status") == "PASS", f"verdict_A {verdict.get('status')!r}"))
         return results
 
-    def _act_tag_v0(self, spec: TaskSpec) -> CheckResult:
-        results = self._acceptance()
-        if not all(r.ok for r in results):
-            return CheckResult("tag_v0", False, "acceptance failed: " + "; ".join(r.summary for r in results if not r.ok))
+    def _commit_and_tag(self, tag: str, message: str, paths: tuple[str, ...]) -> tuple[str, bool]:
+        """Commit `paths` in the workspace's own repo and tag it: (short sha, tag moved)."""
         if not (self.ws / ".git").is_dir():
             _git(self.ws, "init", "-q")
-        self._write_dispatcher_files()  # v0 carries the harness and rulings it was built with
+        self._write_dispatcher_files()  # the tag carries the harness and rulings it was built with
         exclude = self.ws / ".git" / "info" / "exclude"
         exclude.parent.mkdir(parents=True, exist_ok=True)
         if "coord/" not in (exclude.read_text(encoding="utf-8") if exclude.exists() else ""):
             with exclude.open("a", encoding="utf-8") as fh:
                 fh.write("\ncoord/\n")
-        _git(self.ws, "add", "-A", "output", "verification", "storage")
-        _git(self.ws, "-c", "user.name=m2s-pipeline", "-c", "user.email=m2s@local", "commit", "-q", "-m", "v0: stage A accepted")
-        moved = bool(_git(self.ws, "tag", "--list", "v0").stdout.strip())
-        _git(self.ws, "tag", "-f", "v0")
-        sha = _git(self.ws, "rev-parse", "--short", "v0").stdout.strip()
+        _git(self.ws, "add", "-A", *paths)
+        _git(self.ws, "-c", "user.name=m2s-pipeline", "-c", "user.email=m2s@local", "commit", "-q", "-m", message)
+        moved = bool(_git(self.ws, "tag", "--list", tag).stdout.strip())
+        _git(self.ws, "tag", "-f", tag)
+        return _git(self.ws, "rev-parse", "--short", tag).stdout.strip(), moved
+
+    def _act_tag_v0(self, spec: TaskSpec) -> CheckResult:
+        results = self._acceptance()
+        if not all(r.ok for r in results):
+            return CheckResult("tag_v0", False, "acceptance failed: " + "; ".join(r.summary for r in results if not r.ok))
+        sha, moved = self._commit_and_tag("v0", "v0: stage A accepted", ("output", "verification", "storage"))
         self.events.append("tag_v0", task=spec.id, commit=sha, moved=moved)
         return CheckResult("tag_v0", bool(sha), f"tagged v0 at {sha}" + (" (moved)" if moved else ""))
+
+    def _act_tag_b0(self, spec: TaskSpec) -> CheckResult:
+        """B0 (v2 §4.13): the judge and the delta tests both pass on this code."""
+        import judge
+
+        problems = []
+        for name in ("verdict_judge", "verdict_delta"):
+            status = (_read_json(self.ws / "verification" / f"{name}.json") or {}).get("status")
+            if status != "PASS":
+                problems.append(f"{name} {status!r}")
+        changes = judge.judge_changes(self.ws)
+        if changes is None or any(changes.values()):
+            problems.append("the judge is not frozen or has changed" + (f": {changes}" if changes else ""))
+        if problems:
+            return CheckResult("tag_b0", False, "acceptance failed: " + "; ".join(problems))
+        sha, moved = self._commit_and_tag("B0", "B0: judge and delta tests pass", ("output", "verification", "storage", "judge"))
+        self.events.append("tag_b0", task=spec.id, commit=sha, moved=moved)
+        return CheckResult("tag_b0", bool(sha), f"tagged B0 at {sha}" + (" (moved)" if moved else ""))
 
     def _act_final(self, spec: TaskSpec) -> CheckResult:
         s5 = _read_json(self.ws / "storage" / "stage_reports" / "S5.json") or {}

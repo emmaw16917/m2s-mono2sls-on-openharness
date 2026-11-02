@@ -22,6 +22,8 @@ model: inherit
 - `STAGE_ID=VS`：architect 接受了 S5 的 spec 放宽申请后，按新的 SI 定向调整用例。见"VS"一节。
 - `MODE: J1`（v2 流水线）：只看事实库，写裁判用例 `judge/`。见"J1"一节。这一节自成一体，上面的测试资产格式不适用。
 - `MODE: J3`（v2 流水线）：给规格对账的差异分类。见"J3"一节。
+- `MODE: D1`（v2 流水线）：写代码之前写增量测试。见"D1"一节。
+- `MODE: V3`（v2 流水线）：实现之后跑增量测试并分诊。见"V3"一节。
 
 ---
 
@@ -471,6 +473,80 @@ J1 只看事实库写用例，有些分支没走到，或者代码里有事实�
 - **只读被改的那几行和它引用的事实**，不要去查密钥、令牌签发的代码，不要读流水线工具的源码和别的会话记录。读这类内容容易让模型服务拒绝整个会话（`data_inspection_failed`）；
 - 写完用 `mcp__m2s-server__check_mutant_classes()` 自查，直到 `PASS`；
 - 工作报告 `storage/stage_reports/<STAGE_ID>.json`：每一类的数量和 id。
+
+## D1：增量测试（v2，写代码之前）
+
+裁判 `judge/` 检查的是"对外行为和单体一样"。增量测试检查裁判看不到的东西：单体里没有对应物、或者迁移后才有的行为。例如重复投递时消费者只处理一次、消息真的进了队列、部分失败时的上报、一次写多条的事务要么全成要么全败。**代码还没有写，实现代码（`output/lambdas/`）和单体源码对你都是关闭的。**
+
+**输入**：
+- `storage/gap_inventory.json`：`decision.test` 是 `"delta"` 的每一条都要有测试；
+- `storage/blueprint.json`、`storage/DECISIONS.md`：函数、表、队列、幂等键，以及 architect 写下的做法；
+- 规则手册的必须规则：SQS / EventBridge 消费者幂等，用 `skill(name="m2s-async-patterns-kb")` 读；
+- `judge/oracle_expected.json`：单体每个用例每一步的实际输出（值已经屏蔽成 `<id:u1>`、`<time#1>` 这样的符号），`storage/adapter_map.json`：单体的表和字段在目标里是什么；
+- `storage/rulings.json`（如果有）。
+
+**产出**放在 `verification/delta/` 下，格式和上面"测试资产格式"一节完全一样，只是目录不同，并且每个用例多两个必填字段：
+
+- `verification/delta/events/<函数>/<用例>.json`
+- `verification/delta/faults/<场景>.json`
+
+```json
+{
+  "id": "delta-bestsellers-duplicate-delivery",
+  "function": "bestsellers-update",
+  "kind": "boundary",
+  "source": "GAP-2",
+  "expected_from": "decision:GAP-2",
+  "spec_refs": ["blueprint:lambda_functions[bestsellers-update].notes"],
+  "sqs": {"records": [{"message_id": "m1", "body": {"orderId": "o1", "books": [{"bookId": "b1", "quantity": 2}]}},
+                      {"message_id": "m1", "body": {"orderId": "o1", "books": [{"bookId": "b1", "quantity": 2}]}}]},
+  "fixtures": {"Bestsellers": []},
+  "expect": {"batch_item_failures": [], "tables_after": {"Bestsellers": {"contains": [{"bookId": "b1", "salesCount": 2}]}}}
+}
+```
+
+- **`source`**：这个用例测什么。`GAP-<n>`（缺口编号），或 `rule:<必须规则的名字>`；一个用例测几条时写成列表。工具会检查编号存在，并且每条 `test: "delta"` 的缺口都有用例；
+- **`expected_from`**：期望从哪里来，四选一，工具会检查它能解析：
+  - `monolith:<裁判用例>/<步骤>`：能对照单体的，期望取单体执行**一次**的效果（例如重复投递之后的结果等于单体处理一次的结果）。写了 `expect.status` 时，它必须等于单体在这一步的状态码；
+  - `decision:GAP-<n>`：单体里没有对应物，期望来自 architect 的决定；
+  - `ruling:<裁定编号>`：期望来自裁定；
+  - `rulebook:<规则>`：期望来自规则手册的必须规则。
+- 表名、属性名按 **blueprint** 写（目标的结构），响应体按对外契约写；
+- 上面"怎么写预期"一节的规则照样适用：只断言契约，不断言实现轨迹；`sdk_calls` 只写写操作和发消息；
+- 故障场景只记录、不写预期；用例自带的 `faults` 要有规定才写。写操作和消费者至少各有一个故障场景；
+- **不要重复裁判**：普通的状态码、字段、校验规则裁判已经测了；只写裁判测不到的。
+
+**步骤**：
+1. 按缺口逐条列出要测什么；决定写得太含糊、写不出可判定的预期时，调 `report_blocked`，`suspected_module` 写 `A1`，说明是哪一条、缺什么；
+2. 写用例和故障场景；
+3. 调 `mcp__m2s-server__run_validate(dry_run=true, assets="verification/delta")`，按 `schema_errors` 改到 `PASS`（最多 3 次修改）。不要加 `assets` 以外的目录，不要写 `verification/events/`；
+4. 写工作报告 `storage/stage_reports/D1.json`：每条缺口对应哪些用例，期望从哪里来。
+
+回炉时（V3 判断某个用例写错了）：保留其他资产，只改点到的用例，改动写进报告的 `asset_fixes`。**不要为了通过而放宽预期**，能指出它和决定或规则矛盾才改。
+
+## V3：跑增量测试（v2，实现之后）
+
+实现已经有了。三个工具都带 `assets="verification/delta"`：
+
+1. `mcp__m2s-server__run_validate(assets="verification/delta")`：不带 `functions`、`cases`，才会写 `verification/verdict_delta.json`；
+2. `mcp__m2s-server__run_coverage(assets="verification/delta")`：写 `verification/coverage/`；只报告，不设门槛；
+3. `mcp__m2s-server__run_equivalence(mode="record", label="B0", assets="verification/delta")`：写 `verification/fault_baseline_B0.json`。只记录故障下的行为，`infra_errors` 非空时写进报告。
+
+判定以 `verdict_delta.json` 为准（调度器自己会读，也会检查三个文件都在、测试之后没有改过）。你**不改测试、不改代码**。
+
+`FAIL` 时，每个失败的用例都要分诊。读 `mismatches`、`logs_tail`、用例文件和代码，写进工作报告的 `routing`：
+
+```json
+{"to": "code", "function": "bestsellers-update",
+ "spec_refs": ["blueprint:lambda_functions[bestsellers-update].notes"],
+ "expected_per_spec": "同一条消息投递两次，销量只加一次",
+ "observed": "销量加了两次",
+ "evidence_cases": ["delta-bestsellers-duplicate-delivery"]}
+```
+
+- `to`：`code`（代码和决定、规则不符）、`template`（模板：环境变量、权限、路由）、`blueprint`（决定本身错了或者互相矛盾）、`assets`（用例写错了，要能指出依据，由 D1 改）、`undetermined`（判断不了，不要猜）；
+- `expected_per_spec`、`observed` 只用规格的语言，不写 fixture 和断言；转给实现线时只转 `function`、`spec_refs`、`expected_per_spec`、`observed`；
+- 写完报告，有失败时调 `report_blocked`。调度器按 `routing` 退回对应的任务，修好之后这个任务重新运行。
 
 ## 工作报告 `<WS>/storage/stage_reports/<STAGE_ID>.json`
 

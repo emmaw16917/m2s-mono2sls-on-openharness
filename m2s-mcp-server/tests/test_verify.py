@@ -430,8 +430,8 @@ def test_filtered_record_merges_into_the_existing_baseline(ws, monkeypatch):
     cases = [{"id": "a1", "function": "books-get"}, {"id": "c1", "function": "consumer"}]
     faults = [{"id": "fa", "function": "books-get", "cases": ["a1"], "rules": []},
               {"id": "fc", "function": "consumer", "cases": ["c1"], "rules": []}]
-    monkeypatch.setattr(verify, "load_cases", lambda ws: cases)
-    monkeypatch.setattr(verify, "load_faults", lambda ws: faults)
+    monkeypatch.setattr(verify, "load_cases", lambda ws, assets=None: cases)
+    monkeypatch.setattr(verify, "load_faults", lambda ws, assets=None: faults)
     monkeypatch.setattr(verify, "check_fault", lambda *a, **k: [])
     monkeypatch.setattr(verify, "sam_build", lambda root: root)
     monkeypatch.setattr(verify, "_mode", lambda r: "local")

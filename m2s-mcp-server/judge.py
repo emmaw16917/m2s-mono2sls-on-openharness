@@ -97,6 +97,10 @@ class JudgeError(Exception):
     pass
 
 
+class AdapterMapError(JudgeError):
+    """The adapter map is missing or does not pass its static check: the architect's to fix."""
+
+
 def judge_dir(ws: Path | str) -> Path:
     return Path(ws) / JUDGE_DIR
 
@@ -2286,13 +2290,13 @@ def _judge_job(ws: Path, ref: str | None, mode: str, unit_filter: Any = None, la
         raise JudgeError(f"the judge differs from its manifest (frozen judge changed): {changes}")
     amap = adapter.load_map(ws)
     if amap is None or "_load_error" in amap:
-        raise JudgeError("storage/adapter_map.json " + ("not found: the architect writes it (A1)" if amap is None
-                                                        else amap["_load_error"]))
+        raise AdapterMapError("storage/adapter_map.json " + ("not found: the architect writes it (A1)" if amap is None
+                                                             else amap["_load_error"]))
     code_root = verify.export_ref(ws, ref) if ref else ws
     model = verify.Model(code_root)
     static = check_adapter_map(ws, _model_target_tables(model))
     if static["status"] != "PASS":
-        raise JudgeError("the adapter map does not pass its check: " + "; ".join(static["errors"][:8]))
+        raise AdapterMapError("the adapter map does not pass its check: " + "; ".join(static["errors"][:8]))
     oracle = _read(judge_dir(ws) / "oracle_expected.json")
     backend = verify.ddb_backend()
     if (oracle.get("meta") or {}).get("backend") != backend["backend"]:
@@ -2471,7 +2475,7 @@ def check_adapter(ws: Path | str, ref: str | None = None, mode: str = "auto") ->
         picked = {c["id"] for c in assets["cases"] if "_load_error" not in c and _read_only_case(facts, c)}
         raw, info = _judge_job(ws, ref, mode, lambda u: not u["rules"] and u["case"] in picked, label="adapter")
     except (JudgeError, verify.VerifyError, adapter.AdapterError) as exc:
-        return {"status": "ERROR", "error": str(exc)}
+        return {"status": "ERROR", "error": str(exc), "map_error": isinstance(exc, (AdapterMapError, adapter.AdapterError))}
     res = _judge_results(ws, raw, info)
     failed, other, data_steps = adapter_failures(res["cases"])
     status = "PASS" if data_steps and not failed else "FAIL"
