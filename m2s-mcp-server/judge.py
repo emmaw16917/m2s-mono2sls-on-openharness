@@ -1361,6 +1361,11 @@ def mask_unit(facts: Facts, runs: list[dict[str, Any]], rules: list[dict[str, An
     for s in ia:
         if s in ib:
             sym.seed(s, ia[s], ib[s])
+            # The same in both passes (a user id the case itself chose, e.g. register
+            # with userId): J1 can predict the literal, so reconcile compares with it.
+            if _jkey(ia[s]) == _jkey(ib[s]):
+                sym.symbols[s]["value"] = ia[s]
+
     def head(o: dict[str, Any]) -> dict[str, Any]:
         return {k: v for k, v in o.items() if k != "tables_after"}
 
@@ -1645,6 +1650,24 @@ def compare_step(predicted: dict[str, Any], actual: dict[str, Any], symbol_types
     return out
 
 
+def _with_values(v: Any, values: dict[str, Any]) -> Any:
+    """A masked observation with the symbols whose value is known put back: an
+    identity id that was the same in every pass (masks.json `value`). The oracle
+    keeps the symbol (the target's id differs); only the reconciliation with J1's
+    literal predictions needs the value."""
+    if not values:
+        return v
+    if isinstance(v, str):
+        if v in values:
+            return values[v]
+        return SYMBOL_RE.sub(lambda m: str(values[m.group()]) if m.group() in values else m.group(), v)
+    if isinstance(v, list):
+        return [_with_values(x, values) for x in v]
+    if isinstance(v, dict):
+        return {k: _with_values(x, values) for k, x in v.items()}
+    return v
+
+
 def _rulings_by_case(ws: Path) -> dict[str, list[dict[str, Any]]]:
     """Rulings in force or waiting for a person, by the cases they name."""
     data = _read(ws / "storage" / "rulings.json") if (ws / "storage" / "rulings.json").is_file() else {}
@@ -1675,11 +1698,14 @@ def reconcile(ws: Path | str) -> dict[str, Any]:
         observed = (oracle.get("cases") or {}).get(cid)
         if observed is None:
             raise JudgeError(f"case {cid} is not in judge/oracle_expected.json: the cases changed after run_monolith")
-        types = {s: info.get("type") for s, info in ((masks.get("units") or {}).get(cid) or {}).get("symbols", {}).items()}
+        symbols = ((masks.get("units") or {}).get(cid) or {}).get("symbols", {})
+        types = {s: info.get("type") for s, info in symbols.items()}
+        values = {s: info["value"] for s, info in symbols.items() if "value" in info}
         for step in case["steps"]:
             name = step["name"]
             steps += 1
-            for d in compare_step((case.get("predicted") or {}).get(name) or {}, observed["steps"].get(name) or {}, types):
+            for d in compare_step((case.get("predicted") or {}).get(name) or {},
+                                  _with_values(observed["steps"].get(name) or {}, values), types):
                 d = {"id": f"{cid}/{name}/{d['check']}", "case": cid, "step": name,
                      "request": {k: step[k] for k in ("method", "path") if k in step}, **d,
                      "fact_refs": case.get("fact_refs") or [], "file": case.get("_file")}

@@ -400,12 +400,17 @@ def run_mutants(ws: Path | str, operators: list[str] | None = None, limit: int |
 
     classes = judge._read(jd / CLASSES) if (jd / CLASSES).is_file() else {}
     classes = classes if isinstance(classes, dict) and "_load_error" not in classes else {}
+    exempt = {u["ref"]: u.get("reason") for u in assets.get("uncovered") or [] if isinstance(u, dict) and u.get("ref")}
     rows = []
     for m in mutants:
         row = {k: v for k, v in m.items() if k not in ("root",)}
         row.update(plan.get(m["id"], {"outcome": "not_run"}))
-        if row["outcome"] in ("survived", "not_covered", "trace_only") and m["id"] in classes:
-            row["class"] = classes[m["id"]]
+        if row["outcome"] in UNCAUGHT and not m.get("reverse"):
+            auto = _explained_by_uncovered(m, exempt)
+            if m["id"] in classes:
+                row["class"] = classes[m["id"]]
+            elif auto:
+                row["class"] = auto
         rows.append(row)
     forward = [r for r in rows if not r.get("reverse")]
     count = {o: sum(1 for r in forward if r["outcome"] == o) for o in ("killed", "survived", "not_covered", "trace_only", "invalid")}
@@ -423,20 +428,36 @@ def run_mutants(ws: Path | str, operators: list[str] | None = None, limit: int |
     judge._write(jd / VALIDATION, {"meta": {"generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
                                             "backend": raw.get("backend"), "oracle_generated_at": (oracle.get("meta") or {}).get("generated_at")},
                                    "summary": summary, "mutants": rows})
-    survivors = [{"id": r["id"], "outcome": r["outcome"], "refs": r.get("refs"), "before": r.get("before"),
-                  "after": r.get("after")} for r in forward if r["outcome"] in ("survived", "not_covered", "trace_only")]
-    return {"status": "PASS" if summary["reverse_ok"] else "FAIL", "summary": summary, "survivors": survivors[:30],
-            "survivors_total": len(survivors), "output": f"judge/{VALIDATION}"}
+    left = [{"id": r["id"], "outcome": r["outcome"], "refs": r.get("refs"), "before": r.get("before"),
+             "after": r.get("after")} for r in forward if _to_classify(r)]
+    return {"status": "PASS" if summary["reverse_ok"] else "FAIL", "summary": summary, "survivors": left[:30],
+            "survivors_total": len(left), "output": f"judge/{VALIDATION}"}
 
 
 MUTANT_CLASSES = ("equivalent", "gap")
 UNCAUGHT = ("survived", "not_covered", "trace_only")
 
 
+def _explained_by_uncovered(m: dict[str, Any], exempt: dict[str, Any]) -> dict[str, Any] | None:
+    """A mutant only on responses judge/uncovered.json says no request can reach (with the
+    reason): equivalent under the judge's conditions, and nobody has to read that code again."""
+    responses = [r for r in m.get("refs") or [] if "#responses[" in r]
+    if not responses or not all(r in exempt for r in responses):
+        return None
+    return {"class": "equivalent", "source": "uncovered",
+            "reason": "judge/uncovered.json: " + "; ".join(f"{r}: {exempt[r]}" for r in responses)}
+
+
+def _to_classify(m: dict[str, Any]) -> bool:
+    return (not m.get("reverse") and m.get("outcome") in UNCAUGHT
+            and (m.get("class") or {}).get("source") != "uncovered")
+
+
 def survivors(ws: Path | str) -> list[dict[str, Any]]:
-    """The forward mutants of judge/judge_validation.json the judge did not catch."""
+    """The forward mutants of judge/judge_validation.json the judge did not catch,
+    but for those judge/uncovered.json already explains."""
     v = judge._read(judge.judge_dir(ws) / VALIDATION) if (judge.judge_dir(ws) / VALIDATION).is_file() else {}
-    return [m for m in (v.get("mutants") or []) if not m.get("reverse") and m.get("outcome") in UNCAUGHT]
+    return [m for m in (v.get("mutants") or []) if _to_classify(m)]
 
 
 def check_mutant_classes(ws: Path | str) -> dict[str, Any]:

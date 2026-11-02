@@ -143,3 +143,29 @@ def test_freeze_needs_a_ready_judge_and_then_holds_it(tmp_path: Path):
 def test_not_frozen_means_no_findings(tmp_path: Path):
     ws = make_ws(tmp_path)
     assert judge.judge_changes(ws) is None and gates.check_judge_frozen(ws) == []
+
+
+def test_an_identity_id_the_same_in_every_pass_is_compared_as_its_value(tmp_path: Path):
+    """A monolith that lets the client choose the user id: J1 can predict the literal,
+    the oracle keeps the symbol (the target's id differs)."""
+    ws = make_ws(tmp_path)
+    _oracle(ws, {})
+    oracle = json.loads((ws / "judge" / "oracle_expected.json").read_text(encoding="utf-8"))
+    name = "read"
+    oracle["cases"]["cart-add-then-read"]["steps"][name]["body"] = [{"bookId": "book-1", "customerId": "<id:u1>", "note": "for <id:u1>"}]
+    judge._write(ws / "judge" / "oracle_expected.json", oracle)
+    path = next(p for p in (ws / "judge" / "cases").rglob("cart-add-then-read.json"))
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    raw["predicted"][name] = {"status": raw["predicted"][name]["status"],
+                              "body": {"contains": [{"customerId": "judge-u1", "note": "for judge-u1"}]}}
+    path.write_text(json.dumps(raw), encoding="utf-8")
+    symbol = {"class": "identity", "first": None, "type": "string"}
+    masks = {"units": {"cart-add-then-read": {"symbols": {"<id:u1>": {**symbol, "value": "judge-u1"}}}}}
+    judge._write(ws / "judge" / "masks.json", masks)
+    assert not [d for d in judge.reconcile(ws) and json.loads((ws / "judge" / "reconcile.json").read_text(encoding="utf-8"))["differences"]
+                if d["case"] == "cart-add-then-read"]
+    masks["units"]["cart-add-then-read"]["symbols"]["<id:u1>"] = symbol  # a volatile id: no value, the literal cannot match
+    judge._write(ws / "judge" / "masks.json", masks)
+    judge.reconcile(ws)
+    rec = json.loads((ws / "judge" / "reconcile.json").read_text(encoding="utf-8"))
+    assert [d["check"] for d in rec["differences"] if d["case"] == "cart-add-then-read"] == ["body.contains[0]"]

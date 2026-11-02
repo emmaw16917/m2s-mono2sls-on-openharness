@@ -116,3 +116,17 @@ def test_survivors_must_be_classified(tmp_path: Path):
     r = mutants.check_mutant_classes(ws)
     assert r["status"] == "PASS" and r["classes"] == {"equivalent": 1, "gap": 1}
     assert [g["id"] for g in mutants.gaps(ws)] == ["a"] and mutants.gaps(ws)[0]["suggest"] == "y"
+
+
+def test_uncovered_responses_explain_their_mutants(tmp_path: Path):
+    exempt = {"GET /x#responses[2]": "no endpoint deletes a user"}
+    m = {"refs": ["GET /x#business_rules[4]", "GET /x#responses[2]"]}
+    auto = mutants._explained_by_uncovered(m, exempt)
+    assert auto["class"] == "equivalent" and auto["source"] == "uncovered" and "no endpoint deletes a user" in auto["reason"]
+    assert mutants._explained_by_uncovered({"refs": ["GET /x#business_rules[4]"]}, exempt) is None
+    assert mutants._explained_by_uncovered({"refs": ["GET /x#responses[2]", "GET /x#responses[3]"]}, exempt) is None
+    ws = _ws(tmp_path)
+    judge._write(ws / "judge" / mutants.VALIDATION, {"summary": {}, "mutants": [
+        {"id": "a", "outcome": "survived", "class": auto}, {"id": "b", "outcome": "survived"}]})
+    r = mutants.check_mutant_classes(ws)
+    assert r["survivors"] == 1 and r["errors"] == ["b: not classified"]

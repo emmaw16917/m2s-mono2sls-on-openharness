@@ -927,7 +927,10 @@ class Dispatcher:
         fact_error -> F2 corrects the facts and J1 updates its predictions;
         case_error -> J1; mask_gap -> J2 again (with judge/mask_rules.json);
         needs_ruling -> an architect ruling task the next tasks wait for.
-        After max_reconcile_rounds, what is left goes to a person."""
+        White-box cases (wb-*) are J4's: their case errors and prediction updates go
+        to J4, and differences only in them have J4's own budget (max_strength_rounds),
+        so J1's rounds do not use up what J4's cases need.
+        After the rounds, what is left goes to a person."""
         import judge
 
         diffs, classes, _ = judge.reconcile_classes(self.ws)
@@ -936,14 +939,20 @@ class Dispatcher:
         groups = {k: [{**d, **(classes.get(d["id"]) or {})} for d in diffs if (classes.get(d["id"]) or {}).get("class") == k]
                   for k in judge.RECONCILE_CLASSES}
         blocks = self._next_tasks(j3)
-        done = self.events.count("reconcile_round")
-        if done >= self.template.max_reconcile_rounds:
+        j4 = self._task_by(mode="J4")
+
+        def white_box(d: dict[str, Any]) -> bool:
+            return bool(j4) and str(d.get("case") or "").startswith("wb-")
+
+        only_j4 = all(white_box(d) for d in diffs)
+        done = sum(1 for e in self.events.all() if e["type"] == "reconcile_round" and bool(e.get("white_box")) == only_j4)
+        if done >= (self.template.max_strength_rounds if only_j4 else self.template.max_reconcile_rounds):
             self._human_gate("HUMAN_RECONCILE", f"规格对账经过 {done} 轮，仍有 {len(diffs)} 条差异（见 judge/reconcile.json 和 "
                              f"judge/reconcile_classes.json）：" + json.dumps({k: [d["id"] for d in v] for k, v in groups.items() if v},
                                                                                ensure_ascii=False), blocks)
             return
         rnd = done + 1
-        self.events.append("reconcile_round", task=j3, round=rnd, counts={k: len(v) for k, v in groups.items()},
+        self.events.append("reconcile_round", task=j3, round=rnd, white_box=only_j4, counts={k: len(v) for k, v in groups.items()},
                            ids={k: [d["id"] for d in v] for k, v in groups.items() if v})
         j1 = self._task_by(mode="J1", upstream_of=j3)
         j2 = self._task_by(action="run_monolith", upstream_of=j3)
@@ -961,21 +970,33 @@ class Dispatcher:
                                  + show(groups["fact_error"]), reason="reconcile", by=j3)
         else:
             unrouted += groups["fact_error"]
-        j1_parts = []
-        if groups["fact_error"] and f2:
-            j1_parts.append("事实库已按下面这些差异修正。只更新这些用例的 predicted，使它符合修正后的事实库（重新读事实库），"
-                            "不改请求：\n" + show(groups["fact_error"]))
-        if groups["case_error"]:
-            j1_parts.append("规格对账（J3）判定下面这些用例写错了，按 reason 修改：\n" + show(groups["case_error"]))
+
+        def parts(fact: list[dict[str, Any]], case: list[dict[str, Any]]) -> list[str]:
+            out = []
+            if fact and f2:
+                out.append("事实库已按下面这些差异修正。只更新这些用例的 predicted，使它符合修正后的事实库（重新读事实库），"
+                           "不改请求：\n" + show(fact))
+            if case:
+                out.append("规格对账（J3）判定下面这些用例写错了，按 reason 修改：\n" + show(case))
+            return out
+
+        def send(task: str, text: str) -> None:
+            if self.board.status(task) == "closed":
+                self._request_rework(task, text, reason="reconcile", by=j3)
+            else:  # already stale: F2 was reworked above, or it waits behind this J3
+                self.events.append("round_start", task=task, cause="rework", reason="reconcile", mode="rerun", by=j3)
+                self._feedback(task, j3, text)
+
+        j1_parts = parts([d for d in groups["fact_error"] if not white_box(d)],
+                         [d for d in groups["case_error"] if not white_box(d)])
         if j1_parts and j1:
-            text = "\n\n".join(j1_parts)
-            if self.board.status(j1) == "closed":
-                self._request_rework(j1, text, reason="reconcile", by=j3)
-            else:  # already stale: F2 was reworked above
-                self.events.append("round_start", task=j1, cause="rework", reason="reconcile", mode="rerun", by=j3)
-                self._feedback(j1, j3, text)
-        elif groups["case_error"]:
-            unrouted += groups["case_error"]
+            send(j1, "\n\n".join(j1_parts))
+        elif any(not white_box(d) for d in groups["case_error"]):
+            unrouted += [d for d in groups["case_error"] if not white_box(d)]
+        j4_parts = parts([d for d in groups["fact_error"] if white_box(d)],
+                         [d for d in groups["case_error"] if white_box(d)])
+        if j4_parts:
+            send(j4, "\n\n".join(j4_parts))  # J4's changed cases make J2 run again (_after_j4)
         if groups["mask_gap"] and not (j1_parts and j1):  # a J1 rework reruns J2 anyway
             if j2:
                 self._make_stale([j2], by=j3)

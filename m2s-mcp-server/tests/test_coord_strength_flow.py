@@ -134,3 +134,41 @@ def test_after_the_rounds_the_gaps_left_are_recorded(tmp_path: Path):
     assert len([e for e in d.events.all() if e["type"] == "strength_round"]) == 2
     assert [e["ids"] for e in d.events.all() if e["type"] == "strength_gaps_left"] == [[GAP]]
     assert calls.freeze == 1
+
+
+def test_a_wrong_prediction_in_a_white_box_case_goes_back_to_j4_with_its_own_budget(tmp_path: Path):
+    """J1's reconciliation rounds are used up; an arithmetic slip in a wb- case still goes to
+    J4 (not to J1, not to a person), its corrected case runs on the monolith, and on it goes."""
+    wrong = {"id": "wb-x/read/body.subset", "case": "wb-x", "step": "read", "check": "body.subset",
+             "predicted": {"remaining": 48500}, "actual": {"remaining": 49850}, "fact_refs": ["GET /x#business_rules[0]"],
+             "request": {"method": "GET", "path": "/x"}}
+    classify = {"write": {"judge/reconcile_classes.json": {wrong["id"]: {"class": "case_error", "reason": "50000-150 is 49850"}},
+                          "storage/stage_reports/J3.json": {"ok": True}}, "submit": "done"}
+    script = {"J1": [ok_report("J1")],
+              "J4": [j4({"judge/cases/get-x/wb-x.json": {"predicted": 48500}}),
+                     j4({"judge/cases/get-x/wb-x.json": {"predicted": 49850}})],
+              "J3": [classify]}
+    d, calls = strength_dispatcher(tmp_path, script, survivors=[[]])
+    rounds = [[], [wrong], []]
+    seen = {"n": 0}
+
+    def reconcile_spec(spec) -> CheckResult:
+        diffs = rounds[min(seen["n"], len(rounds) - 1)]
+        seen["n"] += 1
+        judge._write(d.ws / "judge" / "reconcile.json", {"differences": diffs, "resolved_by_rulings": []})
+        (d.ws / "judge" / "reconcile_classes.json").unlink(missing_ok=True)
+        return CheckResult("reconcile_spec", True, f"fake: {len(diffs)} differences")
+
+    d.actions["reconcile_spec"] = reconcile_spec
+    d.events.append("reconcile_round", task="J3", round=1, counts={}, ids={})
+    d.events.append("reconcile_round", task="J3", round=2, counts={}, ids={})
+
+    assert d.run() == EXIT_DONE
+
+    assert "HUMAN_RECONCILE" not in d.board.tasks()
+    assert _spawns(d, "J1") == 1 and _spawns(d, "J4") == 2 and _spawns(d, "J3") == 1
+    second = _prompt(d, "J4", 2)
+    assert wrong["id"] in second and "50000-150 is 49850" in second
+    assert calls.run == 3 and calls.freeze == 1  # the first run, J4's new case, its correction
+    last = [e for e in d.events.all() if e["type"] == "reconcile_round"][-1]
+    assert (last["round"], last["white_box"]) == (1, True)

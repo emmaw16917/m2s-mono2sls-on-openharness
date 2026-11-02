@@ -471,3 +471,19 @@ def test_run_monolith_on_a_flask_monolith(tmp_path: Path, monkeypatch):
     if coverage:
         cov = json.loads((jd / "coverage_monolith" / "summary.json").read_text(encoding="utf-8"))
         assert cov["files"]["app.py"]["covered"] > 0
+
+
+def test_masks_record_an_identity_value_the_same_in_both_passes(tmp_path: Path):
+    ws = tmp_path / "ws"
+    (ws / "storage").mkdir(parents=True)
+    (ws / "storage" / "analysis_report.json").write_text(json.dumps({"entry_points": []}))
+    facts = judge.Facts(ws)
+
+    def run(uid, other):
+        return {"identities": {"u1": {"vars": {"id": uid}}, "u2": {"vars": {"id": other}}},
+                "steps": [{"name": "s", "response": {"status": 200, "headers": {}, "body_kind": "json",
+                                                     "body": {"a": uid, "b": other}}}], "tables": {}}
+
+    m = judge.mask_unit(facts, [run("judge-u1", U1), run("judge-u1", U2)])
+    assert m["template"]["steps"]["s"]["body"] == {"a": "<id:u1>", "b": "<id:u2>"}
+    assert m["symbols"]["<id:u1>"]["value"] == "judge-u1" and "value" not in m["symbols"]["<id:u2>"]

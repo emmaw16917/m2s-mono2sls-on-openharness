@@ -1053,3 +1053,25 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **覆盖率**：coverage.py 在导入应用之前启动；`POST /take` 切换到新的动态上下文，返回上一个上下文里每个文件跑过的行和没跑的可执行行，格式和 Node 一致。只列进程真正加载过的文件（coverage.py 默认还会列出从没导入的脚本）；
 - **表名里的占位符**：事实库里的表名是 `Airline-Flight-{stage}` 这种形式时，按单体代码里该变量的默认值（`os.environ.get('STAGE', 'dev')`、`process.env.STAGE || 'dev'`）换成实际的表名建表；fixtures 和故障规则换成实际名字，记录下来的表内容和 SDK 调用再换回事实库的名字。`run_config.table_names` 可以直接指定；
 - **测试**：Python 的运行配置、表名换算、`run_config` 新字段的检查；一个小 Flask 单体的端到端测试（dynalite，表名带占位符，故障场景）。
+
+## v2 N3.2–N3.3：J4 白盒补测、J5 变异检验（2026-11-02，分支 `feat/v2-modules`）
+
+- **J5 `run_mutants`**（新模块 `mutants.py`，调度器动作同名）：
+  - 变异体按事实库的出处定位：响应、业务规则、鉴权引用的每一行。算子：改状态码（`res.status(400)` → 422；`return ..., 400` → 422）、条件取反、关掉分支（`if (false)`）、改响应字段名（按响应的 `body.fields`）、去掉鉴权（JS 去掉挂载里的中间件名，Python 去掉 `@login_required` 这类装饰器），都保持行数不变；JS 和 Python 都支持；
+  - "去掉一次写入"由记录代理在运行时做：事实库里每种写入（表 + 操作）一个变异体，代理把这种写入应答成"已完成"但不写（新的故障类型 `drop`，只给变异检验用）；
+  - 反向检查"并行改成串行"：代理一次只处理一个请求（新的 serial 模式），单体并发发出的调用一个接一个生效。它**不应该**被抓住，被抓住说明裁判在比较实现轨迹，调度器转人。没有改代码做串行：单体里 `Promise.all` 的代码改成串行，在部分失败时外部结果会不同（后面的删除不再执行），并不等价；
+  - 每个变异体在单体的副本上运行（`node_modules` 用目录链接，删副本时先拆链接，不会碰到单体的 `node_modules`），只跑能看到它的用例：按用例覆盖率包含被改的那一行；只在启动时运行的行（例如挂中间件），取调用了引用这一行的端点的用例；`drop` 取单体调用里有这种写入的用例；串行跑全部。所有变异体在一次 `monolith-run.js` 里依次运行（新的变异模式），共用一个 DynamoDB Local；
+  - 和冻结前的预期比较，方法同 `run_monolith` 第三遍的核对；副本里的路径（调用栈）先换回原来的路径。只有调用栈不同的记为 `trace_only`，不算抓住（V2P-18）；
+  - 产出 `judge/judge_validation.json`；冻结清单的 `mutation_score` 取自它；
+  - **bookstore 上**（开发用的副本，裁判 v1）：93 个变异体抓住 85 个，检出率 0.914，19 分钟；串行的反向检查没有被抓住。没抓住的 8 个，是 j1 的 `uncovered.json` 里列的"用户已经不在表里"的三个分支和开发模式分支，正好是单体接口造不出来的情况。
+- **J5 的分类**（verifier 的 J5 模式，模板任务 J5C，先复查）：没被抓住的变异体分成 `equivalent`（对外部行为没有影响，或者在裁判运行的条件下走不到）和 `gap`，写进 `judge/mutant_classes.json`，检查 `mutant_classes`（MCP 工具 `check_mutant_classes`）；`gap` 退回 J4 补用例，最多 `max_strength_rounds`（2）轮，之后按当时的检出率冻结；
+- **J4 白盒补测**（verifier 的 J4 模式，可以读单体代码）：按单体覆盖率里没走到的行（第二轮起还有 `gap` 变异体）补 `wb-*` 用例；代码里有、事实库没有或写错了的规则写进 `judge/spec_issues.json`，依赖它的用例写 `spec_issues`（`check_judge_assets` 核对）。调度器把新的规格问题交给 F2（annotator 的修正模式）补进事实库；J4 加了或改了用例，J2 在单体上重跑。J4 过期时只复查，不重做；
+- **模板** `v2-judge`：J3 之后加 J4、J5、J5C，J6 依赖 J5C；J1 也先复查（已有通过的用例时不派 worker）；
+- **测试**：`test_mutants.py` 6 个（各算子的 JS/Python 写法、按事实库定位、哪些用例能看到变异体、副本的链接和删除、分类检查）；`test_coord_strength_flow.py` 3 个假 worker 场景（J4 的规格问题走 F2 并让单体重跑、gap 退回 J4 后新用例在单体上运行、两轮之后记录剩下的 gap）。
+
+## v2 N3 运行中修掉的问题（2026-11-02，`bookstore-j2`、`airline-j1`）
+
+- **取值固定的身份 id 被当成差异**：airline 的注册接口允许客户端指定 `userId`，J1 把 u1 的 id 定成 `judge-u1`，并在预期里写了这个字面值；屏蔽表照样换成 `<id:u1>`，对账拿字面值去比符号，比不上，第一轮多出 18 条假差异。J3 先判成屏蔽不完整（加的屏蔽规则不起作用，身份符号优先），第二轮判成用例写错，J1 只好去掉这些断言。现在两遍里取值相同的身份，`masks.json` 记下 `value`，对账时换回原值比较；裁判本身仍存符号，目标侧的 id 不同；
+- **J4 的用例占用 J1 的对账轮次**：J1 的修正用完 2 轮之后，J4 一个用例里的算术笔误（50000-150 写成 48500）就把运行停在了 `HUMAN_RECONCILE`。现在 `wb-` 用例的差异交回 J4（不是 J1），差异全在 `wb-` 用例时用 J4 自己的预算（`max_strength_rounds`）；
+- **模型服务拒绝读鉴权代码的会话**（`data_inspection_failed`）：bookstore-j2 上 J4 三次、F2 一次、J5C 一次，都发生在读令牌签发代码、grep 配置里的 secret、处理"用请求头绕过鉴权"这类内容的时候。角色说明：J4、J5 不读令牌签发和密钥配置；只差 `judge/uncovered.json` 已经说明走不到的响应的变异体，由 `run_mutants` 直接判为 equivalent（`source: uncovered`，并写明原因），不再交给 J5C 去读那段代码；
+- **J3 的 worker 乱逛**：一个全盘 `find /` 卡了 77 分钟（OpenHarness 的 bash 工具没有把它超时掉），我手动结束了这个 `find.exe`，worker 接着做完。角色说明：J3、J4、J5 不读流水线工具的源码和 `~/.openharness` 下别的会话记录，不全盘 `find`。
