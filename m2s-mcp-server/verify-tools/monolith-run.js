@@ -41,7 +41,7 @@ const net = require('net');
 const crypto = require('crypto');
 const { fileURLToPath } = require('url');
 const { spawn } = require('child_process');
-const { startBackend, cleanup } = require('./ddb-proxy');
+const { startBackend, cleanup, maskEndpoint } = require('./ddb-proxy');
 
 const job = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const OUT = job.out_dir;
@@ -371,7 +371,7 @@ async function main() {
   try {
     if (job.mutants) {
       await runMutants(be, out);
-      fs.writeFileSync(path.join(OUT, 'monolith_raw.json'), JSON.stringify(out, null, 1));
+      fs.writeFileSync(path.join(OUT, 'monolith_raw.json'), maskEndpoint(JSON.stringify(out, null, 1), be.proxyPort));
       return;
     }
     let lastStart = 0;
@@ -407,7 +407,7 @@ async function main() {
   } finally {
     be.close();
   }
-  fs.writeFileSync(path.join(OUT, 'monolith_raw.json'), JSON.stringify(out, null, 1));
+  fs.writeFileSync(path.join(OUT, 'monolith_raw.json'), maskEndpoint(JSON.stringify(out, null, 1), be.proxyPort));
 }
 
 main().then(() => process.exit(0), (e) => {

@@ -487,3 +487,15 @@ def test_masks_record_an_identity_value_the_same_in_both_passes(tmp_path: Path):
     m = judge.mask_unit(facts, [run("judge-u1", U1), run("judge-u1", U2)])
     assert m["template"]["steps"]["s"]["body"] == {"a": "<id:u1>", "b": "<id:u2>"}
     assert m["symbols"]["<id:u1>"]["value"] == "judge-u1" and "value" not in m["symbols"]["<id:u2>"]
+
+
+@needs_node
+def test_records_do_not_name_the_proxys_random_port():
+    """An SDK error can name its endpoint; the port differs in every process, and a later
+    run (a mutant, the target) must not differ because of it (found on airline-j1)."""
+    import subprocess
+    code = ("const {maskEndpoint: m} = require('./ddb-proxy');"
+            "console.log(m('URL: \"http://127.0.0.1:55767/\". http://host.docker.internal:55767/q "
+            "127.0.0.1:557670 http://127.0.0.1:5000/ localhost:55767', 55767));")
+    out = subprocess.run([NODE, "-e", code], cwd=TOOLS, capture_output=True, text=True, encoding="utf-8", check=True).stdout.strip()
+    assert out == 'URL: "http://m2s-proxy/". http://m2s-proxy/q 127.0.0.1:557670 http://127.0.0.1:5000/ http://m2s-proxy'

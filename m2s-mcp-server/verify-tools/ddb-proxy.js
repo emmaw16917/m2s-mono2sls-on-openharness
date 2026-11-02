@@ -389,4 +389,12 @@ async function startBackend(opts) {
   };
 }
 
-module.exports = { startBackend, cleanup, summarize, identityOf, matchFault, touchesItem, stable };
+// The proxy's address in a record meant to be compared across runs: the port is
+// random per process, so an SDK error that names its endpoint ("...endpoint URL:
+// http://127.0.0.1:55767/") would differ between the run that recorded it and any
+// later one (the three passes of run_monolith share a proxy and cannot notice).
+function maskEndpoint(text, port) {
+  return text.replace(new RegExp('(?:https?://)?(?:127\\.0\\.0\\.1|localhost|host\\.docker\\.internal):' + port + '(?!\\d)', 'g'), 'http://m2s-proxy');
+}
+
+module.exports = { startBackend, cleanup, summarize, identityOf, matchFault, touchesItem, stable, maskEndpoint };

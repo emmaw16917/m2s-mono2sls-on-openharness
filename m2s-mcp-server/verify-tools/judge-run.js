@@ -43,7 +43,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { startBackend, cleanup } = require('./ddb-proxy');
+const { startBackend, cleanup, maskEndpoint } = require('./ddb-proxy');
 
 const job = JSON.parse(fs.readFileSync(process.argv[2], 'utf8'));
 const OUT = job.out_dir;
@@ -355,7 +355,7 @@ async function main() {
     }
     be.close();
   }
-  fs.writeFileSync(path.join(OUT, 'judge_raw.json'), JSON.stringify(out, null, 1));
+  fs.writeFileSync(path.join(OUT, 'judge_raw.json'), maskEndpoint(JSON.stringify(out, null, 1), be.proxyPort));
 }
 
 main().then(() => process.exit(0), (e) => {
