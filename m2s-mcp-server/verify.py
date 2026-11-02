@@ -212,7 +212,15 @@ class Model:
                                       "http_api": ev["Type"] == "HttpApi"})
                 elif ev.get("Type") == "SQS":
                     fn["sqs"].append(str(ep.get("Queue", "")).split(".")[0])
+                    # how the event source mapping delivers (run_judge's SQS delivery)
+                    fn.setdefault("sqs_events", []).append({
+                        "queue": fn["sqs"][-1], "batch_size": int(ep.get("BatchSize") or 10),
+                        "report_failures": "ReportBatchItemFailures" in (ep.get("FunctionResponseTypes") or [])})
             self.functions[name] = fn
+        # maxReceiveCount of each queue's redrive policy (None: no DLQ)
+        self.queue_max_receive = {
+            lid: (((r.get("Properties") or {}).get("RedrivePolicy") or {}).get("maxReceiveCount"))
+            for lid, r in res.items() if isinstance(r, dict) and r.get("Type") == "AWS::SQS::Queue"}
         self._index_gateway_responses(res)
         self.http_api_cors_any = any(
             "*" in ((((r.get("Properties") or {}).get("CorsConfiguration") or {}) if isinstance((r.get("Properties") or {}).get("CorsConfiguration"), dict) else {}).get("AllowOrigins") or [])
@@ -586,6 +594,16 @@ def _path_match(pattern: str, path: str) -> dict[str, str] | None:
     regex = re.sub(r"\\\{(\w+)(?:\\\+)?\\\}|:(\w+)|<(?:\w+:)?(\w+)>", lambda m: f"(?P<{m.group(1) or m.group(2) or m.group(3)}>[^/]+)", re.escape(pattern))
     m = re.fullmatch(regex, path.split("?")[0])
     return m.groupdict() if m else None
+
+
+def find_route(model: Model, method: str, path: str) -> tuple[str, dict[str, Any]] | None:
+    """(function, Api event) serving method + path on the target, as API
+    Gateway picks it: a static route wins over a parameterized one."""
+    hits = [(name, r) for name, fn in model.functions.items() for r in fn["api"]
+            if r["method"] in (method.upper(), "ANY") and _path_match(r["path"], path) is not None]
+    if not hits:
+        return None
+    return min(hits, key=lambda h: (len(re.findall(r"[{<:]", h[1]["path"])), h[1]["method"] == "ANY"))
 
 
 def _claim(v: Any, http_api: bool) -> str:

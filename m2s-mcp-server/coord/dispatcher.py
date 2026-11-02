@@ -201,7 +201,8 @@ class Dispatcher:
         self.actions = {"analyze_project": self._act_analyze, "tag_v0": self._act_tag_v0,
                         "final": self._act_final, "human": self._act_human,
                         "run_monolith": self._act_run_monolith, "reconcile_spec": self._act_reconcile,
-                        "freeze_judge": self._act_freeze, **(actions or {})}
+                        "freeze_judge": self._act_freeze, "check_adapter": self._act_check_adapter,
+                        "run_judge": self._act_run_judge, **(actions or {})}
         self.max_workers = max_workers
         self.poll_s = poll_s
         self.handler_enabled = handler
@@ -1046,6 +1047,31 @@ class Dispatcher:
         r = judge.reconcile(self.ws)
         return CheckResult("reconcile_spec", True, f"{r['differences']} differences, "
                            f"{r['resolved_by_rulings']} settled by rulings, {r['steps']} steps", detail=r)
+
+    def _act_check_adapter(self, spec: TaskSpec) -> CheckResult:
+        """V1 (v2 §4.8): the target's reads over the judge's fixtures, written
+        through the adapter map, answer what the monolith answered."""
+        import judge
+
+        r = judge.check_adapter(self.ws)
+        if r["status"] == "ERROR":
+            return CheckResult("check_adapter", False, f"check_adapter: {r.get('error')}", detail=r)
+        return CheckResult("check_adapter", r["status"] == "PASS",
+                           f"check_adapter {r['status']}: {r.get('data_steps')} data steps in {r.get('cases')} cases"
+                           + (f", failed {r['failed']}" if r.get("failed") else ""), detail=r,
+                           relay="" if r["status"] == "PASS" else
+                           "check_adapter（按适配映射写入裁判数据后读回）和单体不一致：\n" + json.dumps(r.get("failures"), ensure_ascii=False)[:4000])
+
+    def _act_run_judge(self, spec: TaskSpec) -> CheckResult:
+        """V2 (v2 §4.9): the frozen judge on the target; verification/verdict_judge.json."""
+        import judge
+
+        r = judge.run_judge(self.ws)
+        if r["status"] == "ERROR":
+            return CheckResult("run_judge", False, f"run_judge: {r.get('error')}", detail=r)
+        return CheckResult("run_judge", r["status"] == "PASS",
+                           f"run_judge {r['status']}: cases {r['summary']['cases']}, fault runs {r['summary']['fault_runs']}",
+                           detail=r)
 
     # ------------------------------------------------------------------ dispatcher actions
 

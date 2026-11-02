@@ -1,0 +1,33 @@
+# The v2 judge on a finished migration (PIPELINE_V2_PLAN.md §5 N2.5): an
+# architect writes only the adapter map (MODE: adapter), then the dispatcher
+# runs V1 check_adapter and V2 run_judge on the workspace's code.
+#
+# The workspace holds a finished migration (storage/blueprint.json, output/)
+# and a frozen judge copied from the run that built it (judge/ with its
+# manifest; same fact base). judge/ is closed to writes once frozen.
+# deny_read "output/lambdas/**": the map is written from the blueprint and the
+# template, not from the code it is meant to check.
+name: v2-adapter
+max_attempts: 3
+max_rework_rounds: 1
+tasks:
+  - id: AM
+    role: m2s-architect
+    mode: adapter
+    deny_read: ["output/lambdas/**"]
+    scope: [storage/adapter_map.json, storage/stage_reports/AM.json]
+    check: [adapter_map, judge_unchanged]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: V1
+    runner: dispatcher
+    action: check_adapter
+    deps: [AM]
+    scope: [verification/check_adapter.json]
+
+  - id: V2
+    runner: dispatcher
+    action: run_judge
+    deps: [V1]
+    scope: [verification/verdict_judge.json]

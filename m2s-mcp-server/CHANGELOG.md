@@ -1003,6 +1003,35 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 ## v2 N1.7 运行中修掉的问题（2026-11-01 至 02，`bookstore-j1`）
 
 - **J1 的会话被模型服务拒绝**（`data_inspection_failed`）：前四次尝试都是这样，第四次只读了 9K 字符。把被拒会话里的工具调用和输出原样当作文件读，换了各种组合都不再被拒；OpenHarness 还会把模型自己的推理随后续请求发回，这部分探针带不上。几次被拒的会话都在往角色说明里"用单体的密钥自己生成令牌"的方向走。改法：J1 不再有这个选项，身份只能用单体自己的接口（注册、登录）准备；走不到的响应写进 `uncovered.json`。改完之后 J1 第一次就通过（68 个用例、23 个故障场景、引用了 108/117 条业务规则）。同时加了 `judge_facts`：不带出处代码片段的事实库（bookstore 上 68K 字符，原文 255K）。
-- **顺序本身就随机的列表**：一个用例里同一用户下了两单，`GET /api/orders` 按随机的 `orderId` 排序，三遍里顺序随机，第三遍核对判为不稳定。现在两遍之间顺序不同、但元素能一一对上的列表，以及按随机 id 排序的列表（不含按时间排序的），在屏蔽表里记为无序（`masks.json` 的 `unordered`），核对时按集合比较；`tables_after` 里的表内容一律按集合比较（V2P-15，待确认）。
+- **顺序本身就随机的列表**：一个用例里同一用户下了两单，`GET /api/orders` 按随机的 `orderId` 排序，三遍里顺序随机，第三遍核对判为不稳定。现在两遍之间顺序不同、但元素能一一对上的列表，以及按随机 id 排序的列表（不含按时间排序的），在屏蔽表里记为无序（`masks.json` 的 `unordered`），核对时按集合比较；`tables_after` 里的表内容一律按集合比较（V2P-15，2026-11-02 确认）。
 - **故障命中次数不比较**：一条故障规则命中了多少次调用取决于 SDK 的重试和时间（同一用例两遍里分别是 20 和 21），现在只记"命中了没有"。
 - **SDK 重试的等待不超过 20 ms**：原来退避按 5 ms 指数增长，到后面几百毫秒一次，超出了每步之后 80 ms 的安静等待，后面的重试会落进下一个用例的记录里。重试次数不变。
+
+## v2 N2.1–N2.4：适配映射、整个 API 的模拟、`run_judge`、`check_adapter`（2026-11-02，分支 `feat/v2-modules`）
+
+- **N2.1 适配映射**（新模块 `adapter.py`，§4.8）：
+  - `storage/adapter_map.json`，只用声明式 JSON（V2P-10）。每张单体表一条：目标表，或 `target: null` 加 `replaced_by` 和原因；字段可以改名（`from`）、标成用户 id（`as: identity`）、取常量、拼复合键（`format`）、拆复合键（`split`/`part`）、JSON 编码和解码，`drop` 列出不迁的属性，其余原名照搬。身份映射：每个别名在目标侧的 claims 模板（可用 `${id}` 和该用户在单体准备步骤里发送的字段，例如注册时的 email、name）、`user_id`、需要写入表的用户资料。还有 `dropped_endpoints`、`target_only_tables`；
+  - 正向（fixtures → 目标表）和反向（目标表 → 单体结构）映射；
+  - 静态检查 `check_adapter_map`（MCP 工具同名）：每张单体表都有一条、目标表存在、目标的键能由映射产生、不允许写代码、身份模板只用别名定义过的变量、去掉的端点存在于事实库，并把裁判的每条 fixture 映射到目标再映射回来，必须得到原样数据；
+  - A2：`gate(blueprint)` 新增 AM 检查，工作区里有 `judge/cases/`（或已经有映射）时才生效，v1 的工作区不受影响；
+  - architect 角色说明加"适配映射"一节和"MODE: adapter"（只写映射，用于已经完成的迁移）。
+- **N2.2 整个 API 的模拟**（新的 `verify-tools/judge-run.js`；函数的启动器从 `controller.js` 拆到共用的 `invokers.js`，`controller.js` 的行为不变）：
+  - 每个用例的步骤按模板里的 Api 事件路由到对应函数（静态路由优先），API Gateway 事件在运行时构建（路径参数、查询、头、请求体、claims），所有步骤共用一份表状态；
+  - 鉴权：请求带着某个身份的请求头原样不变时，才按该身份的 claims 进入函数；没有身份、或者头被换成别的令牌，都由网关按 GatewayResponses 回 401；没有路由的请求回 REST 的 403 `Missing Authentication Token`；函数抛错回 502；
+  - 每步之后，这一步发出的 SQS 消息按模板的事件源映射（BatchSize、ReportBatchItemFailures）投递给消费者；失败的记录按 `maxReceiveCount` 重新投递，之后进 DLQ；消费者发出的消息继续投递；
+  - 函数第一次用到时启动，之后一直保持（相当于一个热的执行环境）。有 Docker 时在 RIE 里运行，否则本机运行；
+  - `verify.Model` 新增各函数 SQS 事件的投递参数和每个队列的 `maxReceiveCount`，新增 `find_route`。
+- **N2.3 `run_judge`**（`judge.py`，MCP 工具同名，§4.9）：
+  - 只用冻结的裁判（hash 要和清单一致）；适配映射要先通过检查；单体侧和目标侧必须是同一种数据库后端（V2P-11）；可以指定工作区仓库的 git ref（例如 `v0`）；
+  - fixtures 经映射写入；身份变成 claims，`<id:u1>` 绑定到目标侧的用户 id，令牌类变量换成占位值；故障规则的表名和属性名经映射换成目标的；
+  - 适配映射里去掉的端点，它的步骤不运行（`dropped`）；用到这些步骤保存的变量的后续步骤记为 `blocked`；
+  - 比对（P 层）：状态码；声明过的响应头（全局中间件的头、事实库里写了的头、`content-type`），两边任一方有就比，`content-type` 只比媒体类型；响应体逐个符号比对，屏蔽表里的无序列表按集合比较；表内容只比没有任何端点读的表（V2P-03），其余的差别只列在 `table_differences` 里供分诊参考；
+  - R 层和裁定：用例上有生效的 `order` 裁定时所有列表按集合比较；`migration-change` 裁定覆盖的失败记为 `migration-change`；`alternatives` 和 `implementation-trace` 记为 `ruled`；
+  - 产出 `verification/verdict_judge.json`：逐个用例（和故障场景下的用例）、逐步的结果，失败的写明函数、端点、事实出处、期望、实际和原因。
+- **N2.4 `check_adapter`**（`judge.py`，MCP 工具同名，V1）：用裁判里只读、并且写了 fixtures 的用例，在目标上读同一份数据，只看"单体返回 2xx、目标由函数作答"的读数据步骤；错误、校验、鉴权这些步骤的差别和映射无关，单列出来交给 `run_judge`。写 `verification/check_adapter.json`。
+- **调度器**：新动作 `check_adapter`（V1）和 `run_judge`（V2），新检查 `adapter_map`；分段模板 `coord/templates/v2-adapter.yaml`：AM（architect 的 adapter 模式，`output/lambdas/**` 对它关闭）→ V1 → V2。
+- **在 bookstore-v3a 的 v0 上验证**（开发用的工作区：v0 的代码、bookstore-j1 冻结的裁判、手写的映射）：
+  - N2.2：手写的多步用例"两本书加入购物车 → 下单 → 读畅销榜 → 再下单 → 再读"在 RIE 里通过，两次读到的顺序随订单变化，畅销榜的计数来自投递给 bestsellers-update 的 SQS 消息；
+  - N2.4：正确的映射 `check_adapter` 通过（15 个用例、26 个读数据步骤）；把图书的 `name` 故意映射成 `title` 之后，10 个用例失败，每处都报"少了 name、多了 title"；
+  - 全量 `run_judge`：91 个单元（68 个用例 + 23 个故障场景下的用例）在 RIE 里 138 秒。结果和分诊见 N2.5。
+- **测试**：`test_adapter.py` 9 个（bookstore 的映射能表达 users → Cognito 和身份映射、各种字段变换的正反向、缺表缺键、拒绝代码、复合键没有分隔符、往返不一致）；`test_judge_target.py` 10 个（符号比对、声明过的头和媒体类型、无序列表、R 层 order 裁定和 migration-change、不运行的步骤和只写不读的表、路由和网关的回答、身份和故障规则的映射、AM 检查、模板；另有一个 judge-run.js 的集成测试：本机 Node + dynalite 上的合成 API，覆盖路由、共用表、带重投递的 SQS、匿名和伪造令牌的 401、没有路由和去掉的端点）。

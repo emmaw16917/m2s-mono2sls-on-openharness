@@ -332,6 +332,62 @@ v2 流水线里，裁判按事实库写预期、在单体上运行，对不上�
 - 放宽只放到必要的程度：例如 Scan 没有排序时只放宽顺序，不要放宽内容；
 - 写完在工作报告 `storage/stage_reports/<任务编号>.json` 里逐条列出差异和你的裁定编号。
 
+## 适配映射 `storage/adapter_map.json`（v2，A1 的第二项产出）
+
+v2 流水线里有一个裁判：`judge/` 下的用例按**单体的表结构**写测试数据（`judge/fixtures/*.json`），按单体的方式准备用户（`judge/identities.json`，例如调用单体的注册接口）。裁判要在迁移后的版本上运行，就需要你说明：单体的每张表在目标里是什么样、每个用户在目标里是什么身份。这就是适配映射。工作区里有 `judge/cases/` 时必须写，`gate(blueprint)` 的 AM 检查会核对它；也可以单独用 `mcp__m2s-server__check_adapter_map` 自查。
+
+**只能写声明式 JSON，不能写代码**。格式：
+
+```json
+{
+  "version": 1,
+  "tables": [
+    {"monolith": "Bookstore-Books", "target": "BooksTable"},
+    {"monolith": "Bookstore-Cart", "target": "CartTable",
+     "fields": {"customerId": {"from": "customerId", "as": "identity"}}},
+    {"monolith": "Bookstore-Bestsellers", "target": "BestsellersTable",
+     "fields": {"gsiPk": {"const": "ALL"}}},
+    {"monolith": "Bookstore-Users", "target": null, "replaced_by": "cognito",
+     "reason": "凭据不进 DynamoDB，name/email 是 Cognito 标准属性（出处）"}
+  ],
+  "identities": {"claims": {"sub": "${id}", "email": "${email}", "name": "${name}"}},
+  "dropped_endpoints": [
+    {"endpoint": "POST /api/auth/register", "replaced_by": "cognito", "reason": "..."}
+  ],
+  "target_only_tables": [{"target": "IdempotencyTable", "reason": "..."}],
+  "note": "..."
+}
+```
+
+- **`tables`**：事实库（`dynamodb_info.table_schemas`）里的**每一张**单体表都要有一条：
+  - `target`：目标表的 `logical_name`（和 `dynamodb_tables` 一致）；单体表在目标里不存在时写 `null`，并写 `replaced_by` 和 `reason`；
+  - `fields`：只写**和单体不同**的属性，键是目标属性名，值是下面之一：
+    - `{"from": "a"}`：取单体的属性 `a`（改名）；
+    - `{"from": "a", "as": "identity"}`：`a` 存的是用户 id，目标里存的是该用户在目标侧的 id（例如 Cognito 的 sub）；
+    - `{"const": 值}`：常量（例如为了 GSI 加的固定分区键）；
+    - `{"format": "${a}#${b}"}`：几个单体属性拼成的复合键，各部分之间必须有分隔符；
+    - `{"from": "a", "split": "#", "part": 0}`：单体复合键 `a` 拆开后的第几部分（每一部分都要映射）；
+    - `{"from": "a", "encode": "json"}` / `{"from": "a", "decode": "json"}`：目标存 JSON 文本 / 单体存的是 JSON 文本、目标存解析后的值；
+  - `drop`：`{单体属性: 原因}`，目标不保存的属性（键属性不能丢）；
+  - 其余属性（`copy_rest`，默认 `true`）原名照搬；被某个 `from` 用掉的属性不会再按原名复制一份。
+- **`identities`**：认证被替换时（例如 Cognito）必须写。模板里可以用 `${alias}`、`${id}`（该用户在目标侧的 id，相当于 Cognito 的 sub）和这个用户在单体准备步骤里发送的字段（例如注册请求体里的 `${email}`、`${name}`）：
+  - `claims`：网关交给函数的 claims，至少有 `sub`；
+  - `user_id`：单体的用户 id 在目标里是什么，默认 `"${id}"`。目标改用别的字段作为用户 id（例如 email）时才写；
+  - `seed`：用户资料放在目标表里时，每个用户要写入的条目 `[{table, item}]`。
+- **`dropped_endpoints`**：目标不提供的端点（和 `dropped_functions` 里 `type: "endpoint"` 的条目一一对应），写原因和替代方式。裁判不在目标上运行这些步骤。
+- **`target_only_tables`**：只在目标里有的表（幂等表等），写原因。
+
+怎么核对：按 `dynamodb_tables` 每张表的键、各函数 `notes` 里写的条目结构，逐个属性对照单体的表（`dynamodb_info.table_schemas` 和 `judge/fixtures/*.json` 里的实际数据）。`check_adapter_map` 会把裁判的每条 fixture 映射到目标、再映射回来，必须得到原样的数据；目标表的键必须能由映射产生。
+
+## MODE: adapter — 只写适配映射（v2）
+
+用于已经完成的迁移（例如检验 v1 的产物）：蓝图和代码都已经有了，只缺适配映射。这一模式**只写 `storage/adapter_map.json`**，不改 blueprint、不改 `DECISIONS.md`、不改 `output/`。
+
+1. 读 `storage/blueprint.json`（`dynamodb_tables`、`cognito`、`dropped_functions`、各函数的 `notes`）、`storage/analysis_report.json` 的 `dynamodb_info.table_schemas`、`judge/fixtures/*.json`、`judge/identities.json`；需要核对目标表的定义时，可以读 `output/template.yaml`（只读，不读 `output/lambdas/` 下的代码）；
+2. 按上一节写 `storage/adapter_map.json`（`write_file`）；
+3. 调 `mcp__m2s-server__check_adapter_map`，直到 `PASS`（最多 3 次修改）；
+4. 写工作报告 `storage/stage_reports/<任务编号>.json`，列出每张表的映射依据（blueprint 或模板里的哪一处），以及你不确定的地方。
+
 ## 输出契约：逐字段调用 merge_blueprint_key 构建 blueprint.json
 
 `storage/blueprint.json` 只能有这 10 个顶层 key，`merge_blueprint_key` 会拒绝其他任何 key 名——不要发明新字段：
@@ -416,7 +472,8 @@ eventbridge_rules, lambda_invoke_permissions, cognito, api_gateway, dropped_func
   - `gate(final)` 会检查这些目录有没有未提交的改动，有就判 FAIL。
 - 不要用 `write_file` 整份直接写 `storage/blueprint.json`——必须用 `merge_blueprint_key` 逐字段写。
 - 不要调用 `mcp_auth`。
-- 不要读取或修改 `output/` 下的任何代码文件——那是 S2/S3 的工作范围。
+- 不要读取或修改 `output/` 下的任何代码文件——那是 S2/S3 的工作范围。（MODE: adapter 可以只读 `output/template.yaml`。）
+- 不要修改 `judge/` 下的任何文件——裁判冻结之后谁都不能改。
 - 不要凭训练知识"脑补"跨 Lambda 调用关系，必须依据 `entry_point_dependencies`/`call_graph`，必要时读源码确认。
 - 不要把任何用户凭据字段迁移进 DynamoDB。
 - 不要给 Cognito 加 `post_confirmation` 触发器或任何 Cognito 触发的 Lambda。

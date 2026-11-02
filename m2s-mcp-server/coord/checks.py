@@ -182,6 +182,19 @@ def reconcile_classified(ws: Path) -> CheckResult:
                        detail=result, relay="" if ok else "judge/reconcile_classes.json 的问题：\n" + _clip("\n".join(result["errors"])))
 
 
+def adapter_map(ws: Path) -> CheckResult:
+    """A1's adapter map passes its static check (v2 §4.8; also part of gate(blueprint), AM)."""
+    import judge
+
+    try:
+        result = judge.check_adapter_map(ws)
+    except judge.JudgeError as exc:
+        return CheckResult("adapter_map", False, f"check_adapter_map error: {exc}", relay=f"check_adapter_map 报错：{exc}")
+    ok = result["status"] == "PASS"
+    return CheckResult("adapter_map", ok, "adapter map PASS" if ok else f"adapter map: {len(result['errors'])} errors",
+                       detail=result, relay="" if ok else "check_adapter_map 报告的问题：\n" + _clip("\n".join(result["errors"])))
+
+
 def judge_unchanged(ws: Path) -> CheckResult:
     """The frozen judge still has the hashes of its manifest (v2 §4.7)."""
     import judge
@@ -197,6 +210,7 @@ CHECKS: dict[str, Callable[[Path], CheckResult]] = {
     "judge_assets": judge_assets,
     "judge_unchanged": judge_unchanged,
     "reconcile_classified": reconcile_classified,
+    "adapter_map": adapter_map,
     "analysis_report": analysis_report,
     "check_provenance": check_provenance,
     "blueprint_keys": blueprint_keys,

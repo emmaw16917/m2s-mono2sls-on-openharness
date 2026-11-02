@@ -51,6 +51,9 @@ MODE_SUMMARIES = {
           "mask_gap 要同时在 judge/mask_rules.json 里补屏蔽规则。按你的角色说明里\"J3\"一节做。",
     "ruling": "MODE: ruling。规格对账发现单体的某些行为需要裁定，差异清单在下面的回炉信息里。按你的角色说明里"
               "\"ruling\"一节，逐条用 mcp__m2s-server__record_ruling 裁定。",
+    "adapter": "MODE: adapter。迁移已经完成（blueprint 和 output/ 都在），只缺适配映射：按你的角色说明里"
+               "\"适配映射\"和\"MODE: adapter\"两节，写 storage/adapter_map.json，用 "
+               "mcp__m2s-server__check_adapter_map 自查到 PASS。不改 blueprint，不读 output/lambdas/ 下的代码，不改 judge/。",
 }
 
 IMPL_NOTE = ("需要知道\"要保持哪些行为\"时，只引用规格本身：analysis_report.json 的出处、blueprint.json 的字段"

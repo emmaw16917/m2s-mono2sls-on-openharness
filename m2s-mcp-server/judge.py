@@ -53,9 +53,11 @@ from __future__ import annotations
 import copy
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any
 
+import adapter
 import verify
 
 JUDGE_DIR = "judge"
@@ -1721,3 +1723,535 @@ def fact_digest(ws: Path | str, endpoint: str | None = None) -> dict[str, Any]:
                                      "applies_to": g.get("applies_to")} for i, g in enumerate(facts.global_middleware)
                                     if isinstance(g, dict)]
     return out
+
+
+# ---------------------------------------------------------------------------
+# run_judge (V2, §4.9) and check_adapter (V1, §4.8)
+# ---------------------------------------------------------------------------
+#
+# The frozen judge runs on the target: every case (and every case of every
+# fault scenario) on the whole API simulated by verify-tools/judge-run.js,
+# with the fixtures written through the adapter map and each identity's
+# claims from its identity mapping. Each step is compared with what the
+# monolith did (oracle_expected.json / fault_baseline_monolith.json):
+#   P layer   status, the declared response headers (global middleware headers,
+#             content-type by media type, headers the fact base names) and the
+#             body, symbol by symbol (unify); lists the masks mark unordered as
+#             multisets; tables only when no endpoint reads them (V2P-03);
+#   R layer   a decided ruling on the case: "order" compares every list as a
+#             multiset; "alternatives" leaves the step to the ruling ("ruled");
+#   migration a decided migration-change ruling on the case, or an endpoint the
+#             adapter map lists as dropped (its steps are not run).
+# Output: verification/verdict_judge.json.
+
+VERDICT_FILE = ("verification", "verdict_judge.json")
+CHECK_ADAPTER_FILE = ("verification", "check_adapter.json")
+DECLARED_ALWAYS = frozenset({"content-type"})
+ID_NAMESPACE = __import__("uuid").UUID("6f1d9a52-5f0e-4c43-9a57-6d2e1c0b7a11")
+
+
+def _declared_headers(facts: Facts) -> set[str]:
+    """Response headers the P layer compares (V2P-03)."""
+    names = {str(h).lower() for g in facts.global_middleware if isinstance(g, dict) for h in (g.get("headers") or {})}
+    for ep in facts.entry_points.values():
+        for r in ep.get("responses") or []:
+            if isinstance(r, dict) and isinstance(r.get("headers"), dict):
+                names |= {str(h).lower() for h in r["headers"]}
+    return names | set(DECLARED_ALWAYS)
+
+
+def _read_tables(facts: Facts) -> set[str]:
+    """Monolith tables some endpoint reads (their writes are checked by read-back steps)."""
+    out = set()
+    for ep in facts.entry_points.values():
+        for d in ep.get("data_access") or []:
+            if isinstance(d, dict) and not WRITE_OP_RE.search(str(d.get("operation") or "")):
+                out.add((d.get("table") or {}).get("default_name"))
+    return out
+
+
+def _media_type(v: Any) -> str:
+    v = v[0] if isinstance(v, list) and v else v
+    return str(v).split(";", 1)[0].strip().lower()
+
+
+def blueprint_target_tables(ws: Path) -> dict[str, list[str]] | None:
+    """{logical table: [key attributes]} from the blueprint (A1 / A2 side)."""
+    bp = ws / "storage" / "blueprint.json"
+    if not bp.is_file():
+        return None
+    out = {}
+    for t in json.loads(bp.read_text(encoding="utf-8")).get("dynamodb_tables") or []:
+        if not isinstance(t, dict) or not (t.get("logical_name") or t.get("name")):
+            continue
+        keys = [k.get("name") for k in (t.get("partition_key"), t.get("sort_key")) if isinstance(k, dict) and k.get("name")]
+        out[t.get("logical_name") or t.get("name")] = keys
+    return out
+
+
+def _model_target_tables(model: "verify.Model") -> dict[str, list[str]]:
+    return {t: [k["AttributeName"] for k in spec["create"].get("KeySchema") or []] for t, spec in model.tables.items()}
+
+
+def check_adapter_map(ws: Path | str, target_tables: dict[str, list[str]] | None = None) -> dict[str, Any]:
+    """Static check of storage/adapter_map.json against the fact base, the judge
+    and the target's tables (A2 and the first half of V1)."""
+    ws = Path(ws)
+    facts = Facts(ws)
+    a = load_assets(ws) if judge_dir(ws).is_dir() else {"fixtures": {}, "identities": None}
+    bp_path = ws / "storage" / "blueprint.json"
+    bp = json.loads(bp_path.read_text(encoding="utf-8")) if bp_path.is_file() else {}
+    auth_replaced = bool((bp.get("cognito") or {}).get("enabled")) if isinstance(bp.get("cognito"), dict) else False
+    errs = adapter.check_adapter_map(
+        adapter.load_map(ws), monolith_tables=facts.tables, endpoints=list(facts.entry_points),
+        target_tables=target_tables if target_tables is not None else blueprint_target_tables(ws),
+        identities=a.get("identities") or {}, fixtures=a.get("fixtures") or {}, auth_replaced=auth_replaced)
+    return {"status": "PASS" if not errs else "FAIL", "errors": errs[:60]}
+
+
+def _gateway_answers(model: "verify.Model") -> dict[str, dict[str, Any]]:
+    """What API Gateway answers by itself: the authorizer's 401, an unknown route,
+    a failed or timed-out Lambda (REST: GatewayResponses; HTTP API: fixed)."""
+    http_only = model.functions and all(r.get("http_api") for fn in model.functions.values() for r in fn["api"])
+    gw = getattr(model, "gateway_responses", {}) or {}
+
+    def rest(kind: str, family: str, status: int, message: str) -> dict[str, Any]:
+        spec = gw.get(kind) or gw.get(family) or {}
+        return {"statusCode": spec.get("status") or status,
+                "headers": {"Content-Type": "application/json", **(spec.get("headers") or {})},
+                "body": json.dumps({"message": message})}
+
+    if http_only:
+        def http(status: int, message: str) -> dict[str, Any]:
+            return {"statusCode": status, "headers": {"Content-Type": "application/json"}, "body": json.dumps({"message": message})}
+        return {"unauthorized": http(401, "Unauthorized"), "no_route": http(404, "Not Found"),
+                "error_502": http(500, "Internal Server Error"), "timeout_504": http(503, "Service Unavailable")}
+    return {"unauthorized": rest("UNAUTHORIZED", "DEFAULT_4XX", 401, "Unauthorized"),
+            "no_route": rest("MISSING_AUTHENTICATION_TOKEN", "DEFAULT_4XX", 403, "Missing Authentication Token"),
+            "error_502": rest("INTEGRATION_FAILURE", "DEFAULT_5XX", 502, "Internal server error"),
+            "timeout_504": rest("INTEGRATION_TIMEOUT", "DEFAULT_5XX", 504, "Endpoint request timed out")}
+
+
+def _dropped_endpoints(amap: dict[str, Any]) -> dict[str, str]:
+    return {d["endpoint"]: str(d.get("reason") or "") + (f" (replaced by {d['replaced_by']})" if d.get("replaced_by") else "")
+            for d in amap.get("dropped_endpoints") or [] if isinstance(d, dict) and d.get("endpoint")}
+
+
+def _route_steps(model: "verify.Model", facts: Facts, case: dict[str, Any], dropped: dict[str, str]) -> list[dict[str, Any]]:
+    """Each step with where it goes on the target."""
+    out = []
+    lost: set[str] = set()  # variables saved by steps that do not run
+    endpoints = list(facts.entry_points)
+    for s in case["steps"]:
+        step = {k: v for k, v in s.items() if k not in ("note", "read_back")}
+        used = [v for v in _vars_used({k: s.get(k) for k in ("path", "query", "headers", "body", "form", "raw_body")})
+                if "." not in v]
+        ep = _step_endpoint(s, endpoints)
+        if ep in dropped:
+            step["route"] = {"kind": "dropped", "reason": f"{ep} is not served by the target: {dropped[ep]}"}
+            lost |= set(s.get("save") or {})
+        elif any(v in lost for v in used):
+            step["route"] = {"kind": "blocked",
+                             "reason": f"uses ${{{next(v for v in used if v in lost)}}}, saved by a step that does not run"}
+            lost |= set(s.get("save") or {})
+        else:
+            hit = verify.find_route(model, s["method"], _step_path(s["path"]))
+            if hit is None:
+                step["route"] = {"kind": "no_route", "endpoint": ep}
+            else:
+                fn, r = hit
+                step["route"] = {"kind": "invoke", "function": fn, "resource": r["path"], "authorized": r["authorized"],
+                                 "http_api": bool(r.get("http_api")), "endpoint": ep}
+        out.append(step)
+    return out
+
+
+def _rules_to_target(amap: dict[str, Any], rules: list[dict[str, Any]], model: "verify.Model"
+                     ) -> tuple[list[dict[str, Any]], list[str]]:
+    """Fault rules (monolith tables and attributes) on the target's tables."""
+    out, problems = [], []
+    for r in rules:
+        m = dict(r.get("match") or {})
+        if m.get("table"):
+            entry = adapter._table_entry(amap, m["table"]) or {}
+            if not entry.get("target"):
+                problems.append(f"{m['table']} has no target table ({entry.get('replaced_by') or 'not in the adapter map'})")
+                continue
+            if isinstance(m.get("item"), dict):
+                renames = {spec["from"]: t for t, spec in (entry.get("fields") or {}).items()
+                           if isinstance(spec, dict) and set(spec) <= {"from", "as", "note"}}
+                m["item"] = {renames.get(k, k): v for k, v in m["item"].items()}
+            m["table"] = entry["target"]
+        if m.get("queue"):
+            m["table"] = model.queue_id(m.pop("queue"))
+        out.append({"match": m, "nth": r.get("nth", "all"), "kind": r["kind"]})
+    return out, problems
+
+
+def _rulings_in_force(ws: Path) -> dict[str, list[dict[str, Any]]]:
+    data = _read(ws / "storage" / "rulings.json") if (ws / "storage" / "rulings.json").is_file() else {}
+    out: dict[str, list[dict[str, Any]]] = {}
+    for r in (data.get("rulings") or []) if isinstance(data, dict) else []:
+        if r.get("status") in ("decided", "confirmed"):
+            for c in (r.get("affects") or {}).get("cases") or []:
+                out.setdefault(c, []).append(r)
+    return out
+
+
+def _all_list_paths(v: Any, path: str, out: set[str]) -> set[str]:
+    if isinstance(v, list):
+        out.add(path)
+        for i, x in enumerate(v):
+            _all_list_paths(x, f"{path}[{i}]", out)
+    elif isinstance(v, dict):
+        for k, x in v.items():
+            _all_list_paths(x, f"{path}.{k}" if path else k, out)
+    return out
+
+
+def compare_target_step(template: dict[str, Any], actual: dict[str, Any], bindings: dict[str, Any], name: str,
+                 declared: set[str], unordered: set[str] | frozenset[str]) -> list[dict[str, Any]]:
+    """Mismatches of one target step against the monolith's (masked) step."""
+    out: list[dict[str, Any]] = []
+    where = f"steps.{name}"
+    if "error" in template:
+        return [{"path": where, "why": f"the monolith's request failed ({template['error']}); the target answered",
+                 "actual": actual.get("status")}]
+    unify(template.get("status"), actual.get("status"), bindings, f"{where}.status", out)
+    th = {k: v for k, v in (template.get("headers") or {}).items() if k in declared}
+    ah = {k: v for k, v in (actual.get("headers") or {}).items() if k in declared}
+    for h in sorted(set(th) | set(ah)):
+        if h not in ah:
+            out.append({"path": f"{where}.headers.{h}", "expected": th[h], "actual": None, "why": "header missing"})
+        elif h not in th:
+            out.append({"path": f"{where}.headers.{h}", "expected": None, "actual": ah[h], "why": "header the monolith does not send"})
+        elif h == "content-type":
+            if _media_type(th[h]) != _media_type(ah[h]):
+                out.append({"path": f"{where}.headers.{h}", "expected": th[h], "actual": ah[h], "why": "different media type"})
+        else:
+            unify(th[h], ah[h], bindings, f"{where}.headers.{h}", out)
+    if template.get("body_kind") != actual.get("body_kind"):
+        out.append({"path": f"{where}.body_kind", "expected": template.get("body_kind"), "actual": actual.get("body_kind"),
+                    "why": "differs"})
+    unify(template.get("body"), actual.get("body"), bindings, f"{where}.body", out, unordered)
+    return out
+
+
+def _unit_identities(amap: dict[str, Any], identities: dict[str, Any], aliases: list[str], unit_id: str
+                     ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+    """(vars, auth, bindings, seeds) of a unit's aliases on the target."""
+    import uuid
+    vars_: dict[str, Any] = {}
+    auth: dict[str, Any] = {}
+    bindings: dict[str, Any] = {}
+    seeds: list[dict[str, Any]] = []
+    for alias in aliases:
+        mono = (identities.get(alias) or {}).get("monolith") or {}
+        target_id = str(uuid.uuid5(ID_NAMESPACE, f"{unit_id}/{alias}"))
+        ti = adapter.target_identity(amap, alias, mono, target_id)
+        own = {"id": ti["user_id"]}
+        for s in mono.get("steps") or []:
+            for var in (s.get("save") or {}):
+                own.setdefault(var, f"m2s-{var}-{alias}")  # a token stand-in: the gateway does the checking
+        if "sign" in mono:
+            own.setdefault("token", f"m2s-token-{alias}")
+        header = {k: adapter.render(v, own) for k, v in (mono.get("header") or {}).items()}
+        auth[alias] = {"header": header, "claims": ti["claims"]}
+        vars_.update({f"{alias}.{k}": v for k, v in own.items()})
+        bindings.update({f"<{k}:{alias}>": v for k, v in own.items()})
+        seeds += ti["seed"]
+    return vars_, auth, bindings, seeds
+
+
+def _plan_units(ws: Path, facts: Facts, assets: dict[str, Any], amap: dict[str, Any], model: "verify.Model",
+                units: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], dict[str, dict[str, Any]]]:
+    """The job's units and, per unit, what the comparison needs."""
+    dropped = _dropped_endpoints(amap)
+    by_case = {c["id"]: c for c in assets["cases"] if "_load_error" not in c}
+    identities = assets["identities"] or {}
+    job_units, ctx = [], {}
+    for u in units:
+        case = by_case[u["case"]]
+        vars_, auth, bindings, seeds = _unit_identities(amap, identities, u["aliases"], u["id"])
+        fixtures = adapter.fixtures_to_target(amap, u["fixtures"])
+        for s in seeds:
+            fixtures.setdefault(s["table"], []).append(s["item"])
+        rules, problems = _rules_to_target(amap, u["rules"], model)
+        steps = _route_steps(model, facts, case, dropped)
+        job_units.append({"id": u["id"], "fixtures": fixtures, "identity": u["identity"], "vars": vars_, "auth": auth,
+                          "steps": steps, "rules": rules})
+        ctx[u["id"]] = {"case": case, "bindings": bindings, "rule_problems": problems, "routes": steps}
+    return job_units, ctx
+
+
+def _verdict_of(steps: dict[str, dict[str, Any]]) -> str:
+    vs = [s["verdict"] for s in steps.values()]
+    if all(v in ("dropped", "blocked") for v in vs):
+        return "dropped"
+    for v in ("fail", "migration-change", "ruled"):
+        if v in vs:
+            return v
+    return "pass"
+
+
+def judge_unit(facts: Facts, template: dict[str, Any], rec: dict[str, Any], ctx: dict[str, Any], amap: dict[str, Any],
+               unordered: list[str], rulings: list[dict[str, Any]], declared: set[str]) -> dict[str, Any]:
+    """The verdict of one unit: per step pass / fail / dropped / blocked /
+    migration-change / ruled, the table differences, the faults that fired."""
+    if rec.get("infra_error"):
+        return {"verdict": "infra_error", "error": rec["infra_error"][-2000:]}
+    bindings = dict(ctx["bindings"])
+    order = [r for r in rulings if r.get("relaxation") == "order"]
+    alternatives = [r for r in rulings if r.get("relaxation") == "alternatives"]
+    migration = [r for r in rulings if r.get("category") == "migration-change"]
+    trace = [r for r in rulings if r.get("category") == "implementation-trace"]
+    unordered_paths = set(unordered)
+    if order:
+        unordered_paths |= _all_list_paths(template.get("steps") or {}, "steps", set())
+    steps: dict[str, dict[str, Any]] = {}
+    route_of = {s["name"]: s["route"] for s in ctx["routes"]}
+    for s in rec["steps"]:
+        name = s["name"]
+        route = route_of.get(name) or {}
+        entry: dict[str, Any] = {"function": route.get("function"), "endpoint": route.get("endpoint")}
+        if s["route"] in ("dropped", "blocked"):
+            steps[name] = {**entry, "verdict": s["route"], "reason": s.get("reason")}
+            continue
+        tmpl = (template.get("steps") or {}).get(name)
+        if tmpl is None:
+            steps[name] = {**entry, "verdict": "fail", "mismatches": [{"path": f"steps.{name}", "why": "not in the monolith's record"}]}
+            continue
+        mism = compare_target_step(tmpl, s["response"], bindings, name, declared, unordered_paths)
+        entry["status"] = {"monolith": tmpl.get("status"), "target": (s.get("response") or {}).get("status")}
+        if s.get("gateway"):
+            entry["answered_by"] = f"API Gateway ({s['gateway']})"
+        if s.get("lambda_error"):
+            entry["lambda_error"] = s["lambda_error"]
+        if not mism:
+            steps[name] = {**entry, "verdict": "pass", **({"rulings": [r["id"] for r in order]} if order else {})}
+        elif migration:
+            steps[name] = {**entry, "verdict": "migration-change", "rulings": [r["id"] for r in migration], "mismatches": mism}
+        elif alternatives or trace:
+            steps[name] = {**entry, "verdict": "ruled", "rulings": [r["id"] for r in alternatives + trace], "mismatches": mism}
+        else:
+            steps[name] = {**entry, "verdict": "fail", "mismatches": mism}
+    # tables: in the monolith's structure, replaced tables and dropped fields left out
+    actual_tables = adapter.tables_to_monolith(amap, rec.get("tables_after") or {})
+    want_tables = {}
+    for t, items in (template.get("tables_after") or {}).items():
+        if t in actual_tables:
+            drop = adapter.dropped_fields(amap, t)
+            want_tables[t] = [{k: v for k, v in i.items() if k not in drop} if isinstance(i, dict) else i for i in items]
+    table_diffs = unify(want_tables, {t: actual_tables[t] for t in want_tables}, dict(bindings), "tables_after", [])
+    write_only = set(facts.tables) - _read_tables(facts)
+    p_tables = [d for d in table_diffs if d["path"].split(".")[1].split("[")[0] in write_only] if write_only else []
+    out: dict[str, Any] = {"steps": steps}
+    if p_tables:
+        out["tables"] = {"verdict": "fail", "mismatches": p_tables, "why": "a table no endpoint reads (V2P-03)"}
+    if table_diffs:
+        out["table_differences"] = table_diffs[:20]
+    want_fired = template.get("rules_fired") or []
+    got_fired = [bool(n) for n in rec.get("rules_fired") or []]
+    if want_fired:
+        out["rules_fired"] = {"monolith": want_fired, "target": got_fired}
+    if ctx["rule_problems"]:
+        out["rule_problems"] = ctx["rule_problems"]
+    out["verdict"] = "fail" if p_tables else _verdict_of(steps)
+    return out
+
+
+def _judge_job(ws: Path, ref: str | None, mode: str, unit_filter: Any = None, label: str = "judge"
+               ) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Plan and run the judge on the target: (raw results, context)."""
+    import shutil
+    import time
+    facts = Facts(ws)
+    m = manifest(ws)
+    if m is None:
+        raise JudgeError("the judge is not frozen (judge/judge_manifest.json): run_judge uses a frozen judge only")
+    changes = judge_changes(ws) or {}
+    if any(changes.values()):
+        raise JudgeError(f"the judge differs from its manifest (frozen judge changed): {changes}")
+    amap = adapter.load_map(ws)
+    if amap is None or "_load_error" in amap:
+        raise JudgeError("storage/adapter_map.json " + ("not found: the architect writes it (A1)" if amap is None
+                                                        else amap["_load_error"]))
+    code_root = verify.export_ref(ws, ref) if ref else ws
+    model = verify.Model(code_root)
+    static = check_adapter_map(ws, _model_target_tables(model))
+    if static["status"] != "PASS":
+        raise JudgeError("the adapter map does not pass its check: " + "; ".join(static["errors"][:8]))
+    oracle = _read(judge_dir(ws) / "oracle_expected.json")
+    backend = verify.ddb_backend()
+    if (oracle.get("meta") or {}).get("backend") != backend["backend"]:
+        raise JudgeError(f"the judge was built on {(oracle.get('meta') or {}).get('backend')}; this machine would run "
+                         f"{backend['backend']} -- both sides must use the same backend (V2P-11)")
+    assets = load_assets(ws)
+    units = build_units(assets)
+    if unit_filter is not None:
+        units = [u for u in units if unit_filter(u)]
+    job_units, ctx = _plan_units(ws, facts, assets, amap, model, units)
+    build_dir = verify.sam_build(code_root)
+    mode = verify._mode(mode)
+    functions = {}
+    for name, fn in model.functions.items():
+        functions[name] = {"name": name, "dir": str(build_dir / fn["logical"]), "handler": fn["handler"], "env": fn["env"],
+                           "memory": fn["memory"], "runtime": fn.get("runtime", ""),
+                           "layers": [str(build_dir / ly) for ly in fn.get("layers", [])],
+                           "sqs_events": fn.get("sqs_events") or []}
+    out_dir = verify.TMP_ROOT / re.sub(r"[^A-Za-z0-9_-]", "_", ws.name) / "judge" / f"{time.strftime('%Y%m%d-%H%M%S')}-{label}"
+    out_dir.mkdir(parents=True, exist_ok=True)
+    job = {"mode": mode, **backend, "out_dir": str(out_dir), "functions": functions,
+           "tables": [{"name": t["name"], "create": t["create"]} for t in model.tables.values()],
+           "queues": {q: {"max_receive": n} for q, n in model.queue_max_receive.items()},
+           "gateway": _gateway_answers(model), "units": job_units,
+           "rie_image_python": verify.PY_RIE_IMAGE, "python_exe": sys.executable}
+    (out_dir / "job.json").write_text(json.dumps(job, ensure_ascii=False, indent=1), encoding="utf-8")
+    node = shutil.which("node", path=verify._env()["PATH"]) or "node"
+    t0 = time.time()
+    proc = verify._run([node, str(verify.VERIFY_TOOLS / "judge-run.js"), str(out_dir / "job.json")], capture_output=True,
+                       text=True, encoding="utf-8", errors="replace", env=verify._env(), timeout=7200)
+    raw_path = out_dir / "judge_raw.json"
+    if proc.returncode != 0 or not raw_path.is_file():
+        raise JudgeError(f"judge-run failed (exit {proc.returncode}): {proc.stderr[-3000:]}")
+    raw = json.loads(raw_path.read_text(encoding="utf-8"))
+    raw["seconds"] = round(time.time() - t0, 1)
+    raw["out_dir"] = str(out_dir)
+    return raw, {"facts": facts, "amap": amap, "model": model, "ctx": ctx, "units": units, "manifest": m,
+                 "oracle": oracle, "assets": assets, "mode": mode}
+
+
+def _judge_results(ws: Path, raw: dict[str, Any], info: dict[str, Any]) -> dict[str, Any]:
+    facts, amap = info["facts"], info["amap"]
+    jd = judge_dir(ws)
+    masks = (_read(jd / "masks.json") or {}).get("units") or {}
+    faults = (_read(jd / "fault_baseline_monolith.json") or {}).get("scenarios") or {}
+    rulings = _rulings_in_force(ws)
+    declared = _declared_headers(facts)
+    by_id = {r["id"]: r for r in raw["units"]}
+    cases: dict[str, Any] = {}
+    fault_runs: dict[str, dict[str, Any]] = {}
+    for u in info["units"]:
+        rec = by_id.get(u["id"], {"infra_error": "not run"})
+        c = info["ctx"][u["id"]]["case"]
+        if u["rules"]:
+            scen = u["id"].split("/", 1)[0]
+            template = (faults.get(scen) or {}).get(u["case"])
+        else:
+            template = (info["oracle"].get("cases") or {}).get(u["id"])
+        if template is None:
+            res = {"verdict": "fail", "error": "no monolith record for this unit"}
+        else:
+            res = judge_unit(facts, template, rec, info["ctx"][u["id"]], amap,
+                             ((masks.get(u["id"]) or {}).get("unordered") or []), rulings.get(u["case"], []), declared)
+        res["endpoint"] = c.get("endpoint")
+        res["fact_refs"] = c.get("fact_refs") or []
+        if u["rules"]:
+            fault_runs.setdefault(u["id"].split("/", 1)[0], {})[u["case"]] = res
+        else:
+            cases[u["id"]] = res
+
+    def count(results: list[dict[str, Any]]) -> dict[str, int]:
+        out: dict[str, int] = {}
+        for r in results:
+            out[r["verdict"]] = out.get(r["verdict"], 0) + 1
+        return dict(sorted(out.items()))
+
+    all_fault = [r for s in fault_runs.values() for r in s.values()]
+    fns = raw.get("functions") or {}
+    return {"cases": cases, "faults": fault_runs, "summary": {"cases": count(list(cases.values())),
+                                                               "fault_runs": count(all_fault)},
+            "functions": {n: {k: v for k, v in f.items() if k != "logs_tail"} for n, f in fns.items()},
+            "logs": {n: f.get("logs_tail", "")[-1500:] for n, f in fns.items() if f.get("logs_tail")}}
+
+
+def _meta(ws: Path, raw: dict[str, Any], info: dict[str, Any], ref: str | None) -> dict[str, Any]:
+    import hashlib
+    import time
+    return {"judge_version": info["manifest"]["version"], "judge_frozen_at": info["manifest"].get("frozen_at"),
+            "code": verify._code_state(ws, ref), "mode": info["mode"], "backend": raw.get("backend"),
+            "adapter_map_sha": hashlib.sha256(adapter.map_path(ws).read_bytes()).hexdigest(),
+            "generated_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "seconds": raw.get("seconds"),
+            "run_dir": raw.get("out_dir"),
+            **({"disclaimer": verify.local_disclaimer(info["model"])} if info["mode"] == "local" else {})}
+
+
+def run_judge(ws: Path | str, ref: str | None = None, mode: str = "auto", cases: list[str] | None = None) -> dict[str, Any]:
+    """V2: the frozen judge on the target (the working tree, or git `ref` of the
+    workspace repo). Writes verification/verdict_judge.json (all cases only)."""
+    ws = Path(ws).resolve()
+    flt = (lambda u: u["case"] in cases) if cases else None
+    try:
+        raw, info = _judge_job(ws, ref, mode, flt, label=f"judge-{ref}" if ref else "judge")
+    except (JudgeError, verify.VerifyError, adapter.AdapterError) as exc:
+        return {"status": "ERROR", "error": str(exc)}
+    res = _judge_results(ws, raw, info)
+    meta = _meta(ws, raw, info, ref)
+    bad = [k for k, v in res["summary"]["cases"].items() if k in ("fail", "infra_error")] + \
+          [k for k, v in res["summary"]["fault_runs"].items() if k in ("fail", "infra_error")]
+    status = "PASS" if not bad else "FAIL"
+    doc = {"meta": meta, "status": status, **res}
+    if not cases:
+        _write(ws.joinpath(*VERDICT_FILE), doc)
+    failures = [{"case": cid, "steps": {n: s for n, s in r.get("steps", {}).items() if s["verdict"] == "fail"},
+                 **({"tables": r["tables"]} if r.get("tables") else {}), **({"error": r["error"]} if r.get("error") else {})}
+                for cid, r in res["cases"].items() if r["verdict"] in ("fail", "infra_error")]
+    return {"status": status, "summary": res["summary"], "mode": info["mode"], "backend": raw.get("backend"),
+            "verdict": "/".join(VERDICT_FILE) if not cases else None, "failures": failures[:15],
+            "failures_total": len(failures), "seconds": raw.get("seconds"), "run_dir": raw.get("out_dir")}
+
+
+def _read_only_case(facts: Facts, case: dict[str, Any]) -> bool:
+    endpoints = list(facts.entry_points)
+    eps = [_step_endpoint(s, endpoints) for s in case.get("steps") or []]
+    return bool(case.get("fixtures")) and all(ep and not facts.writes(ep) for ep in eps)
+
+
+def _data_step(s: dict[str, Any]) -> bool:
+    """A step that read data: the monolith answered 2xx/3xx and a function (not
+    the gateway) answered on the target. Errors, validation and auth are not
+    about the data mapping; run_judge judges them."""
+    st = (s.get("status") or {}).get("monolith")
+    return isinstance(st, int) and st < 400 and not s.get("answered_by")
+
+
+def check_adapter(ws: Path | str, ref: str | None = None, mode: str = "auto") -> dict[str, Any]:
+    """V1: the adapter map is right when the target's read endpoints, on the
+    judge's fixtures written through the map, answer what the monolith answered
+    on the same data -- the data-reading steps (2xx on the monolith, answered by
+    a function) of the judge's read-only cases that seed fixtures. Plus the
+    static check (every table, keys produced, fixtures round-trip)."""
+    ws = Path(ws).resolve()
+    try:
+        facts = Facts(ws)
+        assets = load_assets(ws)
+        picked = {c["id"] for c in assets["cases"] if "_load_error" not in c and _read_only_case(facts, c)}
+        raw, info = _judge_job(ws, ref, mode, lambda u: not u["rules"] and u["case"] in picked, label="adapter")
+    except (JudgeError, verify.VerifyError, adapter.AdapterError) as exc:
+        return {"status": "ERROR", "error": str(exc)}
+    res = _judge_results(ws, raw, info)
+    failed, other = {}, {}
+    data_steps = 0
+    for cid, r in res["cases"].items():
+        if r["verdict"] == "infra_error":
+            failed[cid] = {"error": r.get("error")}
+            continue
+        steps = r.get("steps") or {}
+        data_steps += sum(1 for s in steps.values() if _data_step(s))
+        bad = {n: s.get("mismatches") for n, s in steps.items() if s["verdict"] == "fail" and _data_step(s)}
+        rest = sorted(n for n, s in steps.items() if s["verdict"] == "fail" and not _data_step(s))
+        if bad:
+            failed[cid] = bad
+        if rest:
+            other[cid] = rest
+    status = "PASS" if data_steps and not failed else "FAIL"
+    doc = {"meta": _meta(ws, raw, info, ref), "status": status, "cases": sorted(picked), "data_steps": data_steps,
+           "note": "data-reading steps of read-only judge cases over fixtures: a failure means the adapter map, or "
+                   "the read itself, differs from the monolith on the same data; differences of other steps "
+                   "(errors, validation, auth) are listed under other_differences and left to run_judge",
+           "failed": failed, "other_differences": other, "results": res["cases"]}
+    _write(ws.joinpath(*CHECK_ADAPTER_FILE), doc)
+    return {"status": status, "cases": len(picked), "data_steps": data_steps, "failed": sorted(failed),
+            "failures": dict(list(failed.items())[:10]), "other_differences": other,
+            "result": "/".join(CHECK_ADAPTER_FILE),
+            **({"error": "no data-reading step in the judge's read-only cases over fixtures"} if not data_steps else {})}

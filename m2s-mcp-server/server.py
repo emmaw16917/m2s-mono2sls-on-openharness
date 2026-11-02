@@ -247,6 +247,62 @@ def judge_facts(endpoint: str = "") -> str:
 
 
 @mcp.tool()
+def check_adapter_map() -> str:
+    """Check storage/adapter_map.json (A1's adapter map, PIPELINE_V2_PLAN.md
+    §4.8) without running anything: every monolith table of the fact base has
+    an entry (a target table, or target null with replaced_by and reason);
+    target tables exist in the blueprint; the target's key attributes are
+    produced; field specs are declarative (from / as identity / const /
+    format / split / encode|decode json, drop); identity claims use only
+    variables the aliases define; dropped endpoints exist; every judge
+    fixture item maps to the target and back to itself.
+
+    Returns: JSON {status: PASS|FAIL, errors}.
+    """
+    import judge
+    try:
+        return json.dumps(judge.check_adapter_map(_workspace()), ensure_ascii=False)
+    except judge.JudgeError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
+def check_adapter(ref: str = "", mode: str = "auto") -> str:
+    """V1: run the frozen judge's read-only cases over fixtures on the target,
+    the fixtures written through the adapter map: the target's reads must
+    answer what the monolith answered on the same data, or the map (or the
+    read) is wrong. Writes verification/check_adapter.json.
+
+    Args:
+        ref: a git ref of the workspace repo to judge (e.g. "v0"); empty: the working tree.
+        mode: "auto" (RIE with Docker, else local Node), "rie" or "local".
+
+    Returns: JSON {status: PASS|FAIL|ERROR, cases, failed, failures}.
+    """
+    import judge
+    return json.dumps(judge.check_adapter(_workspace(), ref or None, mode), ensure_ascii=False)
+
+
+@mcp.tool()
+def run_judge(ref: str = "", mode: str = "auto", cases: list[str] | None = None) -> str:
+    """V2: run the frozen judge on the target's whole API (every case and every
+    fault scenario; steps routed to their functions, SQS messages delivered
+    between steps) and compare each step with the monolith's record: status,
+    declared headers, body, symbol by symbol. Writes
+    verification/verdict_judge.json when all cases run.
+
+    Args:
+        ref: a git ref of the workspace repo to judge; empty: the working tree.
+        mode: "auto", "rie" or "local".
+        cases: only these judge case ids (and their fault runs); no verdict file.
+
+    Returns: JSON {status: PASS|FAIL|ERROR, summary, failures, verdict}.
+    """
+    import judge
+    return json.dumps(judge.run_judge(_workspace(), ref or None, mode, cases or None), ensure_ascii=False)
+
+
+@mcp.tool()
 def check_reconcile_classes() -> str:
     """J3 self-check: every difference in judge/reconcile.json has a class in
     judge/reconcile_classes.json ({difference id: {class, reason, fact_ref?,

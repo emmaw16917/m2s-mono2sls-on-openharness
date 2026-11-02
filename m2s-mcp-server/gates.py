@@ -1756,6 +1756,24 @@ def check_judge_frozen(ws: Path) -> list[dict[str, Any]]:
             for kind in ("changed", "added", "removed") for path in changes[kind]]
 
 
+def check_adapter_map(ws: Path) -> list[dict[str, Any]]:
+    """AM (v2 A2, PIPELINE_V2_PLAN.md §4.8): in a workspace with a judge (or an
+    adapter map), storage/adapter_map.json must exist and pass its check: every
+    monolith table mapped or replaced, the judge fixtures' tables covered, target
+    tables and keys from the blueprint, an identity mapping when the blueprint
+    replaces the monolith's authentication. v1 workspaces have neither: no check."""
+    import adapter
+    import judge
+    path = adapter.map_path(ws)
+    if not (judge.judge_dir(ws) / "cases").is_dir() and not path.exists():
+        return []
+    try:
+        res = judge.check_adapter_map(ws)
+    except judge.JudgeError as exc:
+        return [_finding("AM", "ERROR", f"adapter map cannot be checked: {exc}", "storage/adapter_map.json")]
+    return [_finding("AM", "ERROR", e, "storage/adapter_map.json") for e in res["errors"]]
+
+
 def run_gate(phase: str, workspace: str) -> dict[str, Any]:
     ws = Path(workspace).resolve()
     template_path = ws / "output" / "template.yaml"
@@ -1772,7 +1790,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
     severe = False
 
     if phase == "blueprint":
-        checks = check_b0(ws) + check_contract(ws) + check_dm(ws) + check_api_type(ws)
+        checks = check_b0(ws) + check_contract(ws) + check_dm(ws) + check_api_type(ws) + check_adapter_map(ws)
         severe = any(f["severity"] == "ERROR" for f in checks)
 
     elif phase == "code":
