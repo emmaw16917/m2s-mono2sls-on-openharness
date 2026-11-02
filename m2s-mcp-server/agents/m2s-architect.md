@@ -405,10 +405,11 @@ v2 流水线里有一个裁判：`judge/` 下的用例按**单体的表结构**�
 
 怎么决定：
 - **先看 `default`**：条目带了 `rulebook_rule` 和 `default` 的，规则已经说了怎么做，除非有理由，否则就按它；要偏离时写清理由；
-- **单体自身的缺陷（`monolith_defect`）默认照搬**（`PIPELINE_REDESIGN_v2.md` Q10）。决定修掉它就是偏离单体，这要人确认：在 `choice` 里写清，并在 `storage/rulings.json` 里用 `mcp__m2s-server__record_ruling` 记一条 `deviates_from_monolith: true` 的裁定；
+- **单体自身的缺陷（`monolith_defect`）默认照搬**（`PIPELINE_REDESIGN_v2.md` Q10）；
+- **决定让外部能观察到的行为和单体不同，都要人确认**，修掉缺陷是这样，收窄或放弃某个行为也是这样（例如不再复刻某个状态码）：在 `choice` 里写清，并用 `mcp__m2s-server__record_ruling` 记一条 `deviates_from_monolith: true` 的裁定。只写在工作报告的 `issues` 里，流水线不会停下来等人。蓝图的 `metadata.spec_resolutions` 已经裁定过的迁移变化（例如认证换成 Cognito）不用再记；
 - `multi_write`、`order_and_consistency`、`time`、`files_and_connections` 这几类没有默认做法，规则手册也可能没写，要你判断；判断时看这个行为外部能不能观察到；
 - 看 G2 或 G1 条目上的 `note`：标注员认为这条认错了时，你可以判断它不是缺口，`choice` 写"不需要处理"，`why` 写理由，`test` 写 `"none"`；
-- `category: "new"` 的条目（新类别候选）：一样要决定，并在工作报告的 `issues` 里列出来给人看；
+- `category: "new"` 的条目（新类别候选）：一样要决定；运行报告会把它们列给人看；
 - 决定和 blueprint 要一致：决定说"用 SQS"，blueprint 里就要有这个队列。
 
 ## MODE: gaps — 只决定缺口（v2）
@@ -416,7 +417,7 @@ v2 流水线里有一个裁判：`judge/` 下的用例按**单体的表结构**�
 用于蓝图已经有了、只缺缺口决定的情况。这一模式写 `storage/gap_inventory.json`（只改 `status`、`decision`，其他字段不动）和 `storage/DECISIONS.md`（只追加），`rulings.json` 通过 `record_ruling` 追加。**不改 blueprint、不改 `output/`、不改 `judge/`，不读 `output/lambdas/` 下的代码。** 决定是"目标应该怎么做"，不是描述现有代码。
 
 1. 读 `storage/gap_inventory.json`、`storage/blueprint.json`（函数、表、队列、`cognito`）、`storage/DECISIONS.md`、`storage/analysis_report.json` 里相关端点的事实（用 `grep` 查，不要整个打印）；
-2. 按上一节逐条写决定。blueprint 里已经有明确做法的（例如已有的 SQS 消费者），`choice` 就写这个做法，`why` 引用 blueprint 的字段和已有的决策编号；决定需要 blueprint 里没有的东西时，不要改 blueprint，在工作报告的 `issues` 里写明，调度器会转给人；
+2. 按上一节逐条写决定。blueprint 里已经有明确做法的（例如已有的 SQS 消费者），`choice` 就写这个做法，`why` 引用 blueprint 的字段和已有的决策编号；决定需要 blueprint 里没有的东西时，不要改 blueprint，调 `report_blocked` 说明缺什么（调度器会开案例，必要时交给人）；
 3. 调 `mcp__m2s-server__check_gap_inventory(require_decided=true)`，直到 `PASS`（最多 3 次修改）；
 4. 写工作报告 `storage/stage_reports/<任务编号>.json`，按类别统计决定，列出选了 `"delta"` 的条目和偏离默认做法的条目。
 

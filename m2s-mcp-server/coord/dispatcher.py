@@ -1428,7 +1428,41 @@ class Dispatcher:
         issues = [e for e in self.events.all() if e["type"] == "open_issue"]
         if issues:
             lines += ["", "## 人决定暂不处理的未决问题", ""] + [f"- {e['text']}（{e['task']}）" for e in issues]
+        inventory = self._gap_lines()
+        if inventory:
+            lines += ["", "## 缺口清单", ""] + inventory
+        flagged = self._flagged_issues()
+        if flagged:
+            lines += ["", "## 工作报告里要人看的内容（调度器没有等它们）", ""] + flagged
         return "\n".join(lines) + "\n"
+
+    def _gap_lines(self) -> list[str]:
+        import gaps
+
+        data = gaps.load(self.ws) or {}
+        entries = [g for g in data.get("gaps") or [] if isinstance(g, dict)]
+        if not entries:
+            return []
+        tests: dict[str, int] = {}
+        for g in entries:
+            test = (g.get("decision") or {}).get("test") or "未决定"
+            tests[test] = tests.get(test, 0) + 1
+        lines = [f"- {len(entries)} 条：" + "，".join(f"{k} {v}" for k, v in sorted(tests.items()))]
+        lines += [f"- 新类别候选 {g.get('id')}（{g.get('candidate_name')}）：{_clip(str(g.get('summary')), 200)}"
+                  for g in entries if g.get("category") == "new"]
+        return lines
+
+    def _flagged_issues(self) -> list[str]:
+        """Issues a worker marked needs_human in its report. The dispatcher acts on rulings and
+        on report_blocked, not on these, so at least the report has to show them."""
+        out = []
+        for task_id in self.board.tasks():
+            report = _read_json(self.ws / "storage" / "stage_reports" / f"{task_id}.json")
+            for issue in (report.get("issues") or []) if isinstance(report, dict) else []:
+                if isinstance(issue, dict) and "needs_human" in (issue.get("type"), issue.get("kind")):
+                    text = issue.get("text") or issue.get("detail") or json.dumps(issue, ensure_ascii=False)
+                    out.append(f"- {task_id}：{_clip(str(text), 600)}")
+        return out
 
 
 # ---------------------------------------------------------------------- CLI

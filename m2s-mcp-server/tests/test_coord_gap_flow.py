@@ -189,6 +189,21 @@ def test_v2_other_failures_open_a_case_that_cannot_change_the_judge(tmp_path: Pa
     assert handler.deny_write == (str(d.ws / "judge"),)
 
 
+def test_report_shows_what_workers_flagged_and_the_inventory(tmp_path: Path):
+    inventory = {"version": 1, "gaps": [
+        {"id": "GAP-1", "category": "time", "summary": "s", "decision": {"test": "delta"}},
+        {"id": "GAP-2", "category": "new", "candidate_name": "连接池", "summary": "启动时建一次"}]}
+    script = {"A1": [{"write": {"storage/gap_inventory.json": inventory, "storage/stage_reports/A1.json": {
+        "ok": True, "issues": [{"type": "needs_human", "text": "不复刻 100KB 上限，请人确认"}, {"type": "note", "text": "只是备注"}]}}, "submit": "done"}]}
+    d, _ = gaps_dispatcher(tmp_path, script)
+
+    assert d.run() == EXIT_DONE
+
+    report = (d.coord / "report.md").read_text(encoding="utf-8")
+    assert "A1：不复刻 100KB 上限，请人确认" in report and "只是备注" not in report
+    assert "2 条：delta 1，未决定 1" in report and "GAP-2（连接池）" in report
+
+
 def _b0_workspace(d, judge_ok: str = "PASS", delta_ok: str = "PASS") -> None:
     v = d.ws / "verification"
     v.mkdir(exist_ok=True)
