@@ -14,7 +14,8 @@ application so that nothing is left to chance.
        "category": "fire_and_forget", "summary": "...", "evidence": [{"file", "line", "symbol"}],
        "endpoints": ["POST /api/orders"], "rulebook_rule": "...", "default": "...",
        "source": "G1", "status": "open",
-       "decision": {"choice": "what the target does", "why": "...", "test": "delta" | "judge" | "none"}}]}
+       "decision": {"choice": "what the target does", "why": "...", "test": "delta" | "judge" | "none",
+                    "judge_cases": ["ids of the judge cases that verify it, for test: judge"]}}]}
 
 Rerunning gap_scan keeps ids and decisions: an entry is identified by its key. A signal
 that is gone is marked no_longer_detected, never deleted; G2's entries are left alone.
@@ -296,6 +297,52 @@ def _evidence_errors(where: str, evidence: Any, root: Path | None) -> list[str]:
     return errs
 
 
+def _judge_case_ids(ws: Path) -> set[str] | None:
+    """Ids of the judge's cases; None in a workspace without a judge."""
+    root = ws / "judge" / "cases"
+    if not root.is_dir():
+        return None
+    ids: set[str] = set()
+    for path in root.glob("*/*.json"):
+        try:
+            ids.add(str(json.loads(path.read_text(encoding="utf-8")).get("id") or path.stem))
+        except (OSError, ValueError):
+            ids.add(path.stem)
+    return ids
+
+
+def _judge_case_errors(where: str, decision: dict[str, Any], known: set[str] | None) -> list[str]:
+    """V2P-23: "the judge verifies it" has to name what does, or it is only a claim."""
+    named = decision.get("judge_cases")
+    if known is None:
+        return [f"{where}: decision.test is judge, but this workspace has no judge"]
+    if not isinstance(named, list) or not named or not all(isinstance(c, str) for c in named):
+        return [f"{where}: decision.test is judge, so decision.judge_cases must list the judge cases that verify it. "
+                "When no case can (for example the data is too small to reach the behaviour), use test: none and say "
+                "that it can only be checked by reading the code"]
+    return [f"{where}: decision.judge_cases names {c!r}, which is not a judge case" for c in named if c not in known]
+
+
+def judge_case_problems(ws: Path | str, verdict: dict[str, Any]) -> list[str]:
+    """Before B0: the cases each test: judge decision names were really run and did not fail.
+    A dropped case proves nothing: at least one of them has to have run."""
+    data = load(ws) or {}
+    cases = verdict.get("cases") or {}
+    out = []
+    for g in data.get("gaps") or []:
+        d = (g.get("decision") or {}) if isinstance(g, dict) else {}
+        if d.get("test") != "judge" or g.get("no_longer_detected"):
+            continue
+        named = d.get("judge_cases") or []
+        verdicts = {c: (cases.get(c) or {}).get("verdict", "not run") for c in named}
+        bad = {c: v for c, v in verdicts.items() if v in ("fail", "infra_error", "not run")}
+        if bad:
+            out.append(f"{g.get('id')}: {bad}")
+        elif not any(v in ("pass", "migration-change", "ruled") for v in verdicts.values()):
+            out.append(f"{g.get('id')}: none of {named} ran on the target ({verdicts})")
+    return out
+
+
 def check_inventory(ws: Path | str, require_decided: bool = False) -> dict[str, Any]:
     """The inventory's format; with require_decided also that every gap has a decision
     that DECISIONS.md repeats (A2)."""
@@ -316,6 +363,7 @@ def check_inventory(ws: Path | str, require_decided: bool = False) -> dict[str, 
     decisions_path = ws / "storage" / "DECISIONS.md"
     decisions = decisions_path.read_text(encoding="utf-8", errors="replace") if decisions_path.is_file() else ""
     errs, seen, undecided = [], set(), []
+    judge_cases = _judge_case_ids(ws)
     for i, g in enumerate(gaps):
         w = f"{where}: gaps[{i}]"
         if not isinstance(g, dict):
@@ -347,6 +395,8 @@ def check_inventory(ws: Path | str, require_decided: bool = False) -> dict[str, 
                 errs.append(f"{w}: a decided gap needs decision {{choice, why, test}}")
             elif d.get("test") not in TESTS:
                 errs.append(f"{w}: decision.test must be one of {TESTS}")
+            elif d.get("test") == "judge" and _judge_case_errors(w, d, judge_cases):
+                errs += _judge_case_errors(w, d, judge_cases)
             elif require_decided and not re.search(rf"{re.escape(str(g.get('id')))}(?!\d)", decisions):
                 errs.append(f"{w}: storage/DECISIONS.md does not mention this gap")
         elif not g.get("no_longer_detected"):

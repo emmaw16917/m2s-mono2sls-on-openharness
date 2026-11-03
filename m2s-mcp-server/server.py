@@ -284,7 +284,26 @@ def check_adapter(ref: str = "", mode: str = "auto") -> str:
 
 
 @mcp.tool()
-def run_judge(ref: str = "", mode: str = "auto", cases: list[str] | None = None) -> str:
+def run_judge_self_test(functions: list[str] | None = None) -> str:
+    """I1 self test: run the frozen judge's cases on the code written so far, before any
+    template exists. Routes and environment come from the blueprint; the functions run on
+    this machine. Only the cases whose every step reaches a function with code. Advisory:
+    nothing is written, V2 gives the verdict on the built template.
+
+    Args:
+        functions: blueprint function names to look at; empty: every function with code.
+
+    Returns: JSON {status: PASS|FAIL|ERROR, cases_run, functions_with_code, summary, failures,
+        failures_total}. Each failure gives the case, the step, what the monolith answered
+        (expected) and what the function answered (actual); judge/cases/ has the case.
+    """
+    import judge
+    return json.dumps(judge.run_judge_self_test(_workspace(), functions or None), ensure_ascii=False)
+
+
+@mcp.tool()
+def run_judge(ref: str = "", mode: str = "auto", cases: list[str] | None = None,
+              functions: list[str] | None = None) -> str:
     """V2: run the frozen judge on the target's whole API (every case and every
     fault scenario; steps routed to their functions, SQS messages delivered
     between steps) and compare each step with the monolith's record: status,
@@ -295,11 +314,12 @@ def run_judge(ref: str = "", mode: str = "auto", cases: list[str] | None = None)
         ref: a git ref of the workspace repo to judge; empty: the working tree.
         mode: "auto", "rie" or "local".
         cases: only these judge case ids (and their fault runs); no verdict file.
+        functions: only the cases with a step these functions answer; no verdict file.
 
     Returns: JSON {status: PASS|FAIL|ERROR, summary, failures, verdict}.
     """
     import judge
-    return json.dumps(judge.run_judge(_workspace(), ref or None, mode, cases or None), ensure_ascii=False)
+    return json.dumps(judge.run_judge(_workspace(), ref or None, mode, cases or None, functions or None), ensure_ascii=False)
 
 
 @mcp.tool()
@@ -421,7 +441,7 @@ def run_validate(functions: list[str] | None = None, cases: list[str] | None = N
 
 @mcp.tool()
 def run_coverage(functions: list[str] | None = None, mode: str = "auto", changed_since: str | None = None,
-                 assets: str | None = None) -> str:
+                 assets: str | None = None, with_judge: bool = False) -> str:
     """Run the test cases with V8 coverage and report branch/statement
     coverage per function. Every uncovered branch and statement (file, line,
     code) is written to verification/coverage/<function>.json -- use it to
@@ -434,11 +454,19 @@ def run_coverage(functions: list[str] | None = None, mode: str = "auto", changed
             report whether every executable line changed since that ref was
             executed by at least one test (changed_lines.all_covered).
         assets: run the delta tests, "verification/delta" (v2 V3).
+        with_judge: (v2 O2, needs functions and changed_since) a changed line counts as
+            covered when the judge's cases or the delta tests executed it. Returns
+            {status, functions: {name: {covered, uncovered, ...}}, all_covered}.
 
     Returns: JSON string {mode, functions: {name: {statements_pct,
         branches_pct, functions_pct, files, uncovered_count}},
         changed_lines?}.
     """
+    if with_judge:
+        import judge
+        if not functions or not changed_since:
+            return json.dumps({"status": "ERROR", "error": "with_judge needs functions and changed_since"})
+        return json.dumps(judge.changed_lines_covered(_workspace(), functions, changed_since, assets), ensure_ascii=False)
     return _verify_call(verify.run_coverage, functions, mode, changed_since, assets=assets)
 
 

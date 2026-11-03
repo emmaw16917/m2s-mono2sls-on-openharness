@@ -1687,7 +1687,7 @@ def _rulings_by_case(ws: Path) -> dict[str, list[dict[str, Any]]]:
     out: dict[str, list[dict[str, Any]]] = {}
     for r in (data.get("rulings") or []) if isinstance(data, dict) else []:
         if r.get("status") in ("decided", "confirmed", "proposed"):
-            for c in (r.get("affects") or {}).get("cases") or []:
+            for c in {str(c).split("#")[0] for c in (r.get("affects") or {}).get("cases") or []}:
                 out.setdefault(c, []).append({"id": r["id"], "status": r["status"]})
     return out
 
@@ -2105,12 +2105,22 @@ def _rules_to_target(amap: dict[str, Any], rules: list[dict[str, Any]], model: "
 
 
 def _rulings_in_force(ws: Path) -> dict[str, list[dict[str, Any]]]:
+    """Rulings by case. An entry "case#step" reaches only that step (_steps); a bare "case"
+    reaches the whole case, and every difference in it, so name steps where that matters."""
     data = _read(ws / "storage" / "rulings.json") if (ws / "storage" / "rulings.json").is_file() else {}
     out: dict[str, list[dict[str, Any]]] = {}
     for r in (data.get("rulings") or []) if isinstance(data, dict) else []:
-        if r.get("status") in ("decided", "confirmed"):
-            for c in (r.get("affects") or {}).get("cases") or []:
-                out.setdefault(c, []).append(r)
+        if r.get("status") not in ("decided", "confirmed"):
+            continue
+        scope: dict[str, set[str] | None] = {}
+        for entry in (r.get("affects") or {}).get("cases") or []:
+            case, _, step = str(entry).partition("#")
+            if not step:
+                scope[case] = None
+            elif scope.get(case, set()) is not None:
+                scope.setdefault(case, set()).add(step)
+        for case, steps in scope.items():
+            out.setdefault(case, []).append({**r, "_steps": steps})
     return out
 
 
@@ -2217,17 +2227,18 @@ def judge_unit(facts: Facts, template: dict[str, Any], rec: dict[str, Any], ctx:
     if rec.get("infra_error"):
         return {"verdict": "infra_error", "error": rec["infra_error"][-2000:]}
     bindings = dict(ctx["bindings"])
-    order = [r for r in rulings if r.get("relaxation") == "order"]
-    alternatives = [r for r in rulings if r.get("relaxation") == "alternatives"]
-    migration = [r for r in rulings if r.get("category") == "migration-change"]
-    trace = [r for r in rulings if r.get("category") == "implementation-trace"]
-    unordered_paths = set(unordered)
-    if order:
-        unordered_paths |= _all_list_paths(template.get("steps") or {}, "steps", set())
     steps: dict[str, dict[str, Any]] = {}
     route_of = {s["name"]: s["route"] for s in ctx["routes"]}
     for s in rec["steps"]:
         name = s["name"]
+        mine = [r for r in rulings if r.get("_steps") is None or name in r["_steps"]]
+        order = [r for r in mine if r.get("relaxation") == "order"]
+        alternatives = [r for r in mine if r.get("relaxation") == "alternatives"]
+        migration = [r for r in mine if r.get("category") == "migration-change"]
+        trace = [r for r in mine if r.get("category") == "implementation-trace"]
+        unordered_paths = set(unordered)
+        if order:
+            unordered_paths |= _all_list_paths((template.get("steps") or {}).get(name) or {}, f"steps.{name}", set())
         route = route_of.get(name) or {}
         entry: dict[str, Any] = {"function": route.get("function"), "endpoint": route.get("endpoint")}
         if s["route"] in ("dropped", "blocked"):
@@ -2272,13 +2283,17 @@ def judge_unit(facts: Facts, template: dict[str, Any], rec: dict[str, Any], ctx:
         out["rules_fired"] = {"monolith": want_fired, "target": got_fired}
     if ctx["rule_problems"]:
         out["rule_problems"] = ctx["rule_problems"]
-    out["verdict"] = "fail" if p_tables else _verdict_of(steps)
+    unfinished = verify.unfinished_writes(rec)
+    if unfinished:
+        out["unawaited"] = {"verdict": "fail", "calls": unfinished, "why": verify.unfinished_text(unfinished)}
+    out["verdict"] = "fail" if p_tables or unfinished else _verdict_of(steps)
     return out
 
 
-def _judge_job(ws: Path, ref: str | None, mode: str, unit_filter: Any = None, label: str = "judge"
-               ) -> tuple[dict[str, Any], dict[str, Any]]:
-    """Plan and run the judge on the target: (raw results, context)."""
+def _judge_job(ws: Path, ref: str | None, mode: str, unit_filter: Any = None, label: str = "judge",
+               model: "verify.Model | None" = None, coverage: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Plan and run the judge on the target: (raw results, context). With `model` (the self
+    test) the code is what that model built; otherwise the template's, through sam build."""
     import shutil
     import time
     facts = Facts(ws)
@@ -2293,7 +2308,8 @@ def _judge_job(ws: Path, ref: str | None, mode: str, unit_filter: Any = None, la
         raise AdapterMapError("storage/adapter_map.json " + ("not found: the architect writes it (A1)" if amap is None
                                                              else amap["_load_error"]))
     code_root = verify.export_ref(ws, ref) if ref else ws
-    model = verify.Model(code_root)
+    given_model = model is not None
+    model = model or verify.Model(code_root)
     static = check_adapter_map(ws, _model_target_tables(model))
     if static["status"] != "PASS":
         raise AdapterMapError("the adapter map does not pass its check: " + "; ".join(static["errors"][:8]))
@@ -2307,7 +2323,7 @@ def _judge_job(ws: Path, ref: str | None, mode: str, unit_filter: Any = None, la
     if unit_filter is not None:
         units = [u for u in units if unit_filter(u)]
     job_units, ctx = _plan_units(ws, facts, assets, amap, model, units)
-    build_dir = verify.sam_build(code_root)
+    build_dir = model.build_dir if given_model else verify.sam_build(code_root)
     mode = verify._mode(mode)
     functions = {}
     for name, fn in model.functions.items():
@@ -2317,16 +2333,19 @@ def _judge_job(ws: Path, ref: str | None, mode: str, unit_filter: Any = None, la
                            "sqs_events": fn.get("sqs_events") or []}
     out_dir = verify.TMP_ROOT / re.sub(r"[^A-Za-z0-9_-]", "_", ws.name) / "judge" / f"{time.strftime('%Y%m%d-%H%M%S')}-{label}"
     out_dir.mkdir(parents=True, exist_ok=True)
-    job = {"mode": mode, **backend, "out_dir": str(out_dir), "functions": functions,
+    job = {"mode": mode, "coverage": coverage, **backend, "out_dir": str(out_dir), "functions": functions,
            "tables": [{"name": t["name"], "create": t["create"]} for t in model.tables.values()],
            "queues": {q: {"max_receive": n} for q, n in model.queue_max_receive.items()},
-           "gateway": _gateway_answers(model), "units": job_units,
+           "gateway": _gateway_answers(model), "units": job_units, "hold_writes_ms": verify.HOLD_WRITES_MS,
            "rie_image_python": verify.PY_RIE_IMAGE, "python_exe": sys.executable}
     (out_dir / "job.json").write_text(json.dumps(job, ensure_ascii=False, indent=1), encoding="utf-8")
     node = shutil.which("node", path=verify._env()["PATH"]) or "node"
     t0 = time.time()
+    env = verify._env()
+    if given_model:  # local Node: what the Lambda runtime provides, the SDK
+        env["NODE_PATH"] = str(verify.VERIFY_TOOLS / "node_modules")
     proc = verify._run([node, str(verify.VERIFY_TOOLS / "judge-run.js"), str(out_dir / "job.json")], capture_output=True,
-                       text=True, encoding="utf-8", errors="replace", env=verify._env(), timeout=7200)
+                       text=True, encoding="utf-8", errors="replace", env=env, timeout=7200)
     raw_path = out_dir / "judge_raw.json"
     if proc.returncode != 0 or not raw_path.is_file():
         raise JudgeError(f"judge-run failed (exit {proc.returncode}): {proc.stderr[-3000:]}")
@@ -2392,10 +2411,47 @@ def _meta(ws: Path, raw: dict[str, Any], info: dict[str, Any], ref: str | None) 
             **({"disclaimer": verify.local_disclaimer(info["model"])} if info["mode"] == "local" else {})}
 
 
-def run_judge(ws: Path | str, ref: str | None = None, mode: str = "auto", cases: list[str] | None = None) -> dict[str, Any]:
-    """V2: the frozen judge on the target (the working tree, or git `ref` of the
-    workspace repo). Writes verification/verdict_judge.json (all cases only)."""
+def _reaching(model: "verify.Model", functions: list[str]) -> set[str]:
+    """Functions whose steps reach these: a consumer has no route of its own, it runs when
+    its producer's message is delivered. Without a declared producer, any function may be one."""
+    wanted = set(functions)
+    for name in functions:
+        for queue in (model.functions.get(name) or {}).get("sqs") or []:
+            producers = {n for n, f in model.bp_functions.items() if queue in str(f.get("publishes_to") or "")}
+            wanted |= producers or set(model.functions)
+    return wanted
+
+
+def _cases_of_functions(ws: Path, model: "verify.Model", functions: list[str]) -> list[str]:
+    """The judge cases that reach one of these functions."""
+    facts = Facts(ws)
+    amap = adapter.load_map(ws) or {}
+    dropped = _dropped_endpoints(amap)
+    wanted = _reaching(model, functions)
+    found = []
+    for case in load_assets(ws)["cases"]:
+        if "_load_error" in case:
+            continue
+        routed = {s["route"].get("function") for s in _route_steps(model, facts, case, dropped)}
+        if routed & wanted:
+            found.append(case["id"])
+    return found
+
+
+def run_judge(ws: Path | str, ref: str | None = None, mode: str = "auto", cases: list[str] | None = None,
+              functions: list[str] | None = None) -> dict[str, Any]:
+    """V2: the frozen judge on the target (the working tree, or git `ref` of the workspace
+    repo). functions: only the cases that reach these functions (O2 on a candidate). Writes
+    verification/verdict_judge.json when all cases run."""
     ws = Path(ws).resolve()
+    if functions:
+        try:
+            cases = _cases_of_functions(ws, verify.Model(verify.export_ref(ws, ref) if ref else ws), functions)
+        except (JudgeError, verify.VerifyError, adapter.AdapterError) as exc:
+            return {"status": "ERROR", "error": str(exc)}
+        if not cases:
+            return {"status": "PASS", "summary": {"cases": {}, "fault_runs": {}}, "failures": [], "failures_total": 0,
+                    "verdict": None, "note": f"no judge case reaches {functions}"}
     flt = (lambda u: u["case"] in cases) if cases else None
     try:
         raw, info = _judge_job(ws, ref, mode, flt, label=f"judge-{ref}" if ref else "judge")
@@ -2410,11 +2466,83 @@ def run_judge(ws: Path | str, ref: str | None = None, mode: str = "auto", cases:
     if not cases:
         _write(ws.joinpath(*VERDICT_FILE), doc)
     failures = [{"case": cid, "steps": {n: s for n, s in r.get("steps", {}).items() if s["verdict"] == "fail"},
-                 **({"tables": r["tables"]} if r.get("tables") else {}), **({"error": r["error"]} if r.get("error") else {})}
+                 **{k: r[k] for k in ("tables", "unawaited", "error") if r.get(k)}}
                 for cid, r in res["cases"].items() if r["verdict"] in ("fail", "infra_error")]
     return {"status": status, "summary": res["summary"], "mode": info["mode"], "backend": raw.get("backend"),
             "verdict": "/".join(VERDICT_FILE) if not cases else None, "failures": failures[:15],
             "failures_total": len(failures), "seconds": raw.get("seconds"), "run_dir": raw.get("out_dir")}
+
+
+def run_judge_self_test(ws: Path | str, functions: list[str] | None = None) -> dict[str, Any]:
+    """I1 (N5.2): the judge's cases on the code written so far, before any template exists:
+    routes and environment from the blueprint, on this machine (no Lambda container). Only the
+    cases whose every step reaches a function with code. Advisory, nothing is written: V2 is
+    the judge's verdict, on the built template."""
+    ws = Path(ws).resolve()
+    try:
+        model = verify.BlueprintModel(ws)
+        unknown = sorted(set(functions or []) - set(model.bp_functions))
+        if unknown:
+            return {"status": "ERROR", "error": f"not in the blueprint: {unknown}"}
+        wanted = _reaching(model, functions or sorted(model.functions))
+        facts = Facts(ws)
+        dropped = _dropped_endpoints(adapter.load_map(ws) or {})
+        picked = []
+        for case in load_assets(ws)["cases"]:
+            if "_load_error" in case:
+                continue
+            routes = [s["route"] for s in _route_steps(model, facts, case, dropped)]
+            reached = {r.get("function") for r in routes if r["kind"] == "invoke"}
+            if reached & wanted and not any(r["kind"] == "no_route" for r in routes):
+                picked.append(case["id"])
+        if not picked:
+            return {"status": "ERROR", "error": f"no judge case can run: none reaches {sorted(wanted)} with code for all its steps",
+                    "functions_with_code": sorted(model.functions)}
+        raw, info = _judge_job(ws, None, "local", lambda u: u["case"] in picked, label="selftest", model=model)
+    except (JudgeError, verify.VerifyError, adapter.AdapterError) as exc:
+        return {"status": "ERROR", "error": str(exc)}
+    res = _judge_results(ws, raw, info)
+    failures = []
+    for cid, r in res["cases"].items():
+        steps = {n: s for n, s in (r.get("steps") or {}).items() if s["verdict"] == "fail" and not s.get("answered_by")}
+        extra = {k: r[k] for k in ("tables", "unawaited", "error") if r.get(k)}
+        if steps or extra:
+            failures.append({"case": cid, "steps": steps, **extra})
+    return {"status": "PASS" if not failures else "FAIL", "mode": "local", "cases_run": len(picked), "summary": res["summary"],
+            "functions_with_code": sorted(model.functions), "failures": failures[:12], "failures_total": len(failures),
+            "note": "advisory, on this machine, without a Lambda container: answers the gateway gives itself are not "
+                    "counted. Nothing was written; V2 runs the judge on the built template."}
+
+
+def changed_lines_covered(ws: Path | str, functions: list[str], changed_since: str, assets: str | None = None) -> dict[str, Any]:
+    """O2 (N5.3): were the lines changed since `changed_since` executed, by the judge's cases
+    or the delta tests? A line one of them executed is covered. Functions with no delta test
+    are covered by the judge alone, which is most read paths."""
+    ws = Path(ws).resolve()
+    assets = assets or verify.DELTA_ASSETS
+    try:
+        model = verify.Model(ws)
+        changed, unmapped = verify._changed_lines(ws, changed_since, model)
+        cases = _cases_of_functions(ws, model, functions)
+        raw, _ = _judge_job(ws, None, "auto", lambda u: u["case"] in cases, label="judge-coverage", coverage=True)
+    except (JudgeError, verify.VerifyError, adapter.AdapterError) as exc:
+        return {"status": "ERROR", "error": str(exc)}
+    delta = verify.run_coverage(str(ws), functions, changed_since=changed_since, assets=assets)
+    delta_fns = ((delta.get("changed_lines") or {}).get("functions") or {}) if isinstance(delta, dict) else {}
+    report: dict[str, Any] = {}
+    if unmapped:
+        report["(unmapped)"] = {"error": "changed code files that belong to no function: " + ", ".join(unmapped)}
+    for name, files in changed.items():
+        if name not in model.functions or (functions and name not in functions):
+            continue
+        cov = ((raw.get("functions") or {}).get(name) or {}).get("coverage") or {}
+        sides = [delta_fns[name]] if not (delta_fns.get(name) or {}).get("error") and name in delta_fns else []
+        if cov.get("report_dir"):
+            sides.append(verify._changed_coverage(Path(cov["report_dir"]) / "coverage-final.json", model.functions[name]["logical"], files))
+        report[name] = verify.merge_changed_coverage(sides) if sides else {"error": "no test reached this function"}
+    return {"status": "PASS", "since": changed_since, "functions": report,
+            "all_covered": all(not r.get("uncovered") and not r.get("error") for r in report.values()),
+            "sources": {"judge_cases": len(cases), "delta": "see verification/coverage/"}}
 
 
 def _read_only_case(facts: Facts, case: dict[str, Any]) -> bool:

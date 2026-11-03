@@ -71,6 +71,7 @@ MAX_CRASHES = 3
 INFRA_BACKOFF_S = (300, 600, 1200, 1800)
 MAX_INFRA_FAILURES = 8  # per round, about 2.5 hours of waiting before a person is asked
 MAX_SPAWNS_PER_TASK = 12  # backstop against a rule loop; normal limits are far lower
+MAX_ACTION_RUNS = 20  # the same for the dispatcher's own actions: a loop over them spawns nothing and would spin unseen
 HANDLER_TIMEOUT_S = 20 * 60
 HANDLER_MAX_TURNS = 60
 
@@ -212,7 +213,8 @@ class Dispatcher:
                         "run_monolith": self._act_run_monolith, "reconcile_spec": self._act_reconcile,
                         "freeze_judge": self._act_freeze, "check_adapter": self._act_check_adapter,
                         "run_judge": self._act_run_judge, "run_mutants": self._act_run_mutants,
-                        "gap_scan": self._act_gap_scan, "tag_b0": self._act_tag_b0, **(actions or {})}
+                        "gap_scan": self._act_gap_scan, "tag_b0": self._act_tag_b0, "final_v2": self._act_final_v2,
+                        "archive_run": self._act_archive, **(actions or {})}
         self.max_workers = max_workers
         self.poll_s = poll_s
         self.handler_enabled = handler
@@ -377,6 +379,9 @@ class Dispatcher:
         infra = sum(1 for e in self.events.of_task(task_id, "worker_exit") if e.get("infra"))
         if self.events.count("spawn", task_id) - infra >= MAX_SPAWNS_PER_TASK:
             self._escalate(task_id, f"{task_id} 已经启动过 {MAX_SPAWNS_PER_TASK} 次 worker，调度器不再自动重试")
+            return
+        if spec.runner == "dispatcher" and self.events.count("action_start", task_id) >= MAX_ACTION_RUNS:
+            self._escalate(task_id, f"{task_id} 已经运行过 {MAX_ACTION_RUNS} 次，流转规则可能在循环，调度器不再自动重试")
             return
         reopen = self.events.reopen_mode(task_id)
         first_start = reopen is None and not self.events.of_task(task_id, "spawn", "recheck")
@@ -826,17 +831,25 @@ class Dispatcher:
                             relay="" if not missing else f"这些 spec_issues 在 blueprint.json 的 metadata.spec_resolutions 里还没有裁定：{missing}")]
 
     def _flow_after_close(self, task_id: str) -> None:
-        if self._spec(task_id).mode == "J3":
+        spec = self._spec(task_id)
+        if spec.mode in ("J3", "J4", "J5") and self._judge_settled():
+            return  # the judge is frozen: what it found was settled before it froze
+        if spec.mode == "J3":
             self._after_j3(task_id)
-        elif self._spec(task_id).mode == "J4":
+        elif spec.mode == "J4":
             self._after_j4(task_id)
-        elif self._spec(task_id).mode == "J5":
+        elif spec.mode == "J5":
             self._after_j5(task_id)
         elif task_id == "V1":
             self._after_v1()
         elif task_id == "TAG_V0" and self.phase_review:
             self._open_case("review", "TAG_V0", "v0 已打 tag，进入 S5 前的阶段复查",
                             {"运行摘要": self._summary_text()})
+        elif spec.action == "tag_b0" and self.phase_review:
+            self._open_case("review", task_id, "B0 已打 tag，进入优化阶段前的阶段复查", {"运行摘要": self._summary_text()})
+        elif spec.action == "freeze_judge" and self.phase_review and self.events.last(task_id, "judge_frozen") \
+                and not self.events.last(task_id, "judge_frozen").get("unchanged"):
+            self._open_case("review", task_id, "裁判已冻结，进入设计线之前的阶段复查", {"运行摘要": self._summary_text()})
 
     def _after_v1(self) -> None:
         if self._active_spec_round():
@@ -983,6 +996,16 @@ class Dispatcher:
             self._request_rework(i2, "目标版本的函数启动不了（打包或模板的问题），请修正：\n" + "\n".join(signals[:20]),
                                  reason="packaging", by=spec.id)
             self._wait_for_upstream(spec.id, "packaging")
+            return True
+        unfinished = sorted({json.dumps(c, ensure_ascii=False, sort_keys=True) for f in detail.get("failures") or []
+                             for c in (f.get("unawaited") or {}).get("calls") or []})
+        i1 = self._route_target("code", spec.id)
+        if unfinished and i1 and self._rework_budget_ok(i1):
+            self.events.append("judge_unawaited", task=spec.id, to=i1, calls=unfinished[:20])
+            self._request_rework(i1, "函数返回时这些写操作或消息还没完成（代码没有等它们）。真实的 Lambda 在函数返回后会冻结，"
+                                 "它们可能永远完成不了。在返回之前等它们完成，失败时的处理按原来的语义：\n" + "\n".join(unfinished[:20]),
+                                 reason="unawaited", by=spec.id)
+            self._wait_for_upstream(spec.id, "unawaited")
             return True
         self.board.report_gate(spec.id, False)
         self._open_case("triage", spec.id, "裁判在目标版本上没有通过",
@@ -1149,7 +1172,7 @@ class Dispatcher:
         spawn = self.events.last(spec.id, "spawn")
         found = rulings.proposals(self.coord, spec.id, spawn["attempt"]) if spawn else []
         standing = [r for r in rulings.effective(self._ruling_entries()) if r["status"] in ("decided", "confirmed", "proposed")]
-        covered = {c for r in [*found, *standing] for c in r["affects"]["cases"]}
+        covered = {c.split("#")[0] for r in [*found, *standing] for c in r["affects"]["cases"]}
         missing = [d["id"] for d in made["differences"] if d["case"] not in covered]
         return CheckResult("rulings_cover", not missing,
                            "every difference has a ruling" if not missing else f"no ruling names the case of {missing}",
@@ -1158,6 +1181,8 @@ class Dispatcher:
     def _act_run_monolith(self, spec: TaskSpec) -> CheckResult:
         import judge
 
+        if self._judge_settled():
+            return CheckResult("run_monolith", True, "the judge is frozen and unchanged: not run again")
         try:
             r = judge.run_monolith(self.ws)
         except judge.JudgeError as exc:
@@ -1175,6 +1200,15 @@ class Dispatcher:
     def _judge_frozen(self) -> bool:
         return (self.ws / "judge" / "judge_manifest.json").is_file()
 
+    def _judge_settled(self) -> bool:
+        """Frozen with the hashes of its manifest: nothing of the judge line runs again."""
+        import judge
+
+        if not self._judge_frozen():
+            return False
+        changes = judge.judge_changes(self.ws)
+        return changes is not None and not any(changes.values())
+
     def _act_freeze(self, spec: TaskSpec) -> CheckResult:
         import judge
 
@@ -1189,6 +1223,8 @@ class Dispatcher:
     def _act_reconcile(self, spec: TaskSpec) -> CheckResult:
         import judge
 
+        if self._judge_settled():
+            return CheckResult("reconcile_spec", True, "the judge is frozen and unchanged: not reconciled again")
         r = judge.reconcile(self.ws)
         return CheckResult("reconcile_spec", True, f"{r['differences']} differences, "
                            f"{r['resolved_by_rulings']} settled by rulings, {r['steps']} steps", detail=r)
@@ -1210,6 +1246,8 @@ class Dispatcher:
         import judge
         import mutants
 
+        if self._judge_settled():
+            return CheckResult("run_mutants", True, "the judge is frozen and unchanged: its score stands")
         try:
             r = mutants.run_mutants(self.ws)
         except judge.JudgeError as exc:
@@ -1250,6 +1288,10 @@ class Dispatcher:
     def _act_analyze(self, spec: TaskSpec) -> CheckResult:
         import wrap_m2s
 
+        report = _read_json(self.ws / "storage" / "analysis_report.json")
+        if isinstance(report, dict) and (report.get("spec_meta") or {}).get("monolith_root"):
+            # analyzing again would throw the annotations away
+            return CheckResult("analyze_project", True, "storage/analysis_report.json is already there: kept")
         wrap_m2s.analyze(str(self.monolith), str(self.ws))
         return CheckResult("analyze_project", True, f"analyzed {self.monolith.name}")
 
@@ -1288,6 +1330,7 @@ class Dispatcher:
 
     def _act_tag_b0(self, spec: TaskSpec) -> CheckResult:
         """B0 (v2 §4.13): the judge and the delta tests both pass on this code."""
+        import gaps
         import judge
 
         problems = []
@@ -1298,6 +1341,8 @@ class Dispatcher:
         changes = judge.judge_changes(self.ws)
         if changes is None or any(changes.values()):
             problems.append("the judge is not frozen or has changed" + (f": {changes}" if changes else ""))
+        problems += [f"the judge does not verify {p}" for p in
+                     gaps.judge_case_problems(self.ws, _read_json(self.ws / "verification" / "verdict_judge.json") or {})]
         if problems:
             return CheckResult("tag_b0", False, "acceptance failed: " + "; ".join(problems))
         sha, moved = self._commit_and_tag("B0", "B0: judge and delta tests pass", ("output", "verification", "storage", "judge"))
@@ -1325,6 +1370,62 @@ class Dispatcher:
                 return CheckResult("final", True, "S5's changes broke the final check and were reverted; v0 delivered")
         return CheckResult("final", False, "final check failed: " + "; ".join(r.summary for r in results if not r.ok),
                            detail={"escalate": True})
+
+    def _act_final_v2(self, spec: TaskSpec) -> CheckResult:
+        """C1 (v2 §4.15): gate(final), the whole judge and all delta tests on the code to deliver.
+        If the optimizer's changes broke them, back to B0 once. Then output/final_report.md."""
+        from coord import closing
+
+        report = _read_json(self.ws / "storage" / "stage_reports" / "O.json") or {}
+        perf = _read_json(self.ws / "output" / "perf_report.json") or {}
+        pending = [c.get("id") for c in perf.get("changes") or [] if isinstance(c, dict) and c.get("verdict") == "pending_spec"]
+        if report.get("blocked") or pending:
+            return CheckResult("final", False, f"the optimizer left changes a person has to look at (blocked={report.get('blocked')}, "
+                               f"pending_spec={pending})", detail={"escalate": True})
+
+        def checks() -> list[CheckResult]:
+            return [self.checks[name](self.ws) for name in ("gate_final", "judge_full", "delta_full")]
+
+        results = checks()
+        reverted = False
+        if not all(r.ok for r in results):
+            head, b0 = _git(self.ws, "rev-parse", "HEAD").stdout.strip(), _git(self.ws, "rev-parse", "B0").stdout.strip()
+            if head and b0 and head != b0 and not self.events.count("o_reverted"):
+                _git(self.ws, "checkout", "B0", "--", "output")
+                _git(self.ws, "-c", "user.name=m2s-pipeline", "-c", "user.email=m2s@local", "commit", "-q", "-am", "revert O: the final check failed")
+                self.events.append("o_reverted", task=spec.id, failed=[r.summary for r in results if not r.ok])
+                reverted = True
+                results = checks()
+        if not all(r.ok for r in results):
+            return CheckResult("final", False, "final check failed: " + "; ".join(r.summary for r in results if not r.ok),
+                               detail={"escalate": True})
+        self._write_dispatcher_files()
+        open_items = [*self._flagged_issues(),
+                      *[f"- {e['task']}：{e.get('reason')}" for e in self.events.all() if e["type"] == "escalate" and self.board.status(e["task"]) != "closed"],
+                      *[f"- 留到最后的未决问题：{e['text']}" for e in self.events.all() if e["type"] == "open_issue"],
+                      *[f"- 裁判强度：冻结时还有没补上的变异体 {e.get('ids')}" for e in self.events.all() if e["type"] == "strength_gaps_left"]]
+        text = closing.final_report(self.ws, results=results, rulings=rulings.effective(self._ruling_entries()),
+                                    open_items=open_items, reverted=reverted)
+        (self.ws / "output").mkdir(exist_ok=True)
+        (self.ws / "output" / "final_report.md").write_text(text, encoding="utf-8")
+        if (self.ws / ".git").is_dir():
+            _git(self.ws, "add", "-A", "output/final_report.md", "verification", "storage")
+            _git(self.ws, "-c", "user.name=m2s-pipeline", "-c", "user.email=m2s@local", "commit", "-q", "-m", "C1: final report")
+        return CheckResult("final", True, "gate(final), the judge and the delta tests pass; output/final_report.md written"
+                           + ("; the optimizer's changes were reverted" if reverted else ""))
+
+    def _act_archive(self, spec: TaskSpec) -> CheckResult:
+        """C2 (v2 §4.15): the run's evidence goes to the evidence store, append-only."""
+        from coord import closing
+
+        self._write_dispatcher_files()
+        self.events.append("archive_start", task=spec.id)
+        (self.coord / "report.md").write_text(self.report("archiving"), encoding="utf-8")
+        r = closing.archive_run(self.ws, self.monolith)
+        if r["status"] != "PASS":
+            return CheckResult("archive_run", False, f"archive_run: {r.get('error')}: {r.get('files')}", detail={**r, "escalate": True})
+        self.events.append("archived", task=spec.id, path=r["path"], missing=r["missing"])
+        return CheckResult("archive_run", True, f"archived to {r['path']}" + (f"; not there: {r['missing']}" if r["missing"] else ""), detail=r)
 
     # ------------------------------------------------------------------ outcome and report
 
@@ -1428,6 +1529,11 @@ class Dispatcher:
         issues = [e for e in self.events.all() if e["type"] == "open_issue"]
         if issues:
             lines += ["", "## 人决定暂不处理的未决问题", ""] + [f"- {e['text']}（{e['task']}）" for e in issues]
+        if ruled:
+            from coord import closing
+
+            counts = closing.ruling_counts(ruled)
+            lines += ["", f"裁定共 {counts['total']} 条，其中人工裁定或确认 {counts['human']} 条，还在等人 {counts['waiting']} 条。"]
         inventory = self._gap_lines()
         if inventory:
             lines += ["", "## 缺口清单", ""] + inventory

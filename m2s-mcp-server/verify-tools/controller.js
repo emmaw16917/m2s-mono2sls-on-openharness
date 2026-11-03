@@ -47,7 +47,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 (async () => {
   // 0.0.0.0: Lambda containers reach the proxy through host.docker.internal.
-  const be = await startBackend({ backend: job.backend, ddbLocal: job.ddb_local, tables: job.tables, bindHost: '0.0.0.0' });
+  const be = await startBackend({ backend: job.backend, ddbLocal: job.ddb_local, tables: job.tables, holdWritesMs: job.hold_writes_ms, bindHost: '0.0.0.0' });
   await be.createTables();
   log('proxy on', be.proxyPort, 'mode', job.mode);
   const results = { mode: job.mode, backend: job.backend || 'dynalite', cases: [], functions: {} };
@@ -81,6 +81,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
           rec.gateway = true;
           rec.result = c.gateway_response;
         } else {
+          be.functionInvoked(fn.name);
           const out = await inv.invoke(c.event);
           Object.assign(rec, out);
           if (c.repeat) {
@@ -92,7 +93,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
           // after Promise.all rejected) keeps hitting the backend after it
           // returns. Keep the fault rules active and wait until it is quiet,
           // so both versions of a comparison account for it the same way.
-          ctx.returned = true;
+          be.functionReturned();
           const t0 = Date.now();
           const busy = ctx.inflight > 0 || (c.faults || []).length > 0;
           const quiet = busy ? 1000 : 150;

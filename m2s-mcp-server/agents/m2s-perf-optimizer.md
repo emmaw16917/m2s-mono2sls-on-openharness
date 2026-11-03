@@ -354,6 +354,21 @@ def lambda_handler(event, context):
   - 5/10/15ms 全部明显变快、且热调用 CPU 不超过基线 2 倍时，工具直接判 `kept`，0ms 只作参考（判决里的 `realistic_latency_rule`）。照工具的判决执行，不要因为 0ms 变慢自己改判成 `pending_human`，也不要为了避开 0ms 挑选延迟参数；
 - `evidence` 里除了"并发不受限"的说明，还要写明线程数上限（10）。
 
+## v2 流水线（工作区有 `judge/` 时，这一节优先）
+
+下面的工作流程仍然适用，只是基线和检查不同：
+
+- **基线是 B0**，不是 v0：下文所有的 `v0` 都读作 `B0`（`git -C WS tag` 里有 `B0`）。工作报告写 `storage/stage_reports/O.json`；
+- **第 4 节第 3 步的三项检查换成下面四项**，受影响的函数 = 改了代码的函数，都要跑完：
+  1. `mcp__m2s-server__run_judge(functions=[...])`：要求 `PASS`。冻结的裁判，比较的是单体的实际行为；
+  2. `mcp__m2s-server__run_validate(functions=[...], assets="verification/delta")`：要求 `PASS`。这个函数没有增量测试时返回 `total: 0`，算通过；
+  3. `mcp__m2s-server__run_equivalence(mode="diff", functions=[...], assets="verification/delta")`：要求 `EQUIVALENT`，和 B0 比较（工具自己找 B0）。这个函数没有增量测试时返回 `NOTHING_TO_COMPARE`，算通过，由第 1 项负责；
+  4. `mcp__m2s-server__run_coverage(functions=[...], changed_since="HEAD", with_judge=true, assets="verification/delta")`：要求 `all_covered` 为 true。裁判的用例或增量测试执行到了，都算覆盖。
+- **分诊**：把分诊表里的 `run_validate` 读作"第 1、2 项"，`run_equivalence` 读作第 3 项，`run_coverage` 读作第 4 项。**裁判判失败（第 1 项）一律是代码问题**：裁判的期望是单体的实际行为，不存在"测试写错了"。按"代码问题"处理，修一次，还不行就回滚。第 2 项失败、第 3 项 `EQUIVALENT` 的，才可能是增量测试的问题，判 `blocked_by_test`；
+- **第 5 节收尾的全量回归**换成 `run_judge()` 和 `run_validate(assets="verification/delta")`，两项都要 `PASS`。不通过就回退你的全部提交（`git -C WS checkout B0 -- output` 之后提交），如实报告；
+- `blocked_*` 的改动这个阶段没有人复核，把它们留在报告里，不要自己重试；
+- **不部署到 AWS**，性能判决仍然用本机的 `run_proxy_metrics` 和 `run_rie_verdict`。
+
 ## 工作流程
 
 `WS` 是工作区的绝对路径。所有 git 命令都用 `git -C "WS" ...`，**先确认 `WS/.git` 目录存在**：WS 在上层仓库里面，没有自己的 `.git` 时，git 命令会打到上层仓库。

@@ -19,23 +19,33 @@ FAKE_WORKER = Path(__file__).resolve().parent / "fake_worker.py"
 
 def fake_checks(template: Template) -> dict[str, Any]:
     """Check X of task T passes when storage/stage_reports/T.json says so:
-    {"ok": true} passes every check of T, {"checks": {"X": false}} fails one."""
-    owner = {name: spec.id for spec in template.tasks for name in spec.check}
+    {"ok": true} passes every check of T, {"checks": {"X": false}} fails one. A check several
+    tasks share answers from the latest of them that has a report; with no report at all it
+    passes only if a dispatcher task owns it."""
+    owners: dict[str, list[str]] = {}
+    for spec in template.tasks:
+        for name in spec.check:
+            owners.setdefault(name, []).append(spec.id)
     dispatcher_tasks = {spec.id for spec in template.tasks if spec.runner == "dispatcher"}
 
     def make(name: str):
         def check(ws: Path) -> CheckResult:
-            task = owner.get(name, name)
-            try:
-                report = json.loads((ws / "storage" / "stage_reports" / f"{task}.json").read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                report = {"ok": True} if task in dispatcher_tasks else {}
+            tasks = owners.get(name, [name])
+            report = None
+            for task in reversed(tasks):
+                try:
+                    report = json.loads((ws / "storage" / "stage_reports" / f"{task}.json").read_text(encoding="utf-8"))
+                    break
+                except (OSError, ValueError):
+                    continue
+            if report is None:
+                report = {"ok": True} if dispatcher_tasks & set(tasks) else {}
             ok = bool((report.get("checks") or {}).get(name, report.get("ok", False)))
             return CheckResult(name, ok, f"fake {name} {'PASS' if ok else 'FAIL'}",
-                               relay="" if ok else f"fake {name} failed for {task}")
+                               relay="" if ok else f"fake {name} failed for {tasks[-1]}")
         return check
 
-    return {name: make(name) for name in {*owner, "gate_final", "consistency_pass", "validate_full"}}
+    return {name: make(name) for name in {*owners, "gate_final", "consistency_pass", "validate_full", "judge_full", "delta_full"}}
 
 
 class FakeGuard:

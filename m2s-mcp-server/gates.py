@@ -1710,6 +1710,7 @@ def check_c14(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]
 # rule ledger is written by update_ledger during S5, so it is exempt.
 TOOL_DIRS = ("m2s-mcp-server", ".openharness")
 TOOL_EXEMPT = {"m2s-mcp-server/perf-rules/ledger.json"}
+TOOL_EXEMPT_PREFIXES = ("m2s-mcp-server/evidence/",)  # C2 appends a run's archive there
 
 
 def check_tools_unmodified(repo: Path | None = None, home_agents: Path | None = None) -> list[dict[str, Any]]:
@@ -1731,11 +1732,15 @@ def check_tools_unmodified(repo: Path | None = None, home_agents: Path | None = 
         else:
             for line in p.stdout.splitlines():
                 path = line[3:].strip().strip('"').split(" -> ")[-1]
-                if line.strip() and path not in TOOL_EXEMPT:
+                if line.strip() and path not in TOOL_EXEMPT and not path.startswith(TOOL_EXEMPT_PREFIXES):
                     findings.append(_finding("TOOLS", "ERROR",
                                              f"pipeline tool file changed and not committed: {line[:2].strip()} {path} "
                                              "(agents must not modify the pipeline's tools; report a suspected tool bug instead)", path))
     agents_dir = repo / "m2s-mcp-server" / "agents"
+    # A linked worktree runs its own role docs (coord/workers.py AGENTS_DIR); the deployed
+    # copies belong to the main checkout, so they say nothing about this one.
+    if (repo / ".git").is_file():
+        return findings
     for src in sorted(agents_dir.glob("m2s-*.md")) if agents_dir.is_dir() else []:
         installed = home_agents / src.name
         if installed.exists() and installed.read_bytes() != src.read_bytes():

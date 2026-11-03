@@ -1111,3 +1111,17 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **对照**（临时副本，不是流水线的一部分）：去掉幂等条件、去掉发消息都被抓住；去掉发消息的 `await` 没有被抓住（V2P-22）。
 - 抽查"由裁判验证"的决定：15 条里 14 条没有写出用例（V2P-23）。
 - `bookstore-j2` 的裁判升到 v2（V2P-18）：v3a 上 12 个只差 stack 的故障场景不再失败，还有 15 个用例失败，都是迁移变化，要在 N5 裁定。
+
+## v2 N5.1-N5.4：全流程模板和它需要的工具（2026-11-03）
+
+- **V2P-22**：记录代理在目标运行时把写操作和发消息的应答压 150 毫秒（`holdWritesMs`，单体不压），函数返回时还没完成的调用记为 `unfinished_at_return`。`run_validate` 和 `run_judge` 判失败，`run_judge` 查到时直接退回 I1。去掉 `await` 的副本 3 次运行每次都抓到，真实代码上没有误报。
+- **V2P-23**：`test: "judge"` 的决定必须写 `judge_cases`；`tag_b0` 检查它们跑了、没有失败。
+- **裁定可以精确到步骤**：`affected_cases` 写 `用例#步骤`，只放过这一步的差异。
+- **N5.1 模板** `coord/templates/v2.yaml`（附录 A，F1 到 C2，26 个任务）。可以从复制来的事实库和冻结的裁判开始：F1 不覆盖已有的事实库，F2、J1、J3、J4、J5C 先复查，J2、RC、J5 不再运行已冻结且未改动的裁判，J4 的规格问题也不再退回。实现线（A1、I1、I2、I3）读不了 `verification/`。B0 打 tag 和新冻结裁判之后做阶段复查。
+- **N5.2 `run_judge_self_test`**（新工具）：`verify.BlueprintModel` 从蓝图推出表、队列、路由和环境变量，函数的代码连同依赖放到临时目录，在本机运行，这时还不需要模板。只运行所有步骤都有代码的用例，不写任何文件。bookstore-v3a 的 v0 上结果和 Lambda 容器一致（44 个通过，15 个失败，排除网关应答后 2 个，故障场景 18 个全过）。SQS 消费者靠生产者的步骤走到。
+- **N5.3 O2 的检查**：`run_judge(functions)`、`run_validate(functions, assets)`、`run_equivalence(diff, assets)`（基线自动取 B0）、`run_coverage(functions, changed_since, with_judge=true)`（裁判或增量测试执行到都算覆盖，裁判也能收集覆盖率了）。没有增量测试的函数，第 2、3 项算通过，由裁判负责。bookstore-v3a 保留的 R4 和 R1 改动在新检查下仍然通过：裁判没有新失败，增量测试 12/12，和 B0 等价，改动的 47 行全部覆盖。
+- **N5.4**（新模块 `coord/closing.py`）：C1 `final_v2` 跑 gate(final)、全量裁判、全量增量测试，优化改坏了就退回 B0 一次，写 `output/final_report.md`（每层的环境、裁判版本和强度、保留的优化、裁定和人工次数、未解决的问题）。C2 `archive_run` 写到 `evidence/<应用>/<运行>/`，只追加；不归档 worker 的 `settings.json`、`mcp.json` 和 `shadow.git`，看起来含密钥的就拒绝归档。
+- **角色说明**：architect 增加"迁移带来的对外变化：写成裁定"（规则手册默认做法的必然结果记 `migration-change`，不用人确认；architect 自己选择不照搬的要人确认）；code-developer 增加"用裁判自测"；perf-optimizer 增加"v2 流水线"一节；处理者可以记迁移变化的裁定。
+- **其他**：`gate(final)` 的 TOOLS 检查不看证据库；在 linked worktree 上不比较部署的角色说明（worker 用的是 worktree 自己的）。`coord_fakes.fake_checks` 对共用的检查名按最后一个有报告的任务回答。
+- **调度器动作的循环上限**：worker 有重启次数上限，调度器自己的动作没有。假 worker 测试里 J2 → RC → J3 → J4 空转了 494 轮才被发现（起因是假的 J2 没有更新 `inputs_sha`）。现在同一个动作运行 20 次（`MAX_ACTION_RUNS`）就交给人。
+- **测试**：`test_coord_full_flow.py`（假 worker 跑完整个模板、复用冻结的裁判、未等待的写操作的路由、B0、C1、C2）、`test_judge_n5.py`。

@@ -38,6 +38,20 @@ TASK_SUMMARIES = {
           "判定以 verification/verdict_A.json 为准；FAIL 时在工作报告的 routing 里写清退回对象。",
     "S5": "STAGE_ID=S5：在 v0 上做语义保持的性能改动（按你的角色说明）。每个保留的改动单独提交到 WS 的 git；"
           "写 output/perf_report.json。",
+    # v2 (PIPELINE_V2_PLAN.md appendix A). The role docs name the stages by their v1 ids.
+    "A1": "按规格设计 serverless 架构（角色说明里的 S1）：用 mcp__m2s-server__merge_blueprint_key 逐个顶层字段写 storage/blueprint.json，"
+          "设计决定记进 storage/DECISIONS.md。还有三项：storage/adapter_map.json（\"适配映射\"一节）、storage/gap_inventory.json 的每条决定"
+          "（\"缺口决定\"一节）、迁移带来的对外变化写成裁定（\"迁移带来的对外变化\"一节）。写完跑 run_gate(phase=\"blueprint\") 自查并修正。",
+    "I1": "按 blueprint 写 output/lambdas/<domain>/<name>/（角色说明里的 S2）：handler 和依赖声明，需要时写 output/layers/shared/；"
+          "写完跑 run_gate(phase=\"code\") 自查并修正，再按\"用裁判自测\"一节用 mcp__m2s-server__run_judge_self_test 对自己的函数跑裁判用例。",
+    "I2a": "这一步是角色说明里的 STAGE_ID=S3a：写 output/template.part1.yaml（AWSTemplateFormatVersion 到 Globals、Parameters、共享资源，"
+           "以第一次出现的 \"# --- END METADATA ---\" 结束）。",
+    "I2b": "这一步是角色说明里的 STAGE_ID=S3b：写 output/template.part2.yaml（Function 资源、FUNCTIONS_METADATA 块、Outputs）。",
+    "I2c": "这一步是角色说明里的 STAGE_ID=S3c：用 MERGE 合并 part1 和 part2 生成 output/template.yaml（python \"{merge}\" template \"{ws}\"），"
+           "然后自己跑 run_gate(phase=\"template\") 和 validate_sam 自查并修正合并后的模板。",
+    "I3": "这一步是角色说明里的 S4：做一致性检查，写 output/consistency_report.json。",
+    "O": "在 B0 上做语义保持的性能改动（角色说明里的 S5，先读\"v2 流水线\"一节，它改变了基线和检查）。每个保留的改动单独提交到 WS 的 git；"
+         "写 output/perf_report.json。不部署到 AWS。",
 }
 
 # v2 role modes (PIPELINE_V2_PLAN.md): the role doc has a section per mode.
@@ -92,7 +106,7 @@ def worker_prompt(spec: TaskSpec, ws: Path, monolith: Path, attempt: int,
                or f"STAGE_ID={spec.id}：按你的角色说明完成这一阶段。").format(merge=MERGE, ws=ws)
     # A task the monolith is closed to (deny_read: monolith) is not told where it is.
     paths = ([] if "monolith" in spec.deny_read else [f"- MONOLITH = {monolith}"]) + [f"- WS = {ws}"]
-    if spec.id == "S3c":
+    if spec.id in ("S3c", "I2c"):
         paths.append(f"- MERGE = {MERGE}")
     scope = "、".join(spec.scope) or "（无）"
     sections = [
@@ -145,7 +159,13 @@ HANDLER_SYSTEM_PROMPT = """你是 m2s 迁移流水线 v3 的异常处理者。�
 给实现线任务（S1、S2、S3a、S3b、S3c、S4）的 feedback 只能用规格的语言：接口、字段、状态码、表状态、业务规则、gate 的检查项。
 不能写测试用例、fixture、断言写法或 verification/ 下的路径。
 v2 流水线（任务 A1、I1、I2）里裁判用例对实现线可见，可以引用 judge/ 下的用例；增量测试 verification/delta/ 仍然不能写给实现线。
-裁判冻结之后谁都不能改 judge/，分诊也不能。"""
+裁判冻结之后谁都不能改 judge/，分诊也不能。
+
+v2 里裁判判失败时，先看差异是不是迁移带来的：
+- 规则手册默认做法的必然结果（例如未登录由网关应答 401，响应体和头和单体不同）：用 mcp__m2s-server__record_ruling 记一条 category 为 migration-change 的裁定，
+  affected_cases 精确到步骤（写 用例#步骤，不要写整个用例，否则同一个用例里其他步骤的差异也被放过了），basis 写规则手册的哪一条，然后 retry；
+- 这是有人选择不照搬单体（例如修掉单体的 500）：不要自己裁定，escalate 交给人；
+- 其他：是代码或设计的问题，reroute。"""
 
 
 def handler_prompt(case_id: str, case_file: Path, journal: Path, ws: Path, kind: str) -> str:

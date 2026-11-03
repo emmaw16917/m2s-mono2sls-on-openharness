@@ -50,7 +50,7 @@ const OUT = job.out_dir;
 fs.mkdirSync(OUT, { recursive: true });
 const log = (...a) => process.stderr.write('[judge-run] ' + a.join(' ') + '\n');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const { RieInvoker, LocalInvoker } = require('./invokers')({ ...job, coverage: false });
+const { RieInvoker, LocalInvoker, convertCoverage } = require('./invokers')(job);
 
 // ---------------------------------------------------------------- values
 
@@ -177,7 +177,7 @@ async function invokerFor(be, name) {
   const inv = job.mode === 'rie' ? new RieInvoker(fn, be.proxyPort, nextPort++) : new LocalInvoker(fn, be.proxyPort);
   fnState[name] = { started: false, invocations: 0 };
   try {
-    await inv.start(path.join(OUT, 'unused-cov', name));
+    await inv.start(path.join(OUT, 'cov', name));
     fnState[name].started = true;
   } catch (e) {
     fnState[name].start_error = String(e.message || e);
@@ -201,7 +201,10 @@ async function settle(ctx, faulty) {
 async function invoke(be, name, event) {
   const inv = await invokerFor(be, name);
   fnState[name].invocations += 1;
-  return inv.invoke(event);
+  be.functionInvoked(name);
+  const r = await inv.invoke(event);
+  be.functionReturned();
+  return r;
 }
 
 // ---------------------------------------------------------------- SQS delivery
@@ -335,7 +338,7 @@ async function runUnit(be, unit) {
 
 async function main() {
   // 0.0.0.0: Lambda containers reach the proxy through host.docker.internal.
-  const be = await startBackend({ backend: job.backend, ddbLocal: job.ddb_local, tables: job.tables, bindHost: '0.0.0.0' });
+  const be = await startBackend({ backend: job.backend, ddbLocal: job.ddb_local, tables: job.tables, holdWritesMs: job.hold_writes_ms, bindHost: '0.0.0.0' });
   await be.createTables();
   const out = { mode: job.mode, backend: job.backend === 'ddblocal' ? 'ddblocal' : 'dynalite', node: process.version,
                 units: [], functions: fnState };
@@ -350,8 +353,13 @@ async function main() {
     }
   } finally {
     for (const [name, inv] of Object.entries(invokers)) {
-      try { await inv.stop(path.join(OUT, 'unused-cov', name)); } catch (e) { /* ignore */ }
+      try { await inv.stop(path.join(OUT, 'cov', name)); } catch (e) { /* ignore */ }
       fnState[name].logs_tail = String(inv.logs() || '').slice(-3000);
+      if (job.coverage) {
+        try {
+          fnState[name].coverage = await convertCoverage(job.functions[name], path.join(OUT, 'cov', name), path.join(OUT, 'coverage', name));
+        } catch (e) { fnState[name].coverage = { error: String(e && e.stack || e) }; }
+      }
     }
     be.close();
   }

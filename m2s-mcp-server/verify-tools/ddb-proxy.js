@@ -198,12 +198,16 @@ async function startDdbLocal(spec) {
 
 // opts: backend ("ddblocal" | anything else = dynalite), ddbLocal (image spec),
 // tables ([{name, create}]), bindHost for the proxy ("0.0.0.0" so Lambda
-// containers reach it through host.docker.internal; default "127.0.0.1").
+// containers reach it through host.docker.internal; default "127.0.0.1"),
+// holdWritesMs (targets only: V2P-22; a monolith may leave work unfinished).
+const HELD_OPS = new Set(['PutItem', 'UpdateItem', 'DeleteItem', 'BatchWriteItem', 'TransactWriteItems', 'SendMessage', 'SendMessageBatch']);
+
 async function startBackend(opts) {
   const tables = opts.tables || [];
   const tableKeys = Object.fromEntries(tables.map((t) => [t.name, t.create.KeySchema.map((k) => k.AttributeName)]));
   const txTracker = new TX.Tracker(); // ongoing DynamoDB writes, for conflict emulation
-  let ctx = null; // { calls, messages, seen, inflight, last, returned, rules: [{rule, seen, fired}] } of the running case
+  let ctx = null; // { calls, messages, seen, inflight, open, last, returned, function, rules: [{rule, seen, fired}] } of the running case
+  const holdWritesMs = opts.holdWritesMs || 0;
 
   let dyn, dynPort;
   if (opts.backend === 'ddblocal') {
@@ -242,8 +246,10 @@ async function startBackend(opts) {
         ctx.inflight += 1;
         ctx.last = Date.now();
         if (ctx.returned) call.after_return = true;
+        if (ctx.function) call.function = ctx.function;
         const c0 = ctx;
-        res.on('close', () => { c0.inflight -= 1; c0.last = Date.now(); });
+        c0.open.add(call);
+        res.on('close', () => { c0.inflight -= 1; c0.last = Date.now(); c0.open.delete(call); });
       }
       if (ctx) {
         const k = call.op + '|' + (call.table || call.queue || '') + '|' + call.identity;
@@ -259,6 +265,13 @@ async function startBackend(opts) {
       const fault = matchFault(ctx, call);
       if (fault) call.fault = fault;
       ctx && ctx.calls.push(call);
+      // V2P-22: a write that takes a moment is still open when a function that did
+      // not wait for it returns. Without this, a local backend often answers first.
+      const proceed = () => respond(req, res, raw, call, fault, service, op, body);
+      if (ctx && holdWritesMs && HELD_OPS.has(call.op)) setTimeout(proceed, holdWritesMs); else proceed();
+  }
+
+  function respond(req, res, raw, call, fault, service, op, body) {
       if (fault === 'network') { req.socket.destroy(); return; }
       if (fault === 'drop' && service === 'dynamodb') {
         // J5's "remove a write" mutant: the write is answered as done, never applied.
@@ -359,9 +372,20 @@ async function startBackend(opts) {
     setSerial(on) { serial = Boolean(on); },
     // Start recording a case: its calls, its SQS messages, its fault rules.
     beginCase(rules) {
-      ctx = { calls: [], messages: [], seen: {}, inflight: 0, last: Date.now(), returned: false,
+      ctx = { calls: [], messages: [], seen: {}, inflight: 0, open: new Set(), last: Date.now(), returned: false, function: null,
               rules: (rules || []).map((rule) => ({ rule, seen: 0, fired: 0 })) };
       return ctx;
+    },
+    // A function is being invoked / has returned: what it left unfinished is marked (V2P-22).
+    functionInvoked(name) {
+      if (!ctx) return;
+      ctx.returned = false;
+      ctx.function = name || null;
+    },
+    functionReturned() {
+      if (!ctx) return;
+      ctx.returned = true;
+      for (const call of ctx.open) if (HELD_OPS.has(call.op)) call.unfinished_at_return = true;
     },
     endCase() { const c = ctx; ctx = null; return c; },
     async createTables() {

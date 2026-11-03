@@ -141,17 +141,21 @@ def _template_part(n: int) -> Callable[[Path], CheckResult]:
 
 
 def s5_report(ws: Path) -> CheckResult:
+    """The optimizer's report (v1 S5, v2 O): every kept change has its own commit since the baseline."""
     report = _read_json(ws / "output" / "perf_report.json")
-    if not isinstance(report, dict) or not (ws / "storage" / "stage_reports" / "S5.json").is_file():
-        return CheckResult("s5_report", False, "perf_report.json or S5.json missing",
-                           relay="output/perf_report.json 或 storage/stage_reports/S5.json 不存在。")
+    reports = ws / "storage" / "stage_reports"
+    if not isinstance(report, dict) or not ((reports / "S5.json").is_file() or (reports / "O.json").is_file()):
+        return CheckResult("s5_report", False, "perf_report.json or the stage report missing",
+                           relay="output/perf_report.json 或 storage/stage_reports/ 下这个任务的工作报告不存在。")
     kept = [c.get("id") for c in report.get("changes") or [] if isinstance(c, dict)
             and c.get("verdict") in ("kept", "kept_inconclusive")]
-    proc = subprocess.run(["git", "-C", str(ws), "rev-list", "--count", "v0..HEAD"], capture_output=True, text=True)
+    has_b0 = subprocess.run(["git", "-C", str(ws), "tag", "--list", "B0"], capture_output=True, text=True).stdout.strip()
+    base = "B0" if has_b0 else "v0"
+    proc = subprocess.run(["git", "-C", str(ws), "rev-list", "--count", f"{base}..HEAD"], capture_output=True, text=True)
     commits = int(proc.stdout.strip() or 0) if proc.returncode == 0 else 0
     ok = commits >= len(kept)
-    return CheckResult("s5_report", ok, f"{len(kept)} kept changes, {commits} commits since v0",
-                       relay="" if ok else f"perf_report.json 里有 {len(kept)} 个保留的改动（{kept}），但 v0 之后只有 {commits} 个提交；每个保留的改动都要单独提交。")
+    return CheckResult("s5_report", ok, f"{len(kept)} kept changes, {commits} commits since {base}",
+                       relay="" if ok else f"perf_report.json 里有 {len(kept)} 个保留的改动（{kept}），但 {base} 之后只有 {commits} 个提交；每个保留的改动都要单独提交。")
 
 
 def judge_assets(ws: Path) -> CheckResult:
@@ -269,6 +273,36 @@ def verdict_delta(ws: Path) -> CheckResult:
     return CheckResult("verdict_delta", not problems, summary, relay="" if not problems else "V3 的问题：\n" + "\n".join(problems))
 
 
+def j4_report(ws: Path) -> CheckResult:
+    """J4 has been done: judge_assets alone already holds after J1."""
+    ok = (ws / "storage" / "stage_reports" / "J4.json").is_file()
+    return CheckResult("j4_report", ok, "J4 report present" if ok else "J4 has not run",
+                       relay="" if ok else "白盒补测（J4）还没有做过。")
+
+
+def judge_full(ws: Path) -> CheckResult:
+    """C1: the whole judge on the working tree; writes verification/verdict_judge.json."""
+    import judge
+
+    result = judge.run_judge(ws)
+    ok = result.get("status") == "PASS"
+    return CheckResult("judge_full", ok, f"run_judge {result.get('status')}: {result.get('summary') or result.get('error')}", detail=result,
+                       relay="" if ok else "裁判没有通过：\n" + _clip(json.dumps(result.get("failures") or result.get("error"), ensure_ascii=False)))
+
+
+def delta_full(ws: Path) -> CheckResult:
+    """C1: all delta tests on the working tree; writes verification/verdict_delta.json."""
+    import verify
+
+    try:
+        result = verify.run_validate(str(ws), assets=verify.DELTA_ASSETS)
+    except verify.VerifyError as exc:
+        return CheckResult("delta_full", False, f"run_validate: {exc}", relay=f"增量测试运行出错：{exc}")
+    ok = result.get("status") == "PASS"
+    return CheckResult("delta_full", ok, f"delta tests {result.get('status')}: {result.get('passed')}/{result.get('total')}", detail={"failed": result.get("failed")},
+                       relay="" if ok else "增量测试没有通过：\n" + _clip(json.dumps(result.get("failures") or result.get("schema_errors"), ensure_ascii=False)))
+
+
 def judge_unchanged(ws: Path) -> CheckResult:
     """The frozen judge still has the hashes of its manifest (v2 §4.7)."""
     import judge
@@ -285,6 +319,9 @@ CHECKS: dict[str, Callable[[Path], CheckResult]] = {
     "gap_decisions": gap_decisions,
     "delta_assets": delta_assets,
     "verdict_delta": verdict_delta,
+    "j4_report": j4_report,
+    "judge_full": judge_full,
+    "delta_full": delta_full,
     "judge_assets": judge_assets,
     "judge_unchanged": judge_unchanged,
     "reconcile_classified": reconcile_classified,
@@ -310,6 +347,7 @@ CHECKS: dict[str, Callable[[Path], CheckResult]] = {
 
 HARNESS_PATHS = ("m2s-mcp-server", ".openharness")
 IGNORED = {"m2s-mcp-server/perf-rules/ledger.json"}
+IGNORED_PREFIXES = ("m2s-mcp-server/evidence/",)  # C2 appends a run's archive there
 
 
 def _sha(path: Path) -> str | None:
@@ -338,7 +376,7 @@ class ToolGuard:
         out = {}
         for line in proc.stdout.splitlines():
             rel = line[3:].strip().strip('"').replace("\\", "/")
-            if rel and rel not in IGNORED and "__pycache__" not in rel:
+            if rel and rel not in IGNORED and not rel.startswith(IGNORED_PREFIXES) and "__pycache__" not in rel:
                 out[rel] = (line[:2], _sha(self.repo / rel))
         return out
 

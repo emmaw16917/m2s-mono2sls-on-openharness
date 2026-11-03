@@ -309,6 +309,135 @@ class Model:
         raise VerifyError(f"unknown {what} {alias!r}; known: {ids}")
 
 
+class BlueprintModel(Model):
+    """I1's self test (v2 N5.2, design Q6): what the runners need, from the blueprint, before
+    a template exists. Only functions that already have code under output/lambdas are served;
+    their code goes to a scratch directory with its dependencies, the shape sam build leaves."""
+
+    def __init__(self, ws: Path):
+        super().__init__(Path(ws), need_template=False)
+        self.params: dict[str, Any] = {}
+        self.layers = {}
+        self.gateway_responses = {}
+        self.http_api_cors_any = False
+        for t in self.blueprint.get("dynamodb_tables") or []:
+            if isinstance(t, dict) and t.get("logical_name"):
+                self.tables[t["logical_name"]] = {"name": t["logical_name"], "create": self._table(t)}
+        self.queue_max_receive = {}
+        for q in self.blueprint.get("sqs_queues") or []:
+            if not isinstance(q, dict) or not q.get("logical_name"):
+                continue
+            self.queues.add(q["logical_name"])
+            self.queue_max_receive[q["logical_name"]] = q.get("max_receive_count")
+            if q.get("dlq_logical_name"):
+                self.queues.add(q["dlq_logical_name"])
+                self.queue_max_receive[q["dlq_logical_name"]] = None
+        http_api = str((self.blueprint.get("api_gateway") or {}).get("api_type") or "").lower() == "http"
+        code = {name: d for name in self.bp_functions if (d := self._code_dir(name))}
+        self.build_dir = self._build(code)
+        layer = ["SharedLayer"] if (self.build_dir / "SharedLayer").is_dir() else []
+        for name, source in code.items():
+            bp = self.bp_functions[name]
+            env = bp.get("environment_variables") or {}
+            fn = {"name": name, "logical": name, "handler": self._handler(bp, source), "code_uri": source.relative_to(self.ws / "output").as_posix(),
+                  "runtime": str(bp.get("runtime") or ""), "layers": layer, "memory": bp.get("memory_size") or 512, "architecture": "x86_64",
+                  "env": {k: self._resolve(v) for k, v in env.items()}, "api": [], "sqs": []}
+            for ep in bp.get("entry_points") or []:
+                method, _, path = str(ep).partition(" ")
+                if path:
+                    fn["api"].append({"path": path, "method": method.upper(), "authorized": bp.get("auth") == "required", "http_api": http_api})
+            if bp.get("sqs_source"):
+                cfg = bp.get("trigger_config") or {}
+                fn["sqs"].append(bp["sqs_source"])
+                fn["sqs_events"] = [{"queue": bp["sqs_source"], "batch_size": int(cfg.get("batch_size") or 10),
+                                     "report_failures": bool(cfg.get("report_batch_item_failures"))}]
+            self.functions[name] = fn
+
+    @staticmethod
+    def _table(t: dict[str, Any]) -> dict[str, Any]:
+        attrs: dict[str, str] = {}
+
+        def keys(spec: dict[str, Any]) -> list[dict[str, str]]:
+            out = []
+            for field, kind in (("partition_key", "HASH"), ("sort_key", "RANGE")):
+                k = spec.get(field)
+                if isinstance(k, dict) and k.get("name"):
+                    attrs[k["name"]] = str(k.get("type") or "S")
+                    out.append({"AttributeName": k["name"], "KeyType": kind})
+            return out
+
+        create: dict[str, Any] = {"TableName": t["logical_name"], "BillingMode": "PAY_PER_REQUEST", "KeySchema": keys(t)}
+        gsis = []
+        for g in t.get("gsi") or t.get("gsis") or []:
+            if isinstance(g, dict) and (g.get("index_name") or g.get("name")):
+                projection = g.get("projection")
+                kind = projection if isinstance(projection, str) else (projection or {}).get("ProjectionType") if isinstance(projection, dict) else None
+                gsis.append({"IndexName": g.get("index_name") or g.get("name"), "KeySchema": keys(g),
+                             "Projection": {"ProjectionType": "ALL" if kind not in ("KEYS_ONLY", "ALL") else kind}})
+        if gsis:
+            create["GlobalSecondaryIndexes"] = gsis
+        create["AttributeDefinitions"] = [{"AttributeName": n, "AttributeType": a} for n, a in attrs.items()]
+        return create
+
+    def _code_dir(self, name: str) -> Path | None:
+        root = self.ws / "output" / "lambdas"
+        for d in [root / name, *(root.glob(f"*/{name}") if root.is_dir() else [])]:
+            if d.is_dir() and any(d.glob("*.js")) or d.is_dir() and any(d.glob("*.py")):
+                return d
+        return None
+
+    @staticmethod
+    def _handler(bp: dict[str, Any], source: Path) -> str:
+        """The blueprint's handler is the architect's placeholder; the file decides."""
+        spec = str(bp.get("handler") or "")
+        module = spec.rsplit(".", 1)[0] if "." in spec else ""
+        if module and ((source / f"{module}.js").is_file() or (source / f"{module}.py").is_file()):
+            return spec
+        if (source / "handler.py").is_file():
+            return "handler.lambda_handler"
+        return ("handler" if (source / "handler.js").is_file() else "index") + ".handler"
+
+    def _build(self, code: dict[str, Path]) -> Path:
+        h = hashlib.sha256()
+        layers = self.ws / "output" / "layers" / "shared"
+        sources = [*code.values(), *([layers] if layers.is_dir() else [])]
+        for d in sources:
+            for p in sorted(q for q in d.rglob("*") if q.is_file() and "node_modules" not in q.parts and "__pycache__" not in q.parts):
+                h.update(str(p.relative_to(self.ws)).encode())
+                h.update(p.read_bytes())
+        root = TMP_ROOT / re.sub(r"[^A-Za-z0-9_-]", "_", self.ws.name) / "selftest" / h.hexdigest()[:12]
+        if (root / "BUILD_OK").exists():
+            return root
+        if root.exists():
+            shutil.rmtree(root)
+        root.mkdir(parents=True)
+        ignore = shutil.ignore_patterns("node_modules", "__pycache__")
+        for name, d in code.items():
+            shutil.copytree(d, root / name, ignore=ignore)
+            self._install(root / name)
+        if layers.is_dir():
+            node = layers / "nodejs"
+            target = root / "SharedLayer" / ("nodejs" if node.is_dir() else "python")
+            shutil.copytree(node if node.is_dir() else layers, target, ignore=ignore)
+            self._install(target)
+        (root / "BUILD_OK").write_text("ok", encoding="utf-8")
+        return root
+
+    @staticmethod
+    def _install(d: Path) -> None:
+        if (d / "package.json").is_file():
+            npm = shutil.which("npm", path=_env()["PATH"]) or "npm"
+            p = _run([npm, "install", "--omit=dev", "--no-audit", "--no-fund"], cwd=str(d), capture_output=True, text=True,
+                     encoding="utf-8", errors="replace", env=_env(), timeout=600, shell=sys.platform == "win32")
+            if p.returncode != 0:
+                raise VerifyError(f"npm install failed in {d.name} (a packaging problem): {(p.stdout + p.stderr)[-1500:]}")
+        if (d / "requirements.txt").is_file():
+            p = _run([sys.executable, "-m", "pip", "install", "-q", "-r", "requirements.txt", "--target", "."], cwd=str(d), capture_output=True,
+                     text=True, encoding="utf-8", errors="replace", env=_env(), timeout=600)
+            if p.returncode != 0:
+                raise VerifyError(f"pip install failed in {d.name} (a packaging problem): {(p.stdout + p.stderr)[-1500:]}")
+
+
 # ---------------------------------------------------------------------------
 # Test assets
 # ---------------------------------------------------------------------------
@@ -948,6 +1077,7 @@ def _run_controller(model: Model, build_dir: Path, runs: list[dict[str, Any]], c
     if has_py and coverage and mode == "rie":
         py["py_vendor"] = str(ensure_py_vendor())
     job = {"mode": mode, "coverage": coverage, "out_dir": str(out_dir), "functions": functions, **ddb_backend(), **py,
+           "hold_writes_ms": HOLD_WRITES_MS,
            "tables": [{"name": t["name"], "create": t["create"]} for t in model.tables.values()], "cases": runs}
     job_path = out_dir / "job.json"
     job_path.write_text(json.dumps(job, indent=1), encoding="utf-8")
@@ -1072,11 +1202,37 @@ def _response_headers(result: Any) -> dict[str, list[str]]:
     return out
 
 
+# V2P-22: the recording proxy holds these for a moment on target runs, so that one a function
+# did not wait for is still open when the function returns. Real Lambda freezes the environment
+# at that point and the call may never finish; a local container just carries on.
+HOLD_WRITES_MS = 150
+UNFINISHED_OPS = {"PutItem", "UpdateItem", "DeleteItem", "BatchWriteItem", "TransactWriteItems", "SendMessage", "SendMessageBatch"}
+
+
+def unfinished_writes(raw: dict[str, Any]) -> list[dict[str, Any]]:
+    """Writes and messages still unfinished when the function returned. Not under a fault
+    that fired: there, abandoning a sibling call is how Promise.all fails."""
+    if any(raw.get("rules_fired") or []):
+        return []
+    return [{k: c[k] for k in ("op", "table", "queue", "function") if c.get(k)} for c in raw.get("calls") or []
+            if c.get("op") in UNFINISHED_OPS and (c.get("unfinished_at_return") or c.get("after_return"))]
+
+
+def unfinished_text(calls: list[dict[str, Any]]) -> str:
+    shown = ", ".join(f"{c['op']} {c.get('table') or c.get('queue') or ''}".strip() for c in calls[:6])
+    return (f"still unfinished when the function returned: {shown}. Real Lambda freezes the environment at that "
+            "point, so the call may never finish: wait for it before returning")
+
+
 def judge(model: Model, case: dict[str, Any], raw: dict[str, Any]) -> list[str]:
     """Mismatches between one case's expectations and its raw observation."""
     exp = case.get("expect") or {}
     if raw.get("infra_error"):
         return [f"infra error (not a verdict on the code): {raw['infra_error'][:500]}"]
+    unfinished = unfinished_writes(raw)
+    if unfinished:
+        return [unfinished_text(unfinished), *judge(model, case, {**raw, "calls": [
+            {k: v for k, v in c.items() if k not in ("unfinished_at_return", "after_return")} for c in raw.get("calls") or []]})]
     if "alternatives" in exp:
         outs = [judge(model, {**case, "expect": alt}, raw) for alt in exp["alternatives"]]
         if any(not o for o in outs):
@@ -1452,6 +1608,8 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
                 schema_errors.append(f"GM3: no case of {name} asserts app-wide response header(s) {missing} (the monolith adds them "
                                      "to every response via global middleware) -- add expect.headers to at least one case")
     selected = _select(all_cases, functions, cases)
+    if assets and not dry_run and not schema_errors and not selected:
+        return {"status": "PASS", "total": 0, "passed": 0, "failed": 0, "failures": [], "note": f"no delta test for {functions or cases}"}
     if dry_run or schema_errors:
         uncovered_fns = sorted(set(model.bp_functions) - {c.get("function") for c in all_cases})
         return {"status": "PASS" if not schema_errors else "FAIL", "dry_run": True, "schema_errors": schema_errors,
@@ -1562,6 +1720,31 @@ def _changed_lines(ws: Path, ref: str, model: "Model") -> tuple[dict[str, dict[s
         n = len((ws / path).read_text(encoding="utf-8", errors="ignore").splitlines())
         add(path, set(range(1, n + 1)))
     return out, sorted(set(unmapped))
+
+
+def merge_changed_coverage(sides: list[dict[str, Any]]) -> dict[str, Any]:
+    """_changed_coverage of several test suites over the same changed lines: a line is
+    uncovered only if no suite that loaded its file executed it."""
+    def not_loaded(side: dict[str, Any]) -> set[str]:
+        return {u["file"] for u in side.get("uncovered") or [] if u.get("line") is None}
+
+    loaded = [(s, not_loaded(s)) for s in sides]
+    entries: dict[tuple[str, Any], dict[str, Any]] = {}
+    for side, _ in loaded:
+        for u in side.get("uncovered") or []:
+            entries.setdefault((u["file"], u.get("line")), u)
+    uncovered = []
+    for (file, line), u in entries.items():
+        if line is None:
+            if all(file in missing for _, missing in loaded):
+                uncovered.append(u)
+            continue
+        ran_it = any(file not in missing and not any(x["file"] == file and x.get("line") == line for x in side.get("uncovered") or [])
+                     for side, missing in loaded)
+        if not ran_it:
+            uncovered.append(u)
+    total = max((s.get("changed_executable_lines") or 0) for s in sides)
+    return {"changed_executable_lines": total, "covered": max(0, total - len(uncovered)), "uncovered": uncovered}
 
 
 def _changed_coverage(final_json: Path, logical: str, changed: dict[str, set[int]]) -> dict[str, Any]:
@@ -1767,7 +1950,7 @@ def speculative_extra_reads(before: dict[str, Any], now: dict[str, Any]) -> tupl
 
 
 def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", functions: list[str] | None = None,
-                    runtime: str = "auto", baseline_ref: str | None = "v0",
+                    runtime: str = "auto", baseline_ref: str | None = "auto",
                     speculative_reads: list[str] | None = None, assets: str | None = None) -> dict[str, Any]:
     """record: run every fault scenario on the working tree and store the
     observations as verification/fault_baseline_<label>.json. assets: the delta
@@ -1792,12 +1975,16 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
         raise VerifyError("mode must be 'record' or 'diff'")
     ws = Path(workspace)
     model = Model(ws)
+    if baseline_ref == "auto":  # v2's accepted version is B0, v1's is v0
+        baseline_ref = "B0" if has_own_repo(ws) and _git(ws, "tag", "--list", "B0") else "v0"
     cases = load_cases(ws, assets)
     by_id = {c["id"]: c for c in cases if "id" in c}
     faults = [f for f in load_faults(ws, assets) if not functions or f.get("function") in functions]
     errs = [e for f in faults for e in check_fault(model, f, set(by_id), with_template=True)]
     if not faults and mode == "record" and not assets:
         errs.append("no fault scenarios under verification/faults/*.json")
+    if assets and mode == "diff" and not faults and not any(not functions or c.get("function") in functions for c in cases):
+        return {"status": "NOTHING_TO_COMPARE", "note": f"no delta test or fault scenario for {functions}: the judge is what checks them"}
     if mode == "diff" and not faults and not any(not functions or c.get("function") in functions for c in cases):
         # diff also compares every plain case, so scenarios are not required
         # -- but there must be something to compare.

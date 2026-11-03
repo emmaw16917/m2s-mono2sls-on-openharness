@@ -131,6 +131,7 @@ module.exports = function makeInvokers(job) {
       this.py = isPython(fn);
       this.env = { ...process.env, ...baseEnv(fn, '127.0.0.1', proxyPort) };
       delete this.env.NODE_OPTIONS;
+      this.env.M2S_LAYERS = JSON.stringify(fn.layers || []);
       for (const k of ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']) delete this.env[k];
     }
     async start(covDir) {
