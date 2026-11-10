@@ -236,6 +236,7 @@ class Dispatcher:
         self.worker_slots = int(os.environ.get("M2S_WORKER_SLOTS", "3"))
         self.worker_locks: dict[str, LockHandle] = {}
         self.mail_env: dict[str, str] = {}  # M3: set in setup when M2S_MAIL is enabled
+        self._scope_wait_logged: set[str] = set()
 
     # ------------------------------------------------------------------ setup / resume
 
@@ -410,7 +411,7 @@ class Dispatcher:
             return 0
         started = 0
         ready = sorted((t for t in self.board.ready() if t not in self.running and self._in_stop_set(t)),
-                       key=self.template.order)
+                       key=lambda t: (self.template.order(t), 0 if self._spec(t).extra.get("package") == "shared" else 1, t))
         held = [t for t in ready if self._backing_off(t)]
         self.waiting = bool(held)
         ready = [t for t in ready if t not in held]
@@ -423,7 +424,9 @@ class Dispatcher:
             # W2.8: two tasks whose scopes can name the same file never run together.
             if spec.runner == "agent" and any(scopes_conflict(spec.scope, other.scope)
                                               for other in [*running_specs, *chosen]):
-                self.log(f"{task_id}: waits, its scope overlaps a running task")
+                if task_id not in self._scope_wait_logged:
+                    self.log(f"{task_id}: waits, its scope overlaps a running task")
+                    self._scope_wait_logged.add(task_id)
                 self.waiting = True
                 continue
             lock = None
@@ -439,6 +442,7 @@ class Dispatcher:
                 else:
                     lock.release()  # recheck: no worker was spent
             started += 1
+            self._scope_wait_logged.discard(task_id)
             chosen.append(spec)
             if self._paused():
                 break

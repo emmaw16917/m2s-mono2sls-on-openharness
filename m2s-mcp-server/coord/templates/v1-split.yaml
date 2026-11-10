@@ -58,7 +58,7 @@ tasks:
     split_shared: true
     expand_after: [S1]
     deps: [S1, "V1:*"]
-    scope: ["output/lambdas/{pkg_dir}/**", storage/DECISIONS.md, "storage/stage_reports/S2-{pkg}.json"]
+    scope: ["output/lambdas/{pkg_dir}/**", "storage/stage_reports/S2-{pkg}.json"]
     shared_scope: [output/layers/**, storage/DECISIONS.md, storage/stage_reports/S2-shared.json]
     check: [gate_code_pkg]
     max_turns: 300
