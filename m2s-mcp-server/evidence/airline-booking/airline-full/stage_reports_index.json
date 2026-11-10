@@ -1,0 +1,92 @@
+[
+ {
+  "task": "A1",
+  "file": "storage/stage_reports/A1.json",
+  "status": "success",
+  "summary": "airline-booking 架构蓝图定稿：14 个 API Lambda（7 个网关 Cognito 鉴权 + 7 个公开）+ 1 个 SQS 消费者 loyalty-award-points，5 张 DynamoDB 表（含类型标注主键的 PaymentsTable 与授权用的 UserGroupsTable），1 个幂等队列 LoyaltyPointsQueue，无同步跨 Lambda 调用、无 EventBridge、无 S3；四个 /auth 端点与认证中间件/建表脚本共 24 条 drop。第 3 次尝试只做两件事：核对上次留下的四份产物仍然自洽（blueprint 十个顶层键齐全、adapter_map 与 23 条缺口决定都在位），并把第 2 次尝试随撤销失效的迁移裁定用 record_ruling 重新提交（R-A1-a3-1..4，affected_cases 精确到"
+ },
+ {
+  "task": "D1",
+  "file": "storage/stage_reports/D1.json",
+  "status": "success",
+  "summary": "verification/delta/ 下写了 25 条增量用例 + 7 个故障场景，全部是裁判（judge/）看不到的题：① SQS 幂等消费者 loyalty-award-points 的重复投递/部分失败上报/永久失败吞掉（规则手册 REQUIRED 规则 + D-5/D-17/SI-9）；② 迁移新增的两张表 PaymentsTable 与 UserGroupsTable 的表状态（GAP-5/GAP-6/GAP-13/D-8/D-3）；③ 下单的积分这条新队列边（GAP-19）；④ 冷启动不播种（GAP-12/D-13）；⑤ 非字符串收款号的类型标注键（SI-8/R-A1-a3-3）；⑥ 网关自答 401 的响应体与全局响应头（SI-6/R-A1-a3-1）。run_validate(dry_run=true, assets=verification/delta) PASS。"
+ },
+ {
+  "task": "F2",
+  "file": "storage/stage_reports/F2.json",
+  "status": "success",
+  "summary": "回炉修正模式（第 3 次尝试，回炉信息只有 J4 的 1 条 spec_issue：J4-5）：到单体源码逐行核实进程内存字典 PaymentService._payments 是全应用共享的之后，改写 GET /payments/<charge_id>#business_rules[0]（写入方不止 POST /payments/collect，POST /bookings 第 3 步 app.py:135 走同一个 collect_payment，一次成功建单后不经过 collect 也能读到那条 chargeId/receiptUrl/price=150/status='captured'/mode='simulation'），并在该端点新增一条规则记录 refund_payment 只就地改写同一条记录的 status='refunded'（payment.py:276-277）、"
+ },
+ {
+  "task": "G2",
+  "file": "storage/stage_reports/G2.json",
+  "status": "success",
+  "summary": "核对 G1 的 10 条机械信号（全部成立，未推翻任何一条；其中 9 条写了 note 补充或收窄：GAP-1 的写次数把失败补偿分支也算进去了，成功路径只写 4 次；GAP-3 的第 61 行证据是判空用的 scan(Limit=1)，不翻页对它没有对外效果；GAP-4/GAP-7 的 fix_admin_user.py 不在 app.py 的 import 链上、没有端点会执行它）；读单体源码新增 13 条 source=G2 的缺口：GAP-11 全局 errorhandler(Exception)（P0 的 global_middleware 只记了 CORS，这条是各端点 400/500 臂的共同出口，且 404/JSON 解析失败也被它接成 500，已用 Flask 3 test_client 实测复现）、GAP-12 模块导入时的一次性初始化（storage 单例建 boto"
+ },
+ {
+  "task": "I1",
+  "file": "storage/stage_reports/I1.json",
+  "status": "success",
+  "summary": "15 Python 3.12 Lambda packages under output/lambdas/airline/<name>/ (handler.py + only the storage.py/services.py/payments.py modules that handler imports), exactly one per blueprint lambda_functions entry and covering exactly its entry_points. No dependency manifests and no shared layer: every import is stdlib or the runtime-built-in boto3, and the blueprint defines no layer (so output/layers/ is"
+ },
+ {
+  "task": "I2a",
+  "file": "storage/stage_reports/I2a.json",
+  "status": "success",
+  "summary": "按 blueprint 写共享基础设施分片 output/template.part1.yaml：REST API（AWS::Serverless::Api，StageName=Environment、REGIONAL、Cors 三字段按 D-9 显式方法/头列表、Cognito DefaultAuthorizer、DEFAULT_4XX/DEFAULT_5XX/UNAUTHORIZED 的 GatewayResponses 全局头按 global_middleware[0]）、ApiLogGroup、UserPool+UserPoolClient（口令策略与令牌寿命按 cognito 节，业务 id=username 故不设 UsernameAttributes，groups 归 UserGroupsTable 故无 UserPoolGroup/触发器）、五张 DynamoDB 表（Fl"
+ },
+ {
+  "task": "I2b",
+  "file": "storage/stage_reports/I2b.json",
+  "status": "success",
+  "summary": "写了 output/template.part2.yaml：15 个 AWS::Serverless::Function（14 个 REST Api 事件 + 1 个 SQS 消费者）、FUNCTIONS_METADATA 块和 Outputs。CodeUri/Handler 全部按 output/lambdas/airline/ 下的真实文件读出（handler.py 的 lambda_handler，不是 blueprint 的占位值）；7 个 auth=none 端点显式加 Auth:{Authorizer: NONE}，7 个 auth=required 端点不写 Auth 以继承 part1 的 Cognito DefaultAuthorizer；每条 Path/Method 与 blueprint entry_points 一一对应（Flask <param> 写成 API G"
+ },
+ {
+  "task": "I2c",
+  "file": "storage/stage_reports/I2c.json",
+  "status": "success",
+  "summary": "合并 output/template.part1.yaml + output/template.part2.yaml 生成 output/template.yaml（m2s_merge.py template，part1 277 行 + part2 425 行，产出 703 行；接缝处 # --- END METADATA --- 之后正确接上函数资源块）。自查循环用了 2 次（上限 3）：第 1 次 run_gate(phase='template') = PASS（mechanical_failures 为空，C1/C2/C3/C7/C7b/C8/C9/AT2/GM2 全过），validate_sam = ok:true（0 errors / 0 warnings）；随后我主动做了 1 处修正 —— 删掉 part1 带进来的 AWS::Logs::LogGroup 'ApiLogGr"
+ },
+ {
+  "task": "I3",
+  "file": "storage/stage_reports/I3.json",
+  "status": "success",
+  "summary": "一致性检查（S4 角色）完成：独立复算 C1-C12（含 C7b 合并计入 C7，以及 gate 附加机械项 C13/C14/GM1/GM2/AT2），blueprint.json ↔ output/template.yaml ↔ output/lambdas/ 三方全部对齐，0 处修改；C4/C5/C6 suspects 逐项判定为不需要动手（AWS_REGION 运行时注入、ENVIRONMENT/LOG_LEVEL 基础设施参数、Policy Template 与代码 SDK 调用逐一对应、无共享层需求），validate_sam 亲自复验 ok:true（0 errors / 0 warnings）。产出 output/consistency_report.json，status=PASS、total_checks=12、fixes_applied=0、sam_validation"
+ },
+ {
+  "task": "J1",
+  "file": "storage/stage_reports/J1.json",
+  "status": "success",
+  "summary": "第 3 次尝试：只按 J3 的 18 条 case_error 修 predicted，请求步骤、夹具、身份准备一律不动。16 条把身份 id 的字面量换成裁判的身份符号（<id:u1>/<id:u2>/<id:admin>）；users-admin-only-matrix/admin 与 register-success-and-conflicts/admin-list 除符号问题外还按下标钉死了 GET /auth/users 的 Scan 行序，按事实库“项序不可断言”改成顺序无关的行数断言。用例数与覆盖不变（43 用例 / 18 接口 / 必覆盖响应 76+2 豁免），check_judge_assets PASS。另外发现并避开了 3 个不该符号化的位置（该用例没准备那个身份别名）。"
+ },
+ {
+  "task": "J3",
+  "file": "storage/stage_reports/J3.json",
+  "status": "success",
+  "summary": "本轮 judge/reconcile.json 没有任何差异（differences 0 条，resolved_by_rulings 0 条），因此 judge/reconcile_classes.json 写成空对象 {}，judge/mask_rules.json 保持 []（无 mask_gap，不新增屏蔽）。上一轮（第 3 次尝试）判定的唯一 case_error —— wb-bookings-confirm-rollback-seat-stuck 的 predicted[\"read-loyalty\"].remainingPoints 48500 → 49850 —— 已由 J4 第 2 次尝试落进用例文件；run_monolith 在 2026-11-02T12:11:28Z 重新生成 oracle 后，49 个用例 / 204 步逐条对账全部吻合。check_reconcile"
+ },
+ {
+  "task": "J4",
+  "file": "storage/stage_reports/J4.json",
+  "status": "success",
+  "summary": "第 3 次尝试：只针对回炉信息里唯一一条 gap 变异体补测。新增 wb-bookings-catchall-no-refund（collect 一条进程内支付记录 → 缺 outboundFlightId 的 POST /bookings 落 catch-all → 断言该记录仍是 'captured'，即 payment_result 未赋值时不退款；末尾再加一次显式退款对照，证明这条记录确实可被改写），它把 negate:app.py:224 的取反变异体从 survived 变成可抓住；另加 wb-bookings-payment-record-shared-cache，把这次找差异用到的前提变成对外可见行为并记进 judge/spec_issues.json 的 J4-5（事实库 GET /payments/<charge_id>#business_rules[0] 把可读范围写"
+ },
+ {
+  "task": "J5C",
+  "file": "storage/stage_reports/J5C.json",
+  "status": "success",
+  "summary": "第 1 次尝试：给 judge/judge_validation.json 里 8 个未被抓到的变异体分类（negate/branch_off:app.py:224、branch_off:payment.py:39/78、negate/branch_off:payment.py:211、negate/branch_off:payment.py:303），写进 judge/mutant_classes.json；check_mutant_classes PASS（survivors=8，equivalent=7、gap=1）。判定依据是这些行的可达性（coverage_monolith 显示 payment.py:40/41、79/81、209+、305+ 从未执行 ⇒ 裁判运行时 stripe 库已安装但没有 STRIPE_SECRET_KEY，_is_using_real_stripe("
+ },
+ {
+  "task": "O",
+  "file": "storage/stage_reports/O.json",
+  "status": "success",
+  "summary": "在 B0 上做语义保持的性能改动：规则全量扫描 8 条（R1/R2/R3/R4/R1b/R5/R6/R8），生成 2 份请求并逐个判决。保留 1 个（REQ-1，R4 把 loyalty SQS 消费者的 10 条串行 PutItem 改成按条目键分波次并行，顺序深度 10→1、RIE 10ms 热调用 5 轮中位数从 [139.05..148.25]ms 降到 [71.13..82.34]ms，范围不重叠，热点守卫基准没有变差也没有冲突，commit 44899ac）；1 个交人工（REQ-2，booking-cancel 的放座臂与退款臂并行：四项检查全过、深度 8→6、无冲突，但延迟结论随模拟往返时间反转 0ms 变差 / 5-10ms 无差异 / 15ms 明显变好，热 CPU 1.8 倍，按 §3.4 回滚并留补丁）。没有 reverted / blocked_*。收尾全量回归："
+ },
+ {
+  "task": "V3",
+  "file": "storage/stage_reports/V3.json",
+  "status": "success",
+  "summary": "增量测试三条都跑完并通过：run_validate(assets=verification/delta) 在 RIE 上 25/25 PASS（verdict_delta.json，连跑两遍结果一致，非偶然）；run_coverage(assets=verification/delta) 已写 verification/coverage/（只报告、不设门槛）；run_equivalence(mode=record, label=B0, assets=verification/delta) RECORDED，33 次运行、infra_errors 为空。没有失败用例，因此没有分诊与退回路由；本阶段未改动任何测试资产或实现代码。"
+ }
+]

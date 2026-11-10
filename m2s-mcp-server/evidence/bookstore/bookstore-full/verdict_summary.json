@@ -1,0 +1,44 @@
+{
+ "judge": {
+  "status": "PASS",
+  "summary": {
+   "cases": {
+    "dropped": 15,
+    "migration-change": 13,
+    "pass": 46
+   },
+   "fault_runs": {
+    "dropped": 6,
+    "pass": 18
+   }
+  },
+  "meta": {
+   "judge_version": 2,
+   "judge_frozen_at": "2026-11-02T16:24:58Z",
+   "code": {
+    "code": "working tree",
+    "head": "dd0c2fe",
+    "uncommitted_output_changes": []
+   },
+   "mode": "rie",
+   "backend": "ddblocal",
+   "adapter_map_sha": "e6a461d4b89b96439f4ea4946ef45e22af1c5356ae520c93d90e58e7efd50159",
+   "generated_at": "2026-11-03T13:50:26Z",
+   "seconds": 176.6,
+   "run_dir": "D:\\tmp\\m2sv\\bookstore-full\\judge\\20261103-214729-judge"
+  }
+ },
+ "delta": {
+  "status": "PASS",
+  "total": 12,
+  "passed": 12,
+  "mode": "rie",
+  "backend": "ddblocal",
+  "code_state": {
+   "code": "working tree",
+   "head": "dd0c2fe",
+   "uncommitted_output_changes": []
+  },
+  "timestamp": "2026-11-03T21:50:55"
+ }
+}

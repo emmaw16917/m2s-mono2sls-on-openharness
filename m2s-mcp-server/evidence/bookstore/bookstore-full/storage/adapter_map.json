@@ -1,0 +1,84 @@
+{
+  "version": 1,
+  "tables": [
+    {
+      "monolith": "Bookstore-Books",
+      "target": "BooksTable",
+      "note": "整表原样搬迁：主键 id (S) 与 category-index GSI（分区键 category，投影 ALL）都不变，其余属性（name/author/category/price/rating/cover…）按 copy_rest 原名照搬；裁判 fixture 里的 books.json / books-bad-type.json 都只有这些属性。"
+    },
+    {
+      "monolith": "Bookstore-Cart",
+      "target": "CartTable",
+      "fields": {
+        "customerId": {
+          "from": "customerId",
+          "as": "identity",
+          "note": "单体存 users.userId（注册时 uuid v4 自己生成），目标存 Cognito Sub（同样是 UUID 字符串，类型仍 S）：见 blueprint 的 dynamodb_tables.CartTable 与 SI-11 / D-8。"
+        }
+      },
+      "note": "主键 {customerId HASH, bookId RANGE} 不变；quantity/price 按 copy_rest 原名原值照搬（单体不做类型归一化，表单提交时会是字符串 ⇒ 目标也必须是字符串，SI-06 / J4-2）。"
+    },
+    {
+      "monolith": "Bookstore-Orders",
+      "target": "OrdersTable",
+      "fields": {
+        "customerId": {
+          "from": "customerId",
+          "as": "identity",
+          "note": "同上：订单归属由 Cognito Sub 表示，客户端不能指定（BR-ORD-CRT-2）。"
+        }
+      },
+      "copy_rest": true,
+      "note": "主键 {customerId HASH, orderId RANGE} 不变；orderDate 仍是 Date.now() 毫秒整数，books 仍是下单请求的原样快照（SI-14 / BR-ORD-LIST-5），属性名都不改。"
+    },
+    {
+      "monolith": "Bookstore-Bestsellers",
+      "target": "BestsellersTable",
+      "note": "主键 bookId (S) 不变，行里只有 {bookId, salesCount}。消费者的去重标记不落在这张表上（不新增属性，行内容与单体一致），见 target_only_tables 的 IdempotencyTable 与 D-6。"
+    },
+    {
+      "monolith": "Bookstore-Users",
+      "target": null,
+      "replaced_by": "cognito",
+      "reason": "users 行只有 {userId, email, password(bcrypt 哈希), name, createdAt, updatedAt}（BR-REG-6）：password 是凭据、其余全是 Cognito 标准属性（email / name / created_at / updated_at），没有头像/偏好/地址一类需要后端自持的业务资料 ⇒ 整表交给用户池，不迁进 DynamoDB，也不建 UserProfiles 表（SI-11 / D-3）。受影响的裁判准备步骤就是 POST /api/auth/register 与 GET /api/auth/me，都列在 dropped_endpoints 里。"
+    }
+  ],
+  "identities": {
+    "claims": {
+      "sub": "${id}",
+      "email": "${email}",
+      "name": "${name}"
+    },
+    "user_id": "${id}",
+    "note": "认证被 Cognito 替换（blueprint.cognito.enabled=true）：裁判在单体侧用 POST /api/auth/register 准备 u1/u2，并把 body.user.userId 存成 id、body.accessToken 存成 token（judge/identities.json）。在目标侧同一个别名的身份就是用户池里的用户：网关交给函数的 claims 至少有 sub=${id}（该别名在目标侧的用户 id，UUID 字符串），email/name 取注册请求里发过的那两个字段；业务表的 customerId 就是这个 ${id}（上面 Cart/Orders 的 as: identity）。token 不再由准备步骤签发，judge-run 用 claims 直接调用函数，Authorization 头只是占位。${password} 不落任何表：口令只属于用户池，绝不迁进 DynamoDB。identities.seed 为空 ⇒ 不往目标表里预写用户资料行。"
+  },
+  "dropped_endpoints": [
+    {
+      "endpoint": "POST /api/auth/register",
+      "replaced_by": "cognito",
+      "reason": "Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。邮箱正则、口令长度校验、uuid 生成 userId、bcrypt 哈希、写 Bookstore-Users、签发双令牌这些步骤在目标上都没有对应端点，因此裁判不在目标上运行这一步。"
+    },
+    {
+      "endpoint": "POST /api/auth/login",
+      "replaced_by": "cognito",
+      "reason": "Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。"
+    },
+    {
+      "endpoint": "POST /api/auth/refresh",
+      "replaced_by": "cognito",
+      "reason": "Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / GAP-15）。refreshToken 独立密钥验签 + GetItem users + 只换发 accessToken 且 refreshToken 不轮换，全部由用户池的 REFRESH_TOKEN_AUTH 流程取代，令牌寿命/撤销规则随迁移改变（SI-11）。"
+    },
+    {
+      "endpoint": "GET /api/auth/me",
+      "replaced_by": "cognito",
+      "reason": "Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。"
+    }
+  ],
+  "target_only_tables": [
+    {
+      "target": "IdempotencyTable",
+      "reason": "只存在于目标：bestsellers-update 消费者的去重标记表（pk = 'bestsellers-update#<orderId>#<books 数组下标>'，属性 orderId/bookId/createdAt/expiresAt，TTL 7 天）。SQS 是至少一次投递，而这一路的副作用是 ADD salesCount 原子累加（天然不幂等，BR-ORD-CRT-8），所以必须先条件 PutItem 认领再执行单体的那次 UpdateItem ADD（m2s-async-patterns-kb 的 REQUIRED 正确性规则 / D-6）。裁判看不到这张表：它不对应任何单体集合（tables_to_monolith 会跳过 target-only 表），GET /api/bestsellers 也不读它。"
+    }
+  ],
+  "note": "对应 blueprint 的 dynamodb_tables（BooksTable/CartTable/OrdersTable/BestsellersTable/IdempotencyTable）与 dropped_functions（四个认证端点 + Bookstore-Users 表）。除 customerId 一律换成 Cognito Sub 之外没有字段改名、没有复合键拆分、没有 JSON 编码属性：单体表结构原样保留。books 快照这类嵌套属性靠 DynamoDB 本身支持的 M/L 类型照搬，不做 encode/decode json。"
+}

@@ -1,0 +1,27 @@
+# 异常处理记录
+
+本次运行中异常处理者做过的判断，按时间排列。
+
+## C001-B0-review（review，任务 B0）
+
+- 决定：ok
+- 理由：阶段复查未发现需要处理的问题，B0 基线可用于优化阶段（O / C1 / C2）。核查到的证据：
+
+1) 全部任务一次通过、无重试无崩溃：events.jsonl 里 9 次 spawn 的 worker_exit 均 rc=0、未超时、submitted=true；23 条 checks 事件全 ok=true（含 gate blueprint/code/template/final、check_provenance、check_judge_assets、check_adapter_map、check_mutant_classes、check_reconcile_classes、check_gap_inventory）。
+
+2) 验证线三份结论一致为 PASS：verification/verdict_judge.json status=PASS（74 用例：pass 46 / migration-change 13 / dropped 15；24 个步骤按裁定 R-A1-a1-1 判 migration-change；故障运行 18 pass / 6 dropped；failures 空）；verification/verdict_delta.json PASS 12/12；verification/check_adapter.json PASS（26 个数据步、failed 与 other_differences 皆空）。
+
+3) 裁判仍是冻结的那份且未被改动：judge_manifest.json version 2、frozen_at 2026-11-02、J6 事件 "judge v2 frozen (unchanged)"，V2 的 adapter_map_sha 与 check_adapter 一致；reconcile.json differences=0、resolved_by_rulings=0。变异测试 score=1.0，7 个存活变异全部在 mutant_classes.json 归为 equivalent，not_covered/trace_only=0，reverse_ok=true——没有覆盖率或裁判强度方面的隐患。
+
+4) 规格侧无遗留：18 条缺口全部有 decision（choice/why/test），J4 提出的 3 条 spec_issues 已落到事实库并由白盒用例（wb-orders-non-object-elements-500-order-still-written、wb-orders-quantity-string-bestseller-not-created、wb-cart-x-customer-id-cannot-scope-data 等）在 V2 中实录通过；uncovered.json 只豁免 3 条 auth 端点响应臂，理由成立。
+
+5) 对外契约的两处变化都有据、且属规则手册默认做法，不需要人再裁定：401 响应体换成网关的 {"message":"Unauthorized"}（R-A1-a1-1，category=migration-change，deviates_from_monolith=false，状态码/无表访问/CORS 头三项契约保持）；4 个认证端点与 Bookstore-Users 表整体交给 Cognito（DECISIONS.md D-2/D-3、GAP-10/GAP-15），15 个 dropped 用例即来源于此，属"网关授权器替代登录端点"这一默认迁移变更，非有人擅自不照搬单体。
+
+6) 基线可复现：tag B0 指向 06b8b97（"B0: judge and delta tests pass"），git status 干净，工作树即 V2/V3 跑出 PASS 的那份代码；consistency_report.json status=PASS、sam_validation=PASS、fixes_applied=0。
+
+7) 覆盖率（orders-create 语句 68.2%、bestsellers-update 98.9%）只是 delta 资产的记录，V3 明确"不设门槛"，按设计不构成阻塞；O 阶段自带 run_coverage(changed_since, with_judge)。
+
+因此本次复查动作为 ok，不 retry、不 reroute、不 escalate。给后续的一点非阻塞提醒：优化阶段的任何改动都要落在 B0 之后可被 C1(final_v2) 复核的基础上——dropped 与 migration-change 两类步骤的预期由冻结裁判和 R-A1-a1-1 固定，优化不得改变它们。
+- 给 worker 的反馈：（无）
+- 调度器的处理：继续
+

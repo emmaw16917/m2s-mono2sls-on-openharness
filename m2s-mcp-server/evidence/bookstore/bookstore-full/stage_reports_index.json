@@ -1,0 +1,80 @@
+[
+ {
+  "task": "A1",
+  "file": "storage/stage_reports/A1.json",
+  "status": "success",
+  "summary": "按规格设计出 bookstore 的 serverless 架构：12 个 Lambda（11 个 API，全部 auth=required 与规格 classification 一致；1 个 SQS 消费者 bestsellers-update）、5 张 DynamoDB 表（四张业务表照搬 table_schemas + 目标独有的 IdempotencyTable）、1 条 SQS 链路（下单后畅销榜累加，消费者按 (orderId, books 下标) 幂等）、Cognito 用户池替代四个认证端点与 users 表、API 类型 REST（rest_features=[gateway_responses]，因为应用级 CORS 除 ACAO:* 外还要在每个响应与网关自应答上带 Access-Control-Allow-Credentials: true）。写了 blueprin"
+ },
+ {
+  "task": "D1",
+  "file": "storage/stage_reports/D1.json",
+  "status": "success",
+  "summary": "增量测试按 GAP-2 / GAP-17 的 SQS 链路写了 12 个用例（生产者 3 + 消费者 9）和 6 个故障场景，覆盖消息入队、重复投递幂等、(orderId,下标) 幂等键、quantity 原样、永久/临时错误的失败粒度；run_validate(dry_run, assets=verification/delta) PASS。"
+ },
+ {
+  "task": "F2",
+  "file": "storage/stage_reports/F2.json",
+  "status": "success",
+  "summary": "按 J4 回炉信息核对/补全事实库的三条缺口：J4-1（POST /api/orders 非对象元素 → 5xx 且订单已写入、购物车未删）与 J4-2（quantity 类型决定畅销榜 ADD 是否失败/是否建行）在前一次尝试已写入并经本次逐条对源码复核（orders.js:49/65/69/72/77/80/83/87/103/105、bestsellers.js:19/20/22/26/30/31/48/49、init-db.js:121），未改动；本次补上 J4-3（cart/orders 一族对 x-customer-id 头只字未提）：7 个端点各加一条 authorization/contract 规则（BR-CART-LIST-8、BR-CART-GET1-7、BR-CART-ADD-9、BR-CART-UPD-8、BR-CART-DEL-7、BR-ORD-LIST-7、B"
+ },
+ {
+  "task": "G2",
+  "file": "storage/stage_reports/G2.json",
+  "status": "success",
+  "summary": "核对 gap_scan 的 10 条 G1 条目（全部成立，未删改 evidence/summary/endpoints，只对 GAP-1/GAP-2/GAP-6 三条补了 note 说明信号没写到的细节），读单体全文（server.js/config.js/middleware/auth.js/routes/*.js/utils/*.js，共 1115 行）补了 8 条信号认不出的缺口 GAP-11..GAP-18：全局错误中间件（含默认 NODE_ENV=development 时泄露 stack）、body-parser 的 json+urlencoded 与 100kb 默认上限、Query 不翻页（信号只看 Scan）、AUTH_DEV_MODE 的身份注入与 x-customer-id 冒充、令牌有效期/不轮换/不可撤销、require 时一次性建立的 DynamoDB 客户端"
+ },
+ {
+  "task": "I1",
+  "file": "storage/stage_reports/I1.json",
+  "status": "success",
+  "summary": "按 blueprint 写了 12 个 Node.js 22 handler（11 个 API 端点各一个 + bestsellers-update SQS 消费者），每个函数一个目录 output/lambdas/bookstore/<name>/{index.js,package.json}；依赖只声明真正 require 的 @aws-sdk/client-dynamodb、@aws-sdk/lib-dynamodb（orders-create 另有 @aws-sdk/client-sqs），orderId 用运行时内置 crypto.randomUUID() 因此不引入 uuid 包；没有共享层（blueprint 未声明，见 issues）。run_gate(phase=\"code\") 第 1 次即 PASS（C1/C10/GM1 无 finding），run_judge_sel"
+ },
+ {
+  "task": "I2a",
+  "file": "storage/stage_reports/I2a.json",
+  "status": "success",
+  "summary": "按 blueprint.json 生成 output/template.part1.yaml：AWSTemplateFormatVersion/Transform/Description、Globals.Function（nodejs22.x、Timeout 30、MemorySize 512、ENVIRONMENT，不含 Handler）、Parameters，以及全部共享资源——REST API（BookstoreApi：StageName Prod、EndpointConfiguration REGIONAL、Cors 三字段、Cognito DefaultAuthorizer、AccessLogSetting、api_gateway.gateway_responses 的 5 个 GatewayResponses 类型）、ApiLogGroup、BookstoreUserPool "
+ },
+ {
+  "task": "I2b",
+  "file": "storage/stage_reports/I2b.json",
+  "status": "success",
+  "summary": "按 output/lambdas/ 磁盘上的真实代码生成 output/template.part2.yaml：12 个 AWS::Serverless::Function（11 个 api 事件 + 1 个 SQS 消费者），CodeUri=lambdas/bookstore/<blueprint 函数名>/、Handler=index.handler（每个目录都是 index.js 里的 exports.handler），逐个函数的 Environment 只放代码真正 process.env 读到的键并 !Ref 到 part1 的逻辑名（BOOKS_TABLE/CART_TABLE/ORDERS_TABLE/BESTSELLERS_TABLE/IDEMPOTENCY_TABLE/BESTSELLER_QUEUE_URL），Policies 按最小权限拆分（纯读端点 DynamoDB"
+ },
+ {
+  "task": "I2c",
+  "file": "storage/stage_reports/I2c.json",
+  "status": "success",
+  "summary": "确认 output/template.part1.yaml 与 template.part2.yaml 都在位后用 m2s_merge.py template 合并，产出 output/template.yaml（644 行，单一顶层结构：AWSTemplateFormatVersion/Transform/Description/Globals/Parameters/Resources 1 个段 + Outputs）；自查循环第 1 次即两项都过——run_gate(phase=\"template\") status=PASS、mechanical_failures=[]（C1/C2/C3/C7/C7b/C8/C9 无失败，suspects 全空），validate_sam ok=true 且 errors/warnings 均为空，因此没有对合并后的模板做任何修改。"
+ },
+ {
+  "task": "I3",
+  "file": "storage/stage_reports/I3.json",
+  "status": "success",
+  "summary": "一致性交叉核对完成：C1-C12（C7b 并入 C7）全部为 INFO，blueprint.json、output/template.yaml 与 output/lambdas 三方完全一致，findings 0 个、fixes_applied 0；validate_sam 返回 ok=true 无 error/warning，另用 aws-sam-translator 干跑得到 49 个 CloudFormation 资源且无 InvalidResourceException，Ref/GetAtt 依赖图无循环引用，consistency_report status=PASS。"
+ },
+ {
+  "task": "J4",
+  "file": "storage/stage_reports/J4.json",
+  "status": "success",
+  "summary": "白盒补测共 6 个 wb 用例 + 1 个故障场景 + 3 条事实库缺口（J4-1/J4-2/J4-3）。两组臂：routes/orders.js 与 utils/bestsellers.js 的『畅销榜后台写失败』（quantity 类型非法、故障注入），以及 middleware/auth.js:19-26 的 x-customer-id 规则（默认配置下既不能顶替 token、也不能改变读写作用域），后者对应 J5 唯一判为 gap 的变异体 negate:middleware/auth.js:19。单体行覆盖 577/611(94.4%) → 584/611(95.6%)，业务规则引用 114/119。check_judge_assets PASS（74 用例），check_mutant_classes PASS（8 个未抓住变异体：7 equivalent + 1 gap）。"
+ },
+ {
+  "task": "J5C",
+  "file": "storage/stage_reports/J5C.json",
+  "status": "success",
+  "summary": "judge_validation.json 的 8 个未抓住变异体全部分类并写入 judge/mutant_classes.json：7 个 equivalent（只在 AUTH_DEV_MODE=true 才进的分支、以及\"users 行缺失\"这类请求走不到的臂）、1 个 gap（negate:middleware/auth.js:19 在默认配置下让 x-customer-id 头变成免 token 的身份后门）；check_mutant_classes 返回 PASS（survivors=8, equivalent=7, gap=1, errors=[]）。"
+ },
+ {
+  "task": "O",
+  "file": "storage/stage_reports/O.json",
+  "status": "success",
+  "summary": "在 B0 上做了 3 个语义保持的性能改动，全部由工具判决并单独提交：REQ-1（R4：bestsellers-update 的一批 SQS 消息按条目键分波次并行，depth 60->7，10ms 下 RIE 热调用每轮中位数 [765..801]ms 降到 [384..395]ms，范围不重叠 -> kept）；REQ-2（R1：同一套分波规则下沉到一条消息内部的书目条目，depth 7->2，RIE 无显著差异但代理指标改善且无维度变差 -> kept_inconclusive）；REQ-3（R5：模板 Globals.Function 增加 Architectures: [arm64]，run_config_verdict -> kept，时长单价 0.8）。四项检查（judge / delta validate / equivalence diff / 改动行覆盖率带 with_"
+ },
+ {
+  "task": "V3",
+  "file": "storage/stage_reports/V3.json",
+  "status": "success",
+  "summary": "增量测试（verification/delta）12 个用例在实现上全部通过：verdict_delta.json = PASS（rie + DynamoDB Local），覆盖率已记录（不设门槛），故障基准 fault_baseline_B0.json 已生成（20 次运行，6 个故障场景的注入全部打中，infra_errors 空）。无失败用例，因此没有分诊与退回项。"
+ }
+]

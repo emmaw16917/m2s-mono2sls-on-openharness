@@ -1,0 +1,786 @@
+{
+  "version": 1,
+  "categories": {
+    "multi_write": "一个请求里有多次写操作，没有事务",
+    "process_state": "进程内状态：模块级变量、内存缓存、session",
+    "fire_and_forget": "即发即忘的副作用：不等待结果的调用",
+    "order_and_consistency": "顺序和一致性：依赖返回顺序的排序、刚写入就读取",
+    "time": "时间相关：当前时间、时区、定时任务",
+    "global_middleware": "全局中间件：CORS、统一错误处理、全局响应头",
+    "auth_semantics": "鉴权语义：应用自己签发和校验令牌",
+    "files_and_connections": "文件系统和长连接：写本地文件、上传、WebSocket、流式响应",
+    "monolith_defect": "单体自身的缺陷：例如 Scan 不翻页（超过 1MB 时结果被静默截断）"
+  },
+  "gaps": [
+    {
+      "id": "GAP-1",
+      "key": "multi_write:POST /api/orders",
+      "category": "multi_write",
+      "summary": "POST /api/orders 一次请求写 3 次，没有事务：put Bookstore-Orders, delete Bookstore-Cart (循环), update Bookstore-Bestsellers (循环)",
+      "evidence": [
+        {
+          "file": "bookstore/routes/orders.js",
+          "line": 69,
+          "symbol": "docClient.put"
+        },
+        {
+          "file": "bookstore/routes/orders.js",
+          "line": 80,
+          "symbol": "docClient.delete"
+        },
+        {
+          "file": "bookstore/routes/orders.js",
+          "line": 87,
+          "symbol": "updateBestSellers"
+        }
+      ],
+      "endpoints": [
+        "POST /api/orders"
+      ],
+      "rulebook_rule": null,
+      "default": null,
+      "source": "G1",
+      "status": "decided",
+      "note": "核对无误，补两点：(1) 第 3 类写（Bookstore-Bestsellers 的 ADD）并不在请求内等待——updateBestSellers 不被 await（routes/orders.js:87），实际发生在 200 响应之后，见 GAP-17；(2) 第 2 类写的条数等于请求 books 数组的长度，由 Promise.all 并发发出（routes/orders.js:72-83）且被 await，任一条失败整个请求落到 catch → 500，而 routes/orders.js:69 的 PutItem 已写入订单行、没有 ConditionExpression 也不会回滚",
+      "decision": {
+        "choice": "orders-create 保持单体的写法与失败语义，不引入事务：PutItem(OrdersTable 整行) -> 对 books 每个元素各发一次 cart DeleteItem 并全部 await -> 全部成功才返回 200；任一写失败按单体那样 5xx 且订单行保留、不回滚已成功的删除。畅销榜那次写改成 SQS 消息（见 GAP-2）。",
+        "why": "规则手册对 multi_write 没有默认做法（categories.multi_write.rule=null），按可观察行为决定：BR-ORD-CRT-6（订单行先写、无回滚，客户端可能看到没有对应购物车变更的订单行）与 BR-ORD-CRT-7（任一条 cart 删除被拒 -> 整个请求落到 catch -> 5xx，已写订单不回滚）都是契约；用 TransactWriteItems 会把『部分已删、部分被拒』变成『全不生效』，与单体不同。详见 SI-15 / D-1 / D-13。",
+        "test": "judge",
+        "judge_cases": [
+          "orders-create-cart-delete-fault-baseline",
+          "orders-create-happy-clears-ordered-items",
+          "orders-create-order-write-fault-baseline",
+          "wb-orders-non-object-elements-500-order-still-written",
+          "orders-create-clears-ordered-items-and-counts"
+        ]
+      }
+    },
+    {
+      "id": "GAP-2",
+      "key": "fire_and_forget:bookstore/routes/orders.js:POST__api_orders:updateBestSellers",
+      "category": "fire_and_forget",
+      "summary": "POST__api_orders 调用 updateBestSellers（bookstore/routes/orders.js:87），既不等待也不用返回值",
+      "evidence": [
+        {
+          "file": "bookstore/routes/orders.js",
+          "line": 87,
+          "symbol": "updateBestSellers"
+        }
+      ],
+      "endpoints": [
+        "POST /api/orders"
+      ],
+      "rulebook_rule": "m2s-async-patterns-kb: REQUIRED correctness rule: consumers must be idempotent under redelivery",
+      "default": "改成消息（SQS），消费者幂等",
+      "source": "G1",
+      "status": "decided",
+      "note": "核对无误。补充：循环是逐条 await（utils/bestsellers.js:48-55），单条失败被 updateBestSeller 内部 catch 吞掉并返回 false（utils/bestsellers.js:29-31），所以 .then 里的 result.failed 对应“部分没写成”、.catch 里的 error 对应“整链抛错”，两者都只写日志；对外可见的顺序后果见 GAP-17",
+      "decision": {
+        "choice": "改成消息：orders-create 在返回 200 前 await SendMessage(BestsellerUpdateQueue, {orderId, books 原样})；bestsellers-update 消费者按 (orderId, books 数组下标)先条件写认领 IdempotencyTable、再执行单体的那次 UpdateItem ADD salesCount；永久错误（quantity 不是数字这类）只记日志跳过，临时错误有界退避重试后返回 batchItemFailures。",
+        "why": "条目自带规则 m2s-async-patterns-kb『REQUIRED correctness rule: consumers must be idempotent under redelivery』与默认『改成消息（SQS），消费者幂等』；call_graph 证明这一路是即发即忘（routes/orders.js:87 updateBestSellers，return_value_used=false、is_awaited=false），BR-ORD-CRT-6 说失败不影响状态码与响应体；单一消费者、非扇出，所以 SQS 而不是 EventBridge。幂等键为什么含数组下标、为什么不选 Pattern A / Pattern B 原样写法见 D-6；失败上报的两类见 SI-10。",
+        "test": "delta"
+      }
+    },
+    {
+      "id": "GAP-3",
+      "key": "monolith_defect:scan_no_pagination:bookstore/routes/bestsellers.js",
+      "category": "monolith_defect",
+      "summary": "Scan 没有处理 LastEvaluatedKey（不翻页）：bookstore/routes/bestsellers.js 第 22 行",
+      "evidence": [
+        {
+          "file": "bookstore/routes/bestsellers.js",
+          "line": 22,
+          "symbol": "docClient.scan("
+        }
+      ],
+      "endpoints": [
+        "GET /api/bestsellers"
+      ],
+      "rulebook_rule": "PIPELINE_REDESIGN_v2.md Q10: 默认照搬单体",
+      "default": "默认照搬单体，要偏离须人确认",
+      "source": "G1",
+      "status": "decided",
+      "decision": {
+        "choice": "bestsellers-list 照搬：BestsellersTable 一次 Scan、只用本次 Items、不读 LastEvaluatedKey，再按 salesCount 降序 slice(0,20)。",
+        "why": "条目自带默认『默认照搬单体，要偏离须人确认』+ 规则 PIPELINE_REDESIGN_v2.md Q10；规格 BR-BST-2 也是契约（只取本次 Items，表大到分页时返回的不是全局 Top 20）。见 SI-07 / D-11。",
+        "test": "none"
+      }
+    },
+    {
+      "id": "GAP-4",
+      "key": "monolith_defect:scan_no_pagination:bookstore/routes/books.js",
+      "category": "monolith_defect",
+      "summary": "Scan 没有处理 LastEvaluatedKey（不翻页）：bookstore/routes/books.js 第 42 行",
+      "evidence": [
+        {
+          "file": "bookstore/routes/books.js",
+          "line": 42,
+          "symbol": "docClient.scan("
+        }
+      ],
+      "endpoints": [
+        "GET /api/books"
+      ],
+      "rulebook_rule": "PIPELINE_REDESIGN_v2.md Q10: 默认照搬单体",
+      "default": "默认照搬单体，要偏离须人确认",
+      "source": "G1",
+      "status": "decided",
+      "decision": {
+        "choice": "books-list 照搬：无 category 时一次全表 Scan，有 category 时一次 category-index 的等值 Query，都不翻页、不加 Limit。",
+        "why": "同 GAP-3（默认照搬 + Q10）：规格 BR-BK-5 写明只返回本次 Items，超过单次 1MB 时结果被静默截断，不许顺手修成翻页。SI-07 / D-11。",
+        "test": "none"
+      }
+    },
+    {
+      "id": "GAP-5",
+      "key": "monolith_defect:scan_no_pagination:bookstore/routes/search.js",
+      "category": "monolith_defect",
+      "summary": "Scan 没有处理 LastEvaluatedKey（不翻页）：bookstore/routes/search.js 第 30 行",
+      "evidence": [
+        {
+          "file": "bookstore/routes/search.js",
+          "line": 30,
+          "symbol": "docClient.scan("
+        }
+      ],
+      "endpoints": [
+        "GET /api/search"
+      ],
+      "rulebook_rule": "PIPELINE_REDESIGN_v2.md Q10: 默认照搬单体",
+      "default": "默认照搬单体，要偏离须人确认",
+      "source": "G1",
+      "status": "decided",
+      "decision": {
+        "choice": "search-books 照搬：一次全表 Scan + 内存过滤，不翻页、不加 FilterExpression。",
+        "why": "同 GAP-3（默认照搬 + Q10）：规格 BR-SRC-4 是契约（只取本次 Items，total/hits 只反映本次读到的行）。SI-07 / D-11。",
+        "test": "none"
+      }
+    },
+    {
+      "id": "GAP-6",
+      "key": "order_and_consistency:sort:bookstore/routes/bestsellers.js",
+      "category": "order_and_consistency",
+      "summary": "排序：bookstore/routes/bestsellers.js 第 25 行",
+      "evidence": [
+        {
+          "file": "bookstore/routes/bestsellers.js",
+          "line": 25,
+          "symbol": ".sort("
+        }
+      ],
+      "endpoints": [
+        "GET /api/bestsellers"
+      ],
+      "rulebook_rule": null,
+      "default": null,
+      "source": "G1",
+      "status": "decided",
+      "note": "核对无误，排序确实影响响应。补充细节：比较函数只保证 salesCount 降序（缺失按 0 参与比较）；salesCount 相同的条目相对次序取决于这一次 Scan 的返回顺序（Array.prototype.sort 只保持原序，而 Scan 的顺序没有任何保证），排完又 slice(0, 20)，叠加 GAP-3 的 Scan 不翻页 ⇒ 表大到分页时“前 20”既不是全局前 20，也不保证稳定",
+      "decision": {
+        "choice": "bestsellers-list 在内存里按 (b.salesCount||0)-(a.salesCount||0) 降序 sort -> slice(0,20) -> map(item=>item.bookId)；并列名次的相对次序不断言（取决于本次 Scan 的返回顺序）。",
+        "why": "order_and_consistency 没有默认做法，按对外可观察性判断：这个排序影响响应内容（BR-BST-3/BR-BST-4 是契约），必须实现；而 judge/masks.json 已经把 salesCount 相等的名次标成 unordered，说明验证线本来就不断言并列次序，因此不需要额外申请 order 放宽。",
+        "test": "judge",
+        "judge_cases": [
+          "bestsellers-ranked-top20",
+          "bestsellers-empty-table",
+          "bestsellers-unknown-book-in-list"
+        ]
+      }
+    },
+    {
+      "id": "GAP-7",
+      "key": "time:now:bookstore/routes/auth.js",
+      "category": "time",
+      "summary": "用到当前时间：bookstore/routes/auth.js 第 76, 77 行",
+      "evidence": [
+        {
+          "file": "bookstore/routes/auth.js",
+          "line": 76,
+          "symbol": "Date.now()"
+        },
+        {
+          "file": "bookstore/routes/auth.js",
+          "line": 77,
+          "symbol": "Date.now()"
+        }
+      ],
+      "endpoints": [
+        "POST /api/auth/register"
+      ],
+      "rulebook_rule": null,
+      "default": null,
+      "source": "G1",
+      "status": "decided",
+      "decision": {
+        "choice": "不迁移：register 端点与 users 表整体删除（D-3），createdAt/updatedAt 由 Cognito 用户池的标准属性 created_at/updated_at 承担；目标里没有任何代码自己取当前时间写用户行。",
+        "why": "time 类没有默认做法，判断依据是对外能不能观察到：这两个时间戳只存在于被删除的 users 行里，读它们的 GET /api/auth/me 也一并删除（SI-11），裁判在目标上不运行这些步骤（adapter_map.dropped_endpoints）。没有留下可验证的对外行为。",
+        "test": "none"
+      }
+    },
+    {
+      "id": "GAP-8",
+      "key": "time:now:bookstore/routes/orders.js",
+      "category": "time",
+      "summary": "用到当前时间：bookstore/routes/orders.js 第 64 行",
+      "evidence": [
+        {
+          "file": "bookstore/routes/orders.js",
+          "line": 64,
+          "symbol": "Date.now()"
+        }
+      ],
+      "endpoints": [
+        "POST /api/orders"
+      ],
+      "rulebook_rule": null,
+      "default": null,
+      "source": "G1",
+      "status": "decided",
+      "decision": {
+        "choice": "orders-create 保持单体的时间语义：orderDate = Date.now() 的毫秒整数（Number 类型属性），不改成 ISO 字符串、不额外加 createdAt/updatedAt。",
+        "why": "time 类没有默认做法：orderDate 是对外可见属性（BR-ORD-CRT-2、BR-ORD-LIST-5），值每次不同所以裁判已按符号 <time#n> 掩掉；类型与量级必须一致才继续被掩，因此照搬而不换格式。SI-14。",
+        "test": "judge",
+        "judge_cases": [
+          "orders-create-clears-ordered-items-and-counts",
+          "orders-list-empty-then-after-create",
+          "orders-list-two-orders-no-sorting"
+        ]
+      }
+    },
+    {
+      "id": "GAP-9",
+      "key": "global_middleware:cors:0",
+      "category": "global_middleware",
+      "summary": "全局中间件 express-cors（global_middleware[0]）：Access-Control-Allow-Credentials, Access-Control-Allow-Headers, Access-Control-Allow-Methods, Access-Control-Allow-Origin",
+      "evidence": [
+        {
+          "file": "bookstore/server.js",
+          "line": 29,
+          "symbol": "cors("
+        },
+        {
+          "file": "bookstore/server.js",
+          "line": 30,
+          "symbol": "origin: '*'"
+        },
+        {
+          "file": "bookstore/server.js",
+          "line": 31,
+          "symbol": "credentials: true"
+        }
+      ],
+      "endpoints": [
+        "DELETE /api/cart",
+        "GET /api/auth/me",
+        "GET /api/bestsellers",
+        "GET /api/books",
+        "GET /api/books/:id",
+        "GET /api/cart",
+        "GET /api/cart/:bookId",
+        "GET /api/orders",
+        "GET /api/search",
+        "POST /api/auth/login",
+        "POST /api/auth/refresh",
+        "POST /api/auth/register",
+        "POST /api/cart",
+        "POST /api/orders",
+        "PUT /api/cart"
+      ],
+      "rulebook_rule": "gate GM1-GM3: every function's response carries the headers; GatewayResponses for what API Gateway answers",
+      "default": "每个函数的响应带上这些头，网关自己的响应用 GatewayResponses",
+      "source": "G1",
+      "status": "decided",
+      "decision": {
+        "choice": "两层落点：11 个 API 函数（books-list / books-get-by-id / cart-list / cart-get-by-book / cart-add / cart-update / cart-remove / orders-list / orders-create / bestsellers-list / search-books）在每个响应上返回 Access-Control-Allow-Origin: * 与 Access-Control-Allow-Credentials: true（外加 Content-Type: application/json）；网关自己应答的 401/4xx/5xx 用 REST 的 GatewayResponses 补同样的头：DEFAULT_4XX/DEFAULT_5XX 带全部四个头名（满足 GM2），授权器拒绝用的 UNAUTHORIZED/AUTHORIZER_FAILURE/ACCESS_DENIED 单独配置、只带真实响应上会出现的那两个；预检 OPTIONS 由 API Gateway 的 Cors 配置以 204 直接应答（不进 Lambda）。",
+        "why": "条目自带规则『gate GM1-GM3: every function's response carries the headers; GatewayResponses for what API Gateway answers』与默认做法；出处 global_middleware[0]（server.js:29-31，cors/lib/index.js:163-181 区分『每个响应都带』与『仅 OPTIONS 预检』）；SI-01 复核了分类——无路由前缀的 app 级挂载，属实。裁判实录里每个步骤的 headers 只有 access-control-allow-origin/credentials + content-type，所以函数不能把 Allow-Methods/Allow-Headers 也加到真实响应上（多出来的头会被判成『单体没发的头』）。正因为除 ACAO:* 之外还有 ACAC:true 要出现在网关自应答的 401 上，只能选 REST（HTTP API 加不了），见 D-14 / api_gateway.api_type_reason。",
+        "test": "judge",
+        "judge_cases": [
+          "orders-create-clears-ordered-items-and-counts",
+          "cart-list-empty-then-with-items",
+          "books-list-by-category"
+        ]
+      }
+    },
+    {
+      "id": "GAP-10",
+      "key": "auth_semantics:app",
+      "category": "auth_semantics",
+      "summary": "应用自己签发和校验令牌，12 个端点要求身份",
+      "evidence": [
+        {
+          "file": "bookstore/utils/jwt.js",
+          "line": 17,
+          "symbol": "jwt.sign("
+        },
+        {
+          "file": "bookstore/utils/jwt.js",
+          "line": 34,
+          "symbol": "jwt.sign("
+        }
+      ],
+      "endpoints": [
+        "DELETE /api/cart",
+        "GET /api/auth/me",
+        "GET /api/bestsellers",
+        "GET /api/books",
+        "GET /api/books/:id",
+        "GET /api/cart",
+        "GET /api/cart/:bookId",
+        "GET /api/orders",
+        "GET /api/search",
+        "POST /api/cart",
+        "POST /api/orders",
+        "PUT /api/cart"
+      ],
+      "rulebook_rule": "m2s-basic-serverless-kb: Cognito User Pool (if auth exists in monolith)",
+      "default": "Cognito + API Gateway 授权器，认证端点删除",
+      "source": "G1",
+      "status": "decided",
+      "decision": {
+        "choice": "Cognito 用户池 + API Gateway Cognito 授权器：11 个业务端点的函数全部 auth=required 且内部零鉴权代码，身份只取 event.requestContext.authorizer.claims.sub；register / login / refresh / me 四个端点、authMiddleware 与 optionalAuthMiddleware、utils/jwt.js、utils/password.js、Bookstore-Users 表一并删除（D-2/D-3/D-4）。",
+        "why": "条目自带规则『m2s-basic-serverless-kb: Cognito User Pool (if auth exists in monolith)』与默认『Cognito + API Gateway 授权器，认证端点删除』；依据是 file_tags 的 Auth 标签（config.js/server.js/middleware/auth.js/routes/auth.js/utils/jwt.js）与 12 个端点的 auth.classification=required。这不是我主动偏离单体，而是规则手册默认做法的必然结果，所以网关应答的 401 响应体差异按 migration-change 记裁定（D-4 / SI-02）。",
+        "test": "judge",
+        "judge_cases": [
+          "cart-list-unauthenticated",
+          "books-catalog-scan",
+          "cart-add-ignores-body-customerid",
+          "orders-create-unauthenticated"
+        ]
+      }
+    },
+    {
+      "id": "GAP-11",
+      "key": "g2:global_middleware:error-handler",
+      "category": "global_middleware",
+      "summary": "全局错误中间件（server.js:50-56）是所有 handler 异常路径的实际出口，而 global_middleware 里只有 CORS：各端点的 catch 一律是 next(error)（例如 routes/books.js:47），异常被统一转成 {error: err.message，缺省 'Internal Server Error', stack?}，状态码取 err.status || 500；stack 只在 config.nodeEnv === 'development' 时带上，而 NODE_ENV 的默认值就是 'development'（config.js:10，仓库里没有 .env 文件）⇒ 默认配置下每个由异常变成的错误响应都带完整堆栈",
+      "evidence": [
+        {
+          "file": "bookstore/server.js",
+          "line": 50,
+          "symbol": "(err, req, res, next)"
+        },
+        {
+          "file": "bookstore/server.js",
+          "line": 52,
+          "symbol": "err.status || 500"
+        },
+        {
+          "file": "bookstore/server.js",
+          "line": 54,
+          "symbol": "config.nodeEnv === 'development'"
+        },
+        {
+          "file": "bookstore/config.js",
+          "line": 10,
+          "symbol": "process.env.NODE_ENV || 'development'"
+        },
+        {
+          "file": "bookstore/routes/books.js",
+          "line": 47,
+          "symbol": "next(error)"
+        }
+      ],
+      "endpoints": [
+        "DELETE /api/cart",
+        "GET /api/auth/me",
+        "GET /api/bestsellers",
+        "GET /api/books",
+        "GET /api/books/:id",
+        "GET /api/cart",
+        "GET /api/cart/:bookId",
+        "GET /api/orders",
+        "GET /api/search",
+        "POST /api/auth/login",
+        "POST /api/auth/refresh",
+        "POST /api/auth/register",
+        "POST /api/cart",
+        "POST /api/orders",
+        "PUT /api/cart"
+      ],
+      "source": "G2",
+      "status": "decided",
+      "decision": {
+        "choice": "每个 API 函数自己 catch 并复刻单体的错误出口：statusCode = err.status || 500，body = {error: err.message || 'Internal Server Error', stack: err.stack}，err.message 逐字照搬 SDK/运行时抛出的消息；bestsellers-list 是唯一例外（读失败吞掉返回 200 + []，BR-BST-5），请求体 JSON 解析失败是 400 而不是 500。异常不得逃逸成 API Gateway 的 502/500 {message}。",
+        "why": "G2 补充条目：global_middleware 里只有 cors，但每个 handler 的 catch 一律 next(error)，实际出口是 server.js:50-56；规格里每个端点的 5xx 臂都写明 via 'error middleware (status = err.status || 500)'、body [error, stack]，config.js:10 的 NODE_ENV 默认 development（仓库里没有 .env）⇒ 默认部署的每个异常响应都带完整堆栈。见 SI-03 / D-13。",
+        "test": "judge",
+        "judge_cases": [
+          "books-duplicate-category-param",
+          "search-non-string-name-500",
+          "cart-add-write-fault-baseline",
+          "wb-orders-non-object-elements-500-order-still-written",
+          "orders-create-cart-delete-fault-baseline"
+        ]
+      }
+    },
+    {
+      "id": "GAP-12",
+      "key": "g2:global_middleware:body-parser",
+      "category": "global_middleware",
+      "summary": "请求体的解析方式同样是进程级中间件，不在任何路由上：app.use(bodyParser.json()) 与 app.use(bodyParser.urlencoded({extended:true}))（server.js:33-34）⇒ application/json 与 x-www-form-urlencoded 都能填充 req.body（表单值一律是字符串），content-type 不匹配或没有请求体时 req.body 是 {}、字段按缺失处理；json() 没传 limit ⇒ 取库默认 100kb（node_modules/body-parser/lib/types/json.js:57），超过时 raw-body 抛 'request entity too large' 且 status=413（node_modules/raw-body/index.js:163，http-errors 在 index.js:95 设 err.status），连同 JSON 语法错误（status=400）一起交给 GAP-11 的错误中间件作答，不进入任何路由 handler",
+      "evidence": [
+        {
+          "file": "bookstore/server.js",
+          "line": 33,
+          "symbol": "bodyParser.json()"
+        },
+        {
+          "file": "bookstore/server.js",
+          "line": 34,
+          "symbol": "bodyParser.urlencoded({ extended: true })"
+        },
+        {
+          "file": "bookstore/node_modules/body-parser/lib/types/json.js",
+          "line": 57,
+          "symbol": "'100kb'"
+        },
+        {
+          "file": "bookstore/node_modules/raw-body/index.js",
+          "line": 163,
+          "symbol": "createError(413, 'request entity too large'"
+        },
+        {
+          "file": "bookstore/node_modules/http-errors/index.js",
+          "line": 95,
+          "symbol": "err.status = err.statusCode = status"
+        }
+      ],
+      "endpoints": [
+        "DELETE /api/cart",
+        "GET /api/auth/me",
+        "GET /api/bestsellers",
+        "GET /api/books",
+        "GET /api/books/:id",
+        "GET /api/cart",
+        "GET /api/cart/:bookId",
+        "GET /api/orders",
+        "GET /api/search",
+        "POST /api/auth/login",
+        "POST /api/auth/refresh",
+        "POST /api/auth/register",
+        "POST /api/cart",
+        "POST /api/orders",
+        "PUT /api/cart"
+      ],
+      "source": "G2",
+      "status": "decided",
+      "decision": {
+        "choice": "函数自己解析请求体：application/json 用 JSON.parse（语法错误 => 400 + {error: <解析错误消息>, stack}）；application/x-www-form-urlencoded 按表单体解析（值一律是字符串）；两者都不匹配或没有请求体 => 按空对象处理，字段走缺失的 400 校验臂；body-parser 的 100kb 上限不复刻（载荷上限由 API Gateway 决定）。",
+        "why": "G2 补充条目：body-parser 同样是挂在所有路由之前的进程级中间件（server.js:33-34），不在任何路由上；规格 request.headers 的 Content-Type 条目（带出处）写的就是这套语义，且 register 的『JSON 请求体语法错误 => 400（err.status=400）』被列为契约（BR-REG-8）。见 SI-04 / SI-17 / D-13。",
+        "test": "judge",
+        "judge_cases": [
+          "cart-add-form-encoded-strings",
+          "cart-add-validation",
+          "orders-create-validation",
+          "cart-delete-validation"
+        ]
+      }
+    },
+    {
+      "id": "GAP-13",
+      "key": "g2:monolith_defect:query_no_pagination",
+      "category": "monolith_defect",
+      "summary": "机械信号只查了 Scan 的翻页，Query 同样不翻页且没有 Limit：GET /api/cart（routes/cart.js:27）与 GET /api/orders（routes/orders.js:28）按 customerId 分区键 Query，只返回第一页（单次最多 1MB，超出部分靠 LastEvaluatedKey 续读，代码从不读它）；GET /api/books?category= 在 category-index 上 Query（routes/books.js:34）、注册查重与登录在 email-index 上 Query（routes/auth.js:56）也只用第一页 / Items[0]；全仓库没有一处 LastEvaluatedKey、ExclusiveStartKey、ConsistentRead 或 Limit",
+      "evidence": [
+        {
+          "file": "bookstore/routes/cart.js",
+          "line": 27,
+          "symbol": "docClient.query(params)"
+        },
+        {
+          "file": "bookstore/routes/orders.js",
+          "line": 28,
+          "symbol": "docClient.query(params)"
+        },
+        {
+          "file": "bookstore/routes/books.js",
+          "line": 34,
+          "symbol": "docClient.query(params)"
+        },
+        {
+          "file": "bookstore/routes/auth.js",
+          "line": 56,
+          "symbol": "docClient.query(checkParams)"
+        },
+        {
+          "file": "bookstore/routes/auth.js",
+          "line": 49,
+          "symbol": "IndexName: 'email-index'"
+        }
+      ],
+      "endpoints": [
+        "GET /api/books",
+        "GET /api/cart",
+        "GET /api/orders",
+        "POST /api/auth/login",
+        "POST /api/auth/register"
+      ],
+      "source": "G2",
+      "status": "decided",
+      "decision": {
+        "choice": "cart-list / orders-list 的基表 Query 与 books-list 的 category-index Query 都照搬：各一次 Query，只取本次 Items，不读 LastEvaluatedKey、不加 Limit。",
+        "why": "G2 补充条目，默认做法同 scan_no_pagination（PIPELINE_REDESIGN_v2 Q10 默认照搬单体缺陷）；规格里 BR-CART-LIST-3、BR-ORD-LIST-3、BR-BK-2 都写明『分区键等值 Query、不加 FilterExpression/Limit、不翻页』是契约。见 SI-07 / D-11。",
+        "test": "none"
+      }
+    },
+    {
+      "id": "GAP-14",
+      "key": "g2:auth_semantics:dev-mode-identity",
+      "category": "auth_semantics",
+      "summary": "鉴权语义由 env 开关决定，开关改的是身份来源而不是某个端点：AUTH_DEV_MODE==='true' 时中间件先接受 x-customer-id 头并把它原样赋给 req.customerId（middleware/auth.js:19-26）⇒ 任何调用方都能冒充任意 customerId 读写其购物车与订单；没有 Authorization 头时注入共享身份 'default-customer-id'（middleware/auth.js:36-40）⇒ 所有匿名请求落在同一个购物车/订单分区。config.js:15 的默认值是 false（仓库没有 .env）⇒ 默认配置这两条都不生效，无 token 请求由 middleware/auth.js:43 以 401 拒绝。只有 GET /api/auth/me 显式把 'default-customer-id' 判为未认证（routes/auth.js:240）。GAP-10 只记了“应用自签令牌”，没覆盖这条按 env 变化的身份注入",
+      "evidence": [
+        {
+          "file": "bookstore/middleware/auth.js",
+          "line": 19,
+          "symbol": "config.auth.devMode"
+        },
+        {
+          "file": "bookstore/middleware/auth.js",
+          "line": 20,
+          "symbol": "req.headers['x-customer-id']"
+        },
+        {
+          "file": "bookstore/middleware/auth.js",
+          "line": 37,
+          "symbol": "default-customer-id"
+        },
+        {
+          "file": "bookstore/config.js",
+          "line": 15,
+          "symbol": "process.env.AUTH_DEV_MODE === 'true'"
+        },
+        {
+          "file": "bookstore/routes/auth.js",
+          "line": 240,
+          "symbol": "default-customer-id"
+        }
+      ],
+      "endpoints": [
+        "DELETE /api/cart",
+        "GET /api/auth/me",
+        "GET /api/bestsellers",
+        "GET /api/books",
+        "GET /api/books/:id",
+        "GET /api/cart",
+        "GET /api/cart/:bookId",
+        "GET /api/orders",
+        "GET /api/search",
+        "POST /api/cart",
+        "POST /api/orders",
+        "PUT /api/cart"
+      ],
+      "source": "G2",
+      "status": "decided",
+      "decision": {
+        "choice": "devMode 整条分支不迁移：没有任何函数读 x-customer-id，身份只来自 claims.sub；只带该头、不带合法 JWT 的请求由网关挡成 401 且不发生表访问，带合法 JWT 时该头里填别人的 id 也改变不了读写作用域。",
+        "why": "规格里 BR-CART-LIST-8 / BR-ORD-LIST-7 / BR-ORD-CRT-15 / BR-ME-3·4 都把这条行为限定在『默认配置下（middleware/auth.js:12 的 devMode=false）』，也就是说默认对外契约本来就是这样，保持它不等于放弃单体的对外行为；AUTH_DEV_MODE=true 下的越权通道与共享匿名身份随中间件一起消失（SI-12 / D-17 / J4-3）。401 的响应体差异另按 migration-change 记裁定。",
+        "test": "judge",
+        "judge_cases": [
+          "wb-cart-x-customer-id-cannot-scope-data",
+          "wb-orders-x-customer-id-cannot-authenticate"
+        ]
+      }
+    },
+    {
+      "id": "GAP-15",
+      "key": "g2:auth_semantics:token-lifetime-and-revocation",
+      "category": "auth_semantics",
+      "summary": "令牌的寿命、轮换与撤销规则在路由之外：accessToken 默认有效期 '1h'、refreshToken 默认 '7d'（config.js:13-14 的 env 默认值，签发时由 utils/jwt.js:17 与 :34 写入 exp，issuer 'bookstore-api'），是否过期取决于服务器时钟；POST /api/auth/refresh 只做三件事——校验 refreshToken 签名（routes/auth.js:189）、按 payload.userId 去 users 表 GetItem、换发一个新的 accessToken（routes/auth.js:222）——既不轮换 refreshToken 也没有“已使用/已吊销”的记录，单体也没有登出接口 ⇒ 令牌一经签出在有效期内撤不掉；签名用的是共享 HS256 密钥，默认值是占位字符串 'your-secret-key-change-in-production'（config.js:11-12）",
+      "evidence": [
+        {
+          "file": "bookstore/config.js",
+          "line": 13,
+          "symbol": "JWT_ACCESS_TOKEN_EXPIRY"
+        },
+        {
+          "file": "bookstore/config.js",
+          "line": 14,
+          "symbol": "JWT_REFRESH_TOKEN_EXPIRY"
+        },
+        {
+          "file": "bookstore/routes/auth.js",
+          "line": 189,
+          "symbol": "verifyRefreshToken"
+        },
+        {
+          "file": "bookstore/routes/auth.js",
+          "line": 222,
+          "symbol": "accessToken"
+        },
+        {
+          "file": "bookstore/config.js",
+          "line": 11,
+          "symbol": "JWT_SECRET"
+        }
+      ],
+      "endpoints": [
+        "DELETE /api/cart",
+        "GET /api/auth/me",
+        "GET /api/bestsellers",
+        "GET /api/books",
+        "GET /api/books/:id",
+        "GET /api/cart",
+        "GET /api/cart/:bookId",
+        "GET /api/orders",
+        "GET /api/search",
+        "POST /api/auth/login",
+        "POST /api/auth/refresh",
+        "POST /api/auth/register",
+        "POST /api/cart",
+        "POST /api/orders",
+        "PUT /api/cart"
+      ],
+      "source": "G2",
+      "status": "decided",
+      "decision": {
+        "choice": "令牌生命周期交给 Cognito 用户池：access token 60 分钟、refresh token 7 天（与单体默认一致，config.js:13-14）；轮换与撤销沿用用户池自己的机制，不实现单体没有的撤销表/黑名单，客户端刷新令牌改调 Cognito（InitiateAuth REFRESH_TOKEN_AUTH）。",
+        "why": "G2 补充条目 + 规则手册默认做法（认证基建化）的直接后果：签发方从应用换成用户池，令牌的寿命/轮换/撤销规则必然改变（SI-11 / GAP-15 的裁定）；单体本来就没有撤销语义，对齐有效期不引入新的对外约束。令牌的过期时刻不在任何裁判用例的请求路径上可观察（用例自带 identities，不等 1 小时）。",
+        "test": "none"
+      }
+    },
+    {
+      "id": "GAP-16",
+      "key": "g2:files_and_connections:startup-init-and-clients",
+      "category": "files_and_connections",
+      "summary": "配置与客户端都是进程启动时一次性建立的：AWS.DynamoDB 与 DocumentClient 在模块被 require 时就 new 好并导出（utils/dynamodb.js:10-11），此后每个请求复用同一实例与连接池；region/accessKeyId/secretAccessKey 只在建客户端时读 env（config.js:16-18，仓库没有 .env ⇒ 两个密钥是 undefined，落到 SDK 的默认凭据链）；config.js:7 与 server.js:7 各自 require('dotenv').config() 从进程工作目录读 .env ⇒ 同一份 env 被解析两次，且进程存活期间改环境变量不影响后续请求",
+      "evidence": [
+        {
+          "file": "bookstore/utils/dynamodb.js",
+          "line": 10,
+          "symbol": "new AWS.DynamoDB(awsConfig)"
+        },
+        {
+          "file": "bookstore/utils/dynamodb.js",
+          "line": 11,
+          "symbol": "new AWS.DynamoDB.DocumentClient"
+        },
+        {
+          "file": "bookstore/config.js",
+          "line": 16,
+          "symbol": "process.env.AWS_REGION"
+        },
+        {
+          "file": "bookstore/config.js",
+          "line": 7,
+          "symbol": "require('dotenv').config()"
+        },
+        {
+          "file": "bookstore/server.js",
+          "line": 7,
+          "symbol": "require('dotenv').config()"
+        }
+      ],
+      "endpoints": [
+        "DELETE /api/cart",
+        "GET /api/auth/me",
+        "GET /api/bestsellers",
+        "GET /api/books",
+        "GET /api/books/:id",
+        "GET /api/cart",
+        "GET /api/cart/:bookId",
+        "GET /api/orders",
+        "GET /api/search",
+        "POST /api/auth/login",
+        "POST /api/auth/refresh",
+        "POST /api/auth/register",
+        "POST /api/cart",
+        "POST /api/orders",
+        "PUT /api/cart"
+      ],
+      "source": "G2",
+      "status": "decided",
+      "decision": {
+        "choice": "配置与客户端换成函数级：表名 / 队列 URL / 幂等表名由 Lambda 环境变量注入（模板里 !Ref 资源逻辑名），区域与凭据交给 Lambda 执行角色与运行环境（不再有手工 access key，也不读 .env），DocumentClient 仍在 handler 模块作用域建一次以获得同样的连接复用。",
+        "why": "G2 补充条目 + 规则手册 Rule 2『Delete Infrastructure Code』与 categories.files_and_connections 的规则『配置与连接改成函数级或托管服务』；单体缺 .env 时本来就走 env 默认值（config.js:7、utils/dynamodb.js:16-18），表名默认值与 dynamodb_info.table_schemas 的 env_var/default_name 一一对应（SI-13 / D-15）。没有对外可观察行为（连接池复用只影响延迟），只能读代码与模板核实。",
+        "test": "none"
+      }
+    },
+    {
+      "id": "GAP-17",
+      "key": "g2:order_and_consistency:bestseller-write-after-response",
+      "category": "order_and_consistency",
+      "summary": "响应与后台写的先后顺序对外可见：POST /api/orders 发 200 时（routes/orders.js:99）畅销榜一次都还没写完——updateBestSellers 不被 await（routes/orders.js:87），内部是逐条 await 的 for 循环（utils/bestsellers.js:49），单条失败被 updateBestSeller 自己 catch 掉并计入 failed（utils/bestsellers.js:29-31）⇒ 下单成功后紧接着 GET /api/bestsellers 可能看不到本次销量，某些书的 salesCount 永远不累加，而订单响应里没有任何字段反映这件事；这些 Promise 跑得完靠的是进程一直活着。同一请求里的购物车删除是并发 Promise.all 且被 await（routes/orders.js:72-83），所以“删除已生效”与“榜单已累加”的可见性不同。GAP-2 只记了“不等待”，没记它对后续读的影响",
+      "evidence": [
+        {
+          "file": "bookstore/routes/orders.js",
+          "line": 87,
+          "symbol": "updateBestSellers(books)"
+        },
+        {
+          "file": "bookstore/routes/orders.js",
+          "line": 99,
+          "symbol": "res.json({"
+        },
+        {
+          "file": "bookstore/utils/bestsellers.js",
+          "line": 49,
+          "symbol": "await updateBestSeller(book.bookId, book.quantity)"
+        },
+        {
+          "file": "bookstore/utils/bestsellers.js",
+          "line": 29,
+          "symbol": "console.error('Failed to update bestseller:'"
+        }
+      ],
+      "endpoints": [
+        "GET /api/bestsellers",
+        "POST /api/orders"
+      ],
+      "source": "G2",
+      "status": "decided",
+      "decision": {
+        "choice": "换成 SQS 后这个先后关系保持：orders-create 发 200 时不保证畅销榜已更新，也不允许为了『看起来一致』在响应里等消费者或把销量改成同步内联；下单响应的状态码与内容与销量无关（销量写失败仍然 200）。",
+        "why": "order_and_consistency 没有默认做法，按对外可观察性判断：单体的可观察事实是『紧接着读榜单可能看不到这一笔』（规格 BR-ORD-CRT-6；用例 wb-orders-quantity-string-bestseller-not-created 断言的正是读不到行）。选 SQS 的依据是 call_graph（return_value_used=false、is_awaited=false）+ BR-ORD-CRT-6，见 D-5/D-6。消息是否真的入队、重复投递是否不重复累加，裁判看不到（用例步骤之间只投递一次，故障跑也没有读回畅销榜），所以由增量测试验证。",
+        "test": "delta"
+      }
+    },
+    {
+      "id": "GAP-18",
+      "key": "g2:order_and_consistency:eventually-consistent-default-reads",
+      "category": "order_and_consistency",
+      "summary": "单体不提供也不依赖“读己之写”：全仓库没有任何 ConsistentRead 参数，基表读因此都是 DynamoDB 默认的最终一致读——GET /api/cart 的 Query（routes/cart.js:27）、GET /api/cart/:bookId 的 GetItem（routes/cart.js:50）、GET /api/orders 的 Query（routes/orders.js:28）；email-index（routes/auth.js:49）与 category-index（routes/books.js:27）这类 GSI 更是只能最终一致 ⇒ 注册成功后立刻用同一邮箱登录、POST/PUT /api/cart 后立刻回读购物车，在真实 DynamoDB 上都可能读到旧值或读不到刚写的行。本地 DynamoDB（dynalite / DynamoDB Local）立即可见，所以这条在裁判用例里看不出来，只能由代码证明",
+      "evidence": [
+        {
+          "file": "bookstore/routes/cart.js",
+          "line": 27,
+          "symbol": "docClient.query(params)"
+        },
+        {
+          "file": "bookstore/routes/cart.js",
+          "line": 50,
+          "symbol": "docClient.get(params)"
+        },
+        {
+          "file": "bookstore/routes/orders.js",
+          "line": 28,
+          "symbol": "docClient.query(params)"
+        },
+        {
+          "file": "bookstore/routes/auth.js",
+          "line": 49,
+          "symbol": "IndexName: 'email-index'"
+        },
+        {
+          "file": "bookstore/routes/books.js",
+          "line": 27,
+          "symbol": "IndexName: 'category-index'"
+        }
+      ],
+      "endpoints": [
+        "GET /api/cart",
+        "GET /api/cart/:bookId",
+        "GET /api/orders",
+        "POST /api/auth/login",
+        "POST /api/auth/register",
+        "POST /api/cart",
+        "PUT /api/cart"
+      ],
+      "source": "G2",
+      "status": "decided",
+      "decision": {
+        "choice": "保持最终一致读：不加 ConsistentRead、不加 Select='COUNT'、不引入任何跨请求缓存；也不为此改任何对外结果。",
+        "why": "G2 补充条目：全仓库没有 ConsistentRead，规格里 BR-CART-LIST-3、BR-BST-2、BR-SRC-4 都写明走基表默认读；SI-20/21/27 只把『每请求一次读、没有缓存』裁定成实现轨迹（不作断言），但 bounded_staleness 契约要求单体本来就有 TTL 缓存窗口，单体没有 => 不写这条许可（D-11）。本地测试后端写入后立即可见，用例读回都命中，因此这个差异验证不了，只能读代码核实目标没有加 ConsistentRead 或缓存。",
+        "test": "none"
+      }
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "id": "R-A1-a1-2",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 1,
+  "time": "2026-11-04T00:57:01+0800",
+  "question": "单体在进程启动（模块导入）时把样例航班 FL001/FL002 写进 flight 表、把默认用户 user@example.com / admin@example.com 注册进 users 表；Serverless 上没有“导入那一刻”，这些种子数据怎么处理？",
+  "conclusion": "目标不复刻“导入即写库”：样例航班与默认用户改由部署期的一次性数据导入完成（运维步骤，不属于任何端点，也不放在 Lambda 冷启动里 —— 并发冷启动会重复播种，还会在裁判正在用的表里塞进条目）；目标里的“管理员”= Cognito 用户池里一个用户 + UserGroupsTable 一行 groups=['Admin']。因此对外差异是：全新的空表部署上，GET /flights/search 不再返回 FL001/FL002（返回 {flights: []}），也不能再用 user@example.com/password123 登录（登录端点本身已由 Cognito 取代）。这是有意的行为收窄，需要人确认；裁判观察不到它（每个用例跑前都重播 fixture，judge/judge_manifest.json 的 uncovered/J4-4 也说明任何用例都引用不到导入时的播种），所以没有 affected_cases。",
+  "basis": "storage/gap_inventory.json GAP-12（evidence: data/storage.py:52-110 的 _init_sample_data 与 services/auth.py:247 的 _init_default_users，两处失败都只 print Warning）；规格 GET /flights/search#business_rules[5]、POST /auth/login#business_rules[1] 记着“空表部署上能读到这两只航班/能登录这两个用户”；blueprint.metadata SI-10（class migration-change，targets GET /flights/search#business_rules[5]）；storage/DECISIONS.md D-13；dropped_functions 里 init_dynamodb_tables.py / _init_sample_data / _init_default_users 三条。",
+  "category": "migration-change",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [],
+    "layers": [
+      "P",
+      "R"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": true,
+  "status": "proposed"
+}

@@ -1,0 +1,180 @@
+{
+  "stage": "S5 (v2 baseline B0)",
+  "confidence": "normal",
+  "baseline_ref": "B0 (06b8b97)",
+  "environment": {
+    "docker": true,
+    "mode": "rie",
+    "latency_ms": [10],
+    "multi_value_latencies_when_worse": [0, 5, 15],
+    "rie": {"rounds": 5, "warm_invokes_per_round": 30, "cpus": 0.289, "clearly_different": "ranges of per-round warm medians do not overlap"},
+    "prices": {
+      "currency": "USD",
+      "dynamodb_write_request_unit": 6.25e-07,
+      "dynamodb_read_request_unit": 1.25e-07,
+      "sqs_request": 4e-07,
+      "lambda_gb_second": 1.66667e-05,
+      "lambda_gb_second_arm64": 1.33334e-05,
+      "lambda_request": 2e-07
+    },
+    "data_volume_assumptions": {
+      "batch-10x3-disjoint": "一批 10 条 SQS 消息（模板 BatchSize=10），每条 3 个书目条目，10 条消息的书目两两不同、orderId 也两两不同；共 30 个幂等标记条目 + 30 个畅销榜条目；IdempotencyTable 起始为空，所有认领都成功。",
+      "batch-10x1-hotkey": "一批 10 条 SQS 消息，每条只含 1 个条目，10 条消息都写同一个 BestsellersTable 条目 perf-hot-book；orderId 两两不同，所以幂等标记条目互不相同。R4 的守卫基准。",
+      "orders-8-books": "一次正常下单：books 8 个条目；CartTable 里该顾客 8 行；1 次订单 Put + 8 次购物车 Delete（B0 已经并发）+ 1 次 SendMessage。",
+      "search-scan-200": "BooksTable 200 行，整表 Scan（单体 BR-SRC-4 规定无过滤表达式、单页），查询词命中 11 行。",
+      "books-list-scan-200": "BooksTable 200 行，不带 category -> 整表 Scan 返回 200 行。",
+      "bestsellers-list-scan-200": "BestsellersTable 200 行，整表 Scan 后在内存里排序取前 20。"
+    },
+    "measurement_limits": "PERF_OPTIMIZATION_DESIGN.md §2.1：固定延迟模型下并发没有上限（第 2 项），所以 R1/R4 的延迟收益是理想值；§6.2 的 H1 判定、冲突模拟与覆盖率照常。"
+  },
+  "baseline": {
+    "bestsellers-update": {
+      "batch-10x3-disjoint": {"calls": 60, "depth": 60, "warm_cpu_ms": 14.655, "network_ms_cal": 242.4, "wru": 60, "rru": 0, "sqs_requests": 0, "conflicts": 0, "cost_usd_units": 3.75e-05},
+      "batch-10x1-hotkey": {"calls": 20, "depth": 20, "warm_cpu_ms": 5.593, "network_ms_cal": 80.8, "wru": 20, "rru": 0, "sqs_requests": 0, "conflicts": 0, "cost_usd_units": 1.25e-05}
+    },
+    "orders-create": {"orders-8-books": {"calls": 10, "depth": 3, "warm_cpu_ms": 1.941, "network_ms_cal": 13.56, "wru": 9, "rru": 0, "sqs_requests": 1, "conflicts": 0, "cost_usd_units": 6.025e-06}},
+    "search-books": {"search-scan-200": {"calls": 1, "depth": 1, "warm_cpu_ms": 1.521, "network_ms_cal": 4.64, "wru": 0, "rru": 2.5, "sqs_requests": 0, "conflicts": 0, "cost_usd_units": 3.125e-07}},
+    "books-list": {"books-list-scan-200": {"calls": 1, "depth": 1, "warm_cpu_ms": 2.104, "network_ms_cal": 4.64, "wru": 0, "rru": 2.5, "sqs_requests": 0, "conflicts": 0, "cost_usd_units": 3.125e-07}},
+    "bestsellers-list": {"bestsellers-list-scan-200": {"calls": 1, "depth": 1, "warm_cpu_ms": 0.895, "network_ms_cal": 4.64, "wru": 0, "rru": 1, "sqs_requests": 0, "conflicts": 0, "cost_usd_units": 1.25e-07}},
+    "books-get-by-id": {"note": "单次 GetItem，没有基准：形状与 bestsellers-list/cart-list 的读一致，depth=1"},
+    "cart-add": {"note": "单次 PutItem，depth=1"},
+    "cart-update": {"note": "单次 UpdateItem，depth=1"},
+    "cart-remove": {"note": "单次 DeleteItem，depth=1"},
+    "cart-list": {"note": "单次 Query，depth=1"},
+    "cart-get-by-book": {"note": "单次 GetItem，depth=1"},
+    "orders-list": {"note": "单次 Query，depth=1"},
+    "hotspots": "顺序深度最大、调用次数最多、WRU 最高的是 SQS 消费者 bestsellers-update（B0：一批 60 次调用全部串行，depth 60）；其次是订单写入 orders-create（depth 3，其中的删除在 B0 已经并发）；三个读端点 depth=1，成本随表行数线性增长（Scan 的读取量），但调用链本身没有可并行的空间。"
+  },
+  "changes": [
+    {
+      "id": "C1",
+      "request": "REQ-1",
+      "source": "rule:R4",
+      "functions": ["bestsellers-update"],
+      "based_on": [],
+      "verdict": "kept",
+      "fix_attempts": 0,
+      "commit": "6c8ebb8",
+      "change": "一批 SQS 消息按条目键分波次执行：recordItemKeys 用循环体同样的键构造器（markerKey / salesKey）算出每条消息读写的条目（IdempotencyTable 的 pk=bestsellers-update#<orderId>#<index> 与 BestsellersTable 的 bookId），scheduleWaves 把每条消息排在“与它共享条目的前面消息中最晚的那一波 +1”，波与波顺序执行，同一波用 Promise.allSettled 并行；消息体原地包成 handleRecord，只把属于消息循环的 continue 改成 return；batchItemFailures 最后按批内顺序排序。",
+      "evidence": {
+        "proxies_before_after": {
+          "before": {"benchmark": "batch-10x3-disjoint", "calls": 60, "depth": 60, "warm_cpu_ms": 18.196, "network_ms_cal": 242.4, "wru": 60, "conflicts": 0},
+          "after": {"benchmark": "batch-10x3-disjoint", "calls": 60, "depth": 7, "warm_cpu_ms": 11.853, "network_ms_cal": 30.44, "wru": 60, "conflicts": 0},
+          "note": "before/after 取自同一次 run_rie_verdict 里的代理指标（同一台机器、同一轮），warm_cpu 的方向被工具判为 same；B0 单独跑 run_proxy_metrics 的中位数是 14.655ms。调用集合、WRU、冲突都不变。"
+        },
+        "rie": {"10ms": {"base_warm_round_medians": [789.22, 783.05, 800.62, 765.43, 791.35], "cand_warm_round_medians": [391.81, 395.24, 384.38, 392.73, 386.43], "overlap": false, "init_base": [988.221, 866.373, 888.851, 659.615, 931.693], "init_cand": [762.842, 837.594, 635.687, 769.533, 725.533], "cost_base": [4.4276846487e-05, 4.42254297175e-05, 4.4371846677e-05, 4.40785960905e-05, 4.42945965225e-05], "cost_cand": [4.09650898635e-05, 4.0993673254e-05, 4.0903173073e-05, 4.09727565455e-05, 4.09202564405e-05], "conflicts": {"base": 0, "cand": 0}}},
+        "dimensions": {"latency": "better", "init": "no_diff", "cost": "better"},
+        "guards": {"batch-10x1-hotkey": {"ok": true, "dimensions": {"latency": "no_diff", "init": "no_diff", "cost": "no_diff"}, "conflicts": {"base": 0, "cand": 0}, "note": "10 条消息共享同一个 BestsellersTable 条目 -> 每条消息各占一波，执行链与 B0 相同，没有变差、没有冲突"}},
+        "guard_overlap_assumptions": "正常基准 batch-10x3-disjoint 假设批次里书目两两不同（不同顾客下不同单）；守卫基准 batch-10x1-hotkey 假设 10 条消息全含同一本书（热点）。真实批次介于两者之间，波数 = 共享条目决定的最长链。",
+        "judge": {"status": "PASS", "cases": {"pass": 12, "migration-change": 3}, "fault_runs": {"pass": 4}, "failures_total": 0},
+        "validate_delta": {"status": "PASS", "total": 9, "passed": 9, "failed": 0, "cases_with_conflicts": []},
+        "equivalence": {"status": "EQUIVALENT", "baseline": "B0", "runs": 14, "differences": [], "unstable_in_baseline": []},
+        "coverage_of_changed_lines": {"status": "PASS", "changed_executable_lines": 67, "covered": 67, "uncovered": [], "sources": {"judge_cases": 15, "assets": "verification/delta"}},
+        "regression": {"judge_full": {"status": "PASS", "cases": {"pass": 46, "migration-change": 13, "dropped": 15}, "fault_runs": {"pass": 18}}, "validate_delta_full": {"status": "PASS", "total": 12, "passed": 12}},
+        "gate_final": "PASS",
+        "verdict_file": "perf/verdicts/batch-10x3-disjoint-20261103-211637.json",
+        "limits": "§2.1 第 2 项：固定延迟模型下并发没有上限，depth 60->7 是“并发不受限”时的结论；每条消息多一次 JSON.parse 与一次键构造（warm_cpu 实测未变差）。"
+      }
+    },
+    {
+      "id": "C2",
+      "request": "REQ-2",
+      "source": "rule:R1",
+      "functions": ["bestsellers-update"],
+      "based_on": ["C1"],
+      "verdict": "kept_inconclusive",
+      "fix_attempts": 0,
+      "commit": "7394584",
+      "change": "把同一套按条目键分波次的规则下沉到一条消息内部的书目条目：elementKeys 给出单个条目触碰的两个条目（认领的 marker 行 + 畅销榜行），条目按“与它共享行的前面条目中最晚的那一波 +1”分波，同一波用 Promise.allSettled 并行；条目体原地包成 handleElement，属于条目循环的 continue 改成 return；单条失败的处理与上报粒度不变（仍然是这一条消息）。选 R4 式分波而不是无条件并行的原因：同一个 bookId 可以在一条订单里出现两次（delta-bestsellers-same-book-twice-in-one-order），它们改的是同一行。",
+      "evidence": {
+        "proxies_before_after": {
+          "before": {"benchmark": "batch-10x3-disjoint", "calls": 60, "depth": 7, "warm_cpu_ms": 9.317, "network_ms_cal": 30.44, "wru": 60, "conflicts": 0},
+          "after": {"benchmark": "batch-10x3-disjoint", "calls": 60, "depth": 2, "warm_cpu_ms": 9.387, "network_ms_cal": 8.08, "wru": 60, "conflicts": 0},
+          "note": "before 是 C1 之后的版本（HEAD），after 是本次改动；调用次数与 WRU 不变。"
+        },
+        "rie": {"10ms": {"base_warm_round_medians": [376.57, 394.69, 371.86, 368.8, 332.92], "cand_warm_round_medians": [294.12, 290.38, 360.22, 303.28, 290.77], "overlap": true, "init_base": [912.339, 810.769, 640.639, 956.119, 813.818], "init_cand": [679.617, 882.334, 891.669, 777.514, 877.441], "cost_base": [4.08380896095e-05, 4.09890899115e-05, 4.0798839531e-05, 4.077333948e-05, 4.0474338882e-05], "cost_cand": [4.0151004902e-05, 4.0119838173e-05, 4.0701839337e-05, 4.0227338388e-05, 4.01230881795e-05], "conflicts": {"base": 0, "cand": 0}}},
+        "dimensions": {"latency": "no_diff", "init": "no_diff", "cost": "no_diff"},
+        "why_kept": "§3.2 第 3 步：RIE 的每轮中位数范围重叠（无显著差异），但代理指标改善（depth 7->2、校准后的关键路径往返 30.44ms->8.08ms）且没有任何维度变差 -> kept_inconclusive。",
+        "guards": {"batch-10x1-hotkey": {"ok": true, "dimensions": {"latency": "no_diff", "init": "no_diff", "cost": "no_diff"}, "conflicts": {"base": 0, "cand": 0}}},
+        "judge": {"status": "PASS", "cases": {"pass": 12, "migration-change": 3}, "fault_runs": {"pass": 4}, "failures_total": 0},
+        "validate_delta": {"status": "PASS", "total": 9, "passed": 9, "failed": 0, "cases_with_conflicts": []},
+        "equivalence": {"status": "EQUIVALENT", "baseline": "B0", "runs": 14, "differences": [], "unstable_in_baseline": []},
+        "coverage_of_changed_lines": {"status": "PASS", "changed_executable_lines": 34, "covered": 34, "uncovered": [], "sources": {"judge_cases": 15, "assets": "verification/delta"}},
+        "regression": {"judge_full": {"status": "PASS"}, "validate_delta_full": {"status": "PASS", "total": 12, "passed": 12}},
+        "gate_final": "PASS",
+        "verdict_file": "perf/verdicts/batch-10x3-disjoint-20261103-213533.json",
+        "limits": "§2.1 第 2 项：一条消息里 3 个条目并行只在并发不受限时成立；RIE 在 10ms 下已被 C1 摊薄，本次只测出代理指标的差别。"
+      }
+    },
+    {
+      "id": "C3",
+      "request": "REQ-3",
+      "source": "rule:R5",
+      "functions": ["books-list", "books-get-by-id", "search-books", "cart-list", "cart-get-by-book", "cart-add", "cart-update", "cart-remove", "orders-list", "orders-create", "bestsellers-list", "bestsellers-update"],
+      "based_on": ["C1", "C2"],
+      "verdict": "kept",
+      "fix_attempts": 0,
+      "commit": "4946f01",
+      "change": "只在 output/template.yaml 的 Globals.Function 增加一行 Architectures: [arm64]（第 24 行），代码一行不改；没有任何函数自带 Architectures，也没有新增别的配置项。",
+      "evidence": {
+        "tier": "A（模板 only 的配置改动，§3.7）：run_config_verdict 检查只改了 output/template.yaml、只改 Architectures、gate(template)、sam build 与编译模块的架构标记；不跑验证、等价性和 RIE（本地 x86_64 跑不出架构差别）。",
+        "config_verdict": {"status": "OK", "verdict": "kept", "reason": "template-only architecture change; gate and build pass; duration price lower, latency not measurable locally", "changed_files": ["output/template.yaml"], "architectures": "12 个函数 x86_64 -> arm64", "duration_price_ratio": 0.8, "native_binaries": {}, "dimensions": {"latency": "not_measured_locally", "init": "not_measured_locally", "cost": "better"}},
+        "cost": "每 GB-秒单价从 lambda_gb_second 1.66667e-05 降到 lambda_gb_second_arm64 1.33334e-05（比值 0.8）；延迟维度本地没有测，速度依据是设计文档附录 A.4 的真实 AWS A/B。",
+        "regression": {"judge_full_after_commit": {"status": "PASS", "cases": {"pass": 46, "migration-change": 13, "dropped": 15}, "fault_runs": {"pass": 18, "dropped": 6}}, "validate_delta_full_after_commit": {"status": "PASS", "total": 12, "passed": 12}, "note": "改动之后仍然跑了全量回归（本地 RIE 用 x86_64 镜像，架构只影响模板与单价）"},
+        "verdict_file": "perf/verdicts/config-20261103-213713.json",
+        "limits": "本阶段没有将模板同步到 output/template.part1.yaml / part2.yaml（R5 只允许改 output/template.yaml 的这一项）；若后续由模板重新拼装 output/template.yaml，需要由实现线把这一行带回 parts。"
+      }
+    }
+  ],
+  "pending_human": [],
+  "blocked": [],
+  "rule_scan": {
+    "R1": {"hits": 1, "locations": ["output/lambdas/bookstore/bestsellers-update/index.js:148-179 (B0)"], "implemented_as": "REQ-2：按条目键分波（同一 bookId 可能在一条消息里出现两次，所以不是无条件 allSettled）"},
+    "R2": {"hits": 0, "locations": [], "note": "12 个函数都只调用一次 parseBody / JSON.parse；orders-create、cart-add/update/remove 里的 parseJsonBody 在解析失败时才走严格语法错误构造，不是重复解析。"},
+    "R3": {"hits": 0, "locations": [], "note": "12 个 package.json 声明的 @aws-sdk/* 依赖全部被 require；orders-create 额外声明的 @aws-sdk/client-sqs 也被使用；没有编译产物。"},
+    "R4": {"hits": 1, "locations": ["output/lambdas/bookstore/bestsellers-update/index.js:130-180 (B0)"], "implemented_as": "REQ-1", "not_applicable": [], "note": "本应用唯一的 SQS 消费者。orders-create 的 books 删除在 B0 已经是 Promise.all（不需要 R4）；其余 10 个函数不是批处理。"},
+    "R1b": {"hits": 0, "locations": [], "not_applicable": ["orders-create: PutItem(OrdersTable) -> 8 个 DeleteItem -> SendMessage 之间只有 error_propagation 的提前返回，但被提前的操作是写和发消息，§6.2 不允许", "bestsellers-update: 认领（条件 PutItem）与 ADD 之间没有第二个读，且前者是写", "books-list: category 分支是二选一，不是两段串行读"]},
+    "R5": {"hits": 1, "locations": ["output/template.yaml:20-23 Globals.Function 没有 Architectures；Runtime nodejs22.x"], "implemented_as": "REQ-3（本应用只做一次，单独提交）"},
+    "R6": {"hits": 0, "locations": [], "note": "run_gate(phase=\"blueprint\") 没有 AT1 WARNING：books-list / search-books 读 event.multiValueQueryStringParameters（REST 1.0 独有的事件字段），REST 是必要的，不申请换 HTTP API。"},
+    "R8": {"hits": 0, "locations": [], "note": "blueprint 没有任何 bounded_staleness SI（spec_resolutions 里 implementation-trace 有 10 条，但没有允许有界旧数据的裁定），也没有 perf_hints；因此不加模块级 TTL 缓存。"}
+  },
+  "advisories": [
+    {
+      "diagnosis": "search-books 每次请求整表 Scan BooksTable 再在内存里过滤（单体 BR-SRC-4 规定不带 FilterExpression、单页）；200 行时 rru=2.5、响应 11/200 命中；成本与延迟随目录行数线性增长。",
+      "why_not_v1": "要变成按键查询需要新建 GSI（name/author/category 的搜索索引）或换 OpenSearch 一类组件，§6.2 里“新增 GSI”只能走 data_model_change 申请，“其他数据模型改动”属于 architect 级别。",
+      "evidence": {"benchmark": "search-scan-200", "calls": 1, "depth": 1, "rru": 2.5, "warm_cpu_ms": 1.521, "cost_units_usd": 3.125e-07, "rows_read": 200, "rows_returned": 11}
+    },
+    {
+      "diagnosis": "bestsellers-list 每次请求整表 Scan BestsellersTable，再在内存里按 salesCount 降序排序取前 20；200 行时 rru=1，返回 20 个 bookId。",
+      "why_not_v1": "按 salesCount 排序/截断需要一个新的 LSIGSI 或物化视图（数据模型改动，architect 级别）；就地只改 CPU（部分选择代替全排序）收益太小，而且会改变并列名次的顺序（BR-BST-4 要求保持 Scan 顺序），违反 H1 (b)。",
+      "evidence": {"benchmark": "bestsellers-list-scan-200", "calls": 1, "depth": 1, "rru": 1, "warm_cpu_ms": 0.895, "rows_read": 200, "rows_returned": 20}
+    },
+    {
+      "diagnosis": "orders-create 的关键路径是 PutItem(OrdersTable) -> 8 个 DeleteItem（B0 已并发）-> SendMessage，depth=3；把 SendMessage 并入删除那一波可以把 depth 降到 2（校准后的往返 13.56ms -> 约 9ms）。",
+      "why_not_v1": "§6.2：“原代码遇到失败就停止 -> 改成并行，被提前的操作里有写操作或发消息”不允许。删除失败时 B0 返回 500 且不发消息，提前发送会多出一条 SQS 消息，改变执行的操作集合（H1 (a)）。",
+      "evidence": {"benchmark": "orders-8-books", "calls": 10, "depth": 3, "network_ms_cal": 13.56, "wru": 9, "sqs_requests": 1}
+    },
+    {
+      "diagnosis": "bestsellers-update 的每个条目要 2 次写（条件 Put 认领 + UpdateItem ADD），一批 10x3 就是 60 次调用 / 60 WRU。",
+      "why_not_v1": "合并成一次 TransactWriteItems 能把调用数减半，但 §6.2 明确禁止“事务化”（改变原子性语义、事务写容量还要乘 2，实际 WRU 反而更高）；跨条目按 key 聚合同样禁止（失败粒度变粗）。",
+      "evidence": {"benchmark": "batch-10x3-disjoint", "calls_after": 60, "wru_after": 60, "depth_after": 2}
+    },
+    {
+      "diagnosis": "books-get-by-id / books-list / cart-list 每请求一次 GetItem/Query/Scan，SI-20 等把这种读法标为 implementation-trace；如果在有界旧数据的裁定下加模块级 TTL 缓存，可以省掉热路径上的读。",
+      "why_not_v1": "R8 要求 blueprint 里有被接受的 bounded_staleness SI，本工作区没有（implementation-trace 只说明“不规定内部读法”，不等于允许旧数据），所以对没有裁定的表做缓存不允许。",
+      "evidence": {"blueprint_bounded_staleness_sis": 0, "blueprint_perf_hints": 0, "implementation_trace_sis": 10}
+    }
+  ],
+  "uncovered_paths": [
+    "REQ-3（arm64）的延迟与 init 维度在本地测不出来（x86_64 主机 + x86_64 RIE 镜像），只有成本维度按单价计算。",
+    "bestsellers-update 的热点守卫基准每条消息只有 1 个条目，所以条目级并行在热点场景下没有被压测；跨消息的热点（同一本书被多条消息改）由 batch-10x1-hotkey 覆盖，delta 资产里的 two-messages-same-book-in-batch 覆盖了部分重叠的情况。",
+    "verification/delta 只有 bestsellers-update 与 orders-create 两个函数的资产；其余 10 个函数由 judge 的端点用例覆盖，本轮没有改动它们的代码。"
+  ],
+  "commits": {
+    "bbdf11e": "perf: benchmarks（6 个基准，提交之后未再修改）",
+    "6c8ebb8": "perf(REQ-1): R4 wave-parallel SQS batch in bestsellers-update [kept]",
+    "7394584": "perf(REQ-2): R1 element waves inside one message in bestsellers-update [kept_inconclusive]",
+    "4946f01": "perf(REQ-3): R5 arm64 in Globals.Function [kept, config verdict]"
+  },
+  "totals": {"kept": 2, "kept_inconclusive": 1, "reverted": 0, "pending_human": 0, "blocked_by_test": 0, "blocked_by_coverage": 0}
+}

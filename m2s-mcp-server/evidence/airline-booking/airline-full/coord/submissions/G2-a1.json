@@ -1,0 +1,9 @@
+{
+  "task": "G2",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-03T23:35:19+0800",
+  "summary": "核对了 G1 的 10 条机械信号（全部成立，未推翻任何一条；其中 9 条加了 note 收窄或补充：GAP-1 的\"写 5 次\"含失败补偿分支、成功路径只有 4 次，GAP-3 的 storage.py:61 是判空用的 scan(Limit=1) 没有截断后果，GAP-4/GAP-7 指向的 fix_admin_user.py 不在请求路径上）。读单体源码新增 13 条 source=G2 的缺口（GAP-11..GAP-23）：全局 @app.errorhandler(Exception)（P0 的 global_middleware 只记了 CORS，它同时把 404 与非法 JSON body 接成 500，已用 Flask 3 test_client 实测）、模块导入时的一次性初始化与播种（storage 单例建 boto3 resource + 判空写 FL001/FL002；auth 导入时注册 user123/admin123 并加 Admin 组，失败只 print）、JWT 密钥未配环境变量时每进程随机生成 + exp 60 分钟无刷新 + 每次认证多读一次 users 表且 admin 判定用库里的 groups、回读一律用不带 ConsistentRead 的 Scan（写后立刻读可能看不见）、列表顺序即 Scan 顺序（主键随机、无排序）、createdAt 用本地时区 datetime.now() 而 auth 用 utcnow()、重复邮箱检查先 Scan 后写而条件只约束 sub、release_flight_seat 先读 maximumSeating 再条件写、被 except 吞掉的同步副作用（积分/通知/补偿放座/退款，Python 侧机械信号查不出，G1 的 fire_and_forget 原为空）、STRIPE_AVAILABLE/_stripe_configured 两个模块级标志决定真实还是模拟、认证结果靠 request.current_user 传递、配置分散三处而 config.py（load_dotenv 读本地 .env）不被 app.py import、sys.path.insert 才能按顶层名导入。check_gap_inventory 第 1 次即 PASS，23 条全部 status=open、不含任何 decision。",
+  "notes": "给 architect 的三点提示：(1) 工作区里没有 .env 文件，所以 JWT_SECRET_KEY 与 STRIPE_SECRET_KEY 都取不到值——GAP-13 的随机密钥分支和 GAP-20 的模拟支付分支是本地实际执行的分支，模拟价恒为 150、退款对任何非空 chargeId 都\"成功\"。(2) GAP-11 里\"Flask 把 HTTPException 也交给 Exception handler（未注册路径 → 500 + type=NotFound）\"是用当前环境 Flask 3 的 test_client 实测的，单体 requirements 钉的是 Flask==3.0.0，未在该版本上复跑，若要据此出题请验证线在单体上确认一次。(3) P0 的 global_middleware 只有 CORS 一项，全局错误处理没有成为其中一项——按 G2 规则我没有改事实库，只把它记成 GAP-11 并在报告 issues 里写明位置。P2 的 multi_write 信号只数 DynamoDB 写，退款/支付状态全部落在进程内存（GAP-5 的字典是唯一支付账本，dynamodb_info 里没有支付表），这一点 GET /payments/<charge_id> 是唯一外部可验证口。"
+}

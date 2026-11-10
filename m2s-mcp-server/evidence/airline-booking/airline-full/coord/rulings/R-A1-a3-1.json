@@ -1,0 +1,45 @@
+{
+  "id": "R-A1-a3-1",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 3,
+  "time": "2026-11-04T01:18:58+0800",
+  "question": "七个受保护端点上的未登录/坏令牌步骤（no-header、no-space、bad-token）在目标上由谁应答、应答什么？",
+  "conclusion": "这些步骤不再进入函数：由 API Gateway 的 Cognito 授权器直接应答 401，响应体是 {\"message\":\"Unauthorized\"}，不再是单体的 {\"error\": ...}；单体三条 401 文案（缺 Authorization 头 / 头里没有空格分段 / 令牌无效或过期）合并成这一条，状态码仍是 401。响应头按 api_gateway.gateway_responses.UNAUTHORIZED/DEFAULT_4XX 带上单体的四个全局头（Access-Control-Allow-Origin: '*'、Vary: Origin、Access-Control-Allow-Methods、Access-Control-Allow-Headers）。除认证出口外，同一用例的其它步骤（403 归属判定、404/400 等）不受影响，仍照搬单体。",
+  "basis": "blueprint metadata.spec_resolutions SI-6 与 SI-13（migration-change：认证基建化、\"sub 查不到用户\"这一臂不再由函数产生）；blueprint cognito.enabled=true、api_gateway.authorizer=\"Cognito\"/authorizer_type=\"COGNITO_USER_POOLS\"、api_gateway.gateway_responses.UNAUTHORIZED（status 401 + body {\"message\":\"Unauthorized\"}）；storage/DECISIONS.md D-1 与 D-19；analysis_report 七个端点 auth.classification=required（gate(blueprint) 的 auth 一致性检查已 PASS）。",
+  "category": "migration-change",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [
+      "get-booking-owner-other-missing#no-header",
+      "get-booking-owner-other-missing#no-space",
+      "get-booking-owner-other-missing#bad-token",
+      "customer-bookings-single-and-auth#no-header",
+      "customer-bookings-single-and-auth#no-space",
+      "customer-bookings-single-and-auth#bad-token",
+      "loyalty-empty-and-auth-arms#no-header",
+      "loyalty-empty-and-auth-arms#no-space",
+      "loyalty-empty-and-auth-arms#bad-token",
+      "cancel-auth-and-missing#no-header",
+      "cancel-auth-and-missing#no-space",
+      "cancel-auth-and-missing#bad-token",
+      "confirm-auth-and-missing#no-header",
+      "confirm-auth-and-missing#no-space",
+      "confirm-auth-and-missing#bad-token",
+      "bookings-auth-and-input-arms#no-header",
+      "bookings-auth-and-input-arms#no-space",
+      "bookings-auth-and-input-arms#bad-token",
+      "add-points-validation-and-auth#no-header",
+      "add-points-validation-and-auth#no-space",
+      "add-points-validation-and-auth#bad-token"
+    ],
+    "layers": [
+      "P"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

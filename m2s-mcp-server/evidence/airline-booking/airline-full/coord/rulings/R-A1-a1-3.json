@@ -1,0 +1,25 @@
+{
+  "id": "R-A1-a1-3",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 1,
+  "time": "2026-11-04T00:57:16+0800",
+  "question": "四个 /auth 端点（register / login / me / users）在目标上不提供，裁判落在这四个端点上的步骤与身份准备步骤怎么处理？users 表里的身份值在目标上是什么？",
+  "conclusion": "按规则手册的默认做法（认证基建化，删除而非迁移）：这四个端点由 Cognito 用户池/用户目录取代，storage/adapter_map.json 的 dropped_endpoints 逐条列出，裁判不在目标上运行这些步骤（judge/cases 下整例只落在 /auth 上的 9 个用例判为 dropped）。身份准备（register+login）在目标上换成适配映射的 claims 注入：每个别名在目标侧的用户 id 就是单体客户端自选的那串用户 id（judge/identities.json 里 u1/u2 注册请求体的 userId=judge-u1/judge-u2，admin 的 id 是 judge/fixtures/users-admin.json 里的 sub=judge-admin，三者都等于 judge-&lt;alias&gt;），所以 identities.user_id 与 claims.sub 都写成 judge-${alias}，业务表里的 customer/customerId 沿用同一批字符串、不需要重写。随这四条路径一起消失的对外行为（注册可传空 email/password、注册重复邮箱的 409、GET /auth/me 的三键投影、GET /auth/users 的管理员列表与“行缺 email 就 500 KeyError”的缺陷臂）都不在目标上复刻；目标上带合法身份但 users/UserGroups 里没有行的调用不再返回 401（鉴权已由网关完成），只按没有授权组处理。这些都是规则手册默认做法的必然结果，不是本设计另行选择的偏离。",
+  "basis": "角色规则手册“认证基建化，删除而非迁移”“Users 表三种处理方式”；storage/gap_inventory.json GAP-10、GAP-13、GAP-17 的决定（test=none，因为对应端点已删、没有可比较的记录）；blueprint.metadata SI-6、SI-13；storage/DECISIONS.md D-1、D-3、D-4、D-16；storage/adapter_map.json 的 identities 与 dropped_endpoints；judge/identities.json 与 judge/fixtures/users-admin.json。",
+  "category": "migration-change",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [],
+    "layers": [
+      "P",
+      "R",
+      "T"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

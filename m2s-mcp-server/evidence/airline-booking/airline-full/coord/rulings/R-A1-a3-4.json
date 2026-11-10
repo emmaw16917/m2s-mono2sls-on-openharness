@@ -1,0 +1,23 @@
+{
+  "id": "R-A1-a3-4",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 3,
+  "time": "2026-11-04T01:20:29+0800",
+  "question": "POST /bookings 规格里那个可选字段 name 在目标上要不要读取、校验或回显？",
+  "conclusion": "不读取、不校验、不落库、不回显：单体 handler 只取 outboundFlightId / customerId / chargeId（以及 booking 自身字段），name 从未出现在读取路径里，带不带、带什么值都不影响状态码、响应体与写库内容。目标保持这一点：多出来的请求体键一律忽略，不因为未知键返回 400。规格把 name 标成 optional 只是记录请求体可能出现过它，不是一项契约。",
+  "basis": "analysis_report POST /bookings#request.fields 的 name 条目与其 source 出处（单体 handler 与 validate_booking_request 均不引用 name；app.py:219-241 的取键列表）；blueprint metadata.spec_resolutions SI-1（必填校验只做键存在性）；storage/DECISIONS.md D-15。",
+  "category": "spec-gap",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [],
+    "layers": [
+      "P"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

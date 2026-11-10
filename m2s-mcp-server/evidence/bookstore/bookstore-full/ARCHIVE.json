@@ -1,0 +1,20 @@
+{
+ "application": "bookstore",
+ "run": "bookstore-full",
+ "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\bookstore-full",
+ "archived_at": "2026-11-03T21:50:59+0800",
+ "files": [
+  "storage/harness_version.json",
+  "storage/rulings.json",
+  "storage/gap_inventory.json",
+  "storage/DECISIONS.md",
+  "storage/adapter_map.json",
+  "judge/judge_manifest.json",
+  "judge/judge_validation.json",
+  "output/perf_report.json",
+  "output/final_report.md",
+  "verification/verdict_judge.json",
+  "verification/verdict_delta.json"
+ ],
+ "missing": []
+}

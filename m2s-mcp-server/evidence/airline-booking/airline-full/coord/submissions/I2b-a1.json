@@ -1,0 +1,9 @@
+{
+  "task": "I2b",
+  "attempt": 1,
+  "role": "m2s-sam-engineer",
+  "status": "done",
+  "time": "2026-11-04T03:44:28+0800",
+  "summary": "写了 output/template.part2.yaml：15 个 AWS::Serverless::Function（14 个 REST Api 事件 + 1 个 SQS 消费者）、FUNCTIONS_METADATA 块与 Outputs。CodeUri/Handler 按 output/lambdas/airline/ 下真实代码读出（handler.lambda_handler，非 blueprint 占位值）；7 个 auth=none 端点显式 Auth:{Authorizer: NONE}，7 个 auth=required 端点不写 Auth 以继承 part1 的 Cognito DefaultAuthorizer；Path/Method 与 blueprint entry_points 一一对应（<param> 写成 {param}）；Policies 按实际 SDK 调用取最小权限（只读 DynamoDBReadPolicy / 有写 DynamoDBCrudPolicy），bookings-create 加 SQSSendMessagePolicy + LOYALTY_QUEUE_URL，loyalty-award-points 加 SQSPollerPolicy + BatchSize 10 + FunctionResponseTypes:[ReportBatchItemFailures]（D-5/SI-10）且不挂 HTTP 路由。",
+  "notes": "自查方式：在临时目录（仓库外）把 part1+part2 文本拼接后，用 gates.load_template + check_c1_template/c2/c3/c7/c7b/c8/c9/c11/c12/c13/c14 + check_gm_template + check_api_type_template 只读跑了一遍 → 0 errors，Outputs 9 项、函数 15 个、SQS/Api 事件数与 blueprint 相符。未生成 output/template.yaml、未调用 validate_sam（按 S3b 规则留给 S3c）。\n\n两点给后续阶段的说明：\n1) gate 的 C4 suspects 会把每个表变量报成 declared_but_unused、把 AWS_REGION 报成 used_but_not_declared。这是 _ENV_PY_RE 只匹配 os.environ(...) 调用形式、不匹配 os.environ[...] 下标形式造成的正则失真（gates.py 文档本身说 C4/C5/C6 只是交 validator 判断的 suspects）。实际声明的环境变量集合与 blueprint.lambda_functions[].environment_variables 完全一致；AWS_REGION 是 Lambda 运行时自带变量（代码用 os.environ.get('AWS_REGION','us-east-1') 兜底），我有意没有为消噪而往模板里加 blueprint 之外的变量。若 validator 判它需要声明，一行 AWS_REGION: !Ref 'AWS::Region' 即可，verify.py 能解析该伪参数。\n2) Runtime/Timeout/MemorySize/Architectures 沿用 part1 的 Globals，未在各函数重复；消费者继承 30s 超时 < 队列 VisibilityTimeout 300s，满足 sam-kb 约束。"
+}

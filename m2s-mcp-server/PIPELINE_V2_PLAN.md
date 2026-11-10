@@ -509,6 +509,27 @@ F1 结构提取 → F2 语义标注 → F3 出处检查 ──► 事实库
 - 证据库里有两次运行的归档；
 - 和同一应用的 v1 运行（bookstore-v3a 等）相比，列出结果的差别。
 
+**N5 结果（2026-11-04，验收标准达到）**：
+
+| | `bookstore-full`（Express） | `airline-full`（Flask，airline-booking） |
+|---|---|---|
+| 运行 | 26 个任务，真实 worker，`--max-workers 1`；10 次启动，全部第一次通过 | 26 个任务；13 次启动（A1 3 次、I1 2 次，其余 1 次） |
+| 用时 | 16:20 → 21:51，5 小时 30 分 | 23:07 → 次日 05:48，6 小时 41 分 |
+| 裁判 | v2，2026-11-02T16:24:58Z 冻结：74 个用例（P 74 / R 0）、24 个故障场景；单体行覆盖 584/611（95.6%）；必须的响应 63/66、业务规则 114/126；变异 93 个、抓住 86、等价 7，检出率 1.0；"并行改串行" survived | v1，2026-11-02T14:36:26Z 冻结：51 个用例（P 48 / R 3）、26 个故障场景；单体行覆盖 872/967（90.2%）；必须的响应 76/77、业务规则 92/116；变异 138 个、抓住 129、等价 9，检出率 1.0；"并行改串行" survived |
+| V1 / V2 | 适配映射 PASS（15 个用例 / 26 个数据步）；run_judge PASS：46 pass / 13 migration-change / 15 dropped；故障运行 18 pass / 6 dropped | 适配映射 PASS（12 个用例 / 19 个数据步）；run_judge PASS：35 / 7 / 9；故障运行 23 / 3 |
+| V3 / B0 | 增量测试 12/12 PASS；tag B0 = 06b8b97；故障基准 20 次运行 | 增量测试 25/25 PASS；tag B0 = 1f47912；故障基准 33 次运行 |
+| 缺口 | 18 条：delta 2、judge 8、none 8 | 23 条：judge 13、none 10 |
+| 裁定 | 1 条（m2s-architect 决定；人工 0 条，还在等人 0 条） | 4 条（m2s-architect 决定；人工 0 条，还在等人 0 条） |
+| O | 3 个请求：kept 2（R4、R5）、kept_inconclusive 1（R1）；撤销/阻塞/待人 0 | 2 个请求：kept 1（R4）、pending_human 1（R1，见下） |
+| 收尾 | gate(final)、全量裁判、全量增量测试全部 PASS；C2 归档 `evidence/bookstore/bookstore-full`（4.3MB，缺失 0） | 同上；归档 `evidence/airline-booking/airline-full`（6.4MB，缺失 0） |
+
+- 两次运行都到 C2；报告里都有裁判版本、强度指标、裁定次数和人工次数；证据库两份归档都在。两次的阶段复查（B0 后的 `C001-B0-review`）都判 ok，没有退回、没有 reroute。
+- **和 v1 运行的差别**：
+  - bookstore（对 `bookstore-v3a`，2026-10-31/11-01）：v1 共 18 次启动，S1 用了 6 次（前两次明确失败，C14 退回后又重查）、V1 2 次、S3c 2 次、V2 2 次，并在阶段复查时交人一次（C14、Docker、SI-22 三件事）后重跑，墙钟约 15 小时；v2 是 10 次启动全部第一次通过、0 次人工裁定、5 小时 30 分。判定口径也不同：v1 是 128/128，v2 是 74 个用例的冻结裁判（变异检出率 1.0），其中 15 个 dropped 来自 Cognito 取代 4 个 `/auth` 端点，13 个 migration-change 来自 R-A1-a1-1 的 401 响应体。保留的优化 v1 为 2 条（R4、R1 不确定），v2 为 3 条（多一条 R5 arm64）。
+  - airline（对 `airline-booking-c3`，2026-10-05 的 v1 运行；单体未变，迁移决策不同）：v1 判定 188/188，S5 保留 1 条（R5 arm64），其模板没有异步流（`has_async_flows=false`），R1–R4 都无命中；v2 的 architect 按 DECISIONS D-5 把单体里"预订成功后写积分、失败只打日志"这条路径建模成 SQS（`LoyaltyPointsQueue`，消费者 `loyalty-award-points`），因此 R4 有命中并保留（消费者批处理），R1（cancel 的读-改-写）因收益落在噪声内被标为 `pending_human`，R5 在 B0 模板里已经是 arm64，没有请求。这是迁移建模的差别，不是判定差别。
+- **未验证的**：两次运行都是本机检验（RIE + DynamoDB Local 或 dynalite），没有部署到 AWS；airline 的 R1 改动没有落地（`pending_human`，补丁在 `perf/patches/REQ-2.patch`，等人决定是否值得）。
+- **运行中值得记的**：airline 的 A1 第 1 次尝试被 DashScope 的内容检查拒绝（`data_inspection_failed`，工作已完成、只差 submit，调度器按失败重试），第 2 次多写了一个范围外的临时文件；I1 第 1 次把阶段报告写成了 `storage/stage_reports/S2.json`。两次都由范围检查或提交检查自动退回，没有人工介入，重试后通过；bookstore 没有出现这类失败。
+
 ---
 
 ## 6. 测试和验收方法

@@ -1,0 +1,9 @@
+{
+  "task": "D1",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-03T18:09:11+0800",
+  "summary": "D1 完成：按 GAP-2 / GAP-17 的 SQS 链路写了 12 个增量用例（orders-create 3 个、bestsellers-update 9 个）与 6 个故障场景，放在 verification/delta/。判定的是裁判看不到的东西：消息是否真的入队且 books 原样带 orderId、消费者按 (orderId, 数组下标) 幂等（同 messageId 重投、不同 messageId 的同内容重投、一条消息内重复 bookId、认领后效果丢失后的重投）、quantity 不做类型归一化、永久错误跳过 vs 临时错误上报 batchItemFailures 的失败粒度、SendMessage 失败仍 200。run_validate(dry_run=true, assets=\"verification/delta\") PASS（12 cases / 6 fault_scenarios，无 schema_errors）。",
+  "notes": "未写 delta 用例的 10 个 API 函数（books-list / cart-* / orders-list / search-books / bestsellers-list）行为都有单体对应物，由 judge/ 判定，delta 不重复裁判。tx_conflict 与「一条消息拆多个事务」两类用例不适用：D-6 明确选了非事务的「条件认领 IdempotencyTable + 单体那次 UpdateItem ADD」，替代覆盖是 delta-bestsellers-two-messages-same-book-in-batch（热点条目并发）与 delta-bestsellers-redelivery-after-claim-only（标记已写、效果未写成）。生产者消息体的 orderId 是 uuid，每次不同，所以只对 books 内容下断言，orderId 的存在性由消费者侧用例反向覆盖（缺 orderId 走 delta-bestsellers-malformed-message-skipped 的跳过臂）。self_check 里 dry_run 报的 functions_without_cases 是信息项，不是错误。报告：storage/stage_reports/D1.json。只写了 verification/delta/** 与自己的报告，judge/、output/、storage/ 其余文件与流水线工具未改动。"
+}

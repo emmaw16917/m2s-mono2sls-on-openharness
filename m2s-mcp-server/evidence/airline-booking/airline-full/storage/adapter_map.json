@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "tables": [
+    {
+      "monolith": "Airline-Flight-{stage}",
+      "target": "FlightTable",
+      "note": "同一张表、同样的属性名（id / departureAirportCode / arrivalAirportCode / departureDate / flightNumber / ticketPrice / ticketCurrency / seatCapacity / maximumSeating，见 airline-booking/init_dynamodb_tables.py:34-46 与 data/storage.py:35-60）。没有改名、没有类型转换：单体的 Decimal 读写已经由数据层转成 int/float（storage.py:41-53），目标沿用同样的转换，裁判按同一份 fixture 比对。"
+    },
+    {
+      "monolith": "Airline-Booking-{stage}",
+      "target": "BookingTable",
+      "fields": {
+        "customer": {
+          "from": "customer",
+          "as": "identity"
+        }
+      },
+      "note": "主键仍是 id（S），属性名与单体一致（bookingOutboundFlightId / checkedIn / customer / paymentToken / status / createdAt / bookingReference，storage.py:193-202）。customer 是用户 id：目标侧的用户 id 沿用单体客户端自选的那个字符串（blueprint metadata SI-7 与 D-2），所以这条 identity 映射在本工作区里是同名同值、不重写。"
+    },
+    {
+      "monolith": "Airline-Loyalty-{stage}",
+      "target": "LoyaltyTable",
+      "fields": {
+        "customerId": {
+          "from": "customerId",
+          "as": "identity"
+        }
+      },
+      "note": "主键仍是 id（S），属性 customerId / points / flag / date 同名（storage.py:270-276）。customerId 与 booking.customer 同一个口径（SI-7），因此同样是同名同值的 identity 映射。points 保持数字类型（int/Decimal→int），date 是 ISO 串（见 SI-11）。"
+    },
+    {
+      "monolith": "Airline-Users-{stage}",
+      "target": "UserGroupsTable",
+      "fields": {
+        "sub": {
+          "from": "sub",
+          "as": "identity"
+        }
+      },
+      "drop": {
+        "password_hash": "凭据：改由 Cognito 用户池保管，绝不进 DynamoDB（SI-12）",
+        "email": "Cognito 标准属性 email，用户池里已有一份；这张表不复制身份属性（SI-12）",
+        "created_at": "Cognito 标准属性 created_at，用户池已记录；而且它由 auth.py 的 utcnow() 写入，与 booking.createdAt 的本地 naive 时间不是同一口径（GAP-8/GAP-16）"
+      },
+      "note": "users 表按角色规则手册的拆分方案②处理：凭据归用户池，授权数据 groups 留在 DynamoDB 的 UserGroupsTable（D-3）。表里只剩 sub（值 = 业务用户 id）+ groups（组名字符串数组，单体用的名字是 'Admin'，auth.py:137）。函数的 Admin 判定读的就是这张表的行；本人判定读的是 claims.sub，因此不碰表。裁判的 users-admin fixture 因此仍在目标上落出一条行（sub=judge-admin、groups=['Admin']），这正好是 Admin 那几条用例需要的数据。"
+    }
+  ],
+  "identities": {
+    "claims": {
+      "sub": "judge-${alias}",
+      "username": "judge-${alias}",
+      "email": "${email}"
+    },
+    "user_id": "judge-${alias}",
+    "note": "认证被 Cognito 替换（SI-12/SI-13），所以身份不再由单体的 register/login 产出，而由网关授权器把 claims 交给函数。目标侧的用户 id 就是单体客户端自选的那个 userId 字符串（SI-7）：u1 的单体 sub 是 judge-u1（judge/identities.json 里 u1/u2 的注册请求体 userId=judge-u1/judge-u2），admin 的单体 sub 是 judge-admin（judge/fixtures/users-admin.json 的 sub 字段），三者都等于 judge-<alias>，所以 user_id 与 claims.sub 都写成 judge-${alias}。handler 读 claims.sub 当业务用户 id（本人判定、booking.customer 的写入值）。不写 seed：Admin 的行由裁判的 users-admin fixture 通过上面的表映射落库，seed 的模板对所有别名相同、会把 admin 的 groups 覆盖掉，所以不能用 seed。 备注：真实部署里用户池自生成的 sub 是 UUID，那时 claims.sub 就当 UUID 用（函数仍然只认 claims.sub，归属判定的形状不变）；认证被替换后 auth_replaced=true，裁判不再执行 identities.json 里的 register/login 步骤，password 这类变量不会出现在 claims 里。"
+  },
+  "dropped_endpoints": [
+    {
+      "endpoint": "POST /auth/register",
+      "replaced_by": "cognito",
+      "reason": "Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。"
+    },
+    {
+      "endpoint": "POST /auth/login",
+      "replaced_by": "cognito",
+      "reason": "Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。"
+    },
+    {
+      "endpoint": "GET /auth/me",
+      "replaced_by": "cognito",
+      "reason": "Replaced by Cognito - 客户端从 ID token 里读 sub/email（SI-12）。groups 不再由这个端点回显：它在 UserGroupsTable 里，目标不代理用户目录（裁判的 me-only-three-keys-and-401-arms 整例跳过）。"
+    },
+    {
+      "endpoint": "GET /auth/users",
+      "replaced_by": "cognito",
+      "reason": "Replaced by Cognito user directory（ListUsers / AdminListGroupsForUser）：这个端点是管理员列整个用户目录，数据源就是那张凭据表（SI-12、D-1）。随之消失的两条对外行为（缺 email 的行让它 500 KeyError；sub/email/groups 的三键投影）在 blueprint 的 SI-15 里一并裁定。"
+    }
+  ],
+  "target_only_tables": [
+    {
+      "target": "PaymentsTable",
+      "reason": "单体的支付账本是进程内存的两个字典（services/payment.py:21-22），没有对应的 DynamoDB 集合，所以这里没有 monolith 表可映射。迁移按 GAP-5 的规则手册默认把它放进 DynamoDB：否则 POST /bookings/collect 写的收款记录在另一个执行环境里读不到，POST /bookings/<booking_id>/cancel 与建单回滚里的“改 status=refunded”也无从发生（D-7、SI-9）。主键是类型标注过的收款号 '<类型名>:<str(值)>'（SI-10、D-7）；条目里的 chargeId 保持原类型。裁判的 tables_after 里没有这张表（单体没有），它只能通过 GET /payments/<charge_id> 的读回步骤观察，因此不需要反向映射。"
+    }
+  ],
+  "note": "四张单体表全部映射（Users 拆成 Cognito + UserGroupsTable），业务表的键没改名；所有 identity bearing 字段（booking.customer、loyalty.customerId、users.sub）在目标上沿用单体客户端自选的用户 id 字符串，因此 round-trip 是恒等映射。新增的只有 PaymentsTable（SI-9/D-7）。fixture 里没有任何表需要拆行或改键形状。"
+}

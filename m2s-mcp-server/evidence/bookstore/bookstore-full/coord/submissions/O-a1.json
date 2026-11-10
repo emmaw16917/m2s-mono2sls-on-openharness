@@ -1,0 +1,9 @@
+{
+  "task": "O",
+  "attempt": 1,
+  "role": "m2s-perf-optimizer",
+  "status": "done",
+  "time": "2026-11-03T21:47:02+0800",
+  "summary": "优化线完成：在 B0 上保留 3 个语义保持的改动，各自单独提交 —— REQ-1（R4，bestsellers-update 一批 SQS 消息按条目键分波次并行：depth 60→7，10ms 下 RIE 热调用每轮中位数 [765..801]ms→[384..395]ms 不重叠，热点守卫基准 no_diff 且无冲突 → kept）；REQ-2（R1，同一套分波规则下沉到消息内部的书目条目：depth 7→2、校准往返 30.4→8.1ms，RIE 无显著差异但没有维度变差 → kept_inconclusive）；REQ-3（R5，模板 Globals.Function 增加 Architectures: [arm64]，run_config_verdict → kept，时长单价 0.8）。每个代码改动都过了 gate(final)、run_judge、run_validate(delta)、run_equivalence(diff,delta)=EQUIVALENT、run_coverage(changed_since=HEAD, with_judge)=改动行全覆盖，冲突为 0；收尾全量回归 run_judge()=PASS（46/13/15，fault_runs 18）与 run_validate(assets=delta)=PASS 12/12。没有 reverted、pending_human、blocked_*，也没有申请放宽 spec 或新建 GSI。规则扫描 R2/R3/R1b/R6/R8 命中 0，5 条 §6.2 不允许的改动写进 advisories。judge/ 与 verification/ 的用例、故障场景一字未动。",
+  "notes": "提交：bbdf11e(基准) → 6c8ebb8(REQ-1) → 7394584(REQ-2) → 4946f01(REQ-3) → 2b4c609(perf_report) → dd0c2fe(O.json)，工作树 clean。output 相对 B0 只改了 bestsellers-update/index.js、template.yaml(+1 行)、perf_report.json。\n\n两点需要下游注意（都记在 storage/stage_reports/O.json 的 issues 里）：\n1) O-1：R5 按规则只能改 output/template.yaml 的这一行，所以 output/template.part1/part2.yaml 里没有 Architectures；若以后由分片重新拼装模板，这一行会丢，需要 sam-engineer 把它带回分片。\n2) O-2：run_proxy_metrics 的返回以基准 id 为键，三个函数都用 scan-200 时互相覆盖（第一次跑只看到一个）。我在提交基准前把 id 改成唯一值（文件名不变，基准提交后未再修改）。建议后续应用的 S5 给基准 id 加函数前缀；不改工具。\n\n判决局限已写进报告 evidence：§2.1 第 2 项（并发无上限）使 R1/R4 的延迟收益是理想值；REQ-2 的 RIE 范围重叠，是按 §3.2 第 3 步（代理指标改善 + 无维度变差）保留的 kept_inconclusive；REQ-3 的延迟/init 本地测不出，只有成本维度按 arm64 单价判定。\n\n热点守卫基准每条消息只含 1 个条目，条目级并行在“同一本书被同一条消息改两次 + 多条消息改同一本书”的组合场景下没有压测；跨消息热点由 batch-10x1-hotkey、部分重叠由 delta-bestsellers-two-messages-same-book-in-batch 覆盖，均未出现冲突。"
+}

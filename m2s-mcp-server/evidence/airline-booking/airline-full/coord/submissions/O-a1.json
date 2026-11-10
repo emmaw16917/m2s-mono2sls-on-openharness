@@ -1,0 +1,9 @@
+{
+  "task": "O",
+  "attempt": 1,
+  "role": "m2s-perf-optimizer",
+  "status": "done",
+  "time": "2026-11-04T05:39:57+0800",
+  "summary": "在 B0 上完成 8 条规则的全量扫描与 2 份改动请求：保留 1 个（REQ-1，R4 把 loyalty SQS 消费者一批 10 条串行 PutItem 改成按条目键分波次并行，顺序深度 10→1、RIE 10ms 热调用 5 轮中位数 [139.05..148.25]→[71.13..82.34]ms 不重叠、热点守卫基准无冲突未变差，commit 44899ac）；1 个交人工（REQ-2，booking-cancel 放座臂与退款臂并行，四项检查全过、深度 8→6、无冲突，但延迟结论随模拟往返时间反转，补丁在 perf/patches/REQ-2.patch）。收尾全量回归 run_judge() PASS（35 用例 + 23 故障运行）、run_validate(delta) PASS 25/25、gate(final) PASS；报告在 output/perf_report.json，台账已 update_ledger。",
+  "notes": "1) pending_human 需要人裁定：REQ-2（perf/verdicts/cancel-with-payment-and-seat-20261104-052511.json）——0ms worse / 5ms、10ms no_diff / 15ms clearly better，warm CPU 比基线 1.8 倍（未超 2.0），init 与成本不变；按 §3.4 已回滚并留下可直接套用的补丁。\n2) 本轮没有提交 spec_relaxation 申请：SI-2 的重复读（CANCEL 端点同一 BookingTable 条目读 3 次）虽属 implementation-trace，但冻结裁判的故障场景按 nth=2/nth=3 定位，去掉就没有落点；已写入 advisories，若要走放宽流程需要裁判重录。\n3) 两处工具局限如实记录在 issues：perf-shim 的 PutItem 不回读，导致所有“写后读”链（bookings-create 第 4 步）无法构造合法基准（§3.1-1 INVALID），因此 bookings-create 没有基线代理指标；run_equivalence 在 booking-cancel 上报 unstable_in_baseline=[delta-booking-cancel-rewrites-ledger-row, delta-booking-cancel-ledger-write-fails::同]，即基线自己两次运行不一致、这两条被排除在判决之外，建议验证线核对这条退款失败路径的期望（refundId 掩码）。\n4) REQ-1 有一次实现内修正（fix_attempts=1）：第一版 record_item_keys 里我新加的 `isinstance(body, dict)` 分支没有用例覆盖（all_covered=false），把它折进解析的 try/except，语义不变，之后四项检查全部重跑通过。\n5) judge/ 未改动；工作树相对 HEAD 干净，提交序列 1c41519(基准) → 44899ac(REQ-1) → 604d1ce(报告+回归判决)。"
+}

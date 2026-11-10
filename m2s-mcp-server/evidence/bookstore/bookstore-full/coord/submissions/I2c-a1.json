@@ -1,0 +1,9 @@
+{
+  "task": "I2c",
+  "attempt": 1,
+  "role": "m2s-sam-engineer",
+  "status": "done",
+  "time": "2026-11-03T19:50:08+0800",
+  "summary": "用 m2s_merge.py 合并 template.part1/part2 生成 output/template.yaml（644 行，单一 Resources 段 + Outputs）；自查第 1 次即通过：run_gate(phase=\"template\") = PASS 且 mechanical_failures=[]，validate_sam ok=true 无 errors/warnings，故未对合并结果做任何修改，也未改动 part1/part2。",
+  "notes": "资源集按规格逐项复核过：5 张 DynamoDB 表（BooksTable+category-index GSI、CartTable/OrdersTable 复合键、BestsellersTable、IdempotencyTable 带 TimeToLiveSpecification expiresAt）、BestsellerUpdateQueue+DLQ（VisibilityTimeout 60 / MaxReceiveCount 3 / Retention 345600）、AWS::Serverless::Api（REST、REGIONAL、StageName Prod、Cors 3 字段、GatewayResponses 覆盖 UNAUTHORIZED/AUTHORIZER_FAILURE/ACCESS_DENIED/DEFAULT_4XX/DEFAULT_5XX 以满足 GM2）、Cognito UserPool+Client、12 个 Function（11 个 Type: Api 事件继承 DefaultAuthorizer CognitoAuthorizer，无 auth=none 端点故无 Authorizer: NONE；1 个 SQS 消费者带 BatchSize 10 与 FunctionResponseTypes: [ReportBatchItemFailures]）。Globals.Function 无 Handler（避免 C3），每函数 Handler=index.handler 与磁盘 index.js 一致，CodeUri 均为 lambdas/bookstore/<name>/。s3_buckets/eventbridge_rules/lambda_invoke_permissions 在 blueprint 里为空，模板也确实没有这三类资源。遗留观察（沿用 I2a/I2b）：显式 AWS::Serverless::Api 的 Cors OPTIONS 方法会继承 DefaultAuthorizer，真实部署下无令牌预检会 401；spec 与 judge/cases 都没有 OPTIONS 步骤，故未偏离规格加例外，后续若做真实部署验证可关注。"
+}

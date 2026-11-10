@@ -1,0 +1,45 @@
+{
+  "id": "R-A1-a1-1",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 1,
+  "time": "2026-11-04T00:56:43+0800",
+  "question": "七个受保护端点上共 21 个“未登录”步骤（no-header / no-space / bad-token）在目标上由谁应答、应答成什么样？单体给的是 401 + {error: 'Authentication required. Please provide a valid token.' | 'Invalid token format. Use: Bearer <token>' | 'Invalid or expired token'}，三条文案按成因区分。",
+  "conclusion": "迁移后由 API Gateway 的 Cognito 授权器应答：状态码仍是 401，响应体固定 {\"message\":\"Unauthorized\"}，不再有单体的三种 error 文案之分（三条臂合成一条）；头由 GatewayResponses 的 UNAUTHORIZED 提供（Access-Control-Allow-Origin: '*'，与单体在这些无 Origin 请求上的值一致；另外带上 Access-Control-Allow-Methods / Access-Control-Allow-Headers / Vary 这几个全局头名，因为 GatewayResponses 只能配静态值）。函数里零鉴权代码，因此不可能再产生那三种 error 体。403（本人/Admin 判定）与 404/400 各臂不变，仍由函数按单体的文案返回。",
+  "basis": "角色规则手册“认证基建化，删除而非迁移”“网关鉴权”两节；blueprint.metadata SI-6、SI-13；storage/DECISIONS.md D-1、D-10；api_gateway.authorizer=Cognito 与 gateway_responses.UNAUTHORIZED；身份注入机制见 m2s-mcp-server/judge.py 的 _unit_identities 与 verify-tools/judge-run.js 的 buildEvent（路由需要鉴权且请求不带任何身份别名头时，走 _gateway_answers 的 UNAUTHORIZED 出口）；单体三条臂的出处：POST /bookings#responses[0..2]、GET /bookings/<booking_id>#responses[0..2]、POST /bookings/<booking_id>/confirm#responses[0..2]、POST /bookings/<booking_id>/cancel#responses[1..3]、GET /customers/<customer_id>/bookings#responses[1..3]、GET /loyalty/<customer_id>#responses[1..3]、POST /loyalty/<customer_id>/points#responses[4..6]。",
+  "category": "migration-change",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [
+      "add-points-validation-and-auth#no-header",
+      "add-points-validation-and-auth#no-space",
+      "add-points-validation-and-auth#bad-token",
+      "bookings-auth-and-input-arms#no-header",
+      "bookings-auth-and-input-arms#no-space",
+      "bookings-auth-and-input-arms#bad-token",
+      "cancel-auth-and-missing#no-header",
+      "cancel-auth-and-missing#no-space",
+      "cancel-auth-and-missing#bad-token",
+      "confirm-auth-and-missing#no-header",
+      "confirm-auth-and-missing#no-space",
+      "confirm-auth-and-missing#bad-token",
+      "customer-bookings-single-and-auth#no-header",
+      "customer-bookings-single-and-auth#no-space",
+      "customer-bookings-single-and-auth#bad-token",
+      "get-booking-owner-other-missing#no-header",
+      "get-booking-owner-other-missing#no-space",
+      "get-booking-owner-other-missing#bad-token",
+      "loyalty-empty-and-auth-arms#no-header",
+      "loyalty-empty-and-auth-arms#no-space",
+      "loyalty-empty-and-auth-arms#bad-token"
+    ],
+    "layers": [
+      "P"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

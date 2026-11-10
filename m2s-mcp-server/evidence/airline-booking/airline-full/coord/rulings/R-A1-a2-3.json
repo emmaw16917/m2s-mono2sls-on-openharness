@@ -1,0 +1,33 @@
+{
+  "id": "R-A1-a2-3",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 2,
+  "time": "2026-11-04T01:07:22+0800",
+  "question": "R-A1 migration change: self-managed auth endpoints dropped",
+  "conclusion": "POST /auth/register, POST /auth/login, GET /auth/me, and GET /auth/users are not exposed by the target API. Registration, sign-in, current-user lookup, and user listing use Cognito User Pool APIs instead; the judge skips those monolith endpoint steps on the target.",
+  "basis": "blueprint.dropped_functions; blueprint.api_gateway; D-1; SI-6; adapter_map dropped_endpoints.",
+  "category": "migration-change",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [
+      "register-empty-credentials-allowed",
+      "register-non-string-password",
+      "register-success-and-conflicts",
+      "login-non-string-password",
+      "login-success-and-indistinguishable-failures",
+      "me-only-three-keys-and-401-arms",
+      "users-admin-only-matrix",
+      "users-list-masked-shape",
+      "users-row-missing-email"
+    ],
+    "layers": [
+      "P"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

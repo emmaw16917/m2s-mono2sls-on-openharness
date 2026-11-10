@@ -1,0 +1,27 @@
+{
+  "id": "R-A1-a2-1",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 2,
+  "time": "2026-11-04T01:07:02+0800",
+  "question": "Migration change: authenticated GET /bookings/<booking_id> unauthenticated steps",
+  "conclusion": "The target uses API Gateway Cognito authorization. A missing Authorization header, a header without a token separator, and an invalid bearer token all receive the gateway response, not the Flask endpoint body.",
+  "basis": "blueprint.api_gateway.authorizer=Cognito; SI-6, SI-13, D-1.",
+  "category": "migration-change",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [
+      "get-booking-owner-other-missing#no-header",
+      "get-booking-owner-other-missing#no-space",
+      "get-booking-owner-other-missing#bad-token"
+    ],
+    "layers": [
+      "P"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

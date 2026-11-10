@@ -1,0 +1,9 @@
+{
+  "task": "V3",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-04T04:20:29+0800",
+  "summary": "增量测试全绿：run_validate(assets=verification/delta) 在 RIE 下 25/25 PASS，verdict_delta.json 已写（连跑两遍结果一致，稳定）；run_coverage 已写 verification/coverage/（只报告不设门槛，消费者 loyalty-award-points 语句 83.6%/分支 68.8%，其余函数偏低属预期因为窄片由 judge/ 覆盖）；run_equivalence(record, B0) RECORDED，33 次运行、7 个故障场景全部实际命中（faults_applied>0）、infra_errors 为空、conflicts 全 0。无失败用例，故分诊与 routing 为空，本阶段未改动任何测试资产或实现代码。",
+  "notes": "两点非阻塞观察已写入 storage/stage_reports/V3.json 的 issues：\n\n1) dry_run 报 booking-confirm / flight-get / flight-release / flight-reserve 无增量用例。核对 blueprint 后判定为有意为之、不是漏测：这四个端点既不发消息也不涉及迁移新增表，notes 全是\"照搬单体的读或单次条件写\"，被测点已由 judge/ 用例与故障场景覆盖；且 gap_inventory 的 23 条缺口没有一条 decision.test=delta（D1 已说明）。无需动作。\n\n2) 第一次全量运行我误用了 mode=local（本机 Python 3.11.16，verdict 带运行时不一致的 disclaimer）。已用默认 auto 重跑落到 RIE 容器（真实打包产物），verdict 现记录 mode=rie、disclaimer 为空，并再复跑一次确认 25/25 稳定。\n\n另外做了防\"空跑通过\"的核对：重复投递用例确实只留一条积分条目（points 未翻倍）、部分失败回报 batchItemFailures=[m2] 且合法那条已落库、下单捕获到 LoyaltyPointsQueue 一条消息且函数自身未写 LoyaltyTable、匿名 401 由网关作答且带四个全局响应头、不播种用例返回空且不写表；25 条用例除 status/body 外都有可观察断言；contract 2 下 sdk_calls 的 includes 只含写操作、无 total。\n\nverdict_delta.json 的 assets_digest=c70de24ab26e0fec，delta 资产与 judge/ 均早于本次运行、期间未改动。"
+}

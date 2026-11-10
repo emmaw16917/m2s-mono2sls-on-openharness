@@ -1125,3 +1125,11 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **其他**：`gate(final)` 的 TOOLS 检查不看证据库；在 linked worktree 上不比较部署的角色说明（worker 用的是 worktree 自己的）。`coord_fakes.fake_checks` 对共用的检查名按最后一个有报告的任务回答。
 - **调度器动作的循环上限**：worker 有重启次数上限，调度器自己的动作没有。假 worker 测试里 J2 → RC → J3 → J4 空转了 494 轮才被发现（起因是假的 J2 没有更新 `inputs_sha`）。现在同一个动作运行 20 次（`MAX_ACTION_RUNS`）就交给人。
 - **测试**：`test_coord_full_flow.py`（假 worker 跑完整个模板、复用冻结的裁判、未等待的写操作的路由、B0、C1、C2）、`test_judge_n5.py`。
+
+## v2 N5.5：两次完整运行，N5 验收（2026-11-04，`bookstore-full`、`airline-full`）
+
+- **bookstore-full**（Express）：26 个任务全部到 C2，10 次 worker 启动全部第一次通过；16:20 → 21:51，5 小时 30 分。裁判 v2（74 用例、24 故障场景、变异检出率 1.0）判定 46 pass / 13 migration-change / 15 dropped，故障运行 18/6，增量测试 12/12；B0 = 06b8b97。O 保留 3 条优化（R4、R1 不确定、R5 arm64），无人工裁定。归档 `evidence/bookstore/bookstore-full`。
+- **airline-full**（Flask）：26 个任务到 C2，13 次启动；23:07 → 次日 05:48，6 小时 41 分。裁判 v1（51 用例、26 故障场景、变异检出率 1.0）判定 35/7/9，故障 23/3，增量测试 25/25；B0 = 1f47912。O 保留 R4（loyalty SQS 消费者批处理），R1（cancel 读-改-写）标为 `pending_human`；归档 `evidence/airline-booking/airline-full`。
+- **失败与重试**：airline 的 A1 第 1 次被 DashScope 内容检查拒绝（工作已完成、只差 submit），第 2 次多写范围外临时文件；I1 第 1 次把阶段报告写成 `storage/stage_reports/S2.json`。都由范围/提交检查自动退回，重试后通过，没有人工介入。bookstore 没有失败。两次 B0 后的阶段复查都判 ok。
+- **和 v1 的差别**：bookstore 对 `bookstore-v3a`（18 次启动、1 次人工、约 15 小时）是 10 次启动、0 人工、5.5 小时；airline 对 `airline-booking-c3`（188/188、S5 只保留 R5）的差别主要是 v2 按 D-5 把积分副作用建模成 SQS，因此 R4 有命中并保留。
+- **待人**：airline 的 R1 改动没有落地，补丁在 `perf/patches/REQ-2.patch`，最终报告里标为 `pending_human`。

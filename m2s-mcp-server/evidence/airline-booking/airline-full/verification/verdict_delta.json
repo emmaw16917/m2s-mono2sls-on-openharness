@@ -1,0 +1,18 @@
+{
+  "stage": "delta",
+  "status": "PASS",
+  "mode": "rie",
+  "backend": "ddblocal",
+  "total": 25,
+  "passed": 25,
+  "failed": [],
+  "disclaimer": "",
+  "code_state": {
+    "code": "working tree",
+    "head": "604d1ce",
+    "uncommitted_output_changes": []
+  },
+  "timestamp": "2026-11-04T05:48:21",
+  "assets": "verification/delta",
+  "assets_digest": "c70de24ab26e0fec"
+}

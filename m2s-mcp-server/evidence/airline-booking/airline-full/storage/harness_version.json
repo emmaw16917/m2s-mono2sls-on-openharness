@@ -1,0 +1,87 @@
+{
+  "started_with": {
+    "type": "harness",
+    "time": "2026-11-03T23:07:25+0800",
+    "m2s": {
+      "commit": "697ae7f860bd951de5c6201ee9a794d3f15fabc7",
+      "branch": "feat/v2-modules",
+      "dirty": [
+        "m2s-mcp-server/evidence/"
+      ]
+    },
+    "openharness": {
+      "commit": "07404fad4b4912cdf26a2e3abbcb14030942bb88",
+      "branch": "feat/cli-settings-flags",
+      "dirty": []
+    },
+    "tools": {
+      "br": {
+        "version": "0.7.6",
+        "installed": true
+      },
+      "agent_mail": {
+        "version": "0.3.39",
+        "installed": true
+      }
+    },
+    "models": {
+      "model": "qwen3.8-flash",
+      "active_profile": "qwen",
+      "provider": "dashscope",
+      "base_url": "https://ws-zpqs2kv79br02kev.us-east-1.maas.aliyuncs.com/compatible-mode/v1"
+    },
+    "agents": {
+      "m2s-architect": {
+        "file": "m2s-architect.md",
+        "sha256": "3b43d5356e933246b4fb28a194e64ae7c0ffabda0142ecc7ed37639bfc8b20a2",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      },
+      "m2s-code-developer": {
+        "file": "m2s-code-developer.md",
+        "sha256": "c3717ecf8c8a680b4dee896e50b813ddfbd0071d96eae4bb1c7aa817ad47a542",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      },
+      "m2s-perf-optimizer": {
+        "file": "m2s-perf-optimizer.md",
+        "sha256": "6073f384890bfbbd6459974f9ff77aee9daa8cc17f2d1ae79b16e2a9aae240a4",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      },
+      "m2s-sam-engineer": {
+        "file": "m2s-sam-engineer.md",
+        "sha256": "f799c6a9f9053dd9ac11140d15adbd2f77b5b5cfbe6d506a264c75288d953377",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      },
+      "m2s-spec-annotator": {
+        "file": "m2s-spec-annotator.md",
+        "sha256": "437e7617023ef670c18193a486eb978f480ae4227e997532262c861fbb342c15",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      },
+      "m2s-validator": {
+        "file": "m2s-validator.md",
+        "sha256": "c845613dba46b2aa71d7558a06c50ea0930f5565c09f474cd2a0947ca95a7ea4",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      },
+      "m2s-verifier": {
+        "file": "m2s-verifier.md",
+        "sha256": "6d7eb23e339c55c0a4918b092f48a7962a664c435f720bea675c000fab9b6270",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      }
+    },
+    "prompts": {
+      "project_skills_sha256": "06feeb4964fe7f9529efea466182e457a2a29b0c3940002a781e3b825a072fe9",
+      "user_skills_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "python": {
+      "coord": "C:\\Users\\36029\\miniconda3\\envs\\mono2esls\\python.exe",
+      "version": "3.11.16"
+    }
+  },
+  "resumed_with": []
+}

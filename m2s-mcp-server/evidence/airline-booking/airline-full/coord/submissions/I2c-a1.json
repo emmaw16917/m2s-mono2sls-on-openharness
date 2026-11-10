@@ -1,0 +1,9 @@
+{
+  "task": "I2c",
+  "attempt": 1,
+  "role": "m2s-sam-engineer",
+  "status": "done",
+  "time": "2026-11-04T03:48:14+0800",
+  "summary": "合并 part1+part2 产出 output/template.yaml（25 资源 / 9 Outputs，15 个函数全部带真实 CodeUri+handler.lambda_handler），自查循环 2 轮：run_gate(phase='template') = PASS（mechanical_failures 空）且 validate_sam = ok:true（0 errors/0 warnings）。主动修正 1 处：删掉 part1 带进合并产物的 ApiLogGroup + AccessLogSetting —— blueprint 无日志要求、sam-kb 的 REST 参考模式无此资源，且 RestApi 的 AccessLogSetting.DestinationArn 与 ApiLogGroup.LogGroupName(!Sub ${AirlineBookingApi}) 构成 CloudFormation 循环依赖，部署期必失败；修正后两项检查复跑仍全过，并用引用图确认模板内已无 Ref/GetAtt 环。",
+  "notes": "只改了 output/template.yaml 与 storage/stage_reports/I2c.json；分片文件 template.part1.yaml/template.part2.yaml 按 S3c 规则保持原样（若有人重跑 m2s_merge.py，ApiLogGroup/AccessLogSetting 会被重新拼回 template.yaml，需要在合并产物里再删一次，或让 S3a 下次生成时不带这两处——gate 与 cfn-lint 对它都判 PASS，只有真正部署才会暴露该环）。\n\ngate suspects 说明：C4 报每个表变量 declared_but_unused / AWS_REGION used_but_not_declared 属正则失真（prescreen 只认 os.environ(...) 调用形式，代码用的是 os.environ[...] 下标形式）。已逐函数核对：模板声明的环境变量集合与 blueprint.lambda_functions[].environment_variables 完全一致，且都是 handler.py 实际读取的名字；AWS_REGION 由 Lambda 运行时注入、代码用 os.environ.get('AWS_REGION','us-east-1') 兜底，有意不声明。未修改任何流水线工具。\n\nGatewayResponses 只保留 DEFAULT_4XX/DEFAULT_5XX/UNAUTHORIZED：blueprint 另列的 MISSING_AUTHENTICATION_TOKEN(403)/RESOURCE_NOT_FOUND(404) 只有网关默认的 status/body 且无额外头，若显式声明会优先于 DEFAULT_4XX 通配命中，反而丢掉 GM2 要求的全局 CORS 头，故由 DEFAULT_4XX 覆盖。\n\nAuth 布线：7 个 blueprint auth=none 端点都显式写了 Auth:{Authorizer: NONE}，7 个 auth=required 端点不写 Auth 以继承 Cognito DefaultAuthorizer；SQS 消费者 loyalty-award-points 不挂 HTTP 路由，BatchSize 10 + FunctionResponseTypes:[ReportBatchItemFailures]（SI-10/D-5 写明可重试失败返回 batchItemFailures），队列 VisibilityTimeout 300 > 函数 Timeout 30。"
+}

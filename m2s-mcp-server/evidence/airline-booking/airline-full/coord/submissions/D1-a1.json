@@ -1,0 +1,9 @@
+{
+  "task": "D1",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-04T02:17:32+0800",
+  "summary": "D1 增量测试写完：verification/delta/ 下 25 条用例 + 7 个故障场景，全部是裁判看不到的面 —— SQS 幂等消费者 loyalty-award-points 的重复投递/部分失败上报/永久失败吞掉（规则手册 REQUIRED 规则 + D-5/D-17/SI-9）、迁移新增的 PaymentsTable 与 UserGroupsTable 表状态（GAP-5/6/13、D-8/D-3）、下单的积分队列新边（GAP-19，含\"消息发不出去仍 201\"）、冷启动不播种（GAP-12/D-13）、非字符串收款号的类型标注主键（SI-8/R-A1-a3-3）、网关自答 401 的响应体与全局响应头（SI-6/R-A1-a3-1）。每条用例都带 source（GAP-n 或 rule:）与 expected_from（decision:/ruling:/rulebook:），run_validate(dry_run=true, assets=verification/delta) 第 1 次自查即 PASS。",
+  "notes": "要点交给调度器/下游：\n\n1) 缺口清单核对结论：当前 storage/gap_inventory.json 的 23 条缺口中没有一条 decision.test 是 \"delta\"（13 judge + 10 none），所以\"每条 delta 缺口都要有用例\"这项检查自然为空；用例的 source 引用的是被改造的那几条缺口（GAP-1/2/5/6/10/12/13/19），expected_from 给出期望的确切出处。若之后 A1 重写清单并给某些缺口标 delta，需要回 D1 补引用。\n\n2) 一条非阻塞 spec_issue（D1-1，open）：D-5/D-17 只枚举了三类永久失败（JSON 解不开、缺 customerId、points 非法），没规定\"消息体缺 bookingId（幂等键本身）\"怎么处理——吞掉还是上报 batchItemFailures 都自圆其说，写不出唯一可判定预期，因此这一臂没出题（delta-loyalty-malformed-messages-swallowed 只覆盖被枚举的三类）。建议 architect 补一句归属。\n\n3) 实现阶段的隐式依赖（已写进报告 notes_for_v3，便于失败分诊）：(a) 消费者的失败上报依赖模板事件源配 FunctionResponseTypes=ReportBatchItemFailures；(b) 网关 401 的全局响应头依赖模板 GatewayResponses（D-10/R-A1-a3-1）；(c) D-5 要求消费者用普通 PutItem 不用事务，judge 的 bookings-loyalty-put-fails 也按 (LoyaltyTable, PutItem) 定位，delta 用例用 sdk_calls 钉住；(d) run_validate 不会把生产者发出的消息自动投给消费者，因此\"消息进队列\"与\"消费者幂等\"分别由不同用例覆盖。\n\n4) 未出增量用例的函数：booking-confirm、flight-get、flight-release、flight-reserve —— 没有\"单体没有对应物\"的行为，GAP-2/GAP-18 的竞态与多步写由裁判覆盖（decision.test 为 judge/none），不重复出题。DLQ / maxReceiveCount / visibility_timeout 属模板配置，由 gate 与 S3c 静态复核。\n\n5) 纪律：只写了 verification/delta/** 与 storage/stage_reports/D1.json；未读 output/（工具的路径规则也拒绝）、未读单体源码、未动 judge/ 与 storage/ 其他文件。"
+}

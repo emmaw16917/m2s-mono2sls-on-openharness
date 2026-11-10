@@ -1,0 +1,30 @@
+{
+  "id": "R-A1-a2-4",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 2,
+  "time": "2026-11-04T01:08:27+0800",
+  "question": "R-A1 spec gap: POST /bookings outboundFlightId type",
+  "conclusion": "`outboundFlightId` is required by key presence only; any JSON value is allowed and is used as the FlightTable primary-key value without type coercion. Missing key causes KeyError to the existing 500 catch-all.",
+  "basis": "analysis_report POST /bookings#request.body[name=outboundFlightId] note; app.py:106; booking.py:16; storage.py:148/194.",
+  "category": "spec-gap",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [
+      "bookings-flight-unavailable",
+      "bookings-missing-chargeid",
+      "bookings-customer-from-token",
+      "bookings-success-read-back"
+    ],
+    "layers": [
+      "P",
+      "R",
+      "T"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

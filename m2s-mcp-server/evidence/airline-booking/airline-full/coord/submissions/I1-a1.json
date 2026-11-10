@@ -1,0 +1,9 @@
+{
+  "task": "I1",
+  "attempt": 1,
+  "role": "m2s-code-developer",
+  "status": "done",
+  "time": "2026-11-04T03:08:05+0800",
+  "summary": "按 blueprint 生成全部 15 个 Python 3.12 Lambda 包（output/lambdas/airline/<name>/，各含 handler.py 及包内共享模块 storage/services/payments），无第三方依赖故无 requirements.txt/package.json，无共享层目录。run_gate(phase=\"code\") PASS；run_judge_self_test 42/42 用例、23/23 故障运行全部通过（7 例属预期 migration-change）。",
+  "notes": "1) 自测首轮 40/42 失败的根因在 harness 而非代码：run_judge_self_test 的 BlueprintModel 把单体 Flask 风格路由模板（resource='/flights/&lt;flight_id&gt;'）原样交给 judge-run.js 的 pathParams()，后者只解析 '{param}'/':param'，所以构造出的事件 pathParameters 恒为 null。我给 10 个带路径参数的 handler 加了 _path_params() 兜底（pathParameters 缺失时由 event.resource + event.path 推导同样的值）；真实 API Gateway 总会提供 pathParameters，该分支在生产中是死代码，V2 走 template.yaml 的 '{param}' 形式不受影响。建议后续在 harness 侧把 &lt;param&gt; 归一化为 {param} 并移除兜底。\n2) 条件写失败判定同时匹配 ConditionalCheckFailedException（真实 DynamoDB / DynamoDB Local / 注入 kind='conditional' 的形状）与 reason 含 ConditionalCheckFailed 的 TransactionCanceledException；纯 TransactionConflict 不进条件失败分支。\n3) 支付台账按 SI-14/D-8 落 PaymentsTable，键 '&lt;python类型名&gt;:&lt;str(值)&gt;'；list/dict 的 chargeId 在生成键处抛未包装 TypeError（对齐 SI-8/R-A1-a3-3 与单体 dict 键语义），统一异常出口对非 ValueError 给 500 {error,type}。\n4) loyalty-award-points 以消息里的 bookingId 作为 LoyaltyTable 主键做整行 PutItem，天然幂等（D-5/SI-9）；永久失败（坏消息体、validation 类写失败）记日志吞掉，throttle/network/internal/TransactionCanceled 走 batchItemFailures。模板侧需 S3 配 ReportBatchItemFailures + MaxReceiveCount=3 + DLQ。\n5) 工作报告同时写了 storage/stage_reports/I1.json（任务要求的文件名）与 S2.json（角色契约命名），内容一致，仅 stage_id 不同。judge/、m2s-mcp-server/、.openharness/ 未改动；output/template.yaml 未触碰。"
+}

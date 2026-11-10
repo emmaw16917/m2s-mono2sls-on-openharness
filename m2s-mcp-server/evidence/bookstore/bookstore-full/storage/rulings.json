@@ -1,0 +1,104 @@
+{
+  "entries": [
+    {
+      "id": "R-A1-a1-1",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 1,
+      "time": "2026-11-03T17:44:08+0800",
+      "question": "受保护端点的未认证 / 无效令牌请求：401 的响应体由谁给出？（裁判在单体上实录的是 authMiddleware 的 {\"error\": ...}，目标上应答的是 API Gateway 的 Cognito 授权器）",
+      "conclusion": "迁移后的对外结果：状态码仍是 401，表访问一次都不发生（与单体一致），响应头仍带 Access-Control-Allow-Origin: * 与 Access-Control-Allow-Credentials: true（由模板的 GatewayResponses 的 UNAUTHORIZED/AUTHORIZER_FAILURE/ACCESS_DENIED 项给出），但响应体换成网关固定的 {\"message\": \"Unauthorized\"}（content-type application/json），不再区分单体的两条文案 \"Authentication required. Please provide a valid Bearer token.\"（没有 Authorization 头、scheme 不是 Bearer、段数不是 3、Bearer 后为空）与 \"Invalid or expired token\"（验签失败/过期/payload 缺 userId）。也就是说：状态码、有无表访问、CORS 头三项保持单体契约，只有 401 的 body 文案变化，且这两条文案在目标里没有对应的签发方可以复现。验证时对这些步骤只断言 401 与不发生表访问，不断言 body 的 error 文案。",
+      "basis": "规则手册默认做法的必然结果：m2s-basic-serverless-kb『Cognito User Pool (if auth exists in monolith)』+ 角色规则『认证基建化：verifyToken/authenticateToken 之类的鉴权中间件放进 dropped_functions，Replaced by API Gateway Cognito Authorizer』；gap_inventory 的 GAP-10（default=『Cognito + API Gateway 授权器，认证端点删除』）、GAP-14（x-customer-id 只认合法 JWT）。事实库出处：middleware/auth.js:34-40（401 分支一，无 token/格式不符）与 :49-54（401 分支二，验签失败）、server.js:41-45（12 个端点挂 authMiddleware）；blueprint.json 的 cognito.enabled=true、api_gateway.authorizer=\"Cognito\"/authorizer_type=\"COGNITO_USER_POOLS\"、api_gateway.gateway_responses（UNAUTHORIZED 等只带那两个真实响应上出现的头）、dropped_functions 里的 authMiddleware / utils/jwt.js / 四个认证端点；metadata.spec_resolutions 的 SI-02 / SI-11 / SI-12 / D-4 / D-14。裁判实录 judge/oracle_expected.json 里这些步骤的 headers 只有 access-control-allow-origin/credentials + content-type，状态码 401 不变。",
+      "category": "migration-change",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "bestsellers-unauthenticated#anon",
+          "bestsellers-unauthenticated#garbage-token",
+          "books-catalog-scan#anon",
+          "books-catalog-scan#garbage-token",
+          "books-get-one-hit-and-miss#anon",
+          "books-get-one-hit-and-miss#garbage-token",
+          "cart-add-anonymous#anon",
+          "cart-add-anonymous#garbage-token",
+          "cart-delete-unauthenticated#anon",
+          "cart-delete-unauthenticated#garbage-token",
+          "cart-get-one-hit-and-miss#anon",
+          "cart-get-one-hit-and-miss#garbage-token",
+          "cart-list-unauthenticated#anon",
+          "cart-list-unauthenticated#garbage-token",
+          "cart-update-unauthenticated#anon",
+          "cart-update-unauthenticated#garbage-token",
+          "orders-create-unauthenticated#anon",
+          "orders-create-unauthenticated#garbage-token",
+          "orders-list-unauthenticated-and-isolated#anon",
+          "orders-list-unauthenticated-and-isolated#garbage-token",
+          "search-validation-and-unauthenticated#anon",
+          "search-validation-and-unauthenticated#garbage-token",
+          "wb-cart-x-customer-id-cannot-scope-data#anon-x-customer-id",
+          "wb-orders-x-customer-id-cannot-authenticate#anon-x-id"
+        ],
+        "layers": [
+          "P",
+          "R"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    }
+  ],
+  "rulings": [
+    {
+      "id": "R-A1-a1-1",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 1,
+      "time": "2026-11-03T17:44:08+0800",
+      "question": "受保护端点的未认证 / 无效令牌请求：401 的响应体由谁给出？（裁判在单体上实录的是 authMiddleware 的 {\"error\": ...}，目标上应答的是 API Gateway 的 Cognito 授权器）",
+      "conclusion": "迁移后的对外结果：状态码仍是 401，表访问一次都不发生（与单体一致），响应头仍带 Access-Control-Allow-Origin: * 与 Access-Control-Allow-Credentials: true（由模板的 GatewayResponses 的 UNAUTHORIZED/AUTHORIZER_FAILURE/ACCESS_DENIED 项给出），但响应体换成网关固定的 {\"message\": \"Unauthorized\"}（content-type application/json），不再区分单体的两条文案 \"Authentication required. Please provide a valid Bearer token.\"（没有 Authorization 头、scheme 不是 Bearer、段数不是 3、Bearer 后为空）与 \"Invalid or expired token\"（验签失败/过期/payload 缺 userId）。也就是说：状态码、有无表访问、CORS 头三项保持单体契约，只有 401 的 body 文案变化，且这两条文案在目标里没有对应的签发方可以复现。验证时对这些步骤只断言 401 与不发生表访问，不断言 body 的 error 文案。",
+      "basis": "规则手册默认做法的必然结果：m2s-basic-serverless-kb『Cognito User Pool (if auth exists in monolith)』+ 角色规则『认证基建化：verifyToken/authenticateToken 之类的鉴权中间件放进 dropped_functions，Replaced by API Gateway Cognito Authorizer』；gap_inventory 的 GAP-10（default=『Cognito + API Gateway 授权器，认证端点删除』）、GAP-14（x-customer-id 只认合法 JWT）。事实库出处：middleware/auth.js:34-40（401 分支一，无 token/格式不符）与 :49-54（401 分支二，验签失败）、server.js:41-45（12 个端点挂 authMiddleware）；blueprint.json 的 cognito.enabled=true、api_gateway.authorizer=\"Cognito\"/authorizer_type=\"COGNITO_USER_POOLS\"、api_gateway.gateway_responses（UNAUTHORIZED 等只带那两个真实响应上出现的头）、dropped_functions 里的 authMiddleware / utils/jwt.js / 四个认证端点；metadata.spec_resolutions 的 SI-02 / SI-11 / SI-12 / D-4 / D-14。裁判实录 judge/oracle_expected.json 里这些步骤的 headers 只有 access-control-allow-origin/credentials + content-type，状态码 401 不变。",
+      "category": "migration-change",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "bestsellers-unauthenticated#anon",
+          "bestsellers-unauthenticated#garbage-token",
+          "books-catalog-scan#anon",
+          "books-catalog-scan#garbage-token",
+          "books-get-one-hit-and-miss#anon",
+          "books-get-one-hit-and-miss#garbage-token",
+          "cart-add-anonymous#anon",
+          "cart-add-anonymous#garbage-token",
+          "cart-delete-unauthenticated#anon",
+          "cart-delete-unauthenticated#garbage-token",
+          "cart-get-one-hit-and-miss#anon",
+          "cart-get-one-hit-and-miss#garbage-token",
+          "cart-list-unauthenticated#anon",
+          "cart-list-unauthenticated#garbage-token",
+          "cart-update-unauthenticated#anon",
+          "cart-update-unauthenticated#garbage-token",
+          "orders-create-unauthenticated#anon",
+          "orders-create-unauthenticated#garbage-token",
+          "orders-list-unauthenticated-and-isolated#anon",
+          "orders-list-unauthenticated-and-isolated#garbage-token",
+          "search-validation-and-unauthenticated#anon",
+          "search-validation-and-unauthenticated#garbage-token",
+          "wb-cart-x-customer-id-cannot-scope-data#anon-x-customer-id",
+          "wb-orders-x-customer-id-cannot-authenticate#anon-x-id"
+        ],
+        "layers": [
+          "P",
+          "R"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    }
+  ]
+}

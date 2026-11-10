@@ -1,0 +1,4703 @@
+{
+ "meta": {
+  "judge_version": 2,
+  "judge_frozen_at": "2026-11-02T16:24:58Z",
+  "code": {
+   "code": "working tree",
+   "head": "dd0c2fe",
+   "uncommitted_output_changes": []
+  },
+  "mode": "rie",
+  "backend": "ddblocal",
+  "adapter_map_sha": "e6a461d4b89b96439f4ea4946ef45e22af1c5356ae520c93d90e58e7efd50159",
+  "generated_at": "2026-11-03T13:50:26Z",
+  "seconds": 176.6,
+  "run_dir": "D:\\tmp\\m2sv\\bookstore-full\\judge\\20261103-214729-judge"
+ },
+ "status": "PASS",
+ "cases": {
+  "bestsellers-empty-table": {
+   "steps": {
+    "list": {
+     "function": "bestsellers-list",
+     "endpoint": "GET /api/bestsellers",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/bestsellers",
+   "fact_refs": [
+    "GET /api/bestsellers#responses[2]",
+    "GET /api/bestsellers#business_rules[1]",
+    "GET /api/bestsellers#business_rules[2]"
+   ]
+  },
+  "bestsellers-ranked-top20": {
+   "steps": {
+    "list": {
+     "function": "bestsellers-list",
+     "endpoint": "GET /api/bestsellers",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "list-as-u2": {
+     "function": "bestsellers-list",
+     "endpoint": "GET /api/bestsellers",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/bestsellers",
+   "fact_refs": [
+    "GET /api/bestsellers#responses[2]",
+    "GET /api/bestsellers#business_rules[0]",
+    "GET /api/bestsellers#business_rules[2]",
+    "GET /api/bestsellers#business_rules[5]"
+   ]
+  },
+  "bestsellers-scan-fault-baseline": {
+   "steps": {
+    "list": {
+     "function": "bestsellers-list",
+     "endpoint": "GET /api/bestsellers",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/bestsellers",
+   "fact_refs": [
+    "GET /api/bestsellers#responses[3]",
+    "GET /api/bestsellers#responses[2]",
+    "GET /api/bestsellers#business_rules[5]"
+   ]
+  },
+  "bestsellers-unauthenticated": {
+   "steps": {
+    "anon": {
+     "function": "bestsellers-list",
+     "endpoint": "GET /api/bestsellers",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.anon.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "garbage-token": {
+     "function": "bestsellers-list",
+     "endpoint": "GET /api/bestsellers",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.garbage-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    }
+   },
+   "verdict": "migration-change",
+   "endpoint": "GET /api/bestsellers",
+   "fact_refs": [
+    "GET /api/bestsellers#responses[0]",
+    "GET /api/bestsellers#responses[1]",
+    "GET /api/bestsellers#business_rules[4]"
+   ]
+  },
+  "bestsellers-unknown-book-in-list": {
+   "steps": {
+    "list": {
+     "function": "bestsellers-list",
+     "endpoint": "GET /api/bestsellers",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "book-missing": {
+     "function": "books-get-by-id",
+     "endpoint": "GET /api/books/:id",
+     "status": {
+      "monolith": 404,
+      "target": 404
+     },
+     "verdict": "pass"
+    },
+    "book-real": {
+     "function": "books-get-by-id",
+     "endpoint": "GET /api/books/:id",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/bestsellers",
+   "fact_refs": [
+    "GET /api/bestsellers#responses[2]",
+    "GET /api/bestsellers#business_rules[3]",
+    "GET /api/books/:id#responses[3]",
+    "GET /api/books/:id#responses[2]"
+   ]
+  },
+  "books-catalog-scan": {
+   "steps": {
+    "anon": {
+     "function": "books-list",
+     "endpoint": "GET /api/books",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.anon.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "garbage-token": {
+     "function": "books-list",
+     "endpoint": "GET /api/books",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.garbage-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "list-all": {
+     "function": "books-list",
+     "endpoint": "GET /api/books",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "empty-category": {
+     "function": "books-list",
+     "endpoint": "GET /api/books",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "as-u2": {
+     "function": "books-list",
+     "endpoint": "GET /api/books",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "migration-change",
+   "endpoint": "GET /api/books",
+   "fact_refs": [
+    "GET /api/books#responses[0]",
+    "GET /api/books#responses[1]",
+    "GET /api/books#responses[3]",
+    "GET /api/books#business_rules[0]",
+    "GET /api/books#business_rules[4]",
+    "GET /api/books#business_rules[5]",
+    "GET /api/books#business_rules[6]",
+    "GET /api/books#business_rules[3]"
+   ]
+  },
+  "books-duplicate-category-param": {
+   "steps": {
+    "dup": {
+     "function": "books-list",
+     "endpoint": "GET /api/books",
+     "status": {
+      "monolith": 500,
+      "target": 500
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/books",
+   "fact_refs": [
+    "GET /api/books#responses[4]",
+    "GET /api/books#request"
+   ]
+  },
+  "books-get-one-hit-and-miss": {
+   "steps": {
+    "anon": {
+     "function": "books-get-by-id",
+     "endpoint": "GET /api/books/:id",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.anon.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "garbage-token": {
+     "function": "books-get-by-id",
+     "endpoint": "GET /api/books/:id",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.garbage-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "hit": {
+     "function": "books-get-by-id",
+     "endpoint": "GET /api/books/:id",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "hit-other-book": {
+     "function": "books-get-by-id",
+     "endpoint": "GET /api/books/:id",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "miss": {
+     "function": "books-get-by-id",
+     "endpoint": "GET /api/books/:id",
+     "status": {
+      "monolith": 404,
+      "target": 404
+     },
+     "verdict": "pass"
+    },
+    "miss-weird-id": {
+     "function": "books-get-by-id",
+     "endpoint": "GET /api/books/:id",
+     "status": {
+      "monolith": 404,
+      "target": 404
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "migration-change",
+   "endpoint": "GET /api/books/:id",
+   "fact_refs": [
+    "GET /api/books/:id#responses[0]",
+    "GET /api/books/:id#responses[1]",
+    "GET /api/books/:id#responses[2]",
+    "GET /api/books/:id#responses[3]",
+    "GET /api/books/:id#business_rules[0]",
+    "GET /api/books/:id#business_rules[1]",
+    "GET /api/books/:id#business_rules[2]",
+    "GET /api/books/:id#business_rules[3]",
+    "GET /api/books/:id#business_rules[4]",
+    "GET /api/books/:id#business_rules[5]"
+   ]
+  },
+  "books-get-one-read-fault-baseline": {
+   "steps": {
+    "hit": {
+     "function": "books-get-by-id",
+     "endpoint": "GET /api/books/:id",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/books/:id",
+   "fact_refs": [
+    "GET /api/books/:id#responses[4]",
+    "GET /api/books/:id#responses[2]",
+    "GET /api/books/:id#business_rules[6]"
+   ]
+  },
+  "books-list-by-category": {
+   "steps": {
+    "fiction": {
+     "function": "books-list",
+     "endpoint": "GET /api/books",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "software": {
+     "function": "books-list",
+     "endpoint": "GET /api/books",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "fiction-capitalized": {
+     "function": "books-list",
+     "endpoint": "GET /api/books",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "unknown-category": {
+     "function": "books-list",
+     "endpoint": "GET /api/books",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "fiction-as-u2": {
+     "function": "books-list",
+     "endpoint": "GET /api/books",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/books",
+   "fact_refs": [
+    "GET /api/books#responses[2]",
+    "GET /api/books#business_rules[1]",
+    "GET /api/books#business_rules[2]",
+    "GET /api/books#business_rules[3]",
+    "GET /api/books#business_rules[7]"
+   ]
+  },
+  "books-scan-fault-baseline": {
+   "steps": {
+    "list-all": {
+     "function": "books-list",
+     "endpoint": "GET /api/books",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/books",
+   "fact_refs": [
+    "GET /api/books#responses[4]",
+    "GET /api/books#responses[3]",
+    "GET /api/books#business_rules[7]"
+   ]
+  },
+  "cart-add-anonymous": {
+   "steps": {
+    "anon": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.anon.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "garbage-token": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.garbage-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "migration-change",
+   "endpoint": "POST /api/cart",
+   "fact_refs": [
+    "POST /api/cart#responses[0]",
+    "POST /api/cart#responses[1]",
+    "POST /api/cart#business_rules[7]",
+    "GET /api/cart#responses[2]"
+   ]
+  },
+  "cart-add-form-encoded-strings": {
+   "steps": {
+    "add-form": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-one": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-list": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/cart",
+   "fact_refs": [
+    "POST /api/cart#responses[3]",
+    "POST /api/cart#business_rules[3]",
+    "POST /api/cart#request",
+    "GET /api/cart/:bookId#responses[2]",
+    "GET /api/cart#responses[2]"
+   ]
+  },
+  "cart-add-ignores-body-customerid": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u2-read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u1-read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/cart",
+   "fact_refs": [
+    "POST /api/cart#responses[3]",
+    "POST /api/cart#business_rules[1]",
+    "POST /api/cart#business_rules[3]",
+    "GET /api/cart#responses[2]",
+    "GET /api/cart#business_rules[1]"
+   ]
+  },
+  "cart-add-overwrite-and-readback": {
+   "steps": {
+    "add1": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "add2": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-one": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/cart",
+   "fact_refs": [
+    "POST /api/cart#responses[3]",
+    "POST /api/cart#business_rules[2]",
+    "POST /api/cart#business_rules[3]",
+    "POST /api/cart#business_rules[6]",
+    "GET /api/cart#responses[2]",
+    "GET /api/cart#business_rules[3]",
+    "GET /api/cart/:bookId#responses[2]"
+   ]
+  },
+  "cart-add-throttle-once": {
+   "steps": {
+    "add-a": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "add-b": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/cart",
+   "fact_refs": [
+    "POST /api/cart#responses[3]",
+    "POST /api/cart#business_rules[2]",
+    "GET /api/cart#responses[2]"
+   ]
+  },
+  "cart-add-unknown-book-and-forged-price": {
+   "steps": {
+    "add-ghost": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "book-missing": {
+     "function": "books-get-by-id",
+     "endpoint": "GET /api/books/:id",
+     "status": {
+      "monolith": 404,
+      "target": 404
+     },
+     "verdict": "pass"
+    },
+    "read-one": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/cart",
+   "fact_refs": [
+    "POST /api/cart#responses[3]",
+    "POST /api/cart#business_rules[4]",
+    "GET /api/books/:id#responses[3]",
+    "GET /api/cart/:bookId#responses[2]"
+   ]
+  },
+  "cart-add-validation": {
+   "steps": {
+    "missing-price": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "quantity-zero": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "price-zero": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "no-body": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "empty-bookid": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "malformed-json": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/cart",
+   "fact_refs": [
+    "POST /api/cart#responses[2]",
+    "POST /api/cart#responses[4]",
+    "POST /api/cart#business_rules[0]",
+    "POST /api/cart#request",
+    "GET /api/cart#responses[2]"
+   ]
+  },
+  "cart-add-write-fault-baseline": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/cart",
+   "fact_refs": [
+    "POST /api/cart#responses[5]",
+    "POST /api/cart#responses[3]",
+    "POST /api/cart#business_rules[5]"
+   ]
+  },
+  "cart-delete-cross-user": {
+   "steps": {
+    "u1-add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u2-delete": {
+     "function": "cart-remove",
+     "endpoint": "DELETE /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u1-read": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u2-read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "DELETE /api/cart",
+   "fact_refs": [
+    "DELETE /api/cart#responses[3]",
+    "DELETE /api/cart#business_rules[1]",
+    "POST /api/cart#responses[3]",
+    "GET /api/cart/:bookId#responses[2]",
+    "GET /api/cart#responses[2]"
+   ]
+  },
+  "cart-delete-then-readback-idempotent": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "delete": {
+     "function": "cart-remove",
+     "endpoint": "DELETE /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "delete-again": {
+     "function": "cart-remove",
+     "endpoint": "DELETE /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-again": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-one": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 404,
+      "target": 404
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "DELETE /api/cart",
+   "fact_refs": [
+    "DELETE /api/cart#responses[3]",
+    "DELETE /api/cart#business_rules[2]",
+    "DELETE /api/cart#business_rules[3]",
+    "DELETE /api/cart#business_rules[5]",
+    "GET /api/cart#responses[2]",
+    "GET /api/cart/:bookId#responses[3]",
+    "POST /api/cart#responses[3]"
+   ]
+  },
+  "cart-delete-unauthenticated": {
+   "steps": {
+    "u1-add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "anon": {
+     "function": "cart-remove",
+     "endpoint": "DELETE /api/cart",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.anon.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "garbage-token": {
+     "function": "cart-remove",
+     "endpoint": "DELETE /api/cart",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.garbage-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "u1-read": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "migration-change",
+   "endpoint": "DELETE /api/cart",
+   "fact_refs": [
+    "DELETE /api/cart#responses[0]",
+    "DELETE /api/cart#responses[1]",
+    "DELETE /api/cart#business_rules[4]",
+    "POST /api/cart#responses[3]",
+    "GET /api/cart/:bookId#responses[2]"
+   ]
+  },
+  "cart-delete-validation": {
+   "steps": {
+    "no-body": {
+     "function": "cart-remove",
+     "endpoint": "DELETE /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "empty-bookid": {
+     "function": "cart-remove",
+     "endpoint": "DELETE /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "other-fields": {
+     "function": "cart-remove",
+     "endpoint": "DELETE /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "malformed-json": {
+     "function": "cart-remove",
+     "endpoint": "DELETE /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "delete-ok": {
+     "function": "cart-remove",
+     "endpoint": "DELETE /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "DELETE /api/cart",
+   "fact_refs": [
+    "DELETE /api/cart#responses[2]",
+    "DELETE /api/cart#responses[4]",
+    "DELETE /api/cart#business_rules[0]",
+    "POST /api/cart#responses[3]",
+    "GET /api/cart#responses[2]"
+   ]
+  },
+  "cart-delete-write-fault-baseline": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "delete": {
+     "function": "cart-remove",
+     "endpoint": "DELETE /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "DELETE /api/cart",
+   "fact_refs": [
+    "DELETE /api/cart#responses[5]",
+    "DELETE /api/cart#responses[3]",
+    "POST /api/cart#responses[3]",
+    "GET /api/cart#responses[2]"
+   ]
+  },
+  "cart-get-one-hit-and-miss": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "hit": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "miss": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 404,
+      "target": 404
+     },
+     "verdict": "pass"
+    },
+    "anon": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.anon.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "garbage-token": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.garbage-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    }
+   },
+   "verdict": "migration-change",
+   "endpoint": "GET /api/cart/:bookId",
+   "fact_refs": [
+    "GET /api/cart/:bookId#responses[0]",
+    "GET /api/cart/:bookId#responses[1]",
+    "GET /api/cart/:bookId#responses[2]",
+    "GET /api/cart/:bookId#responses[3]",
+    "GET /api/cart/:bookId#business_rules[0]",
+    "GET /api/cart/:bookId#business_rules[3]",
+    "GET /api/cart/:bookId#business_rules[4]",
+    "POST /api/cart#responses[3]"
+   ]
+  },
+  "cart-get-one-other-users-item-is-404": {
+   "steps": {
+    "u1-add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u1-read": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u2-read": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 404,
+      "target": 404
+     },
+     "verdict": "pass"
+    },
+    "u2-list": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/cart/:bookId",
+   "fact_refs": [
+    "GET /api/cart/:bookId#responses[3]",
+    "GET /api/cart/:bookId#responses[2]",
+    "GET /api/cart/:bookId#business_rules[1]",
+    "GET /api/cart#responses[2]",
+    "GET /api/cart#business_rules[1]",
+    "GET /api/cart#business_rules[2]",
+    "POST /api/cart#responses[3]",
+    "POST /api/cart#business_rules[1]"
+   ]
+  },
+  "cart-get-one-read-fault-baseline": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "hit": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/cart/:bookId",
+   "fact_refs": [
+    "GET /api/cart/:bookId#responses[4]",
+    "GET /api/cart/:bookId#responses[2]",
+    "POST /api/cart#responses[3]"
+   ]
+  },
+  "cart-list-empty-then-with-items": {
+   "steps": {
+    "empty": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/cart",
+   "fact_refs": [
+    "GET /api/cart#responses[2]",
+    "GET /api/cart#business_rules[2]",
+    "GET /api/cart#business_rules[3]",
+    "GET /api/cart#business_rules[4]",
+    "POST /api/cart#responses[3]",
+    "POST /api/cart#business_rules[3]"
+   ]
+  },
+  "cart-list-read-fault-baseline": {
+   "steps": {
+    "list": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/cart",
+   "fact_refs": [
+    "GET /api/cart#responses[3]",
+    "GET /api/cart#responses[2]",
+    "GET /api/cart#business_rules[6]"
+   ]
+  },
+  "cart-list-unauthenticated": {
+   "steps": {
+    "anon": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.anon.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "garbage-token": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.garbage-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "u1-add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u2-list": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "migration-change",
+   "endpoint": "GET /api/cart",
+   "fact_refs": [
+    "GET /api/cart#responses[0]",
+    "GET /api/cart#responses[1]",
+    "GET /api/cart#responses[2]",
+    "GET /api/cart#business_rules[0]",
+    "GET /api/cart#business_rules[1]",
+    "GET /api/cart#business_rules[5]",
+    "POST /api/cart#responses[3]"
+   ]
+  },
+  "cart-update-cross-user": {
+   "steps": {
+    "u1-add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u2-put": {
+     "function": "cart-update",
+     "endpoint": "PUT /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u1-read": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u2-read": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "PUT /api/cart",
+   "fact_refs": [
+    "PUT /api/cart#responses[3]",
+    "PUT /api/cart#business_rules[1]",
+    "POST /api/cart#responses[3]",
+    "GET /api/cart/:bookId#responses[2]",
+    "GET /api/cart/:bookId#business_rules[1]"
+   ]
+  },
+  "cart-update-overwrites-quantity-and-keeps-price": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "put": {
+     "function": "cart-update",
+     "endpoint": "PUT /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-one": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "PUT /api/cart",
+   "fact_refs": [
+    "PUT /api/cart#responses[3]",
+    "PUT /api/cart#business_rules[2]",
+    "PUT /api/cart#business_rules[3]",
+    "PUT /api/cart#business_rules[4]",
+    "GET /api/cart/:bookId#responses[2]",
+    "POST /api/cart#responses[3]"
+   ]
+  },
+  "cart-update-throttle-once": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "put": {
+     "function": "cart-update",
+     "endpoint": "PUT /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "PUT /api/cart",
+   "fact_refs": [
+    "PUT /api/cart#responses[3]",
+    "PUT /api/cart#business_rules[2]",
+    "GET /api/cart/:bookId#responses[2]",
+    "POST /api/cart#responses[3]"
+   ]
+  },
+  "cart-update-unauthenticated": {
+   "steps": {
+    "anon": {
+     "function": "cart-update",
+     "endpoint": "PUT /api/cart",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.anon.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "garbage-token": {
+     "function": "cart-update",
+     "endpoint": "PUT /api/cart",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.garbage-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "migration-change",
+   "endpoint": "PUT /api/cart",
+   "fact_refs": [
+    "PUT /api/cart#responses[0]",
+    "PUT /api/cart#responses[1]",
+    "PUT /api/cart#business_rules[6]",
+    "GET /api/cart#responses[2]"
+   ]
+  },
+  "cart-update-upserts-missing-item": {
+   "steps": {
+    "put": {
+     "function": "cart-update",
+     "endpoint": "PUT /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-one": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-list": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "PUT /api/cart",
+   "fact_refs": [
+    "PUT /api/cart#responses[3]",
+    "PUT /api/cart#business_rules[3]",
+    "PUT /api/cart#business_rules[5]",
+    "GET /api/cart/:bookId#responses[2]",
+    "GET /api/cart#responses[2]"
+   ]
+  },
+  "cart-update-validation": {
+   "steps": {
+    "missing-quantity": {
+     "function": "cart-update",
+     "endpoint": "PUT /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "quantity-zero": {
+     "function": "cart-update",
+     "endpoint": "PUT /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "missing-bookid": {
+     "function": "cart-update",
+     "endpoint": "PUT /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "malformed-json": {
+     "function": "cart-update",
+     "endpoint": "PUT /api/cart",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "PUT /api/cart",
+   "fact_refs": [
+    "PUT /api/cart#responses[2]",
+    "PUT /api/cart#responses[4]",
+    "PUT /api/cart#business_rules[0]",
+    "GET /api/cart#responses[2]"
+   ]
+  },
+  "cart-update-write-fault-baseline": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "put": {
+     "function": "cart-update",
+     "endpoint": "PUT /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "PUT /api/cart",
+   "fact_refs": [
+    "PUT /api/cart#responses[5]",
+    "PUT /api/cart#responses[3]",
+    "PUT /api/cart#business_rules[6]",
+    "POST /api/cart#responses[3]"
+   ]
+  },
+  "login-error-arms": {
+   "steps": {
+    "missing-password": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+    },
+    "missing-email": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+    },
+    "unknown-email": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+    },
+    "wrong-password": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+    },
+    "malformed-json": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "POST /api/auth/login",
+   "fact_refs": [
+    "POST /api/auth/login#responses[0]",
+    "POST /api/auth/login#responses[1]",
+    "POST /api/auth/login#responses[2]",
+    "POST /api/auth/login#responses[4]",
+    "POST /api/auth/login#business_rules[0]",
+    "POST /api/auth/login#business_rules[2]",
+    "POST /api/auth/login#business_rules[3]"
+   ]
+  },
+  "login-read-fault-baseline": {
+   "steps": {
+    "login": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "POST /api/auth/login",
+   "fact_refs": [
+    "POST /api/auth/login#responses[5]",
+    "POST /api/auth/login#responses[3]",
+    "POST /api/auth/login#business_rules[8]"
+   ]
+  },
+  "login-success-then-me": {
+   "steps": {
+    "login": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+    },
+    "me": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "POST /api/auth/login",
+   "fact_refs": [
+    "POST /api/auth/login#responses[3]",
+    "POST /api/auth/login#business_rules[1]",
+    "POST /api/auth/login#business_rules[5]",
+    "POST /api/auth/login#business_rules[6]",
+    "POST /api/auth/login#business_rules[7]",
+    "POST /api/auth/login#business_rules[8]",
+    "GET /api/auth/me#responses[4]"
+   ]
+  },
+  "me-read-fault-baseline": {
+   "steps": {
+    "me": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "GET /api/auth/me",
+   "fact_refs": [
+    "GET /api/auth/me#responses[5]",
+    "GET /api/auth/me#responses[4]",
+    "GET /api/auth/me#business_rules[6]"
+   ]
+  },
+  "me-success": {
+   "steps": {
+    "me": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "GET /api/auth/me",
+   "fact_refs": [
+    "GET /api/auth/me#responses[4]",
+    "GET /api/auth/me#business_rules[1]",
+    "GET /api/auth/me#business_rules[4]",
+    "GET /api/auth/me#business_rules[5]",
+    "GET /api/auth/me#business_rules[6]"
+   ]
+  },
+  "me-unauthenticated": {
+   "steps": {
+    "no-header": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    },
+    "wrong-scheme": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    },
+    "three-segments": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    },
+    "garbage-token": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    },
+    "u2-token": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "GET /api/auth/me",
+   "fact_refs": [
+    "GET /api/auth/me#responses[0]",
+    "GET /api/auth/me#responses[1]",
+    "GET /api/auth/me#business_rules[0]",
+    "GET /api/auth/me#business_rules[1]",
+    "GET /api/auth/me#business_rules[4]"
+   ]
+  },
+  "orders-create-cart-delete-fault-baseline": {
+   "steps": {
+    "add-a": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "add-b": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "order": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-cart": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-orders": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/orders",
+   "fact_refs": [
+    "POST /api/orders#responses[5]",
+    "POST /api/orders#responses[3]",
+    "POST /api/orders#business_rules[3]",
+    "POST /api/orders#business_rules[4]",
+    "POST /api/orders#business_rules[6]",
+    "POST /api/cart#responses[3]",
+    "GET /api/cart#responses[2]",
+    "GET /api/orders#responses[2]"
+   ]
+  },
+  "orders-create-clears-ordered-items-and-counts": {
+   "steps": {
+    "add-1": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "add-2": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "add-3": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "order": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-orders": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-cart": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-book-001": {
+     "function": "books-get-by-id",
+     "endpoint": "GET /api/books/:id",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/orders",
+   "fact_refs": [
+    "POST /api/orders#responses[3]",
+    "POST /api/orders#business_rules[1]",
+    "POST /api/orders#business_rules[2]",
+    "POST /api/orders#business_rules[3]",
+    "POST /api/orders#business_rules[4]",
+    "POST /api/orders#business_rules[5]",
+    "POST /api/orders#business_rules[10]",
+    "POST /api/cart#responses[3]",
+    "GET /api/orders#responses[2]",
+    "GET /api/cart#responses[2]",
+    "GET /api/books/:id#responses[2]"
+   ]
+  },
+  "orders-create-duplicate-bookid": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "order": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-orders": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-cart": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/orders",
+   "fact_refs": [
+    "POST /api/orders#responses[3]",
+    "POST /api/orders#business_rules[2]",
+    "POST /api/orders#business_rules[3]",
+    "POST /api/orders#business_rules[4]",
+    "POST /api/cart#responses[3]",
+    "GET /api/orders#responses[2]",
+    "GET /api/cart#responses[2]"
+   ]
+  },
+  "orders-create-happy-clears-ordered-items": {
+   "steps": {
+    "add-a": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "add-b": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "add-c": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "order": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-cart": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-deleted": {
+     "function": "cart-get-by-book",
+     "endpoint": "GET /api/cart/:bookId",
+     "status": {
+      "monolith": 404,
+      "target": 404
+     },
+     "verdict": "pass"
+    },
+    "read-orders": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/orders",
+   "fact_refs": [
+    "POST /api/orders#responses[3]",
+    "POST /api/orders#business_rules[1]",
+    "POST /api/orders#business_rules[3]",
+    "POST /api/orders#business_rules[10]",
+    "POST /api/cart#responses[3]",
+    "GET /api/cart#responses[2]",
+    "GET /api/cart/:bookId#responses[3]",
+    "GET /api/orders#responses[2]",
+    "GET /api/orders#business_rules[4]"
+   ]
+  },
+  "orders-create-order-write-fault-baseline": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "order": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-orders": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/orders",
+   "fact_refs": [
+    "POST /api/orders#responses[5]",
+    "POST /api/orders#responses[3]",
+    "POST /api/orders#business_rules[6]",
+    "POST /api/cart#responses[3]",
+    "GET /api/orders#responses[2]"
+   ]
+  },
+  "orders-create-unauthenticated": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "anon": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.anon.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "garbage-token": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.garbage-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "read-cart": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-orders": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "migration-change",
+   "endpoint": "POST /api/orders",
+   "fact_refs": [
+    "POST /api/orders#responses[0]",
+    "POST /api/orders#responses[1]",
+    "POST /api/orders#business_rules[11]",
+    "POST /api/cart#responses[3]",
+    "GET /api/cart#responses[2]",
+    "GET /api/orders#responses[2]"
+   ]
+  },
+  "orders-create-unknown-bookid-and-forged-price": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "order": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-cart": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-book": {
+     "function": "books-get-by-id",
+     "endpoint": "GET /api/books/:id",
+     "status": {
+      "monolith": 404,
+      "target": 404
+     },
+     "verdict": "pass"
+    },
+    "read-orders": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/orders",
+   "fact_refs": [
+    "POST /api/orders#responses[3]",
+    "POST /api/orders#business_rules[2]",
+    "POST /api/orders#business_rules[3]",
+    "POST /api/cart#responses[3]",
+    "GET /api/books/:id#responses[3]",
+    "GET /api/cart#responses[2]",
+    "GET /api/orders#responses[2]"
+   ]
+  },
+  "orders-create-validation": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "no-body": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "empty-array": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "books-string": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "books-object": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "form-scalar": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "malformed-json": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read-orders": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-cart": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/orders",
+   "fact_refs": [
+    "POST /api/orders#responses[2]",
+    "POST /api/orders#responses[4]",
+    "POST /api/orders#business_rules[0]",
+    "POST /api/orders#request",
+    "POST /api/cart#responses[3]",
+    "GET /api/orders#responses[2]",
+    "GET /api/cart#responses[2]"
+   ]
+  },
+  "orders-list-empty-then-after-create": {
+   "steps": {
+    "empty": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "order": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/orders",
+   "fact_refs": [
+    "GET /api/orders#responses[2]",
+    "GET /api/orders#business_rules[2]",
+    "GET /api/orders#business_rules[3]",
+    "GET /api/orders#business_rules[4]",
+    "GET /api/orders#business_rules[5]",
+    "POST /api/orders#responses[3]",
+    "POST /api/orders#business_rules[1]"
+   ]
+  },
+  "orders-list-read-fault-baseline": {
+   "steps": {
+    "list": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/orders",
+   "fact_refs": [
+    "GET /api/orders#responses[3]",
+    "GET /api/orders#responses[2]",
+    "GET /api/orders#business_rules[5]"
+   ]
+  },
+  "orders-list-two-orders-no-sorting": {
+   "steps": {
+    "order-a": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "order-b": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/orders",
+   "fact_refs": [
+    "GET /api/orders#responses[2]",
+    "GET /api/orders#business_rules[3]",
+    "POST /api/orders#responses[3]",
+    "POST /api/orders#business_rules[2]"
+   ]
+  },
+  "orders-list-unauthenticated-and-isolated": {
+   "steps": {
+    "anon": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.anon.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "garbage-token": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.garbage-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "u1-order": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u2-list": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u1-list": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "migration-change",
+   "endpoint": "GET /api/orders",
+   "fact_refs": [
+    "GET /api/orders#responses[0]",
+    "GET /api/orders#responses[1]",
+    "GET /api/orders#responses[2]",
+    "GET /api/orders#business_rules[0]",
+    "GET /api/orders#business_rules[1]",
+    "POST /api/orders#responses[3]"
+   ]
+  },
+  "refresh-error-arms": {
+   "steps": {
+    "missing-token": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/refresh is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / GAP-15）。refreshToken 独立密钥验签 + GetItem users + 只换发 accessToken 且 refreshToken 不轮换，全部由用户池的 REFRESH_TOKEN_AUTH 流程取代，令牌寿命/撤销规则随迁移改变（SI-11）。 (replaced by cognito)"
+    },
+    "garbage-token": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/refresh is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / GAP-15）。refreshToken 独立密钥验签 + GetItem users + 只换发 accessToken 且 refreshToken 不轮换，全部由用户池的 REFRESH_TOKEN_AUTH 流程取代，令牌寿命/撤销规则随迁移改变（SI-11）。 (replaced by cognito)"
+    },
+    "numeric-token": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/refresh is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / GAP-15）。refreshToken 独立密钥验签 + GetItem users + 只换发 accessToken 且 refreshToken 不轮换，全部由用户池的 REFRESH_TOKEN_AUTH 流程取代，令牌寿命/撤销规则随迁移改变（SI-11）。 (replaced by cognito)"
+    },
+    "malformed-json": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/refresh is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / GAP-15）。refreshToken 独立密钥验签 + GetItem users + 只换发 accessToken 且 refreshToken 不轮换，全部由用户池的 REFRESH_TOKEN_AUTH 流程取代，令牌寿命/撤销规则随迁移改变（SI-11）。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "POST /api/auth/refresh",
+   "fact_refs": [
+    "POST /api/auth/refresh#responses[0]",
+    "POST /api/auth/refresh#responses[1]",
+    "POST /api/auth/refresh#responses[4]",
+    "POST /api/auth/refresh#business_rules[0]",
+    "POST /api/auth/refresh#business_rules[2]"
+   ]
+  },
+  "refresh-read-fault-baseline": {
+   "steps": {
+    "refresh": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/refresh is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / GAP-15）。refreshToken 独立密钥验签 + GetItem users + 只换发 accessToken 且 refreshToken 不轮换，全部由用户池的 REFRESH_TOKEN_AUTH 流程取代，令牌寿命/撤销规则随迁移改变（SI-11）。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "POST /api/auth/refresh",
+   "fact_refs": [
+    "POST /api/auth/refresh#responses[5]",
+    "POST /api/auth/refresh#responses[3]",
+    "POST /api/auth/refresh#business_rules[7]"
+   ]
+  },
+  "refresh-success-then-me": {
+   "steps": {
+    "refresh": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/refresh is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / GAP-15）。refreshToken 独立密钥验签 + GetItem users + 只换发 accessToken 且 refreshToken 不轮换，全部由用户池的 REFRESH_TOKEN_AUTH 流程取代，令牌寿命/撤销规则随迁移改变（SI-11）。 (replaced by cognito)"
+    },
+    "me": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    },
+    "accesstoken-as-refresh": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/refresh is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / GAP-15）。refreshToken 独立密钥验签 + GetItem users + 只换发 accessToken 且 refreshToken 不轮换，全部由用户池的 REFRESH_TOKEN_AUTH 流程取代，令牌寿命/撤销规则随迁移改变（SI-11）。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "POST /api/auth/refresh",
+   "fact_refs": [
+    "POST /api/auth/refresh#responses[3]",
+    "POST /api/auth/refresh#business_rules[1]",
+    "POST /api/auth/refresh#business_rules[3]",
+    "POST /api/auth/refresh#business_rules[4]",
+    "POST /api/auth/refresh#business_rules[5]",
+    "POST /api/auth/refresh#business_rules[6]",
+    "POST /api/auth/refresh#business_rules[7]",
+    "GET /api/auth/me#responses[4]"
+   ]
+  },
+  "register-name-default-and-case-sensitive": {
+   "steps": {
+    "register-no-name": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/register is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。邮箱正则、口令长度校验、uuid 生成 userId、bcrypt 哈希、写 Bookstore-Users、签发双令牌这些步骤在目标上都没有对应端点，因此裁判不在目标上运行这一步。 (replaced by cognito)"
+    },
+    "login-exact": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+    },
+    "login-lowercase": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+    },
+    "me-readback": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "POST /api/auth/register",
+   "fact_refs": [
+    "POST /api/auth/register#responses[4]",
+    "POST /api/auth/register#business_rules[6]",
+    "POST /api/auth/register#business_rules[1]",
+    "POST /api/auth/register#business_rules[4]",
+    "POST /api/auth/login#responses[3]",
+    "POST /api/auth/login#responses[1]",
+    "POST /api/auth/login#business_rules[2]",
+    "GET /api/auth/me#responses[4]",
+    "GET /api/auth/me#business_rules[5]"
+   ]
+  },
+  "register-read-fails-once": {
+   "steps": {
+    "register": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/register is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。邮箱正则、口令长度校验、uuid 生成 userId、bcrypt 哈希、写 Bookstore-Users、签发双令牌这些步骤在目标上都没有对应端点，因此裁判不在目标上运行这一步。 (replaced by cognito)"
+    },
+    "login-after": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "POST /api/auth/register",
+   "fact_refs": [
+    "POST /api/auth/register#business_rules[3]",
+    "POST /api/auth/register#business_rules[4]",
+    "POST /api/auth/register#responses[4]",
+    "POST /api/auth/login#responses[3]"
+   ]
+  },
+  "register-success-then-me": {
+   "steps": {
+    "register": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/register is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。邮箱正则、口令长度校验、uuid 生成 userId、bcrypt 哈希、写 Bookstore-Users、签发双令牌这些步骤在目标上都没有对应端点，因此裁判不在目标上运行这一步。 (replaced by cognito)"
+    },
+    "me": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "POST /api/auth/register",
+   "fact_refs": [
+    "POST /api/auth/register#responses[4]",
+    "POST /api/auth/register#business_rules[5]",
+    "POST /api/auth/register#business_rules[6]",
+    "POST /api/auth/register#business_rules[7]",
+    "POST /api/auth/register#business_rules[8]",
+    "GET /api/auth/me#responses[4]",
+    "GET /api/auth/me#business_rules[5]",
+    "GET /api/auth/me#business_rules[6]"
+   ]
+  },
+  "register-validation-arms": {
+   "steps": {
+    "missing-password": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/register is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。邮箱正则、口令长度校验、uuid 生成 userId、bcrypt 哈希、写 Bookstore-Users、签发双令牌这些步骤在目标上都没有对应端点，因此裁判不在目标上运行这一步。 (replaced by cognito)"
+    },
+    "empty-email": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/register is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。邮箱正则、口令长度校验、uuid 生成 userId、bcrypt 哈希、写 Bookstore-Users、签发双令牌这些步骤在目标上都没有对应端点，因此裁判不在目标上运行这一步。 (replaced by cognito)"
+    },
+    "bad-email-format": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/register is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。邮箱正则、口令长度校验、uuid 生成 userId、bcrypt 哈希、写 Bookstore-Users、签发双令牌这些步骤在目标上都没有对应端点，因此裁判不在目标上运行这一步。 (replaced by cognito)"
+    },
+    "short-password": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/register is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。邮箱正则、口令长度校验、uuid 生成 userId、bcrypt 哈希、写 Bookstore-Users、签发双令牌这些步骤在目标上都没有对应端点，因此裁判不在目标上运行这一步。 (replaced by cognito)"
+    },
+    "duplicate-email": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/register is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。邮箱正则、口令长度校验、uuid 生成 userId、bcrypt 哈希、写 Bookstore-Users、签发双令牌这些步骤在目标上都没有对应端点，因此裁判不在目标上运行这一步。 (replaced by cognito)"
+    },
+    "malformed-json": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/register is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。邮箱正则、口令长度校验、uuid 生成 userId、bcrypt 哈希、写 Bookstore-Users、签发双令牌这些步骤在目标上都没有对应端点，因此裁判不在目标上运行这一步。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "POST /api/auth/register",
+   "fact_refs": [
+    "POST /api/auth/register#responses[0]",
+    "POST /api/auth/register#responses[1]",
+    "POST /api/auth/register#responses[2]",
+    "POST /api/auth/register#responses[3]",
+    "POST /api/auth/register#responses[5]",
+    "POST /api/auth/register#business_rules[0]",
+    "POST /api/auth/register#business_rules[1]",
+    "POST /api/auth/register#business_rules[2]",
+    "POST /api/auth/register#business_rules[3]"
+   ]
+  },
+  "register-write-fault-500": {
+   "steps": {
+    "register": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/register is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。邮箱正则、口令长度校验、uuid 生成 userId、bcrypt 哈希、写 Bookstore-Users、签发双令牌这些步骤在目标上都没有对应端点，因此裁判不在目标上运行这一步。 (replaced by cognito)"
+    },
+    "login-new-user": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "POST /api/auth/register",
+   "fact_refs": [
+    "POST /api/auth/register#responses[6]",
+    "POST /api/auth/register#responses[4]",
+    "POST /api/auth/register#business_rules[9]",
+    "POST /api/auth/login#responses[3]"
+   ]
+  },
+  "search-duplicate-q-param": {
+   "steps": {
+    "dup": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 500,
+      "target": 500
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/search",
+   "fact_refs": [
+    "GET /api/search#responses[4]",
+    "GET /api/search#business_rules[2]",
+    "GET /api/search#request"
+   ]
+  },
+  "search-hits-name-author-category": {
+   "steps": {
+    "by-author": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "by-author-upper": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "by-name": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "by-category": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "no-hit": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "as-u2": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/search",
+   "fact_refs": [
+    "GET /api/search#responses[3]",
+    "GET /api/search#business_rules[1]",
+    "GET /api/search#business_rules[3]",
+    "GET /api/search#business_rules[4]",
+    "GET /api/search#business_rules[5]",
+    "GET /api/search#business_rules[6]",
+    "GET /api/search#business_rules[7]"
+   ]
+  },
+  "search-non-string-name-500": {
+   "steps": {
+    "search": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 500,
+      "target": 500
+     },
+     "verdict": "pass"
+    },
+    "list": {
+     "function": "books-list",
+     "endpoint": "GET /api/books",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/search",
+   "fact_refs": [
+    "GET /api/search#responses[4]",
+    "GET /api/search#business_rules[2]",
+    "GET /api/books#responses[3]"
+   ]
+  },
+  "search-scan-fault-baseline": {
+   "steps": {
+    "search": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /api/search",
+   "fact_refs": [
+    "GET /api/search#responses[4]",
+    "GET /api/search#responses[3]",
+    "GET /api/search#business_rules[8]"
+   ]
+  },
+  "search-validation-and-unauthenticated": {
+   "steps": {
+    "no-q": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "empty-q": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "anon": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.anon.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "garbage-token": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.garbage-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "ok": {
+     "function": "search-books",
+     "endpoint": "GET /api/search",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "migration-change",
+   "endpoint": "GET /api/search",
+   "fact_refs": [
+    "GET /api/search#responses[0]",
+    "GET /api/search#responses[1]",
+    "GET /api/search#responses[2]",
+    "GET /api/search#business_rules[0]"
+   ]
+  },
+  "wb-cart-x-customer-id-cannot-scope-data": {
+   "steps": {
+    "u1-add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "anon-x-customer-id": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.anon-x-customer-id.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "u2-claims-u1-id": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u1-read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "migration-change",
+   "endpoint": "GET /api/cart",
+   "fact_refs": [
+    "POST /api/cart#responses[3]",
+    "GET /api/cart#responses[0]",
+    "GET /api/cart#responses[2]",
+    "GET /api/cart#business_rules[0]",
+    "GET /api/cart#business_rules[1]"
+   ]
+  },
+  "wb-me-x-customer-id-ignored": {
+   "steps": {
+    "anon-x-customer-id": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    },
+    "anon-other-id": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    },
+    "u1-claims-u2-id": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    },
+    "u1-claims-garbage-id": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    },
+    "u2-self": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "GET /api/auth/me",
+   "fact_refs": [
+    "GET /api/auth/me#responses[0]",
+    "GET /api/auth/me#responses[4]",
+    "GET /api/auth/me#business_rules[0]",
+    "GET /api/auth/me#business_rules[1]",
+    "GET /api/auth/me#business_rules[3]"
+   ]
+  },
+  "wb-orders-bestseller-update-fault-baseline": {
+   "steps": {
+    "add-1": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "add-2": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "order": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-orders": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-cart": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-book": {
+     "function": "books-get-by-id",
+     "endpoint": "GET /api/books/:id",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/orders",
+   "fact_refs": [
+    "POST /api/orders#responses[3]",
+    "POST /api/orders#business_rules[3]",
+    "POST /api/orders#business_rules[4]",
+    "POST /api/orders#business_rules[5]",
+    "POST /api/orders#business_rules[8]",
+    "POST /api/orders#business_rules[9]",
+    "POST /api/orders#business_rules[11]",
+    "POST /api/cart#responses[3]",
+    "GET /api/orders#responses[2]",
+    "GET /api/cart#responses[2]",
+    "GET /api/books/:id#responses[2]"
+   ]
+  },
+  "wb-orders-non-object-elements-500-order-still-written": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "order-null-element": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 500,
+      "target": 500
+     },
+     "verdict": "pass"
+    },
+    "order-string-element": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 500,
+      "target": 500
+     },
+     "verdict": "pass"
+    },
+    "read-orders": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-cart": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/orders",
+   "fact_refs": [
+    "POST /api/orders#responses[5]",
+    "POST /api/orders#business_rules[1]",
+    "POST /api/orders#business_rules[2]",
+    "POST /api/orders#business_rules[3]",
+    "POST /api/orders#business_rules[4]",
+    "POST /api/orders#business_rules[6]",
+    "POST /api/orders#business_rules[7]",
+    "POST /api/cart#responses[3]",
+    "GET /api/orders#responses[2]",
+    "GET /api/cart#responses[2]"
+   ]
+  },
+  "wb-orders-quantity-string-bestseller-not-created": {
+   "steps": {
+    "add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "order": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-orders": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-cart": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-bestsellers": {
+     "function": "bestsellers-list",
+     "endpoint": "GET /api/bestsellers",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /api/orders",
+   "fact_refs": [
+    "POST /api/orders#responses[3]",
+    "POST /api/orders#business_rules[1]",
+    "POST /api/orders#business_rules[2]",
+    "POST /api/orders#business_rules[5]",
+    "POST /api/orders#business_rules[8]",
+    "POST /api/orders#business_rules[9]",
+    "POST /api/orders#business_rules[10]",
+    "POST /api/cart#responses[3]",
+    "GET /api/orders#responses[2]",
+    "GET /api/cart#responses[2]",
+    "GET /api/bestsellers#responses[2]",
+    "GET /api/bestsellers#business_rules[6]"
+   ]
+  },
+  "wb-orders-x-customer-id-cannot-authenticate": {
+   "steps": {
+    "u1-add": {
+     "function": "cart-add",
+     "endpoint": "POST /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "anon-x-id": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a1-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.anon-x-id.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "u2-claims-u1-id": {
+     "function": "orders-create",
+     "endpoint": "POST /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u1-cart-read": {
+     "function": "cart-list",
+     "endpoint": "GET /api/cart",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u1-orders-read": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "u2-orders-read": {
+     "function": "orders-list",
+     "endpoint": "GET /api/orders",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "migration-change",
+   "endpoint": "POST /api/orders",
+   "fact_refs": [
+    "POST /api/orders#responses[0]",
+    "POST /api/orders#responses[3]",
+    "POST /api/orders#business_rules[1]",
+    "POST /api/orders#business_rules[3]",
+    "POST /api/orders#business_rules[13]",
+    "POST /api/cart#responses[3]",
+    "GET /api/cart#responses[2]",
+    "GET /api/orders#responses[2]"
+   ]
+  }
+ },
+ "faults": {
+  "bestsellers-scan-fails": {
+   "bestsellers-scan-fault-baseline": {
+    "steps": {
+     "list": {
+      "function": "bestsellers-list",
+      "endpoint": "GET /api/bestsellers",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /api/bestsellers",
+    "fact_refs": [
+     "GET /api/bestsellers#responses[3]",
+     "GET /api/bestsellers#responses[2]",
+     "GET /api/bestsellers#business_rules[5]"
+    ]
+   }
+  },
+  "books-get-one-fails": {
+   "books-get-one-read-fault-baseline": {
+    "steps": {
+     "hit": {
+      "function": "books-get-by-id",
+      "endpoint": "GET /api/books/:id",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /api/books/:id",
+    "fact_refs": [
+     "GET /api/books/:id#responses[4]",
+     "GET /api/books/:id#responses[2]",
+     "GET /api/books/:id#business_rules[6]"
+    ]
+   }
+  },
+  "books-scan-fails": {
+   "books-scan-fault-baseline": {
+    "steps": {
+     "list-all": {
+      "function": "books-list",
+      "endpoint": "GET /api/books",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /api/books",
+    "fact_refs": [
+     "GET /api/books#responses[4]",
+     "GET /api/books#responses[3]",
+     "GET /api/books#business_rules[7]"
+    ]
+   }
+  },
+  "books-scan-throttles-once": {
+   "books-list-by-category": {
+    "steps": {
+     "fiction": {
+      "function": "books-list",
+      "endpoint": "GET /api/books",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "software": {
+      "function": "books-list",
+      "endpoint": "GET /api/books",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "fiction-capitalized": {
+      "function": "books-list",
+      "endpoint": "GET /api/books",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "unknown-category": {
+      "function": "books-list",
+      "endpoint": "GET /api/books",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "fiction-as-u2": {
+      "function": "books-list",
+      "endpoint": "GET /api/books",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /api/books",
+    "fact_refs": [
+     "GET /api/books#responses[2]",
+     "GET /api/books#business_rules[1]",
+     "GET /api/books#business_rules[2]",
+     "GET /api/books#business_rules[3]",
+     "GET /api/books#business_rules[7]"
+    ]
+   }
+  },
+  "cart-add-put-fails": {
+   "cart-add-write-fault-baseline": {
+    "steps": {
+     "add": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /api/cart",
+    "fact_refs": [
+     "POST /api/cart#responses[5]",
+     "POST /api/cart#responses[3]",
+     "POST /api/cart#business_rules[5]"
+    ]
+   }
+  },
+  "cart-add-put-throttles-once": {
+   "cart-add-throttle-once": {
+    "steps": {
+     "add-a": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "add-b": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read": {
+      "function": "cart-list",
+      "endpoint": "GET /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /api/cart",
+    "fact_refs": [
+     "POST /api/cart#responses[3]",
+     "POST /api/cart#business_rules[2]",
+     "GET /api/cart#responses[2]"
+    ]
+   }
+  },
+  "cart-add-tx-conflict": {
+   "cart-add-write-fault-baseline": {
+    "steps": {
+     "add": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /api/cart",
+    "fact_refs": [
+     "POST /api/cart#responses[5]",
+     "POST /api/cart#responses[3]",
+     "POST /api/cart#business_rules[5]"
+    ]
+   }
+  },
+  "cart-delete-fails": {
+   "cart-delete-write-fault-baseline": {
+    "steps": {
+     "add": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "delete": {
+      "function": "cart-remove",
+      "endpoint": "DELETE /api/cart",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     },
+     "read": {
+      "function": "cart-list",
+      "endpoint": "GET /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "DELETE /api/cart",
+    "fact_refs": [
+     "DELETE /api/cart#responses[5]",
+     "DELETE /api/cart#responses[3]",
+     "POST /api/cart#responses[3]",
+     "GET /api/cart#responses[2]"
+    ]
+   }
+  },
+  "cart-get-one-fails": {
+   "cart-get-one-read-fault-baseline": {
+    "steps": {
+     "add": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "hit": {
+      "function": "cart-get-by-book",
+      "endpoint": "GET /api/cart/:bookId",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /api/cart/:bookId",
+    "fact_refs": [
+     "GET /api/cart/:bookId#responses[4]",
+     "GET /api/cart/:bookId#responses[2]",
+     "POST /api/cart#responses[3]"
+    ]
+   }
+  },
+  "cart-query-fails": {
+   "cart-list-read-fault-baseline": {
+    "steps": {
+     "list": {
+      "function": "cart-list",
+      "endpoint": "GET /api/cart",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /api/cart",
+    "fact_refs": [
+     "GET /api/cart#responses[3]",
+     "GET /api/cart#responses[2]",
+     "GET /api/cart#business_rules[6]"
+    ]
+   }
+  },
+  "cart-update-fails": {
+   "cart-update-write-fault-baseline": {
+    "steps": {
+     "add": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "put": {
+      "function": "cart-update",
+      "endpoint": "PUT /api/cart",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "PUT /api/cart",
+    "fact_refs": [
+     "PUT /api/cart#responses[5]",
+     "PUT /api/cart#responses[3]",
+     "PUT /api/cart#business_rules[6]",
+     "POST /api/cart#responses[3]"
+    ]
+   }
+  },
+  "cart-update-fails-once": {
+   "cart-update-throttle-once": {
+    "steps": {
+     "add": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "put": {
+      "function": "cart-update",
+      "endpoint": "PUT /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read": {
+      "function": "cart-get-by-book",
+      "endpoint": "GET /api/cart/:bookId",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "PUT /api/cart",
+    "fact_refs": [
+     "PUT /api/cart#responses[3]",
+     "PUT /api/cart#business_rules[2]",
+     "GET /api/cart/:bookId#responses[2]",
+     "POST /api/cart#responses[3]"
+    ]
+   }
+  },
+  "login-query-fails": {
+   "login-read-fault-baseline": {
+    "steps": {
+     "login": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": []
+    },
+    "rule_problems": [
+     "Bookstore-Users has no target table (cognito)"
+    ],
+    "verdict": "dropped",
+    "endpoint": "POST /api/auth/login",
+    "fact_refs": [
+     "POST /api/auth/login#responses[5]",
+     "POST /api/auth/login#responses[3]",
+     "POST /api/auth/login#business_rules[8]"
+    ]
+   }
+  },
+  "login-query-throttles-once": {
+   "login-success-then-me": {
+    "steps": {
+     "login": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+     },
+     "me": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": []
+    },
+    "rule_problems": [
+     "Bookstore-Users has no target table (cognito)"
+    ],
+    "verdict": "dropped",
+    "endpoint": "POST /api/auth/login",
+    "fact_refs": [
+     "POST /api/auth/login#responses[3]",
+     "POST /api/auth/login#business_rules[1]",
+     "POST /api/auth/login#business_rules[5]",
+     "POST /api/auth/login#business_rules[6]",
+     "POST /api/auth/login#business_rules[7]",
+     "POST /api/auth/login#business_rules[8]",
+     "GET /api/auth/me#responses[4]"
+    ]
+   }
+  },
+  "me-get-fails": {
+   "me-read-fault-baseline": {
+    "steps": {
+     "me": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "GET /api/auth/me is not served by the target: Replaced by Cognito - Frontend reads the profile from its own ID token / Cognito SDK（D-3）。单体的『GetItem users → 剔除 password → 其余属性原样透出』以及 401 'Authentication required' / 404 'User not found' 两臂（judge/uncovered.json 已注明这两条在默认配置下走不到）在目标上由用户池的属性直接给出。 (replaced by cognito)"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": []
+    },
+    "rule_problems": [
+     "Bookstore-Users has no target table (cognito)"
+    ],
+    "verdict": "dropped",
+    "endpoint": "GET /api/auth/me",
+    "fact_refs": [
+     "GET /api/auth/me#responses[5]",
+     "GET /api/auth/me#responses[4]",
+     "GET /api/auth/me#business_rules[6]"
+    ]
+   }
+  },
+  "orders-cart-delete-fails-all": {
+   "orders-create-cart-delete-fault-baseline": {
+    "steps": {
+     "add-a": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "add-b": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "order": {
+      "function": "orders-create",
+      "endpoint": "POST /api/orders",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     },
+     "read-cart": {
+      "function": "cart-list",
+      "endpoint": "GET /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-orders": {
+      "function": "orders-list",
+      "endpoint": "GET /api/orders",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /api/orders",
+    "fact_refs": [
+     "POST /api/orders#responses[5]",
+     "POST /api/orders#responses[3]",
+     "POST /api/orders#business_rules[3]",
+     "POST /api/orders#business_rules[4]",
+     "POST /api/orders#business_rules[6]",
+     "POST /api/cart#responses[3]",
+     "GET /api/cart#responses[2]",
+     "GET /api/orders#responses[2]"
+    ]
+   }
+  },
+  "orders-cart-delete-fails-once": {
+   "orders-create-cart-delete-fault-baseline": {
+    "steps": {
+     "add-a": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "add-b": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "order": {
+      "function": "orders-create",
+      "endpoint": "POST /api/orders",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-cart": {
+      "function": "cart-list",
+      "endpoint": "GET /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-orders": {
+      "function": "orders-list",
+      "endpoint": "GET /api/orders",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /api/orders",
+    "fact_refs": [
+     "POST /api/orders#responses[5]",
+     "POST /api/orders#responses[3]",
+     "POST /api/orders#business_rules[3]",
+     "POST /api/orders#business_rules[4]",
+     "POST /api/orders#business_rules[6]",
+     "POST /api/cart#responses[3]",
+     "GET /api/cart#responses[2]",
+     "GET /api/orders#responses[2]"
+    ]
+   }
+  },
+  "orders-query-fails": {
+   "orders-list-read-fault-baseline": {
+    "steps": {
+     "list": {
+      "function": "orders-list",
+      "endpoint": "GET /api/orders",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /api/orders",
+    "fact_refs": [
+     "GET /api/orders#responses[3]",
+     "GET /api/orders#responses[2]",
+     "GET /api/orders#business_rules[5]"
+    ]
+   }
+  },
+  "orders-write-fails": {
+   "orders-create-order-write-fault-baseline": {
+    "steps": {
+     "add": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "order": {
+      "function": "orders-create",
+      "endpoint": "POST /api/orders",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     },
+     "read-orders": {
+      "function": "orders-list",
+      "endpoint": "GET /api/orders",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /api/orders",
+    "fact_refs": [
+     "POST /api/orders#responses[5]",
+     "POST /api/orders#responses[3]",
+     "POST /api/orders#business_rules[6]",
+     "POST /api/cart#responses[3]",
+     "GET /api/orders#responses[2]"
+    ]
+   }
+  },
+  "refresh-get-fails": {
+   "refresh-read-fault-baseline": {
+    "steps": {
+     "refresh": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /api/auth/refresh is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / GAP-15）。refreshToken 独立密钥验签 + GetItem users + 只换发 accessToken 且 refreshToken 不轮换，全部由用户池的 REFRESH_TOKEN_AUTH 流程取代，令牌寿命/撤销规则随迁移改变（SI-11）。 (replaced by cognito)"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": []
+    },
+    "rule_problems": [
+     "Bookstore-Users has no target table (cognito)"
+    ],
+    "verdict": "dropped",
+    "endpoint": "POST /api/auth/refresh",
+    "fact_refs": [
+     "POST /api/auth/refresh#responses[5]",
+     "POST /api/auth/refresh#responses[3]",
+     "POST /api/auth/refresh#business_rules[7]"
+    ]
+   }
+  },
+  "register-put-fails": {
+   "register-write-fault-500": {
+    "steps": {
+     "register": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /api/auth/register is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。邮箱正则、口令长度校验、uuid 生成 userId、bcrypt 哈希、写 Bookstore-Users、签发双令牌这些步骤在目标上都没有对应端点，因此裁判不在目标上运行这一步。 (replaced by cognito)"
+     },
+     "login-new-user": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": []
+    },
+    "rule_problems": [
+     "Bookstore-Users has no target table (cognito)"
+    ],
+    "verdict": "dropped",
+    "endpoint": "POST /api/auth/register",
+    "fact_refs": [
+     "POST /api/auth/register#responses[6]",
+     "POST /api/auth/register#responses[4]",
+     "POST /api/auth/register#business_rules[9]",
+     "POST /api/auth/login#responses[3]"
+    ]
+   }
+  },
+  "register-uniqueness-query-throttles-once": {
+   "register-read-fails-once": {
+    "steps": {
+     "register": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /api/auth/register is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。邮箱正则、口令长度校验、uuid 生成 userId、bcrypt 哈希、写 Bookstore-Users、签发双令牌这些步骤在目标上都没有对应端点，因此裁判不在目标上运行这一步。 (replaced by cognito)"
+     },
+     "login-after": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /api/auth/login is not served by the target: Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly（SI-11 / D-3）。email-index 查用户 + bcrypt.compare + 签令牌由用户池的 AuthFlow 承担；单体的 401 'Invalid email or password' 两条文案没有对应实现。 (replaced by cognito)"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": []
+    },
+    "rule_problems": [
+     "Bookstore-Users has no target table (cognito)"
+    ],
+    "verdict": "dropped",
+    "endpoint": "POST /api/auth/register",
+    "fact_refs": [
+     "POST /api/auth/register#business_rules[3]",
+     "POST /api/auth/register#business_rules[4]",
+     "POST /api/auth/register#responses[4]",
+     "POST /api/auth/login#responses[3]"
+    ]
+   }
+  },
+  "search-scan-fails": {
+   "search-scan-fault-baseline": {
+    "steps": {
+     "search": {
+      "function": "search-books",
+      "endpoint": "GET /api/search",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /api/search",
+    "fact_refs": [
+     "GET /api/search#responses[4]",
+     "GET /api/search#responses[3]",
+     "GET /api/search#business_rules[8]"
+    ]
+   }
+  },
+  "wb-orders-bestseller-update-fails": {
+   "wb-orders-bestseller-update-fault-baseline": {
+    "steps": {
+     "add-1": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "add-2": {
+      "function": "cart-add",
+      "endpoint": "POST /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "order": {
+      "function": "orders-create",
+      "endpoint": "POST /api/orders",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-orders": {
+      "function": "orders-list",
+      "endpoint": "GET /api/orders",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-cart": {
+      "function": "cart-list",
+      "endpoint": "GET /api/cart",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-book": {
+      "function": "books-get-by-id",
+      "endpoint": "GET /api/books/:id",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /api/orders",
+    "fact_refs": [
+     "POST /api/orders#responses[3]",
+     "POST /api/orders#business_rules[3]",
+     "POST /api/orders#business_rules[4]",
+     "POST /api/orders#business_rules[5]",
+     "POST /api/orders#business_rules[8]",
+     "POST /api/orders#business_rules[9]",
+     "POST /api/orders#business_rules[11]",
+     "POST /api/cart#responses[3]",
+     "GET /api/orders#responses[2]",
+     "GET /api/cart#responses[2]",
+     "GET /api/books/:id#responses[2]"
+    ]
+   }
+  }
+ },
+ "summary": {
+  "cases": {
+   "dropped": 15,
+   "migration-change": 13,
+   "pass": 46
+  },
+  "fault_runs": {
+   "dropped": 6,
+   "pass": 18
+  }
+ },
+ "functions": {
+  "bestsellers-list": {
+   "started": true,
+   "invocations": 7
+  },
+  "books-get-by-id": {
+   "started": true,
+   "invocations": 13
+  },
+  "books-list": {
+   "started": true,
+   "invocations": 17
+  },
+  "cart-list": {
+   "started": true,
+   "invocations": 39
+  },
+  "cart-add": {
+   "started": true,
+   "invocations": 62
+  },
+  "cart-get-by-book": {
+   "started": true,
+   "invocations": 19
+  },
+  "cart-remove": {
+   "started": true,
+   "invocations": 10
+  },
+  "cart-update": {
+   "started": true,
+   "invocations": 11
+  },
+  "orders-create": {
+   "started": true,
+   "invocations": 25
+  },
+  "bestsellers-update": {
+   "started": true,
+   "invocations": 15
+  },
+  "orders-list": {
+   "started": true,
+   "invocations": 24
+  },
+  "search-books": {
+   "started": true,
+   "invocations": 13
+  }
+ },
+ "logs": {}
+}

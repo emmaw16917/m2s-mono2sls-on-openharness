@@ -1,0 +1,9 @@
+{
+  "task": "I3",
+  "attempt": 1,
+  "role": "m2s-validator",
+  "status": "done",
+  "time": "2026-11-04T03:56:10+0800",
+  "summary": "S4 一致性检查完成：独立复算 C1-C12（含 C7b、附加机械项 C13/C14/GM1/GM2/AT2），blueprint.json ↔ output/template.yaml ↔ output/lambdas/ 三方全部对齐——0 处修改；C4/C5/C6 suspects 逐项判定为不需要动手（AWS_REGION 运行时注入、ENVIRONMENT/LOG_LEVEL 基础设施参数、Policy Template 与代码 boto3 调用逐一对应、无共享层需求），validate_sam 亲自复验 ok:true（0 errors/0 warnings），consistency_report.json status=PASS / total_checks=12 / fixes_applied=0 / sam_validation=PASS。",
+  "notes": "输入偏差：spawn prompt 未内嵌 run_gate(phase=\"template\") 报告；按角色禁令我没有调用 run_gate，而是用自建 CFN-tag YAML loader 独立复算了同一组检查（脚本放在工作区外的临时目录，未写任何 WS 文件除规定的两份报告）。核对细节：15 Function / 25 资源 / 14 Api 事件（全部带 RestApiId，7 个 Authorizer: NONE 覆盖与 blueprint public_routes 一致，7 个 auth=required 靠 Cognito DefaultAuthorizer 继承）/ 1 SQS 事件（BatchSize=10 = blueprint consumer_batch_size，ReportBatchItemFailures 与 D-5/SI-10 一致）；Cognito 令牌 1h/1h/30d 与口令策略 8+大小写+数字+符号全部字面量匹配（C14）；5 张表的 AttributeDefinitions 覆盖全部主键与 GSI 键（CFN ValidationException 级风险，专门核过）；GM1/GM2 四个全局头在函数侧与 GatewayResponses(DEFAULT_4XX/DEFAULT_5XX/UNAUTHORIZED) 侧齐备；Ref/GetAtt 引用图无环，唯一被引用的非资源名是已定义的 Parameter Environment。留给后续的一条范围外注意项（未修改）：分片 output/template.part1.yaml 仍带 ApiLogGroup + AccessLogSetting（合并产物 template.yaml 已由 I2c 删除，否则 RestApi<->LogGroup 循环依赖，部署期才暴露）；若重跑 m2s_merge.py 需在 template.yaml 再删一次。另：blueprint 无 requirements.txt/package.json 属正确形态（代码只用运行时自带的 boto3 + 标准库，C10 通过），gateway_responses 里 MISSING_AUTHENTICATION_TOKEN/RESOURCE_NOT_FOUND 未显式声明判定为非偏差（默认 status/body 相同，显式声明会抢占 DEFAULT_4XX 通配而丢全局 CORS 头）。"
+}

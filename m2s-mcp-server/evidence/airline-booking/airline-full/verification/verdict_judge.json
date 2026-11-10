@@ -1,0 +1,5728 @@
+{
+ "meta": {
+  "judge_version": 1,
+  "judge_frozen_at": "2026-11-02T14:36:26Z",
+  "code": {
+   "code": "working tree",
+   "head": "604d1ce",
+   "uncommitted_output_changes": []
+  },
+  "mode": "rie",
+  "backend": "ddblocal",
+  "adapter_map_sha": "7f21131f1672b181ee3f2f8ff4d6dba52ecbc581271fc47f6ce51c9d873a2607",
+  "generated_at": "2026-11-03T21:46:20Z",
+  "seconds": 361.5,
+  "run_dir": "D:\\tmp\\m2sv\\airline-full\\judge\\20261104-054018-judge"
+ },
+ "status": "PASS",
+ "cases": {
+  "add-points-admin-creates-rows": {
+   "steps": {
+    "add-150": {
+     "function": "loyalty-add-points",
+     "endpoint": "POST /loyalty/<customer_id>/points",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "add-decimal": {
+     "function": "loyalty-add-points",
+     "endpoint": "POST /loyalty/<customer_id>/points",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-total": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "add-unknown-customer": {
+     "function": "loyalty-add-points",
+     "endpoint": "POST /loyalty/<customer_id>/points",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-unknown-customer": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /loyalty/<customer_id>/points",
+   "fact_refs": [
+    "POST /loyalty/<customer_id>/points#responses[0]",
+    "POST /loyalty/<customer_id>/points#business_rules[2]",
+    "POST /loyalty/<customer_id>/points#business_rules[3]",
+    "GET /loyalty/<customer_id>#responses[0]",
+    "POST /loyalty/<customer_id>/points#business_rules[4]"
+   ]
+  },
+  "add-points-non-admin-403": {
+   "steps": {
+    "non-admin-add": {
+     "function": "loyalty-add-points",
+     "endpoint": "POST /loyalty/<customer_id>/points",
+     "status": {
+      "monolith": 403,
+      "target": 403
+     },
+     "verdict": "pass"
+    },
+    "read-total": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /loyalty/<customer_id>/points",
+   "fact_refs": [
+    "POST /loyalty/<customer_id>/points#responses[3]",
+    "POST /loyalty/<customer_id>/points#business_rules[0]",
+    "GET /loyalty/<customer_id>#responses[0]"
+   ]
+  },
+  "add-points-validation-and-auth": {
+   "steps": {
+    "string-points": {
+     "function": "loyalty-add-points",
+     "endpoint": "POST /loyalty/<customer_id>/points",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "zero": {
+     "function": "loyalty-add-points",
+     "endpoint": "POST /loyalty/<customer_id>/points",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "negative": {
+     "function": "loyalty-add-points",
+     "endpoint": "POST /loyalty/<customer_id>/points",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "empty-body": {
+     "function": "loyalty-add-points",
+     "endpoint": "POST /loyalty/<customer_id>/points",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "no-points-key": {
+     "function": "loyalty-add-points",
+     "endpoint": "POST /loyalty/<customer_id>/points",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "no-header": {
+     "function": "loyalty-add-points",
+     "endpoint": "POST /loyalty/<customer_id>/points",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-header.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "no-space": {
+     "function": "loyalty-add-points",
+     "endpoint": "POST /loyalty/<customer_id>/points",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-space.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "bad-token": {
+     "function": "loyalty-add-points",
+     "endpoint": "POST /loyalty/<customer_id>/points",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.bad-token.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "read-total": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:admin>",
+       "groups": [
+        "Admin"
+       ]
+      },
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [
+      {
+       "groups": [
+        "Admin"
+       ],
+       "sub": "judge-admin"
+      }
+     ],
+     "why": "expected 2 items"
+    }
+   ],
+   "verdict": "migration-change",
+   "endpoint": "POST /loyalty/<customer_id>/points",
+   "fact_refs": [
+    "POST /loyalty/<customer_id>/points#responses[1]",
+    "POST /loyalty/<customer_id>/points#responses[2]",
+    "POST /loyalty/<customer_id>/points#responses[4]",
+    "POST /loyalty/<customer_id>/points#responses[5]",
+    "POST /loyalty/<customer_id>/points#responses[6]",
+    "POST /loyalty/<customer_id>/points#business_rules[0]",
+    "POST /loyalty/<customer_id>/points#business_rules[1]",
+    "GET /loyalty/<customer_id>#responses[0]"
+   ]
+  },
+  "bookings-auth-and-input-arms": {
+   "steps": {
+    "no-header": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-header.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "no-space": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-space.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "bad-token": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.bad-token.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "empty-body": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "missing-outbound": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 500,
+      "target": 500
+     },
+     "verdict": "pass"
+    },
+    "read-own-bookings": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "migration-change",
+   "endpoint": "POST /bookings",
+   "fact_refs": [
+    "POST /bookings#responses[0]",
+    "POST /bookings#responses[1]",
+    "POST /bookings#responses[2]",
+    "POST /bookings#responses[3]",
+    "POST /bookings#responses[9]",
+    "POST /bookings#business_rules[0]",
+    "POST /bookings#business_rules[1]",
+    "POST /bookings#business_rules[8]"
+   ]
+  },
+  "bookings-customer-from-token": {
+   "steps": {
+    "create": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 201,
+      "target": 201
+     },
+     "verdict": "pass"
+    },
+    "owner-read": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "other-read": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 403,
+      "target": 403
+     },
+     "verdict": "pass"
+    },
+    "other-list": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      },
+      {
+       "sub": "<id:u2>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 2 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings",
+   "fact_refs": [
+    "POST /bookings#responses[8]",
+    "POST /bookings#business_rules[0]",
+    "GET /bookings/<booking_id>#responses[4]",
+    "GET /customers/<customer_id>/bookings#responses[0]"
+   ]
+  },
+  "bookings-flight-unavailable": {
+   "steps": {
+    "book-full": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read-full-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-other-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-list": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings",
+   "fact_refs": [
+    "POST /bookings#responses[4]",
+    "POST /bookings#business_rules[9]"
+   ]
+  },
+  "bookings-missing-chargeid": {
+   "steps": {
+    "book-no-charge": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-list": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings",
+   "fact_refs": [
+    "POST /bookings#responses[5]",
+    "POST /bookings#business_rules[10]"
+   ]
+  },
+  "bookings-payment-fails-rollback": {
+   "steps": {
+    "book-bad-charge": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read-booking": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-loyalty": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings",
+   "fact_refs": [
+    "POST /bookings#responses[6]",
+    "POST /bookings#business_rules[3]",
+    "POST /bookings#business_rules[4]"
+   ]
+  },
+  "bookings-success-read-back": {
+   "steps": {
+    "create": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 201,
+      "target": 201
+     },
+     "verdict": "pass"
+    },
+    "read-booking": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-loyalty": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-list": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings",
+   "fact_refs": [
+    "POST /bookings#responses[8]",
+    "POST /bookings#business_rules[0]",
+    "POST /bookings#business_rules[2]",
+    "POST /bookings#business_rules[5]",
+    "POST /bookings#business_rules[6]",
+    "POST /bookings#business_rules[7]",
+    "POST /bookings#responses[7]",
+    "POST /bookings#business_rules[4]"
+   ]
+  },
+  "cancel-auth-and-missing": {
+   "steps": {
+    "no-header": {
+     "function": "booking-cancel",
+     "endpoint": "POST /bookings/<booking_id>/cancel",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-header.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "no-space": {
+     "function": "booking-cancel",
+     "endpoint": "POST /bookings/<booking_id>/cancel",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-space.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "bad-token": {
+     "function": "booking-cancel",
+     "endpoint": "POST /bookings/<booking_id>/cancel",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.bad-token.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "missing": {
+     "function": "booking-cancel",
+     "endpoint": "POST /bookings/<booking_id>/cancel",
+     "status": {
+      "monolith": 404,
+      "target": 404
+     },
+     "verdict": "pass"
+    },
+    "other-cancel": {
+     "function": "booking-cancel",
+     "endpoint": "POST /bookings/<booking_id>/cancel",
+     "status": {
+      "monolith": 403,
+      "target": 403
+     },
+     "verdict": "pass"
+    },
+    "read-booking": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      },
+      {
+       "sub": "<id:u2>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 2 items"
+    }
+   ],
+   "verdict": "migration-change",
+   "endpoint": "POST /bookings/<booking_id>/cancel",
+   "fact_refs": [
+    "POST /bookings/<booking_id>/cancel#responses[1]",
+    "POST /bookings/<booking_id>/cancel#responses[2]",
+    "POST /bookings/<booking_id>/cancel#responses[3]",
+    "POST /bookings/<booking_id>/cancel#responses[4]",
+    "POST /bookings/<booking_id>/cancel#responses[5]",
+    "POST /bookings/<booking_id>/cancel#business_rules[0]",
+    "POST /bookings/<booking_id>/cancel#business_rules[2]"
+   ]
+  },
+  "cancel-happy-read-back": {
+   "steps": {
+    "collect": {
+     "function": "payments-collect",
+     "endpoint": "POST /payments/collect",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "cancel": {
+     "function": "booking-cancel",
+     "endpoint": "POST /bookings/<booking_id>/cancel",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-booking": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-payment": {
+     "function": "payment-get",
+     "endpoint": "GET /payments/<charge_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "other-cancel": {
+     "function": "booking-cancel",
+     "endpoint": "POST /bookings/<booking_id>/cancel",
+     "status": {
+      "monolith": 403,
+      "target": 403
+     },
+     "verdict": "pass"
+    },
+    "read-other-booking": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      },
+      {
+       "sub": "<id:u2>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 2 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings/<booking_id>/cancel",
+   "fact_refs": [
+    "POST /bookings/<booking_id>/cancel#responses[0]",
+    "POST /bookings/<booking_id>/cancel#responses[5]",
+    "POST /bookings/<booking_id>/cancel#responses[6]",
+    "POST /bookings/<booking_id>/cancel#responses[7]",
+    "POST /bookings/<booking_id>/cancel#business_rules[0]",
+    "POST /bookings/<booking_id>/cancel#business_rules[1]",
+    "POST /bookings/<booking_id>/cancel#business_rules[2]",
+    "POST /bookings/<booking_id>/cancel#business_rules[3]",
+    "POST /bookings/<booking_id>/cancel#business_rules[4]",
+    "POST /bookings/<booking_id>/cancel#business_rules[5]",
+    "POST /bookings/<booking_id>/cancel#business_rules[6]"
+   ]
+  },
+  "cancel-row-without-customer": {
+   "steps": {
+    "cancel": {
+     "function": "booking-cancel",
+     "endpoint": "POST /bookings/<booking_id>/cancel",
+     "status": {
+      "monolith": 500,
+      "target": 500
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings/<booking_id>/cancel",
+   "fact_refs": [
+    "POST /bookings/<booking_id>/cancel#responses[8]",
+    "POST /bookings/<booking_id>/cancel#business_rules[0]"
+   ]
+  },
+  "collect-validation-and-record": {
+   "steps": {
+    "empty-body": {
+     "function": "payments-collect",
+     "endpoint": "POST /payments/collect",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "no-charge-key": {
+     "function": "payments-collect",
+     "endpoint": "POST /payments/collect",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "empty-charge": {
+     "function": "payments-collect",
+     "endpoint": "POST /payments/collect",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "null-charge": {
+     "function": "payments-collect",
+     "endpoint": "POST /payments/collect",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "ok": {
+     "function": "payments-collect",
+     "endpoint": "POST /payments/collect",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-payment": {
+     "function": "payment-get",
+     "endpoint": "GET /payments/<charge_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /payments/collect",
+   "fact_refs": [
+    "POST /payments/collect#responses[0]",
+    "POST /payments/collect#responses[1]",
+    "POST /payments/collect#responses[2]",
+    "POST /payments/collect#business_rules[0]",
+    "POST /payments/collect#business_rules[1]",
+    "POST /payments/collect#business_rules[2]",
+    "POST /payments/collect#business_rules[3]",
+    "GET /payments/<charge_id>#responses[0]",
+    "POST /payments/collect#business_rules[4]"
+   ]
+  },
+  "confirm-auth-and-missing": {
+   "steps": {
+    "no-header": {
+     "function": "booking-confirm",
+     "endpoint": "POST /bookings/<booking_id>/confirm",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-header.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "no-space": {
+     "function": "booking-confirm",
+     "endpoint": "POST /bookings/<booking_id>/confirm",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-space.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "bad-token": {
+     "function": "booking-confirm",
+     "endpoint": "POST /bookings/<booking_id>/confirm",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.bad-token.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "missing": {
+     "function": "booking-confirm",
+     "endpoint": "POST /bookings/<booking_id>/confirm",
+     "status": {
+      "monolith": 404,
+      "target": 404
+     },
+     "verdict": "pass"
+    },
+    "read-untouched": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "migration-change",
+   "endpoint": "POST /bookings/<booking_id>/confirm",
+   "fact_refs": [
+    "POST /bookings/<booking_id>/confirm#responses[0]",
+    "POST /bookings/<booking_id>/confirm#responses[1]",
+    "POST /bookings/<booking_id>/confirm#responses[2]",
+    "POST /bookings/<booking_id>/confirm#responses[3]",
+    "POST /bookings/<booking_id>/confirm#business_rules[0]"
+   ]
+  },
+  "confirm-cancelled-booking": {
+   "steps": {
+    "confirm-cancelled": {
+     "function": "booking-confirm",
+     "endpoint": "POST /bookings/<booking_id>/confirm",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-booking": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings/<booking_id>/confirm",
+   "fact_refs": [
+    "POST /bookings/<booking_id>/confirm#responses[5]",
+    "POST /bookings/<booking_id>/confirm#business_rules[1]",
+    "POST /bookings/<booking_id>/confirm#business_rules[2]"
+   ]
+  },
+  "confirm-happy-read-back": {
+   "steps": {
+    "confirm": {
+     "function": "booking-confirm",
+     "endpoint": "POST /bookings/<booking_id>/confirm",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-after": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "confirm-again": {
+     "function": "booking-confirm",
+     "endpoint": "POST /bookings/<booking_id>/confirm",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "other-confirm": {
+     "function": "booking-confirm",
+     "endpoint": "POST /bookings/<booking_id>/confirm",
+     "status": {
+      "monolith": 403,
+      "target": 403
+     },
+     "verdict": "pass"
+    },
+    "read-final": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      },
+      {
+       "sub": "<id:u2>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 2 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings/<booking_id>/confirm",
+   "fact_refs": [
+    "POST /bookings/<booking_id>/confirm#responses[4]",
+    "POST /bookings/<booking_id>/confirm#responses[5]",
+    "POST /bookings/<booking_id>/confirm#business_rules[0]",
+    "POST /bookings/<booking_id>/confirm#business_rules[1]",
+    "POST /bookings/<booking_id>/confirm#business_rules[2]",
+    "POST /bookings/<booking_id>/confirm#business_rules[3]",
+    "POST /bookings/<booking_id>/confirm#responses[6]"
+   ]
+  },
+  "customer-bookings-single-and-auth": {
+   "steps": {
+    "no-header": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-header.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "no-space": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-space.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "bad-token": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.bad-token.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "self": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "other": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 403,
+      "target": 403
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      },
+      {
+       "sub": "<id:u2>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 2 items"
+    }
+   ],
+   "verdict": "migration-change",
+   "endpoint": "GET /customers/<customer_id>/bookings",
+   "fact_refs": [
+    "GET /customers/<customer_id>/bookings#responses[0]",
+    "GET /customers/<customer_id>/bookings#responses[1]",
+    "GET /customers/<customer_id>/bookings#responses[2]",
+    "GET /customers/<customer_id>/bookings#responses[3]",
+    "GET /customers/<customer_id>/bookings#responses[4]",
+    "GET /customers/<customer_id>/bookings#business_rules[0]",
+    "GET /customers/<customer_id>/bookings#business_rules[1]"
+   ]
+  },
+  "customer-bookings-status-filter": {
+   "steps": {
+    "filter-unconfirmed": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "filter-bogus": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "filter-empty": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "admin-reads-other": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:admin>",
+       "groups": [
+        "Admin"
+       ]
+      },
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [
+      {
+       "groups": [
+        "Admin"
+       ],
+       "sub": "judge-admin"
+      }
+     ],
+     "why": "expected 2 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "GET /customers/<customer_id>/bookings",
+   "fact_refs": [
+    "GET /customers/<customer_id>/bookings#responses[0]",
+    "GET /customers/<customer_id>/bookings#business_rules[1]",
+    "GET /customers/<customer_id>/bookings#business_rules[2]",
+    "GET /customers/<customer_id>/bookings#business_rules[3]",
+    "GET /customers/<customer_id>/bookings#business_rules[4]"
+   ]
+  },
+  "get-booking-double-read-arm": {
+   "steps": {
+    "read": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "GET /bookings/<booking_id>",
+   "fact_refs": [
+    "GET /bookings/<booking_id>#responses[5]",
+    "GET /bookings/<booking_id>#responses[6]",
+    "GET /bookings/<booking_id>#business_rules[3]",
+    "GET /bookings/<booking_id>#business_rules[4]"
+   ]
+  },
+  "get-booking-owner-other-missing": {
+   "steps": {
+    "no-header": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-header.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "no-space": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-space.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "bad-token": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.bad-token.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "owner": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "other-user": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 403,
+      "target": 403
+     },
+     "verdict": "pass"
+    },
+    "missing": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 404,
+      "target": 404
+     },
+     "verdict": "pass"
+    },
+    "admin": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:admin>",
+       "groups": [
+        "Admin"
+       ]
+      },
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      },
+      {
+       "sub": "<id:u2>",
+       "groups": []
+      }
+     ],
+     "actual": [
+      {
+       "groups": [
+        "Admin"
+       ],
+       "sub": "judge-admin"
+      }
+     ],
+     "why": "expected 3 items"
+    }
+   ],
+   "verdict": "migration-change",
+   "endpoint": "GET /bookings/<booking_id>",
+   "fact_refs": [
+    "GET /bookings/<booking_id>#responses[0]",
+    "GET /bookings/<booking_id>#responses[1]",
+    "GET /bookings/<booking_id>#responses[2]",
+    "GET /bookings/<booking_id>#responses[3]",
+    "GET /bookings/<booking_id>#responses[4]",
+    "GET /bookings/<booking_id>#responses[5]",
+    "GET /bookings/<booking_id>#business_rules[0]",
+    "GET /bookings/<booking_id>#business_rules[1]",
+    "GET /bookings/<booking_id>#business_rules[2]"
+   ]
+  },
+  "get-flight-found-and-missing": {
+   "steps": {
+    "found": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "missing": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "weird-key": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /flights/<flight_id>",
+   "fact_refs": [
+    "GET /flights/<flight_id>#responses[0]",
+    "GET /flights/<flight_id>#responses[1]",
+    "GET /flights/<flight_id>#business_rules[0]",
+    "GET /flights/<flight_id>#business_rules[1]",
+    "GET /flights/<flight_id>#business_rules[2]",
+    "GET /flights/<flight_id>#business_rules[3]"
+   ]
+  },
+  "login-non-string-password": {
+   "steps": {
+    "numeric-password": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/login is not served by the target: Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。 (replaced by cognito)"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "dropped",
+   "endpoint": "POST /auth/login",
+   "fact_refs": [
+    "POST /auth/login#responses[3]",
+    "POST /auth/login#business_rules[1]"
+   ]
+  },
+  "login-success-and-indistinguishable-failures": {
+   "steps": {
+    "empty-body": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/login is not served by the target: Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。 (replaced by cognito)"
+    },
+    "no-password": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/login is not served by the target: Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。 (replaced by cognito)"
+    },
+    "unknown-email": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/login is not served by the target: Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。 (replaced by cognito)"
+    },
+    "wrong-password": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/login is not served by the target: Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。 (replaced by cognito)"
+    },
+    "ok": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/login is not served by the target: Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。 (replaced by cognito)"
+    },
+    "upper-email": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/login is not served by the target: Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。 (replaced by cognito)"
+    },
+    "empty-creds": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/login is not served by the target: Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。 (replaced by cognito)"
+    },
+    "login-by-sub": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/login is not served by the target: Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。 (replaced by cognito)"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "dropped",
+   "endpoint": "POST /auth/login",
+   "fact_refs": [
+    "POST /auth/login#responses[0]",
+    "POST /auth/login#responses[1]",
+    "POST /auth/login#responses[2]",
+    "POST /auth/login#business_rules[0]",
+    "POST /auth/login#business_rules[1]",
+    "POST /auth/login#business_rules[3]",
+    "POST /auth/login#business_rules[4]",
+    "POST /auth/login#business_rules[6]"
+   ]
+  },
+  "loyalty-broken-points-row-degrades": {
+   "steps": {
+    "read-broken": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "GET /loyalty/<customer_id>",
+   "fact_refs": [
+    "GET /loyalty/<customer_id>#responses[0]",
+    "GET /loyalty/<customer_id>#business_rules[3]"
+   ]
+  },
+  "loyalty-empty-and-auth-arms": {
+   "steps": {
+    "self-zero": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "other": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 403,
+      "target": 403
+     },
+     "verdict": "pass"
+    },
+    "no-header": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-header.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-header.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "no-space": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.no-space.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.no-space.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    },
+    "bad-token": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 401,
+      "target": 401
+     },
+     "answered_by": "API Gateway (unauthorized)",
+     "verdict": "migration-change",
+     "rulings": [
+      "R-A1-a3-1"
+     ],
+     "mismatches": [
+      {
+       "path": "steps.bad-token.headers.access-control-allow-headers",
+       "expected": null,
+       "actual": "Content-Type, Authorization",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.access-control-allow-methods",
+       "expected": null,
+       "actual": "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.headers.vary",
+       "expected": null,
+       "actual": "Origin",
+       "why": "header the monolith does not send"
+      },
+      {
+       "path": "steps.bad-token.body",
+       "why": "keys differ",
+       "missing": [
+        "error"
+       ],
+       "extra": [
+        "message"
+       ]
+      }
+     ]
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      },
+      {
+       "sub": "<id:u2>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 2 items"
+    }
+   ],
+   "verdict": "migration-change",
+   "endpoint": "GET /loyalty/<customer_id>",
+   "fact_refs": [
+    "GET /loyalty/<customer_id>#responses[0]",
+    "GET /loyalty/<customer_id>#responses[1]",
+    "GET /loyalty/<customer_id>#responses[2]",
+    "GET /loyalty/<customer_id>#responses[3]",
+    "GET /loyalty/<customer_id>#responses[4]",
+    "GET /loyalty/<customer_id>#business_rules[0]",
+    "GET /loyalty/<customer_id>#business_rules[2]"
+   ]
+  },
+  "loyalty-sum-tiers-and-flag-filter": {
+   "steps": {
+    "silver-u1": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "bronze-max-u2": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "gold-cust": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "no-rows-cust": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /loyalty/<customer_id>",
+   "fact_refs": [
+    "GET /loyalty/<customer_id>#responses[0]",
+    "GET /loyalty/<customer_id>#business_rules[1]",
+    "GET /loyalty/<customer_id>#business_rules[2]",
+    "GET /loyalty/<customer_id>#business_rules[4]",
+    "GET /loyalty/<customer_id>#business_rules[5]"
+   ]
+  },
+  "me-only-three-keys-and-401-arms": {
+   "steps": {
+    "self": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/me is not served by the target: Replaced by Cognito - 客户端从 ID token 里读 sub/email（SI-12）。groups 不再由这个端点回显：它在 UserGroupsTable 里，目标不代理用户目录（裁判的 me-only-three-keys-and-401-arms 整例跳过）。 (replaced by cognito)"
+    },
+    "no-header": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/me is not served by the target: Replaced by Cognito - 客户端从 ID token 里读 sub/email（SI-12）。groups 不再由这个端点回显：它在 UserGroupsTable 里，目标不代理用户目录（裁判的 me-only-three-keys-and-401-arms 整例跳过）。 (replaced by cognito)"
+    },
+    "no-space": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/me is not served by the target: Replaced by Cognito - 客户端从 ID token 里读 sub/email（SI-12）。groups 不再由这个端点回显：它在 UserGroupsTable 里，目标不代理用户目录（裁判的 me-only-three-keys-and-401-arms 整例跳过）。 (replaced by cognito)"
+    },
+    "bad-token": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/me is not served by the target: Replaced by Cognito - 客户端从 ID token 里读 sub/email（SI-12）。groups 不再由这个端点回显：它在 UserGroupsTable 里，目标不代理用户目录（裁判的 me-only-three-keys-and-401-arms 整例跳过）。 (replaced by cognito)"
+    },
+    "other-prefix": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/me is not served by the target: Replaced by Cognito - 客户端从 ID token 里读 sub/email（SI-12）。groups 不再由这个端点回显：它在 UserGroupsTable 里，目标不代理用户目录（裁判的 me-only-three-keys-and-401-arms 整例跳过）。 (replaced by cognito)"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "dropped",
+   "endpoint": "GET /auth/me",
+   "fact_refs": [
+    "GET /auth/me#responses[0]",
+    "GET /auth/me#responses[1]",
+    "GET /auth/me#responses[2]",
+    "GET /auth/me#responses[3]",
+    "GET /auth/me#business_rules[0]",
+    "GET /auth/me#business_rules[2]",
+    "GET /auth/me#business_rules[3]",
+    "GET /auth/me#business_rules[4]"
+   ]
+  },
+  "payment-read-found-and-missing": {
+   "steps": {
+    "collect": {
+     "function": "payments-collect",
+     "endpoint": "POST /payments/collect",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-it": {
+     "function": "payment-get",
+     "endpoint": "GET /payments/<charge_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-unknown": {
+     "function": "payment-get",
+     "endpoint": "GET /payments/<charge_id>",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read-weird": {
+     "function": "payment-get",
+     "endpoint": "GET /payments/<charge_id>",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /payments/<charge_id>",
+   "fact_refs": [
+    "GET /payments/<charge_id>#responses[0]",
+    "GET /payments/<charge_id>#responses[1]",
+    "GET /payments/<charge_id>#business_rules[0]",
+    "GET /payments/<charge_id>#business_rules[1]",
+    "GET /payments/<charge_id>#business_rules[2]"
+   ]
+  },
+  "refund-validation-and-effect": {
+   "steps": {
+    "empty-body": {
+     "function": "payments-refund",
+     "endpoint": "POST /payments/refund",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "no-key": {
+     "function": "payments-refund",
+     "endpoint": "POST /payments/refund",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "empty-charge": {
+     "function": "payments-refund",
+     "endpoint": "POST /payments/refund",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "collect-first": {
+     "function": "payments-collect",
+     "endpoint": "POST /payments/collect",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "refund-known": {
+     "function": "payments-refund",
+     "endpoint": "POST /payments/refund",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-after-refund": {
+     "function": "payment-get",
+     "endpoint": "GET /payments/<charge_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "refund-unknown": {
+     "function": "payments-refund",
+     "endpoint": "POST /payments/refund",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-unknown": {
+     "function": "payment-get",
+     "endpoint": "GET /payments/<charge_id>",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /payments/refund",
+   "fact_refs": [
+    "POST /payments/refund#responses[0]",
+    "POST /payments/refund#responses[1]",
+    "POST /payments/refund#responses[2]",
+    "POST /payments/refund#business_rules[0]",
+    "POST /payments/refund#business_rules[1]",
+    "POST /payments/refund#business_rules[2]",
+    "POST /payments/refund#business_rules[3]"
+   ]
+  },
+  "register-empty-credentials-allowed": {
+   "steps": {
+    "empty-creds": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+    },
+    "login-empty": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/login is not served by the target: Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。 (replaced by cognito)"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<v#1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "dropped",
+   "endpoint": "POST /auth/register",
+   "fact_refs": [
+    "POST /auth/register#responses[1]",
+    "POST /auth/register#business_rules[0]",
+    "POST /auth/login#responses[2]",
+    "POST /auth/register#business_rules[7]"
+   ]
+  },
+  "register-non-string-password": {
+   "steps": {
+    "numeric-password": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+    },
+    "list-password": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+    },
+    "admin-list": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/users is not served by the target: Replaced by Cognito user directory（ListUsers / AdminListGroupsForUser）：这个端点是管理员列整个用户目录，数据源就是那张凭据表（SI-12、D-1）。随之消失的两条对外行为（缺 email 的行让它 500 KeyError；sub/email/groups 的三键投影）在 blueprint 的 SI-15 里一并裁定。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "POST /auth/register",
+   "fact_refs": [
+    "POST /auth/register#responses[3]",
+    "POST /auth/register#business_rules[0]",
+    "GET /auth/users#responses[4]"
+   ]
+  },
+  "register-success-and-conflicts": {
+   "steps": {
+    "empty-body": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+    },
+    "no-password": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+    },
+    "create": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+    },
+    "dup-email": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+    },
+    "dup-sub": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+    },
+    "login-new-user": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "POST /auth/login is not served by the target: Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。 (replaced by cognito)"
+    },
+    "admin-list": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/users is not served by the target: Replaced by Cognito user directory（ListUsers / AdminListGroupsForUser）：这个端点是管理员列整个用户目录，数据源就是那张凭据表（SI-12、D-1）。随之消失的两条对外行为（缺 email 的行让它 500 KeyError；sub/email/groups 的三键投影）在 blueprint 的 SI-15 里一并裁定。 (replaced by cognito)"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:admin>",
+       "groups": [
+        "Admin"
+       ]
+      },
+      {
+       "sub": "judge-reg-1",
+       "groups": []
+      }
+     ],
+     "actual": [
+      {
+       "groups": [
+        "Admin"
+       ],
+       "sub": "judge-admin"
+      }
+     ],
+     "why": "expected 2 items"
+    }
+   ],
+   "verdict": "dropped",
+   "endpoint": "POST /auth/register",
+   "fact_refs": [
+    "POST /auth/register#responses[0]",
+    "POST /auth/register#responses[1]",
+    "POST /auth/register#responses[2]",
+    "POST /auth/register#business_rules[1]",
+    "POST /auth/register#business_rules[2]",
+    "POST /auth/register#business_rules[3]",
+    "POST /auth/register#business_rules[5]",
+    "POST /auth/login#responses[2]",
+    "GET /auth/users#responses[4]",
+    "POST /auth/register#business_rules[4]",
+    "GET /auth/users#business_rules[2]"
+   ]
+  },
+  "release-at-maximum": {
+   "steps": {
+    "release-max": {
+     "function": "flight-release",
+     "endpoint": "POST /flights/<flight_id>/release",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read-unchanged": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /flights/<flight_id>/release",
+   "fact_refs": [
+    "POST /flights/<flight_id>/release#responses[2]",
+    "POST /flights/<flight_id>/release#business_rules[0]"
+   ]
+  },
+  "release-happy-increments": {
+   "steps": {
+    "release-1": {
+     "function": "flight-release",
+     "endpoint": "POST /flights/<flight_id>/release",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-6": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "release-2": {
+     "function": "flight-release",
+     "endpoint": "POST /flights/<flight_id>/release",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-7": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /flights/<flight_id>/release",
+   "fact_refs": [
+    "POST /flights/<flight_id>/release#responses[0]",
+    "POST /flights/<flight_id>/release#responses[3]",
+    "POST /flights/<flight_id>/release#business_rules[0]",
+    "POST /flights/<flight_id>/release#business_rules[2]",
+    "POST /flights/<flight_id>/release#business_rules[3]"
+   ]
+  },
+  "release-missing-flight": {
+   "steps": {
+    "missing": {
+     "function": "flight-release",
+     "endpoint": "POST /flights/<flight_id>/release",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "weird": {
+     "function": "flight-release",
+     "endpoint": "POST /flights/<flight_id>/release",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /flights/<flight_id>/release",
+   "fact_refs": [
+    "POST /flights/<flight_id>/release#responses[1]",
+    "POST /flights/<flight_id>/release#business_rules[1]"
+   ]
+  },
+  "reserve-boundary-last-seat": {
+   "steps": {
+    "reserve-last": {
+     "function": "flight-reserve",
+     "endpoint": "POST /flights/<flight_id>/reserve",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-zero": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "reserve-again": {
+     "function": "flight-reserve",
+     "endpoint": "POST /flights/<flight_id>/reserve",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read-still-zero": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /flights/<flight_id>/reserve",
+   "fact_refs": [
+    "POST /flights/<flight_id>/reserve#responses[0]",
+    "POST /flights/<flight_id>/reserve#responses[1]",
+    "POST /flights/<flight_id>/reserve#business_rules[0]"
+   ]
+  },
+  "reserve-fully-booked-and-missing": {
+   "steps": {
+    "full": {
+     "function": "flight-reserve",
+     "endpoint": "POST /flights/<flight_id>/reserve",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read-full": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "missing": {
+     "function": "flight-reserve",
+     "endpoint": "POST /flights/<flight_id>/reserve",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /flights/<flight_id>/reserve",
+   "fact_refs": [
+    "POST /flights/<flight_id>/reserve#responses[1]",
+    "POST /flights/<flight_id>/reserve#business_rules[1]",
+    "POST /flights/<flight_id>/reserve#business_rules[2]"
+   ]
+  },
+  "reserve-happy-decrements": {
+   "steps": {
+    "reserve-1": {
+     "function": "flight-reserve",
+     "endpoint": "POST /flights/<flight_id>/reserve",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "reserve-2": {
+     "function": "flight-reserve",
+     "endpoint": "POST /flights/<flight_id>/reserve",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-after-two": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "reserve-3": {
+     "function": "flight-reserve",
+     "endpoint": "POST /flights/<flight_id>/reserve",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-after-three": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /flights/<flight_id>/reserve",
+   "fact_refs": [
+    "POST /flights/<flight_id>/reserve#responses[0]",
+    "POST /flights/<flight_id>/reserve#business_rules[0]",
+    "POST /flights/<flight_id>/reserve#business_rules[3]"
+   ]
+  },
+  "search-exact-match": {
+   "steps": {
+    "exact": {
+     "function": "flights-search",
+     "endpoint": "GET /flights/search",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "lowercase-code": {
+     "function": "flights-search",
+     "endpoint": "GET /flights/search",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "date-prefix": {
+     "function": "flights-search",
+     "endpoint": "GET /flights/search",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "no-such-route": {
+     "function": "flights-search",
+     "endpoint": "GET /flights/search",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "with-origin": {
+     "function": "flights-search",
+     "endpoint": "GET /flights/search",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /flights/search",
+   "fact_refs": [
+    "GET /flights/search#responses[0]",
+    "GET /flights/search#business_rules[1]",
+    "GET /flights/search#business_rules[2]",
+    "GET /flights/search#business_rules[4]",
+    "GET /flights/search#business_rules[3]"
+   ]
+  },
+  "search-validation-arms": {
+   "steps": {
+    "missing-departure": {
+     "function": "flights-search",
+     "endpoint": "GET /flights/search",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "empty-arrival": {
+     "function": "flights-search",
+     "endpoint": "GET /flights/search",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "only-departure": {
+     "function": "flights-search",
+     "endpoint": "GET /flights/search",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "no-params": {
+     "function": "flights-search",
+     "endpoint": "GET /flights/search",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "GET /flights/search",
+   "fact_refs": [
+    "GET /flights/search#responses[1]",
+    "GET /flights/search#business_rules[0]"
+   ]
+  },
+  "users-admin-only-matrix": {
+   "steps": {
+    "no-header": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/users is not served by the target: Replaced by Cognito user directory（ListUsers / AdminListGroupsForUser）：这个端点是管理员列整个用户目录，数据源就是那张凭据表（SI-12、D-1）。随之消失的两条对外行为（缺 email 的行让它 500 KeyError；sub/email/groups 的三键投影）在 blueprint 的 SI-15 里一并裁定。 (replaced by cognito)"
+    },
+    "no-space": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/users is not served by the target: Replaced by Cognito user directory（ListUsers / AdminListGroupsForUser）：这个端点是管理员列整个用户目录，数据源就是那张凭据表（SI-12、D-1）。随之消失的两条对外行为（缺 email 的行让它 500 KeyError；sub/email/groups 的三键投影）在 blueprint 的 SI-15 里一并裁定。 (replaced by cognito)"
+    },
+    "bad-token": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/users is not served by the target: Replaced by Cognito user directory（ListUsers / AdminListGroupsForUser）：这个端点是管理员列整个用户目录，数据源就是那张凭据表（SI-12、D-1）。随之消失的两条对外行为（缺 email 的行让它 500 KeyError；sub/email/groups 的三键投影）在 blueprint 的 SI-15 里一并裁定。 (replaced by cognito)"
+    },
+    "non-admin": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/users is not served by the target: Replaced by Cognito user directory（ListUsers / AdminListGroupsForUser）：这个端点是管理员列整个用户目录，数据源就是那张凭据表（SI-12、D-1）。随之消失的两条对外行为（缺 email 的行让它 500 KeyError；sub/email/groups 的三键投影）在 blueprint 的 SI-15 里一并裁定。 (replaced by cognito)"
+    },
+    "admin": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/users is not served by the target: Replaced by Cognito user directory（ListUsers / AdminListGroupsForUser）：这个端点是管理员列整个用户目录，数据源就是那张凭据表（SI-12、D-1）。随之消失的两条对外行为（缺 email 的行让它 500 KeyError；sub/email/groups 的三键投影）在 blueprint 的 SI-15 里一并裁定。 (replaced by cognito)"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:admin>",
+       "groups": [
+        "Admin"
+       ]
+      },
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [
+      {
+       "groups": [
+        "Admin"
+       ],
+       "sub": "judge-admin"
+      }
+     ],
+     "why": "expected 2 items"
+    }
+   ],
+   "verdict": "dropped",
+   "endpoint": "GET /auth/users",
+   "fact_refs": [
+    "GET /auth/users#responses[0]",
+    "GET /auth/users#responses[1]",
+    "GET /auth/users#responses[2]",
+    "GET /auth/users#responses[3]",
+    "GET /auth/users#responses[4]",
+    "GET /auth/users#business_rules[0]",
+    "GET /auth/users#business_rules[2]"
+   ]
+  },
+  "users-list-masked-shape": {
+   "steps": {
+    "admin-list": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/users is not served by the target: Replaced by Cognito user directory（ListUsers / AdminListGroupsForUser）：这个端点是管理员列整个用户目录，数据源就是那张凭据表（SI-12、D-1）。随之消失的两条对外行为（缺 email 的行让它 500 KeyError；sub/email/groups 的三键投影）在 blueprint 的 SI-15 里一并裁定。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "GET /auth/users",
+   "fact_refs": [
+    "GET /auth/users#responses[4]",
+    "GET /auth/users#business_rules[3]",
+    "GET /auth/users#business_rules[4]"
+   ]
+  },
+  "users-row-missing-email": {
+   "steps": {
+    "admin-list": {
+     "function": null,
+     "endpoint": null,
+     "verdict": "dropped",
+     "reason": "GET /auth/users is not served by the target: Replaced by Cognito user directory（ListUsers / AdminListGroupsForUser）：这个端点是管理员列整个用户目录，数据源就是那张凭据表（SI-12、D-1）。随之消失的两条对外行为（缺 email 的行让它 500 KeyError；sub/email/groups 的三键投影）在 blueprint 的 SI-15 里一并裁定。 (replaced by cognito)"
+    }
+   },
+   "verdict": "dropped",
+   "endpoint": "GET /auth/users",
+   "fact_refs": [
+    "GET /auth/users#responses[5]",
+    "GET /auth/users#business_rules[2]"
+   ]
+  },
+  "wb-bookings-catchall-no-refund": {
+   "steps": {
+    "collect": {
+     "function": "payments-collect",
+     "endpoint": "POST /payments/collect",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-captured": {
+     "function": "payment-get",
+     "endpoint": "GET /payments/<charge_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "book-missing-outbound": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 500,
+      "target": 500
+     },
+     "verdict": "pass"
+    },
+    "read-after-rollback": {
+     "function": "payment-get",
+     "endpoint": "GET /payments/<charge_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-own-bookings": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "explicit-refund": {
+     "function": "payments-refund",
+     "endpoint": "POST /payments/refund",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-after-explicit-refund": {
+     "function": "payment-get",
+     "endpoint": "GET /payments/<charge_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings",
+   "fact_refs": [
+    "POST /bookings#responses[9]",
+    "POST /bookings#business_rules[8]",
+    "POST /payments/collect#responses[0]",
+    "POST /payments/collect#business_rules[2]",
+    "POST /payments/collect#business_rules[3]",
+    "GET /payments/<charge_id>#responses[0]",
+    "GET /payments/<charge_id>#business_rules[0]",
+    "POST /payments/refund#responses[0]",
+    "POST /payments/refund#business_rules[2]",
+    "GET /customers/<customer_id>/bookings#responses[0]",
+    "GET /customers/<customer_id>/bookings#business_rules[0]"
+   ]
+  },
+  "wb-bookings-confirm-rollback-seat-stuck": {
+   "steps": {
+    "book": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 201,
+      "target": 201
+     },
+     "verdict": "pass"
+    },
+    "read-booking": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-loyalty": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings",
+   "fact_refs": [
+    "POST /bookings#responses[8]",
+    "POST /bookings#responses[7]",
+    "POST /bookings#business_rules[2]",
+    "POST /bookings#business_rules[4]",
+    "POST /bookings#business_rules[5]",
+    "POST /bookings#business_rules[7]",
+    "GET /bookings/<booking_id>#responses[5]",
+    "GET /flights/<flight_id>#responses[0]",
+    "GET /loyalty/<customer_id>#responses[0]",
+    "GET /loyalty/<customer_id>#business_rules[2]"
+   ]
+  },
+  "wb-bookings-non-string-chargeid": {
+   "steps": {
+    "book-list-charge": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 500,
+      "target": 500
+     },
+     "verdict": "pass"
+    },
+    "read-list": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-flight-nomax": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "book-number-charge": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 201,
+      "target": 201
+     },
+     "verdict": "pass"
+    },
+    "read-booking-number": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-payment-number": {
+     "function": "payment-get",
+     "endpoint": "GET /payments/<charge_id>",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read-flight-ok": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings",
+   "fact_refs": [
+    "POST /bookings#responses[9]",
+    "POST /bookings#responses[8]",
+    "POST /bookings#business_rules[7]",
+    "POST /bookings#business_rules[8]",
+    "GET /customers/<customer_id>/bookings#responses[0]",
+    "GET /bookings/<booking_id>#responses[5]",
+    "GET /bookings/<booking_id>#business_rules[2]",
+    "GET /flights/<flight_id>#responses[0]",
+    "GET /payments/<charge_id>#responses[1]",
+    "GET /payments/<charge_id>#business_rules[0]"
+   ]
+  },
+  "wb-bookings-payment-record-shared-cache": {
+   "steps": {
+    "book": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 201,
+      "target": 201
+     },
+     "verdict": "pass"
+    },
+    "read-payment": {
+     "function": "payment-get",
+     "endpoint": "GET /payments/<charge_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "refund": {
+     "function": "payments-refund",
+     "endpoint": "POST /payments/refund",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-payment-after-refund": {
+     "function": "payment-get",
+     "endpoint": "GET /payments/<charge_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-booking": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings",
+   "fact_refs": [
+    "POST /bookings#responses[8]",
+    "POST /bookings#business_rules[7]",
+    "POST /bookings#business_rules[9]",
+    "GET /payments/<charge_id>#responses[0]",
+    "GET /payments/<charge_id>#business_rules[0]",
+    "GET /payments/<charge_id>#business_rules[2]",
+    "POST /payments/refund#responses[0]",
+    "POST /payments/refund#business_rules[2]",
+    "GET /bookings/<booking_id>#responses[0]",
+    "GET /bookings/<booking_id>#business_rules[0]"
+   ]
+  },
+  "wb-bookings-payment-rollback-seat-stuck": {
+   "steps": {
+    "book-bad-charge": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read-booking": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-loyalty": {
+     "function": "loyalty-get",
+     "endpoint": "GET /loyalty/<customer_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings",
+   "fact_refs": [
+    "POST /bookings#responses[6]",
+    "POST /bookings#business_rules[3]",
+    "POST /bookings#business_rules[4]",
+    "GET /bookings/<booking_id>#responses[5]",
+    "GET /flights/<flight_id>#responses[0]",
+    "GET /loyalty/<customer_id>#responses[0]"
+   ]
+  },
+  "wb-bookings-reserve-rollback-seat-stuck": {
+   "steps": {
+    "book-no-charge": {
+     "function": "bookings-create",
+     "endpoint": "POST /bookings",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-list": {
+     "function": "customer-bookings-list",
+     "endpoint": "GET /customers/<customer_id>/bookings",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings",
+   "fact_refs": [
+    "POST /bookings#responses[5]",
+    "POST /bookings#business_rules[4]",
+    "POST /bookings#business_rules[10]",
+    "GET /flights/<flight_id>#responses[0]",
+    "GET /flights/<flight_id>#business_rules[0]",
+    "GET /customers/<customer_id>/bookings#responses[0]"
+   ]
+  },
+  "wb-cancel-row-without-paymenttoken": {
+   "steps": {
+    "cancel": {
+     "function": "booking-cancel",
+     "endpoint": "POST /bookings/<booking_id>/cancel",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-booking": {
+     "function": "booking-get",
+     "endpoint": "GET /bookings/<booking_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    },
+    "read-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "table_differences": [
+    {
+     "path": "tables_after.Airline-Users-{stage}",
+     "expected": [
+      {
+       "sub": "<id:u1>",
+       "groups": []
+      }
+     ],
+     "actual": [],
+     "why": "expected 1 items"
+    }
+   ],
+   "verdict": "pass",
+   "endpoint": "POST /bookings/<booking_id>/cancel",
+   "fact_refs": [
+    "POST /bookings/<booking_id>/cancel#responses[0]",
+    "POST /bookings/<booking_id>/cancel#business_rules[3]",
+    "POST /bookings/<booking_id>/cancel#business_rules[5]",
+    "GET /bookings/<booking_id>#responses[5]",
+    "GET /flights/<flight_id>#responses[0]"
+   ]
+  },
+  "wb-release-flight-no-maxseating": {
+   "steps": {
+    "release": {
+     "function": "flight-release",
+     "endpoint": "POST /flights/<flight_id>/release",
+     "status": {
+      "monolith": 400,
+      "target": 400
+     },
+     "verdict": "pass"
+    },
+    "read-flight": {
+     "function": "flight-get",
+     "endpoint": "GET /flights/<flight_id>",
+     "status": {
+      "monolith": 200,
+      "target": 200
+     },
+     "verdict": "pass"
+    }
+   },
+   "verdict": "pass",
+   "endpoint": "POST /flights/<flight_id>/release",
+   "fact_refs": [
+    "POST /flights/<flight_id>/release#responses[3]",
+    "POST /flights/<flight_id>/release#business_rules[0]",
+    "POST /flights/<flight_id>/release#business_rules[3]",
+    "GET /flights/<flight_id>#responses[0]"
+   ]
+  }
+ },
+ "faults": {
+  "booking-cancel-seat-release-fails": {
+   "cancel-happy-read-back": {
+    "steps": {
+     "collect": {
+      "function": "payments-collect",
+      "endpoint": "POST /payments/collect",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "cancel": {
+      "function": "booking-cancel",
+      "endpoint": "POST /bookings/<booking_id>/cancel",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-booking": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-flight": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-payment": {
+      "function": "payment-get",
+      "endpoint": "GET /payments/<charge_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "other-cancel": {
+      "function": "booking-cancel",
+      "endpoint": "POST /bookings/<booking_id>/cancel",
+      "status": {
+       "monolith": 403,
+       "target": 403
+      },
+      "verdict": "pass"
+     },
+     "read-other-booking": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<id:u1>",
+        "groups": []
+       },
+       {
+        "sub": "<id:u2>",
+        "groups": []
+       }
+      ],
+      "actual": [],
+      "why": "expected 2 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /bookings/<booking_id>/cancel",
+    "fact_refs": [
+     "POST /bookings/<booking_id>/cancel#responses[0]",
+     "POST /bookings/<booking_id>/cancel#responses[5]",
+     "POST /bookings/<booking_id>/cancel#responses[6]",
+     "POST /bookings/<booking_id>/cancel#responses[7]",
+     "POST /bookings/<booking_id>/cancel#business_rules[0]",
+     "POST /bookings/<booking_id>/cancel#business_rules[1]",
+     "POST /bookings/<booking_id>/cancel#business_rules[2]",
+     "POST /bookings/<booking_id>/cancel#business_rules[3]",
+     "POST /bookings/<booking_id>/cancel#business_rules[4]",
+     "POST /bookings/<booking_id>/cancel#business_rules[5]",
+     "POST /bookings/<booking_id>/cancel#business_rules[6]"
+    ]
+   }
+  },
+  "booking-cancel-second-read-fails": {
+   "cancel-happy-read-back": {
+    "steps": {
+     "collect": {
+      "function": "payments-collect",
+      "endpoint": "POST /payments/collect",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "cancel": {
+      "function": "booking-cancel",
+      "endpoint": "POST /bookings/<booking_id>/cancel",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-booking": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-flight": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-payment": {
+      "function": "payment-get",
+      "endpoint": "GET /payments/<charge_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "other-cancel": {
+      "function": "booking-cancel",
+      "endpoint": "POST /bookings/<booking_id>/cancel",
+      "status": {
+       "monolith": 403,
+       "target": 403
+      },
+      "verdict": "pass"
+     },
+     "read-other-booking": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<id:u1>",
+        "groups": []
+       },
+       {
+        "sub": "<id:u2>",
+        "groups": []
+       }
+      ],
+      "actual": [],
+      "why": "expected 2 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /bookings/<booking_id>/cancel",
+    "fact_refs": [
+     "POST /bookings/<booking_id>/cancel#responses[0]",
+     "POST /bookings/<booking_id>/cancel#responses[5]",
+     "POST /bookings/<booking_id>/cancel#responses[6]",
+     "POST /bookings/<booking_id>/cancel#responses[7]",
+     "POST /bookings/<booking_id>/cancel#business_rules[0]",
+     "POST /bookings/<booking_id>/cancel#business_rules[1]",
+     "POST /bookings/<booking_id>/cancel#business_rules[2]",
+     "POST /bookings/<booking_id>/cancel#business_rules[3]",
+     "POST /bookings/<booking_id>/cancel#business_rules[4]",
+     "POST /bookings/<booking_id>/cancel#business_rules[5]",
+     "POST /bookings/<booking_id>/cancel#business_rules[6]"
+    ]
+   }
+  },
+  "booking-cancel-third-read-fails": {
+   "cancel-happy-read-back": {
+    "steps": {
+     "collect": {
+      "function": "payments-collect",
+      "endpoint": "POST /payments/collect",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "cancel": {
+      "function": "booking-cancel",
+      "endpoint": "POST /bookings/<booking_id>/cancel",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-booking": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-flight": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-payment": {
+      "function": "payment-get",
+      "endpoint": "GET /payments/<charge_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "other-cancel": {
+      "function": "booking-cancel",
+      "endpoint": "POST /bookings/<booking_id>/cancel",
+      "status": {
+       "monolith": 403,
+       "target": 403
+      },
+      "verdict": "pass"
+     },
+     "read-other-booking": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<id:u1>",
+        "groups": []
+       },
+       {
+        "sub": "<id:u2>",
+        "groups": []
+       }
+      ],
+      "actual": [],
+      "why": "expected 2 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /bookings/<booking_id>/cancel",
+    "fact_refs": [
+     "POST /bookings/<booking_id>/cancel#responses[0]",
+     "POST /bookings/<booking_id>/cancel#responses[5]",
+     "POST /bookings/<booking_id>/cancel#responses[6]",
+     "POST /bookings/<booking_id>/cancel#responses[7]",
+     "POST /bookings/<booking_id>/cancel#business_rules[0]",
+     "POST /bookings/<booking_id>/cancel#business_rules[1]",
+     "POST /bookings/<booking_id>/cancel#business_rules[2]",
+     "POST /bookings/<booking_id>/cancel#business_rules[3]",
+     "POST /bookings/<booking_id>/cancel#business_rules[4]",
+     "POST /bookings/<booking_id>/cancel#business_rules[5]",
+     "POST /bookings/<booking_id>/cancel#business_rules[6]"
+    ]
+   }
+  },
+  "booking-confirm-second-read-fails": {
+   "confirm-happy-read-back": {
+    "steps": {
+     "confirm": {
+      "function": "booking-confirm",
+      "endpoint": "POST /bookings/<booking_id>/confirm",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-after": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "confirm-again": {
+      "function": "booking-confirm",
+      "endpoint": "POST /bookings/<booking_id>/confirm",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "other-confirm": {
+      "function": "booking-confirm",
+      "endpoint": "POST /bookings/<booking_id>/confirm",
+      "status": {
+       "monolith": 403,
+       "target": 403
+      },
+      "verdict": "pass"
+     },
+     "read-final": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<id:u1>",
+        "groups": []
+       },
+       {
+        "sub": "<id:u2>",
+        "groups": []
+       }
+      ],
+      "actual": [],
+      "why": "expected 2 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /bookings/<booking_id>/confirm",
+    "fact_refs": [
+     "POST /bookings/<booking_id>/confirm#responses[4]",
+     "POST /bookings/<booking_id>/confirm#responses[5]",
+     "POST /bookings/<booking_id>/confirm#business_rules[0]",
+     "POST /bookings/<booking_id>/confirm#business_rules[1]",
+     "POST /bookings/<booking_id>/confirm#business_rules[2]",
+     "POST /bookings/<booking_id>/confirm#business_rules[3]",
+     "POST /bookings/<booking_id>/confirm#responses[6]"
+    ]
+   }
+  },
+  "booking-get-second-read-fails": {
+   "get-booking-double-read-arm": {
+    "steps": {
+     "read": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<id:u1>",
+        "groups": []
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /bookings/<booking_id>",
+    "fact_refs": [
+     "GET /bookings/<booking_id>#responses[5]",
+     "GET /bookings/<booking_id>#responses[6]",
+     "GET /bookings/<booking_id>#business_rules[3]",
+     "GET /bookings/<booking_id>#business_rules[4]"
+    ]
+   }
+  },
+  "bookings-confirm-fails": {
+   "bookings-success-read-back": {
+    "steps": {
+     "create": {
+      "function": "bookings-create",
+      "endpoint": "POST /bookings",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     },
+     "read-booking": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-flight": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-loyalty": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-list": {
+      "function": "customer-bookings-list",
+      "endpoint": "GET /customers/<customer_id>/bookings",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<id:u1>",
+        "groups": []
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /bookings",
+    "fact_refs": [
+     "POST /bookings#responses[8]",
+     "POST /bookings#business_rules[0]",
+     "POST /bookings#business_rules[2]",
+     "POST /bookings#business_rules[5]",
+     "POST /bookings#business_rules[6]",
+     "POST /bookings#business_rules[7]",
+     "POST /bookings#responses[7]",
+     "POST /bookings#business_rules[4]"
+    ]
+   }
+  },
+  "bookings-loyalty-put-fails": {
+   "bookings-success-read-back": {
+    "steps": {
+     "create": {
+      "function": "bookings-create",
+      "endpoint": "POST /bookings",
+      "status": {
+       "monolith": 201,
+       "target": 201
+      },
+      "verdict": "pass"
+     },
+     "read-booking": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-flight": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-loyalty": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-list": {
+      "function": "customer-bookings-list",
+      "endpoint": "GET /customers/<customer_id>/bookings",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<id:u1>",
+        "groups": []
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /bookings",
+    "fact_refs": [
+     "POST /bookings#responses[8]",
+     "POST /bookings#business_rules[0]",
+     "POST /bookings#business_rules[2]",
+     "POST /bookings#business_rules[5]",
+     "POST /bookings#business_rules[6]",
+     "POST /bookings#business_rules[7]",
+     "POST /bookings#responses[7]",
+     "POST /bookings#business_rules[4]"
+    ]
+   }
+  },
+  "bookings-put-fails": {
+   "bookings-success-read-back": {
+    "steps": {
+     "create": {
+      "function": "bookings-create",
+      "endpoint": "POST /bookings",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-booking": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 404,
+       "target": 404
+      },
+      "verdict": "pass"
+     },
+     "read-flight": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-loyalty": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-list": {
+      "function": "customer-bookings-list",
+      "endpoint": "GET /customers/<customer_id>/bookings",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<id:u1>",
+        "groups": []
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /bookings",
+    "fact_refs": [
+     "POST /bookings#responses[8]",
+     "POST /bookings#business_rules[0]",
+     "POST /bookings#business_rules[2]",
+     "POST /bookings#business_rules[5]",
+     "POST /bookings#business_rules[6]",
+     "POST /bookings#business_rules[7]",
+     "POST /bookings#responses[7]",
+     "POST /bookings#business_rules[4]"
+    ]
+   }
+  },
+  "bookings-reserve-step-fails": {
+   "bookings-success-read-back": {
+    "steps": {
+     "create": {
+      "function": "bookings-create",
+      "endpoint": "POST /bookings",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-booking": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 404,
+       "target": 404
+      },
+      "verdict": "pass"
+     },
+     "read-flight": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-loyalty": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-list": {
+      "function": "customer-bookings-list",
+      "endpoint": "GET /customers/<customer_id>/bookings",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<id:u1>",
+        "groups": []
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /bookings",
+    "fact_refs": [
+     "POST /bookings#responses[8]",
+     "POST /bookings#business_rules[0]",
+     "POST /bookings#business_rules[2]",
+     "POST /bookings#business_rules[5]",
+     "POST /bookings#business_rules[6]",
+     "POST /bookings#business_rules[7]",
+     "POST /bookings#responses[7]",
+     "POST /bookings#business_rules[4]"
+    ]
+   }
+  },
+  "customer-bookings-read-fails": {
+   "customer-bookings-status-filter": {
+    "steps": {
+     "filter-unconfirmed": {
+      "function": "customer-bookings-list",
+      "endpoint": "GET /customers/<customer_id>/bookings",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "filter-bogus": {
+      "function": "customer-bookings-list",
+      "endpoint": "GET /customers/<customer_id>/bookings",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "filter-empty": {
+      "function": "customer-bookings-list",
+      "endpoint": "GET /customers/<customer_id>/bookings",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "admin-reads-other": {
+      "function": "customer-bookings-list",
+      "endpoint": "GET /customers/<customer_id>/bookings",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<id:admin>",
+        "groups": [
+         "Admin"
+        ]
+       },
+       {
+        "sub": "<id:u1>",
+        "groups": []
+       }
+      ],
+      "actual": [
+       {
+        "groups": [
+         "Admin"
+        ],
+        "sub": "judge-admin"
+       }
+      ],
+      "why": "expected 2 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /customers/<customer_id>/bookings",
+    "fact_refs": [
+     "GET /customers/<customer_id>/bookings#responses[0]",
+     "GET /customers/<customer_id>/bookings#business_rules[1]",
+     "GET /customers/<customer_id>/bookings#business_rules[2]",
+     "GET /customers/<customer_id>/bookings#business_rules[3]",
+     "GET /customers/<customer_id>/bookings#business_rules[4]"
+    ]
+   }
+  },
+  "flight-get-read-fails": {
+   "get-flight-found-and-missing": {
+    "steps": {
+     "found": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "missing": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "weird-key": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /flights/<flight_id>",
+    "fact_refs": [
+     "GET /flights/<flight_id>#responses[0]",
+     "GET /flights/<flight_id>#responses[1]",
+     "GET /flights/<flight_id>#business_rules[0]",
+     "GET /flights/<flight_id>#business_rules[1]",
+     "GET /flights/<flight_id>#business_rules[2]",
+     "GET /flights/<flight_id>#business_rules[3]"
+    ]
+   }
+  },
+  "flight-get-throttle-once": {
+   "get-flight-found-and-missing": {
+    "steps": {
+     "found": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "missing": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "weird-key": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /flights/<flight_id>",
+    "fact_refs": [
+     "GET /flights/<flight_id>#responses[0]",
+     "GET /flights/<flight_id>#responses[1]",
+     "GET /flights/<flight_id>#business_rules[0]",
+     "GET /flights/<flight_id>#business_rules[1]",
+     "GET /flights/<flight_id>#business_rules[2]",
+     "GET /flights/<flight_id>#business_rules[3]"
+    ]
+   }
+  },
+  "flight-search-read-fails": {
+   "search-exact-match": {
+    "steps": {
+     "exact": {
+      "function": "flights-search",
+      "endpoint": "GET /flights/search",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "lowercase-code": {
+      "function": "flights-search",
+      "endpoint": "GET /flights/search",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "date-prefix": {
+      "function": "flights-search",
+      "endpoint": "GET /flights/search",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "no-such-route": {
+      "function": "flights-search",
+      "endpoint": "GET /flights/search",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "with-origin": {
+      "function": "flights-search",
+      "endpoint": "GET /flights/search",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /flights/search",
+    "fact_refs": [
+     "GET /flights/search#responses[0]",
+     "GET /flights/search#business_rules[1]",
+     "GET /flights/search#business_rules[2]",
+     "GET /flights/search#business_rules[4]",
+     "GET /flights/search#business_rules[3]"
+    ]
+   }
+  },
+  "loyalty-points-put-fails": {
+   "add-points-admin-creates-rows": {
+    "steps": {
+     "add-150": {
+      "function": "loyalty-add-points",
+      "endpoint": "POST /loyalty/<customer_id>/points",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "add-decimal": {
+      "function": "loyalty-add-points",
+      "endpoint": "POST /loyalty/<customer_id>/points",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-total": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "add-unknown-customer": {
+      "function": "loyalty-add-points",
+      "endpoint": "POST /loyalty/<customer_id>/points",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-unknown-customer": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /loyalty/<customer_id>/points",
+    "fact_refs": [
+     "POST /loyalty/<customer_id>/points#responses[0]",
+     "POST /loyalty/<customer_id>/points#business_rules[2]",
+     "POST /loyalty/<customer_id>/points#business_rules[3]",
+     "GET /loyalty/<customer_id>#responses[0]",
+     "POST /loyalty/<customer_id>/points#business_rules[4]"
+    ]
+   }
+  },
+  "loyalty-points-put-network": {
+   "add-points-admin-creates-rows": {
+    "steps": {
+     "add-150": {
+      "function": "loyalty-add-points",
+      "endpoint": "POST /loyalty/<customer_id>/points",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "add-decimal": {
+      "function": "loyalty-add-points",
+      "endpoint": "POST /loyalty/<customer_id>/points",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-total": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "add-unknown-customer": {
+      "function": "loyalty-add-points",
+      "endpoint": "POST /loyalty/<customer_id>/points",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-unknown-customer": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /loyalty/<customer_id>/points",
+    "fact_refs": [
+     "POST /loyalty/<customer_id>/points#responses[0]",
+     "POST /loyalty/<customer_id>/points#business_rules[2]",
+     "POST /loyalty/<customer_id>/points#business_rules[3]",
+     "GET /loyalty/<customer_id>#responses[0]",
+     "POST /loyalty/<customer_id>/points#business_rules[4]"
+    ]
+   }
+  },
+  "loyalty-summary-read-fails": {
+   "loyalty-sum-tiers-and-flag-filter": {
+    "steps": {
+     "silver-u1": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "bronze-max-u2": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "gold-cust": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "no-rows-cust": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "GET /loyalty/<customer_id>",
+    "fact_refs": [
+     "GET /loyalty/<customer_id>#responses[0]",
+     "GET /loyalty/<customer_id>#business_rules[1]",
+     "GET /loyalty/<customer_id>#business_rules[2]",
+     "GET /loyalty/<customer_id>#business_rules[4]",
+     "GET /loyalty/<customer_id>#business_rules[5]"
+    ]
+   }
+  },
+  "release-precondition-read-fails": {
+   "release-happy-increments": {
+    "steps": {
+     "release-1": {
+      "function": "flight-release",
+      "endpoint": "POST /flights/<flight_id>/release",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-6": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "release-2": {
+      "function": "flight-release",
+      "endpoint": "POST /flights/<flight_id>/release",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-7": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /flights/<flight_id>/release",
+    "fact_refs": [
+     "POST /flights/<flight_id>/release#responses[0]",
+     "POST /flights/<flight_id>/release#responses[3]",
+     "POST /flights/<flight_id>/release#business_rules[0]",
+     "POST /flights/<flight_id>/release#business_rules[2]",
+     "POST /flights/<flight_id>/release#business_rules[3]"
+    ]
+   }
+  },
+  "release-update-fails": {
+   "release-happy-increments": {
+    "steps": {
+     "release-1": {
+      "function": "flight-release",
+      "endpoint": "POST /flights/<flight_id>/release",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-6": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "release-2": {
+      "function": "flight-release",
+      "endpoint": "POST /flights/<flight_id>/release",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-7": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /flights/<flight_id>/release",
+    "fact_refs": [
+     "POST /flights/<flight_id>/release#responses[0]",
+     "POST /flights/<flight_id>/release#responses[3]",
+     "POST /flights/<flight_id>/release#business_rules[0]",
+     "POST /flights/<flight_id>/release#business_rules[2]",
+     "POST /flights/<flight_id>/release#business_rules[3]"
+    ]
+   }
+  },
+  "reserve-network-drop": {
+   "reserve-boundary-last-seat": {
+    "steps": {
+     "reserve-last": {
+      "function": "flight-reserve",
+      "endpoint": "POST /flights/<flight_id>/reserve",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-zero": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "reserve-again": {
+      "function": "flight-reserve",
+      "endpoint": "POST /flights/<flight_id>/reserve",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-still-zero": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /flights/<flight_id>/reserve",
+    "fact_refs": [
+     "POST /flights/<flight_id>/reserve#responses[0]",
+     "POST /flights/<flight_id>/reserve#responses[1]",
+     "POST /flights/<flight_id>/reserve#business_rules[0]"
+    ]
+   }
+  },
+  "reserve-update-fails": {
+   "reserve-happy-decrements": {
+    "steps": {
+     "reserve-1": {
+      "function": "flight-reserve",
+      "endpoint": "POST /flights/<flight_id>/reserve",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "reserve-2": {
+      "function": "flight-reserve",
+      "endpoint": "POST /flights/<flight_id>/reserve",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-after-two": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "reserve-3": {
+      "function": "flight-reserve",
+      "endpoint": "POST /flights/<flight_id>/reserve",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-after-three": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /flights/<flight_id>/reserve",
+    "fact_refs": [
+     "POST /flights/<flight_id>/reserve#responses[0]",
+     "POST /flights/<flight_id>/reserve#business_rules[0]",
+     "POST /flights/<flight_id>/reserve#business_rules[3]"
+    ]
+   }
+  },
+  "users-read-fails": {
+   "register-empty-credentials-allowed": {
+    "steps": {
+     "empty-creds": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+     },
+     "login-empty": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /auth/login is not served by the target: Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。 (replaced by cognito)"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<v#1>",
+        "groups": []
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      false
+     ]
+    },
+    "verdict": "dropped",
+    "endpoint": "POST /auth/register",
+    "fact_refs": [
+     "POST /auth/register#responses[1]",
+     "POST /auth/register#business_rules[0]",
+     "POST /auth/login#responses[2]",
+     "POST /auth/register#business_rules[7]"
+    ]
+   }
+  },
+  "wb-booking-confirm-conditional-fails": {
+   "confirm-happy-read-back": {
+    "steps": {
+     "confirm": {
+      "function": "booking-confirm",
+      "endpoint": "POST /bookings/<booking_id>/confirm",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-after": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "confirm-again": {
+      "function": "booking-confirm",
+      "endpoint": "POST /bookings/<booking_id>/confirm",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "other-confirm": {
+      "function": "booking-confirm",
+      "endpoint": "POST /bookings/<booking_id>/confirm",
+      "status": {
+       "monolith": 403,
+       "target": 403
+      },
+      "verdict": "pass"
+     },
+     "read-final": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<id:u1>",
+        "groups": []
+       },
+       {
+        "sub": "<id:u2>",
+        "groups": []
+       }
+      ],
+      "actual": [],
+      "why": "expected 2 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /bookings/<booking_id>/confirm",
+    "fact_refs": [
+     "POST /bookings/<booking_id>/confirm#responses[4]",
+     "POST /bookings/<booking_id>/confirm#responses[5]",
+     "POST /bookings/<booking_id>/confirm#business_rules[0]",
+     "POST /bookings/<booking_id>/confirm#business_rules[1]",
+     "POST /bookings/<booking_id>/confirm#business_rules[2]",
+     "POST /bookings/<booking_id>/confirm#business_rules[3]",
+     "POST /bookings/<booking_id>/confirm#responses[6]"
+    ]
+   }
+  },
+  "wb-bookings-confirm-update-fails": {
+   "wb-bookings-confirm-rollback-seat-stuck": {
+    "steps": {
+     "book": {
+      "function": "bookings-create",
+      "endpoint": "POST /bookings",
+      "status": {
+       "monolith": 500,
+       "target": 500
+      },
+      "verdict": "pass"
+     },
+     "read-booking": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-flight": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-loyalty": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<id:u1>",
+        "groups": []
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /bookings",
+    "fact_refs": [
+     "POST /bookings#responses[8]",
+     "POST /bookings#responses[7]",
+     "POST /bookings#business_rules[2]",
+     "POST /bookings#business_rules[4]",
+     "POST /bookings#business_rules[5]",
+     "POST /bookings#business_rules[7]",
+     "GET /bookings/<booking_id>#responses[5]",
+     "GET /flights/<flight_id>#responses[0]",
+     "GET /loyalty/<customer_id>#responses[0]",
+     "GET /loyalty/<customer_id>#business_rules[2]"
+    ]
+   }
+  },
+  "wb-bookings-rollback-read-fails": {
+   "bookings-payment-fails-rollback": {
+    "steps": {
+     "book-bad-charge": {
+      "function": "bookings-create",
+      "endpoint": "POST /bookings",
+      "status": {
+       "monolith": 400,
+       "target": 400
+      },
+      "verdict": "pass"
+     },
+     "read-booking": {
+      "function": "booking-get",
+      "endpoint": "GET /bookings/<booking_id>",
+      "status": {
+       "monolith": 404,
+       "target": 404
+      },
+      "verdict": "pass"
+     },
+     "read-flight": {
+      "function": "flight-get",
+      "endpoint": "GET /flights/<flight_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     },
+     "read-loyalty": {
+      "function": "loyalty-get",
+      "endpoint": "GET /loyalty/<customer_id>",
+      "status": {
+       "monolith": 200,
+       "target": 200
+      },
+      "verdict": "pass"
+     }
+    },
+    "table_differences": [
+     {
+      "path": "tables_after.Airline-Users-{stage}",
+      "expected": [
+       {
+        "sub": "<id:u1>",
+        "groups": []
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ],
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      true
+     ]
+    },
+    "verdict": "pass",
+    "endpoint": "POST /bookings",
+    "fact_refs": [
+     "POST /bookings#responses[6]",
+     "POST /bookings#business_rules[3]",
+     "POST /bookings#business_rules[4]"
+    ]
+   }
+  },
+  "wb-users-put-fails": {
+   "register-success-and-conflicts": {
+    "steps": {
+     "empty-body": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+     },
+     "no-password": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+     },
+     "create": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+     },
+     "dup-email": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+     },
+     "dup-sub": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /auth/register is not served by the target: Replaced by Cognito - 客户端直接用 Amplify/Cognito SDK 注册（SI-12、D-1）；单体的邮箱查重 + 写 users 行 + 自签 JWT 这三件事分给用户池（凭据/唯一性）与 UserGroupsTable（授权属性，只在需要授权组的用户上写）。 (replaced by cognito)"
+     },
+     "login-new-user": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "POST /auth/login is not served by the target: Replaced by Cognito - 认证与令牌签发由用户池完成（SI-12）；单体那条“Scan users 按 email 匹配 + 校验口令 + 签 HS256 令牌”的链路不在目标上复刻，因此“邮箱读不到→401 与口令错不可区分”这类对外形状也随之作废（blueprint 已记录）。 (replaced by cognito)"
+     },
+     "admin-list": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "GET /auth/users is not served by the target: Replaced by Cognito user directory（ListUsers / AdminListGroupsForUser）：这个端点是管理员列整个用户目录，数据源就是那张凭据表（SI-12、D-1）。随之消失的两条对外行为（缺 email 的行让它 500 KeyError；sub/email/groups 的三键投影）在 blueprint 的 SI-15 里一并裁定。 (replaced by cognito)"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      false
+     ]
+    },
+    "verdict": "dropped",
+    "endpoint": "POST /auth/register",
+    "fact_refs": [
+     "POST /auth/register#responses[0]",
+     "POST /auth/register#responses[1]",
+     "POST /auth/register#responses[2]",
+     "POST /auth/register#business_rules[1]",
+     "POST /auth/register#business_rules[2]",
+     "POST /auth/register#business_rules[3]",
+     "POST /auth/register#business_rules[5]",
+     "POST /auth/login#responses[2]",
+     "GET /auth/users#responses[4]",
+     "POST /auth/register#business_rules[4]",
+     "GET /auth/users#business_rules[2]"
+    ]
+   }
+  },
+  "wb-users-read-fails-token": {
+   "users-list-masked-shape": {
+    "steps": {
+     "admin-list": {
+      "function": null,
+      "endpoint": null,
+      "verdict": "dropped",
+      "reason": "GET /auth/users is not served by the target: Replaced by Cognito user directory（ListUsers / AdminListGroupsForUser）：这个端点是管理员列整个用户目录，数据源就是那张凭据表（SI-12、D-1）。随之消失的两条对外行为（缺 email 的行让它 500 KeyError；sub/email/groups 的三键投影）在 blueprint 的 SI-15 里一并裁定。 (replaced by cognito)"
+     }
+    },
+    "rules_fired": {
+     "monolith": [
+      true
+     ],
+     "target": [
+      false
+     ]
+    },
+    "verdict": "dropped",
+    "endpoint": "GET /auth/users",
+    "fact_refs": [
+     "GET /auth/users#responses[4]",
+     "GET /auth/users#business_rules[3]",
+     "GET /auth/users#business_rules[4]"
+    ]
+   }
+  }
+ },
+ "summary": {
+  "cases": {
+   "dropped": 9,
+   "migration-change": 7,
+   "pass": 35
+  },
+  "fault_runs": {
+   "dropped": 3,
+   "pass": 23
+  }
+ },
+ "functions": {
+  "loyalty-add-points": {
+   "started": true,
+   "invocations": 15
+  },
+  "loyalty-get": {
+   "started": true,
+   "invocations": 29
+  },
+  "bookings-create": {
+   "started": true,
+   "invocations": 20
+  },
+  "customer-bookings-list": {
+   "started": true,
+   "invocations": 22
+  },
+  "flight-get": {
+   "started": true,
+   "invocations": 50
+  },
+  "loyalty-award-points": {
+   "started": true,
+   "invocations": 6
+  },
+  "booking-get": {
+   "started": true,
+   "invocations": 38
+  },
+  "booking-cancel": {
+   "started": true,
+   "invocations": 12
+  },
+  "payments-collect": {
+   "started": true,
+   "invocations": 12
+  },
+  "payment-get": {
+   "started": true,
+   "invocations": 16
+  },
+  "booking-confirm": {
+   "started": true,
+   "invocations": 11
+  },
+  "payments-refund": {
+   "started": true,
+   "invocations": 7
+  },
+  "flight-release": {
+   "started": true,
+   "invocations": 10
+  },
+  "flight-reserve": {
+   "started": true,
+   "invocations": 12
+  },
+  "flights-search": {
+   "started": true,
+   "invocations": 14
+  }
+ },
+ "logs": {}
+}

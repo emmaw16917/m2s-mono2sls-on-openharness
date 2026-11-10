@@ -1,0 +1,25 @@
+{
+  "id": "R-A1-a1-5",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 1,
+  "time": "2026-11-04T00:57:45+0800",
+  "question": "支付账本从进程内存字典（PaymentService._payments）迁到 PaymentsTable，以及收款号按键类型区分这两件事，对外结果相对单体有什么变化？",
+  "conclusion": "支付账本落库只是换了存储介质，结果集合不变：同一条收款记录 {chargeId, receiptUrl, price, status, mode}（没有 createdAt）仍由 POST /payments/collect 与 POST /bookings 的收款写入，GET /payments/<charge_id> 读回同一条，退款仍只在记录存在时把 status 就地改成 'refunded'（不在就什么都不改、仍 200 {refundId}），也不改 booking 的 status；_refunds 那份没有任何端点读的流水不落表。唯一被有意保留的“缺陷”是收款号的类型语义：记录按“<类型名>:<str(值)>”定位，而 GET /payments/<charge_id> 的路径参数永远是字符串，所以用 JSON number（如 12.5）收的款按字符串读不到 → 400 {error:'Payment 12.5 not found', type:'ValueError'}；list/dict 收款号抛 TypeError（不包成 ValueError）→ 500。单体在这两点上的对外结果被逐字照搬（Q10 默认照搬缺陷）：跨进程才读不到记录这一条不稳定性是单体特有的，迁移后一律可见，属于严格变得更好，不产生新的可观察差异。",
+  "basis": "storage/gap_inventory.json GAP-5 的默认（进程内共享状态放 DynamoDB）与 GAP-6；规格 POST /payments/collect#business_rules[2][3]、POST /payments/refund#business_rules[2]、GET /payments/<charge_id>#business_rules[0][1]、POST /bookings#business_rules[12][13][14][15]（J4-3、J4-5 的更正都写明了类型分流与共享记录的可观察后果）；出处 services/payment.py:21-22、169-176、273-277、298；裁判用例 payment-read-found-and-missing、collect-validation-and-record、refund-validation-and-effect、wb-bookings-payment-record-shared-cache、wb-bookings-non-string-chargeid、wb-bookings-catchall-no-refund、cancel-happy-read-back#read-payment；blueprint.metadata SI-8、SI-14、SI-5；storage/DECISIONS.md D-8。",
+  "category": "implementation-trace",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [],
+    "layers": [
+      "P",
+      "R",
+      "T"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

@@ -1,0 +1,49 @@
+{
+  "id": "R-A1-a2-2",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 2,
+  "time": "2026-11-04T01:07:13+0800",
+  "question": "R-A1 migration change: protected endpoint unauthenticated steps",
+  "conclusion": "For protected endpoints, unauthenticated requests are answered by the Cognito authorizer at API Gateway with status 401 and JSON body {\"message\":\"Unauthorized\"}; the Flask body field error and three distinct authorization-header failure messages are no longer produced by Lambda.",
+  "basis": "blueprint.api_gateway.authorizer=Cognito; D-1; SI-6; SI-13.",
+  "category": "migration-change",
+  "raised_by": "A1",
+  "options": [
+    "Keep Cognito gateway response",
+    "Migrate Flask auth endpoints"
+  ],
+  "relaxation": null,
+  "affects": {
+    "cases": [
+      "get-booking-owner-other-missing#no-header",
+      "get-booking-owner-other-missing#no-space",
+      "get-booking-owner-other-missing#bad-token",
+      "customer-bookings-single-and-auth#no-header",
+      "customer-bookings-single-and-auth#no-space",
+      "customer-bookings-single-and-auth#bad-token",
+      "loyalty-empty-and-auth-arms#no-header",
+      "loyalty-empty-and-auth-arms#no-space",
+      "loyalty-empty-and-auth-arms#bad-token",
+      "bookings-auth-and-input-arms#no-header",
+      "bookings-auth-and-input-arms#no-space",
+      "bookings-auth-and-input-arms#bad-token",
+      "cancel-auth-and-missing#no-header",
+      "cancel-auth-and-missing#no-space",
+      "cancel-auth-and-missing#bad-token",
+      "confirm-auth-and-missing#no-header",
+      "confirm-auth-and-missing#no-space",
+      "confirm-auth-and-missing#bad-token",
+      "add-points-validation-and-auth#no-header",
+      "add-points-validation-and-auth#no-space",
+      "add-points-validation-and-auth#bad-token"
+    ],
+    "layers": [
+      "P",
+      "R"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

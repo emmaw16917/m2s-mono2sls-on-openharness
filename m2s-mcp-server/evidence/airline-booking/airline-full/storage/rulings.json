@@ -1,0 +1,308 @@
+{
+  "entries": [
+    {
+      "id": "R-A1-a3-1",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 3,
+      "time": "2026-11-04T01:18:58+0800",
+      "question": "七个受保护端点上的未登录/坏令牌步骤（no-header、no-space、bad-token）在目标上由谁应答、应答什么？",
+      "conclusion": "这些步骤不再进入函数：由 API Gateway 的 Cognito 授权器直接应答 401，响应体是 {\"message\":\"Unauthorized\"}，不再是单体的 {\"error\": ...}；单体三条 401 文案（缺 Authorization 头 / 头里没有空格分段 / 令牌无效或过期）合并成这一条，状态码仍是 401。响应头按 api_gateway.gateway_responses.UNAUTHORIZED/DEFAULT_4XX 带上单体的四个全局头（Access-Control-Allow-Origin: '*'、Vary: Origin、Access-Control-Allow-Methods、Access-Control-Allow-Headers）。除认证出口外，同一用例的其它步骤（403 归属判定、404/400 等）不受影响，仍照搬单体。",
+      "basis": "blueprint metadata.spec_resolutions SI-6 与 SI-13（migration-change：认证基建化、\"sub 查不到用户\"这一臂不再由函数产生）；blueprint cognito.enabled=true、api_gateway.authorizer=\"Cognito\"/authorizer_type=\"COGNITO_USER_POOLS\"、api_gateway.gateway_responses.UNAUTHORIZED（status 401 + body {\"message\":\"Unauthorized\"}）；storage/DECISIONS.md D-1 与 D-19；analysis_report 七个端点 auth.classification=required（gate(blueprint) 的 auth 一致性检查已 PASS）。",
+      "category": "migration-change",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "get-booking-owner-other-missing#no-header",
+          "get-booking-owner-other-missing#no-space",
+          "get-booking-owner-other-missing#bad-token",
+          "customer-bookings-single-and-auth#no-header",
+          "customer-bookings-single-and-auth#no-space",
+          "customer-bookings-single-and-auth#bad-token",
+          "loyalty-empty-and-auth-arms#no-header",
+          "loyalty-empty-and-auth-arms#no-space",
+          "loyalty-empty-and-auth-arms#bad-token",
+          "cancel-auth-and-missing#no-header",
+          "cancel-auth-and-missing#no-space",
+          "cancel-auth-and-missing#bad-token",
+          "confirm-auth-and-missing#no-header",
+          "confirm-auth-and-missing#no-space",
+          "confirm-auth-and-missing#bad-token",
+          "bookings-auth-and-input-arms#no-header",
+          "bookings-auth-and-input-arms#no-space",
+          "bookings-auth-and-input-arms#bad-token",
+          "add-points-validation-and-auth#no-header",
+          "add-points-validation-and-auth#no-space",
+          "add-points-validation-and-auth#bad-token"
+        ],
+        "layers": [
+          "P"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a3-2",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 3,
+      "time": "2026-11-04T01:19:11+0800",
+      "question": "四个 /auth 端点（POST /auth/register、POST /auth/login、GET /auth/me、GET /auth/users）在目标上不提供，裁判在这些端点上的步骤怎么处理？",
+      "conclusion": "目标 API 上没有这四个路由（blueprint dropped_functions 里 type=\"endpoint\" 的四条 + adapter_map.dropped_endpoints），裁判运行这些用例时跳过全部步骤，不比对响应；注册、登录、读取本人资料、列用户改由 Cognito User Pool API 承担（客户端用 Amplify/Cognito SDK 直连），身份准备由 adapter_map.identities 把单体的 register/login 结果映射成用户池账号与网关交给函数的 claims.sub。因此这九个用例在目标上不产生任何对外结果，也不需要目标复刻单体的 200/400/401/409 形状与文案。",
+      "basis": "blueprint dropped_functions（POST /auth/register、POST /auth/login、GET /auth/me、GET /auth/users，reason=\"Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly\"）；metadata.spec_resolutions SI-6；storage/adapter_map.json 的 dropped_endpoints 与 identities.claims；storage/DECISIONS.md D-1、D-4、D-16。",
+      "category": "migration-change",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "me-only-three-keys-and-401-arms#self",
+          "me-only-three-keys-and-401-arms#no-header",
+          "me-only-three-keys-and-401-arms#no-space",
+          "me-only-three-keys-and-401-arms#bad-token",
+          "me-only-three-keys-and-401-arms#other-prefix",
+          "users-admin-only-matrix#no-header",
+          "users-admin-only-matrix#no-space",
+          "users-admin-only-matrix#bad-token",
+          "users-admin-only-matrix#non-admin",
+          "users-admin-only-matrix#admin",
+          "users-list-masked-shape#admin-list",
+          "users-row-missing-email#admin-list",
+          "login-non-string-password#numeric-password",
+          "login-success-and-indistinguishable-failures#empty-body",
+          "login-success-and-indistinguishable-failures#no-password",
+          "login-success-and-indistinguishable-failures#unknown-email",
+          "login-success-and-indistinguishable-failures#wrong-password",
+          "login-success-and-indistinguishable-failures#ok",
+          "login-success-and-indistinguishable-failures#upper-email",
+          "login-success-and-indistinguishable-failures#empty-creds",
+          "login-success-and-indistinguishable-failures#login-by-sub",
+          "register-empty-credentials-allowed#empty-creds",
+          "register-empty-credentials-allowed#login-empty",
+          "register-non-string-password#numeric-password",
+          "register-non-string-password#list-password",
+          "register-non-string-password#admin-list",
+          "register-success-and-conflicts#empty-body",
+          "register-success-and-conflicts#no-password",
+          "register-success-and-conflicts#create",
+          "register-success-and-conflicts#dup-email",
+          "register-success-and-conflicts#dup-sub",
+          "register-success-and-conflicts#login-new-user",
+          "register-success-and-conflicts#admin-list"
+        ],
+        "layers": [
+          "P"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a3-3",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 3,
+      "time": "2026-11-04T01:20:29+0800",
+      "question": "POST /bookings 的 chargeId / outboundFlightId 规格记成 string，但单体不校验类型：非字符串值在目标上怎么处理？",
+      "conclusion": "照搬单体，不加类型校验：两个字段都只按\"键是否存在\"做必填校验，值不转成字符串、不做类型检查，按收到的原类型写入与读回。chargeId 的账本定位键沿用单体的类型标注语义（\"值的 python 类型名 + ':' + str(值)\"，DynamoDB 主键属性 chargeIdKey）：JSON number 12.5 收的款，用 GET /payments/12.5（路径参数永远是字符串 s:12.5）读不到 → 400 {error:'Payment 12.5 not found', type:'ValueError'}；list 这类不可哈希值在收款时抛 TypeError，不被第 3 步的 except 接住，落到统一出口 → 500 {error, type:'TypeError'} 并按已发生的状态回滚（booking 置 CANCELLED、放座失败被吞、payment_result 未赋值则不退款）。这是保持单体既有缺陷（缺口规则手册 Q10：monolith_defect 默认照搬），不是迁移带来的变化。",
+      "basis": "blueprint metadata.spec_resolutions SI-8（contract：账本键语义照搬）与 SI-14；storage/DECISIONS.md D-8、D-14；analysis_report 的 POST /bookings#request.fields（chargeId/outboundFlightId 无类型校验的出处：app.py:135/219/234/241、services/payment.py:177、data/storage.py:37/41/50/54）。",
+      "category": "contract",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "wb-bookings-non-string-chargeid#book-list-charge",
+          "wb-bookings-non-string-chargeid#book-number-charge"
+        ],
+        "layers": [
+          "P"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a3-4",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 3,
+      "time": "2026-11-04T01:20:29+0800",
+      "question": "POST /bookings 规格里那个可选字段 name 在目标上要不要读取、校验或回显？",
+      "conclusion": "不读取、不校验、不落库、不回显：单体 handler 只取 outboundFlightId / customerId / chargeId（以及 booking 自身字段），name 从未出现在读取路径里，带不带、带什么值都不影响状态码、响应体与写库内容。目标保持这一点：多出来的请求体键一律忽略，不因为未知键返回 400。规格把 name 标成 optional 只是记录请求体可能出现过它，不是一项契约。",
+      "basis": "analysis_report POST /bookings#request.fields 的 name 条目与其 source 出处（单体 handler 与 validate_booking_request 均不引用 name；app.py:219-241 的取键列表）；blueprint metadata.spec_resolutions SI-1（必填校验只做键存在性）；storage/DECISIONS.md D-15。",
+      "category": "spec-gap",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [],
+        "layers": [
+          "P"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    }
+  ],
+  "rulings": [
+    {
+      "id": "R-A1-a3-1",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 3,
+      "time": "2026-11-04T01:18:58+0800",
+      "question": "七个受保护端点上的未登录/坏令牌步骤（no-header、no-space、bad-token）在目标上由谁应答、应答什么？",
+      "conclusion": "这些步骤不再进入函数：由 API Gateway 的 Cognito 授权器直接应答 401，响应体是 {\"message\":\"Unauthorized\"}，不再是单体的 {\"error\": ...}；单体三条 401 文案（缺 Authorization 头 / 头里没有空格分段 / 令牌无效或过期）合并成这一条，状态码仍是 401。响应头按 api_gateway.gateway_responses.UNAUTHORIZED/DEFAULT_4XX 带上单体的四个全局头（Access-Control-Allow-Origin: '*'、Vary: Origin、Access-Control-Allow-Methods、Access-Control-Allow-Headers）。除认证出口外，同一用例的其它步骤（403 归属判定、404/400 等）不受影响，仍照搬单体。",
+      "basis": "blueprint metadata.spec_resolutions SI-6 与 SI-13（migration-change：认证基建化、\"sub 查不到用户\"这一臂不再由函数产生）；blueprint cognito.enabled=true、api_gateway.authorizer=\"Cognito\"/authorizer_type=\"COGNITO_USER_POOLS\"、api_gateway.gateway_responses.UNAUTHORIZED（status 401 + body {\"message\":\"Unauthorized\"}）；storage/DECISIONS.md D-1 与 D-19；analysis_report 七个端点 auth.classification=required（gate(blueprint) 的 auth 一致性检查已 PASS）。",
+      "category": "migration-change",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "get-booking-owner-other-missing#no-header",
+          "get-booking-owner-other-missing#no-space",
+          "get-booking-owner-other-missing#bad-token",
+          "customer-bookings-single-and-auth#no-header",
+          "customer-bookings-single-and-auth#no-space",
+          "customer-bookings-single-and-auth#bad-token",
+          "loyalty-empty-and-auth-arms#no-header",
+          "loyalty-empty-and-auth-arms#no-space",
+          "loyalty-empty-and-auth-arms#bad-token",
+          "cancel-auth-and-missing#no-header",
+          "cancel-auth-and-missing#no-space",
+          "cancel-auth-and-missing#bad-token",
+          "confirm-auth-and-missing#no-header",
+          "confirm-auth-and-missing#no-space",
+          "confirm-auth-and-missing#bad-token",
+          "bookings-auth-and-input-arms#no-header",
+          "bookings-auth-and-input-arms#no-space",
+          "bookings-auth-and-input-arms#bad-token",
+          "add-points-validation-and-auth#no-header",
+          "add-points-validation-and-auth#no-space",
+          "add-points-validation-and-auth#bad-token"
+        ],
+        "layers": [
+          "P"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a3-2",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 3,
+      "time": "2026-11-04T01:19:11+0800",
+      "question": "四个 /auth 端点（POST /auth/register、POST /auth/login、GET /auth/me、GET /auth/users）在目标上不提供，裁判在这些端点上的步骤怎么处理？",
+      "conclusion": "目标 API 上没有这四个路由（blueprint dropped_functions 里 type=\"endpoint\" 的四条 + adapter_map.dropped_endpoints），裁判运行这些用例时跳过全部步骤，不比对响应；注册、登录、读取本人资料、列用户改由 Cognito User Pool API 承担（客户端用 Amplify/Cognito SDK 直连），身份准备由 adapter_map.identities 把单体的 register/login 结果映射成用户池账号与网关交给函数的 claims.sub。因此这九个用例在目标上不产生任何对外结果，也不需要目标复刻单体的 200/400/401/409 形状与文案。",
+      "basis": "blueprint dropped_functions（POST /auth/register、POST /auth/login、GET /auth/me、GET /auth/users，reason=\"Replaced by Cognito - Frontend calls AWS Amplify/Cognito SDK directly\"）；metadata.spec_resolutions SI-6；storage/adapter_map.json 的 dropped_endpoints 与 identities.claims；storage/DECISIONS.md D-1、D-4、D-16。",
+      "category": "migration-change",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "me-only-three-keys-and-401-arms#self",
+          "me-only-three-keys-and-401-arms#no-header",
+          "me-only-three-keys-and-401-arms#no-space",
+          "me-only-three-keys-and-401-arms#bad-token",
+          "me-only-three-keys-and-401-arms#other-prefix",
+          "users-admin-only-matrix#no-header",
+          "users-admin-only-matrix#no-space",
+          "users-admin-only-matrix#bad-token",
+          "users-admin-only-matrix#non-admin",
+          "users-admin-only-matrix#admin",
+          "users-list-masked-shape#admin-list",
+          "users-row-missing-email#admin-list",
+          "login-non-string-password#numeric-password",
+          "login-success-and-indistinguishable-failures#empty-body",
+          "login-success-and-indistinguishable-failures#no-password",
+          "login-success-and-indistinguishable-failures#unknown-email",
+          "login-success-and-indistinguishable-failures#wrong-password",
+          "login-success-and-indistinguishable-failures#ok",
+          "login-success-and-indistinguishable-failures#upper-email",
+          "login-success-and-indistinguishable-failures#empty-creds",
+          "login-success-and-indistinguishable-failures#login-by-sub",
+          "register-empty-credentials-allowed#empty-creds",
+          "register-empty-credentials-allowed#login-empty",
+          "register-non-string-password#numeric-password",
+          "register-non-string-password#list-password",
+          "register-non-string-password#admin-list",
+          "register-success-and-conflicts#empty-body",
+          "register-success-and-conflicts#no-password",
+          "register-success-and-conflicts#create",
+          "register-success-and-conflicts#dup-email",
+          "register-success-and-conflicts#dup-sub",
+          "register-success-and-conflicts#login-new-user",
+          "register-success-and-conflicts#admin-list"
+        ],
+        "layers": [
+          "P"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a3-3",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 3,
+      "time": "2026-11-04T01:20:29+0800",
+      "question": "POST /bookings 的 chargeId / outboundFlightId 规格记成 string，但单体不校验类型：非字符串值在目标上怎么处理？",
+      "conclusion": "照搬单体，不加类型校验：两个字段都只按\"键是否存在\"做必填校验，值不转成字符串、不做类型检查，按收到的原类型写入与读回。chargeId 的账本定位键沿用单体的类型标注语义（\"值的 python 类型名 + ':' + str(值)\"，DynamoDB 主键属性 chargeIdKey）：JSON number 12.5 收的款，用 GET /payments/12.5（路径参数永远是字符串 s:12.5）读不到 → 400 {error:'Payment 12.5 not found', type:'ValueError'}；list 这类不可哈希值在收款时抛 TypeError，不被第 3 步的 except 接住，落到统一出口 → 500 {error, type:'TypeError'} 并按已发生的状态回滚（booking 置 CANCELLED、放座失败被吞、payment_result 未赋值则不退款）。这是保持单体既有缺陷（缺口规则手册 Q10：monolith_defect 默认照搬），不是迁移带来的变化。",
+      "basis": "blueprint metadata.spec_resolutions SI-8（contract：账本键语义照搬）与 SI-14；storage/DECISIONS.md D-8、D-14；analysis_report 的 POST /bookings#request.fields（chargeId/outboundFlightId 无类型校验的出处：app.py:135/219/234/241、services/payment.py:177、data/storage.py:37/41/50/54）。",
+      "category": "contract",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "wb-bookings-non-string-chargeid#book-list-charge",
+          "wb-bookings-non-string-chargeid#book-number-charge"
+        ],
+        "layers": [
+          "P"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a3-4",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 3,
+      "time": "2026-11-04T01:20:29+0800",
+      "question": "POST /bookings 规格里那个可选字段 name 在目标上要不要读取、校验或回显？",
+      "conclusion": "不读取、不校验、不落库、不回显：单体 handler 只取 outboundFlightId / customerId / chargeId（以及 booking 自身字段），name 从未出现在读取路径里，带不带、带什么值都不影响状态码、响应体与写库内容。目标保持这一点：多出来的请求体键一律忽略，不因为未知键返回 400。规格把 name 标成 optional 只是记录请求体可能出现过它，不是一项契约。",
+      "basis": "analysis_report POST /bookings#request.fields 的 name 条目与其 source 出处（单体 handler 与 validate_booking_request 均不引用 name；app.py:219-241 的取键列表）；blueprint metadata.spec_resolutions SI-1（必填校验只做键存在性）；storage/DECISIONS.md D-15。",
+      "category": "spec-gap",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [],
+        "layers": [
+          "P"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    }
+  ]
+}

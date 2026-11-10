@@ -1,0 +1,206 @@
+{
+  "stage": "S5/O",
+  "pipeline": "v2",
+  "app": "airline-booking",
+  "baseline_ref": "B0 (1f47912)",
+  "confidence": "normal",
+  "environment": {
+    "docker": true,
+    "mode": "rie (backend ddblocal), arm64 python3.12",
+    "latency_ms": [10],
+    "extra_latency_ms_for_tradeoffs": [0, 5, 15],
+    "prices": "m2s-mcp-server/perf-rules/prices.json (us-east-1 on-demand; DynamoDB 每百万写 $0.25 读 $0.125 量级、lambda_gb_second / lambda_gb_second_arm64、lambda_request $2e-07)，判决只比方向",
+    "calibrated_latency_profile": "m2s-mcp-server/perf-rules/latency-profile.json (grade M), used only for network_ms_cal sizing",
+    "data_volume_assumptions": {
+      "batch-10-distinct": "一批 10 条 SQS 消息（模板 EventSourceMapping BatchSize=10），bookingId 两两不同，各写 LoyaltyTable 一条；表初始为空",
+      "batch-10-hotkey": "一批 10 条消息全部携带同一个 bookingId（整批重投的最坏重叠），10 次 PutItem 落在同一条目",
+      "cancel-with-payment-and-seat": "BookingTable 1 条本人 CONFIRMED booking + FlightTable 1 条可放座航班 + PaymentsTable 1 条可退款记录；一次取消 8 次数据访问",
+      "search-scan-200": "FlightTable 200 条（10 条命中 + 190 条不命中），单次全表 Scan + FilterExpression",
+      "list-scan-200": "BookingTable 200 条（10 条属于本人 + 190 条属于他人），单次全表 Scan",
+      "summary-scan-200": "LoyaltyTable 200 条流水（20 条属于本人），单次全表 Scan 后内存求和"
+    }
+  },
+  "baseline": {
+    "loyalty-award-points": {
+      "batch-10-distinct": {"calls": 10, "depth": 10, "network_ms_cal": 33.2, "conflicts": 0, "rru": 0, "wru": 10, "sqs_requests": 0, "warm_cpu_ms": 10.386, "warm_cpu_p90_ms": 15.789, "cost_usd_ex_duration": 6.45e-06, "rie_warm_ms_10ms_median_of_round_medians": 142.65, "init_ms": 1391.84},
+      "batch-10-hotkey": {"calls": 10, "depth": 10, "network_ms_cal": 33.2, "conflicts": 0, "rru": 0, "wru": 10, "sqs_requests": 0, "warm_cpu_ms": 10.25, "warm_cpu_p90_ms": 17.121, "cost_usd_ex_duration": 6.45e-06}
+    },
+    "booking-cancel": {
+      "cancel-with-payment-and-seat": {"calls": 8, "depth": 8, "network_ms_cal": 28.58, "conflicts": 0, "rru": 2.5, "wru": 3, "sqs_requests": 0, "warm_cpu_ms": 8.029, "warm_cpu_p90_ms": 12.045, "cost_usd_ex_duration": 2.3875e-06}
+    },
+    "flights-search": {"search-scan-200": {"calls": 1, "depth": 1, "network_ms_cal": 4.64, "conflicts": 0, "rru": 4.5, "wru": 0, "warm_cpu_ms": 3.182, "warm_cpu_p90_ms": 6.276, "cost_usd_ex_duration": 7.625e-07}},
+    "customer-bookings-list": {"list-scan-200": {"calls": 1, "depth": 1, "network_ms_cal": 4.64, "conflicts": 0, "rru": 5.0, "wru": 0, "warm_cpu_ms": 2.633, "warm_cpu_p90_ms": 2.818, "cost_usd_ex_duration": 8.25e-07}},
+    "loyalty-get": {"summary-scan-200": {"calls": 1, "depth": 1, "network_ms_cal": 4.64, "conflicts": 0, "rru": 2.5, "wru": 0, "warm_cpu_ms": 2.351, "warm_cpu_p90_ms": 5.485, "cost_usd_ex_duration": 5.125e-07}},
+    "untouched_by_any_benchmark": ["flight-get", "flight-reserve", "flight-release", "booking-get", "booking-confirm", "payments-collect", "payments-refund", "payment-get", "loyalty-add-points", "bookings-create"]
+  },
+  "hotspots": {
+    "largest_sequential_depth": "loyalty-award-points batch-10-distinct: depth 10（一批 10 次串行 PutItem）→ 已按 R4 处理（REQ-1）",
+    "second": "booking-cancel cancel-with-payment-and-seat: depth 8，其中末尾 4 次（放座 Get+Update、退款 Get+Update）互不依赖 → REQ-2（pending_human）",
+    "cpu": "warm_cpu 最高的是 loyalty-award-points（10 条消息的批次 10.4ms）与 booking-cancel（8.0ms），两者都是 SDK 编解码 + 重复的对象构造，不是循环内的算法开销",
+    "cost_grows_with_data": "flights-search / customer-bookings-list / loyalty-get 的 RRU 随基表条目数线性增长（200 条 → 4.5/5.0/2.5 RRU，命中的只有 10/10/20 条），见 advisories[1]",
+    "not_benchmarkable": "bookings-create 的 6 步内联链无法写出有效基准：perf-shim 不把同一批内的写入回读给后续 GetItem（PutItem 是 no-op），第 4 步的确认读必然落空 → 500，被 §3.1-1 判 INVALID。它的链上每一步都是写或依赖上一步的结果，本来也不在允许并行的范围内（§6.2 '提前写' 行）。"
+  },
+  "changes": [
+    {
+      "id": "C1",
+      "request": "REQ-1",
+      "source": "rule:R4",
+      "functions": ["loyalty-award-points"],
+      "based_on": [],
+      "verdict": "kept",
+      "fix_attempts": 1,
+      "fix_note": "第一次实现里 record_item_keys 有一行 `if not isinstance(body, dict): return []` 没有任何用例能走到（run_coverage all_covered=false，handler.py:146）。按 §3.6 '缺测试' 分类本应标 blocked_by_coverage，但这一行是我自己新加的防御分支、与 _process_record 的丢弃条件等价，所以把它折进解析的 try/except（非 object 的 body 走 body.get 抛异常 → 同一个 except 返回 []），语义不变；改完 fix_attempts=1，四项检查全部重跑。",
+      "evidence": {
+        "proxies": {
+          "batch-10-distinct": {"calls": "10→10 (=)", "depth": "10→1", "wru": "10→10 (=)", "rru": "0→0 (=)", "sqs_requests": "0→0 (=)", "conflicts": "0→0", "network_ms_cal": "33.2ms→3.32ms (calibrated estimate delta -29.88ms, grade M, sizing only)", "warm_cpu_median_ms": "10.984→12.05 (ratio 1.1, direction 'same')"},
+          "batch-10-hotkey_guard": {"calls": "10→10 (=)", "depth": "10→10 (waves of one, 与基线一致)", "conflicts": "0→0"}
+        },
+        "rie": {
+          "10ms": {
+            "base_warm_round_medians_ms": [148.25, 144.05, 139.05, 139.36, 146.93],
+            "cand_warm_round_medians_ms": [77.41, 79.26, 82.34, 71.64, 71.13],
+            "base_p50_p90": [142.46, 164.49], "cand_p50_p90": [76.58, 90.03],
+            "ranges_overlap": false, "direction": "clearly better"
+          }
+        },
+        "init": {"base_ms": [1391.84, 1461.93, 1389.48, 1345.97, 1261.61], "cand_ms": [1467.26, 1147.14, 1338.73, 1345.41, 1136.23], "dimension": "no_diff"},
+        "cost": {"base_usd_per_invocation": [7.438e-06, 7.410e-06, 7.377e-06, 7.379e-06, 7.430e-06], "cand_usd_per_invocation": [6.966e-06, 6.978e-06, 6.999e-06, 6.928e-06, 6.924e-06], "dimension": "better", "latency_used": "10ms"},
+        "dimensions": {"latency": "better", "init": "no_diff", "cost": "better"},
+        "verdict_reason": "no dimension worse and at least one clearly better",
+        "rss_guard": {"candidate_max_rss_mb": 46, "memory_mb": 512, "veto": false},
+        "conflicts": {"proxy_10ms": {"base": 0, "cand": 0}, "rie_10ms": {"base": 0, "cand": 0}},
+        "guards": {"batch-10-hotkey": {"ok": true, "verdict": "kept", "dimensions": {"latency": "better", "init": "no_diff", "cost": "better"}, "conflicts": "0"}},
+        "equivalence": {"run_equivalence_delta": "EQUIVALENT", "runs": 13, "differences": [], "unstable_in_baseline": [], "baseline": "B0 (1f47912)", "judge_functions": "PASS (12 cases, 6 fault runs)"},
+        "regression": {"run_judge_full": "PASS 35 cases + 23 fault runs (9 cases / 3 fault runs dropped: 迁移中删除的端点)", "run_validate_delta_full": "PASS 25/25", "gate_final": "PASS", "cases_with_conflicts": []},
+        "coverage_of_changed_lines": {"changed_executable_lines": 53, "covered": 53, "all_covered": true, "sources": {"judge_cases": 12, "delta": "verification/coverage/loyalty-award-points.json"}},
+        "verdict_file": "perf/verdicts/batch-10-distinct-20261104-051324.json",
+        "limits": "受 §2.1 局限 2 影响：模拟垫片里并发数没有上限，所以 depth 10→1 与 10ms 下 ~70ms 的收益是“并发不受限”条件下的结论；真实 DynamoDB 同一分区键的并发吞吐与连接池（10 线程，botocore 默认池大小）会限制实际收益。热点守卫基准（10 条消息全部落同一个条目）分波后每波只有 1 条、直接在当前线程执行，没有冲突、没有变差。幂等条目（id=bookingId）已计入波次的键，重复投递的两条消息必然排在不同波次。"
+      },
+      "commit": "44899ac"
+    },
+    {
+      "id": "C2",
+      "request": "REQ-2",
+      "source": "rule:R1",
+      "functions": ["booking-cancel"],
+      "based_on": ["C1"],
+      "verdict": "pending_human",
+      "fix_attempts": 0,
+      "evidence": {
+        "proxies": {
+          "cancel-with-payment-and-seat": {"calls": "8→8 (=)", "depth": "8→6", "wru": "3→3 (=)", "rru": "2.5→2.5 (=)", "conflicts": "0→0", "network_ms_cal": "28.58ms→20.96ms (calibrated estimate delta -7.62ms, grade M, sizing only)", "warm_cpu_median_ms": "7.965→14.344 (ratio 1.8, direction 'worse')"}
+        },
+        "rie": {
+          "10ms": {"base_warm_round_medians_ms": [118.62, 113.66, 106.69, 116.85, 121.84], "cand_warm_round_medians_ms": [100.86, 104.84, 98.81, 92.45, 108.4], "direction": "no_diff (ranges overlap)"},
+          "0ms": {"base_warm_round_medians_ms": [82.46, 80.48, 80.1, 82.29, 83.65], "cand_warm_round_medians_ms": [89.32, 88.47, 90.91, 91.68, 90.09], "direction": "worse"},
+          "5ms": {"base_warm_round_medians_ms": [86.74, 98.5, 77.65, 100.48, 95.68], "cand_warm_round_medians_ms": [94.55, 97.31, 87.07, 94.39, 86.29], "direction": "no_diff"},
+          "15ms": {"base_warm_round_medians_ms": [160.17, 158.46, 160.88, 160.58, 163.29], "cand_warm_round_medians_ms": [124.71, 123.79, 126.43, 122.88, 122.22], "direction": "clearly better"}
+        },
+        "dimensions": {"latency": "depends_on_rtt", "init": "no_diff", "cost": "no_diff"},
+        "realistic_latency_rule": {"applied": false, "warm_cpu_ratio": 1.8, "cpu_ratio_limit": 2.0, "reference_0ms": "worse", "note": "5/10/15ms 没有全部明显变好（5ms、10ms 为 no_diff），所以该规则不生效，结论按延迟参数反转处理"},
+        "verdict_reason": "latency verdict flips with the simulated round-trip time（§3.2 第 2 步：结论随延迟参数反转 → 权衡型交给人）",
+        "rss_guard": {"candidate_max_rss_mb": 46, "memory_mb": 512, "veto": false},
+        "conflicts": {"proxy_10ms": {"base": 0, "cand": 0}, "rie": {"10ms": {"base": 0, "cand": 0}, "0ms": {"base": 0, "cand": 0}, "5ms": {"base": 0, "cand": 0}, "15ms": {"base": 0, "cand": 0}}},
+        "equivalence": {"run_equivalence_delta": "EQUIVALENT", "runs": 2, "differences": [], "unstable_in_baseline": ["delta-booking-cancel-ledger-write-fails::delta-booking-cancel-rewrites-ledger-row", "delta-booking-cancel-rewrites-ledger-row"], "note": "这两条在基线自己两次运行之间就不一致，工具把它们排除在判决之外（'the change is NOT verified on them'）；该臂的失败路径另由 run_judge 的 3 个 fault run 与 run_validate 的 PASS 覆盖", "judge_functions": "PASS (3 cases, 3 fault runs)"},
+        "regression": {"run_validate_delta_functions": "PASS 1/1", "gate_final": "PASS"},
+        "coverage_of_changed_lines": {"changed_executable_lines": 19, "covered": 19, "all_covered": true, "sources": {"judge_cases": 4, "delta": "verification/coverage/booking-cancel.json"}},
+        "verdict_file": "perf/verdicts/cancel-with-payment-and-seat-20261104-052511.json",
+        "limits": "同样受 §2.1 局限 2 影响。这里能重叠的只有 2 个往返，而两臂的 botocore 序列化/签名是 GIL 下的纯 CPU 工作、无法真正并行，所以 0ms 下净亏 ~8ms；只有单次往返 ≥15ms 时收益才盖过这份固定开销。真实同区往返（grade M 标定：GetItem/UpdateItem 约 3-5ms）落在“基本持平”那一侧。"
+      },
+      "commit": null,
+      "patch": "perf/patches/REQ-2.patch"
+    }
+  ],
+  "pending_human": [
+    {
+      "change": "C2",
+      "request": "REQ-2",
+      "reason": "深度 8→6、调用次数与写集合不变、四项检查全过（judge PASS / delta validate PASS / equivalence EQUIVALENT / 改动行 19/19 覆盖）、无冲突，但延迟维度的结论随模拟往返时间反转：0ms 变差、5ms 与 10ms 无显著差异、15ms 明显变好；热调用 CPU 是基线的 1.8 倍（未超 2.0 上限）。init 与成本维度都不变差。按 §3.4 回滚并交给人决定。",
+      "what_to_weigh": "线上真实的同区 DynamoDB 往返（perf-rules/latency-profile.json，grade M：GetItem/UpdateItem p50 约 3-5ms）决定放座+退款两段重叠能省多少；标定估算给的是 -7.62ms 关键路径，而本地/GIL 下两臂 CPU 不能重叠的代价约 +6.4ms，两者接近。",
+      "patch": "perf/patches/REQ-2.patch",
+      "verdict_file": "perf/verdicts/cancel-with-payment-and-seat-20261104-052511.json"
+    }
+  ],
+  "advisories": [
+    {
+      "diagnosis": "booking-get / booking-confirm / booking-cancel 在同一次请求里对同一个 BookingTable 条目重复 GetItem：GET 读 2 次、CONFIRM 读 2 次、CANCEL 读 3 次。基线实测 booking-cancel 一次成功取消 8 次调用里有 3 次是同一键（id=bk-perf-cancel）的 GetItem（call_ops: GetItem:BookingTable ×3 + UpdateItem:BookingTable）。",
+      "why_not_v1": "SI-2 的 class 确实是 implementation-trace（blueprint metadata.spec_resolutions[1]），按 §6.2 表格本可申请去掉；但冻结裁判的故障场景就是按“第几次读失败”定位的：judge/faults/booking-get-second-read-fails.json、booking-confirm-second-read-fails.json、booking-cancel-second-read-fails.json(nth=2)、booking-cancel-third-read-fails.json(nth=3)。去掉任何一次读都会让那些故障没有落点、裁判期望的 400 臂无法复现，H1(a) 的调用多重集也会变。裁判在本流水线里是冻结的（judge/oracle_expected.json 来自单体实跑），放宽申请需要解冻重录，超出优化线能自行完成的范围；本轮也没有将 spec_relaxation 提交为 pending_spec（gate(final) SR1 会拒绝留下未裁定申请的报告）。",
+      "evidence": {
+        "measured": "run_proxy_metrics cancel-with-payment-and-seat: calls=8, depth=8, network_ms_cal=28.58ms, warm_cpu 中位数 8.029ms（B0）",
+        "estimated_gain": "取消端点少 2 次 GetItem：depth 8→6、RRU 2.5→约 1.5、标定关键路径约 -6~7ms（与 REQ-2 的并行方案等价，且不需要线程）",
+        "blocking_faults": ["booking-get-second-read-fails", "booking-confirm-second-read-fails", "booking-cancel-second-read-fails", "booking-cancel-third-read-fails"]
+      }
+    },
+    {
+      "diagnosis": "三个列表/汇总端点用全表 Scan + FilterExpression 读基表，读容量随表大小线性增长而与命中条数无关：200 条表里只命中 10/10/20 条时，RRU 分别是 4.5 / 5.0 / 2.5；表涨到 2 万条时同一请求要付约 100 倍的读量，而 BookingTable 已有 customer-index、LoyaltyTable 已有 customer-flag-index 可以直接 Query。",
+      "why_not_v1": "§6.2 不允许数据模型/访问路径改动（换表结构、物化视图、新增 GSI 都是禁止项；改用已有 GSI 属于同一类，SI-4 也明文规定目标照抄单体的 Scan、只取第一页）。命中超过一页时 Scan 与 GSI Query 的外部结果不同，属于契约，只能由 architect 裁定。",
+      "evidence": {
+        "measured": "run_proxy_metrics（B0）: search-scan-200 calls=1 depth=1 rru=4.5 cost=5.625e-07 USD；list-scan-200 rru=5.0；summary-scan-200 rru=2.5",
+        "note": "FlightTable 没有任何 GSI（departure/arrival/date 都不可用索引），flights-search 要受益必须新建 GSI（§8 CONTRACT_TESTING_PLAN 的 data_model_change 申请），本轮未提交申请（每轮最多一批，且需要先做临时改动量收益）"
+      }
+    },
+    {
+      "diagnosis": "bookings-create 的 6 步内联编排（条件写占座 → PutItem booking → PutItem payment → 再读 booking → 条件写确认 → SQS 发消息）是关键路径最长 HTTP 端点，占座与收款两步的入参其实互相独立。",
+      "why_not_v1": "提前执行带写操作/发消息的步骤会改变执行的操作集合（§6.2 '遇失败就停止 → 并行且提前写' 行禁止）：占座失败时单体不会留下 payment 记录，并行就会。回滚补偿链也依赖步骤的先后。",
+      "evidence": {"note": "perf-shim 不回读同批写入，所以本轮无法为该端点写出合法基准（见 hotspots.not_benchmarkable）；没有实测数据，只作定性提示"}
+    },
+    {
+      "diagnosis": "R8（模块级 TTL 缓存）无候选：blueprint 的 spec_resolutions 里没有 class=bounded_staleness 的条目，storage/rulings.json 的 4 条裁定（R-A1-a3-1..4）也都不是有界旧数据授权，metadata.perf_hints 为空。",
+      "why_not_v1": "§6.2：对没有 bounded_staleness 裁定的表做缓存一律禁止，只能写 advisory。若将来允许，最热的候选是 loyalty-get 与 customer-bookings-list 的整表 Scan（advisories[1] 的同一批调用）。",
+      "evidence": {"checked": "storage/blueprint.json metadata.spec_resolutions (14 条: 5 implementation-trace / 5 contract / 3 migration-change / 1 …) 与 storage/rulings.json"}
+    },
+    {
+      "diagnosis": "R6（REST → HTTP API）不适用：run_gate(phase=\"blueprint\") PASS 且没有 AT1 WARNING，模板确实使用了 REST 独有功能（AWS::Serverless::Api 的 GatewayResponses 全局 4xx 头 + DefaultAuthorizer Cognito + Cors 块，对应 GM2/SI-6 契约）。",
+      "why_not_v1": "不是可切换的配置项；API 类型在 S1 已定。",
+      "evidence": {"measured": "run_gate(blueprint) status=PASS, checks=[] （无 AT1）", "template": "output/template.yaml:37-70 (AirlineBookingApi Cors/Auth/GatewayResponses)"}
+    },
+    {
+      "diagnosis": "R5（arm64）在 B0 里已经落地：output/template.yaml Globals.Function.Architectures=[arm64]，15 个函数都没有覆盖它，RIE 判决报告的 architecture 两侧都是 arm64。",
+      "why_not_v1": "已经是目标状态，没有可申请的收益；本轮未重复改动（规则台账按 hit=0 记录）。",
+      "evidence": {"template": "output/template.yaml:24-26", "rie": "perf/verdicts/*.json architecture {base: arm64, cand: arm64}"}
+    }
+  ],
+  "rule_scan": {
+    "R1": {
+      "hits": 1,
+      "locations": ["output/lambdas/airline/booking-cancel/handler.py:124-138（放座臂与退款臂：两段互不依赖、各自 try/except 吞掉失败、各自读写自己表的条目）"],
+      "not_applicable": [
+        "output/lambdas/airline/bookings-create/handler.py:88-150：步骤之间是写-写依赖与补偿顺序，被提前的操作含写/发消息（§6.2 禁止行）",
+        "output/lambdas/airline/booking-cancel/handler.py:104-121：三次 BookingTable 读与后面的状态写是同一行上的依赖链（读→条件写），并行会改变操作集合",
+        "所有 *-(reserve/release) 端点：GetItem 的返回值是条件写的 ExpressionAttributeValues，读与写有数据依赖",
+        "flights-search / customer-bookings-list / loyalty-get：每次调用只有一次 Scan，没有可并行的独立调用"
+      ],
+      "note": "命中形状是同一请求内两段独立臂（不是循环）；§6.2 第一行允许，规则库 R1 的循环条件按该行的更一般表述处理"
+    },
+    "R2": {"hits": 0, "locations": [], "note": "每个 handler 最多调用一次 _parse_body（bookings-create:83、loyalty-add-points:107、payments-collect:78、payments-refund），没有重复 JSON.parse/loads"},
+    "R3": {"hits": 0, "locations": [], "note": "output/lambdas/** 里没有 requirements.txt 或 package.json（只有 handler + 内联模块，运行时提供 boto3）；无声明未用的依赖可删"},
+    "R4": {
+      "hits": 1,
+      "locations": ["output/lambdas/airline/loyalty-award-points/handler.py:188-208（原 for record in (event or {}).get('Records', []) 逐条串行 PutItem；模板 EventSourceMapping BatchSize=10）"],
+      "not_applicable": [],
+      "note": "已实现并保留（C1）。R4 的四条排除都不成立：循环体没有 break、失败只记进 batchItemFailures；消息之间只共享 failures 列表（append，不重新赋值，最后按批内顺序排序）；消费者不对别的消息写的表做 Query/Scan；每条消息要写的条目键（id=bookingId）在解析消息体后立刻可算，幂等标记条目本身就是这个键，已含在 keys 里。"
+    },
+    "R1b": {
+      "hits": 0,
+      "locations": [],
+      "not_applicable": ["storage/analysis_report.json 的 18 个端点里没有任何 guard_kind 标注（grep guard_kind = 0 次）；§6.2 与规则库都要求被越过的提前返回在 spec 里是 guard_kind: \"error_propagation\"，authz 或未标注的一律不适用。booking-get/confirm/cancel 的第二次读被 authz 判定挡在前面（跨不过去），customer-bookings-list / loyalty-get 的 Scan 在 is_admin 守卫之后（提前它等于越过 authz）。"]
+    },
+    "R5": {"hits": 0, "locations": [], "note": "B0 模板 Globals.Function.Architectures 已经是 [arm64]（见 advisories[5]）"},
+    "R6": {"hits": 0, "locations": [], "note": "gate(blueprint) 无 AT1 WARNING；模板使用 GatewayResponses/DefaultAuthorizer 等 REST 独有能力（advisories[4]）"},
+    "R8": {"hits": 0, "locations": [], "note": "没有 class=bounded_staleness 的 SI，也没有 perf_hints（advisories[3]）"}
+  },
+  "uncovered_paths": [
+    "bookings-create / booking-confirm / booking-get / flight-* 等 10 个函数本轮没有基准（没有允许的改动可测），它们的基线代理指标未采集",
+    "perf-shim 的 PutItem/BatchWriteItem 不会回读给同一批内的 GetItem，因此任何“写后读”链（bookings-create 的第 4 步确认）在优化线的测量层里无法构造合法基准"
+  ],
+  "counts": {"kept": 1, "reverted": 0, "pending_human": 1, "kept_inconclusive": 0, "blocked_by_test": 0, "blocked_by_coverage": 0},
+  "commits": {
+    "benchmarks": "1c41519 perf: benchmarks (R4 consumer batch + hot key, booking-cancel arms, scan hotspots)",
+    "kept_changes": ["44899ac perf(REQ-1): R4 wave-parallel SQS loyalty consumer batch [kept]"]
+  },
+  "regression": {
+    "gate_final": "PASS",
+    "run_judge_full": {"status": "PASS", "cases": {"pass": 35, "dropped": 9, "migration-change": 7}, "fault_runs": {"pass": 23, "dropped": 3}, "verdict": "verification/verdict_judge.json"},
+    "run_validate_delta_full": {"status": "PASS", "total": 25, "passed": 25, "failed": 0, "cases_with_conflicts": [], "verdict": "verification/verdict_delta.json"}
+  }
+}

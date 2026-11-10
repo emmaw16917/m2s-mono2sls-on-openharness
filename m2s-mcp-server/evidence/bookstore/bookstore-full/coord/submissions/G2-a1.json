@@ -1,0 +1,9 @@
+{
+  "task": "G2",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-03T16:40:57+0800",
+  "summary": "核对 gap_scan 的 10 条 G1 条目（全部成立，未改 evidence/summary/endpoints，给 GAP-1/GAP-2/GAP-6 补了 note），读单体全文后新增 8 条信号认不出的缺口 GAP-11..GAP-18：统一错误中间件（默认 NODE_ENV=development 时带 stack）、body-parser（json+urlencoded、默认 100kb 上限、超限 413）、Query 不翻页、AUTH_DEV_MODE 身份注入与 x-customer-id 冒充、令牌寿命/不轮换/不可撤销、require 时一次性建立的 DynamoDB 客户端与 dotenv、畅销榜即发即忘对后续读的顺序影响、全仓库无 ConsistentRead 的最终一致默认读。check_gap_inventory 首次即 PASS（18 条，全部 status=open，未写任何 decision，事实库未改）。",
+  "notes": "两点要 architect 注意：(1) P0 的 global_middleware 只列了 CORS，统一错误中间件与 body-parser 是漏项，我按 G2 规则开成 GAP-11/GAP-12，没有动 analysis_report.json；(2) GAP-11 与 GAP-14 的结论依赖 env 默认值（仓库无 .env ⇒ NODE_ENV='development'、AUTH_DEV_MODE=false），若验证运行时另注入这两个变量，需要复核。另在 storage/stage_reports/G2.json 的 issues 里记了三条不构成缺口的观察：单体没有自定义 404 处理器、optionalAuthMiddleware 是死代码（routes/*.js 里 require 到的是模块对象而非函数，未使用）、scripts/init-db.js 的不翻页写法不属于运行中的应用。"
+}

@@ -1,0 +1,9 @@
+{
+  "task": "I2b",
+  "attempt": 1,
+  "role": "m2s-sam-engineer",
+  "status": "done",
+  "time": "2026-11-03T19:45:57+0800",
+  "summary": "生成 output/template.part2.yaml：12 个 AWS::Serverless::Function（11 个 REST api 事件 + bestsellers-update 的 SQS 事件带 ReportBatchItemFailures），CodeUri/Handler/环境变量按 output/lambdas/bookstore/ 磁盘真实代码确定，Policies 最小权限（读端点 DynamoDBReadPolicy、写端点 CrudPolicy、生产者 SQSSendMessagePolicy、消费者 SQSPollerPolicy+两张表 CrudPolicy），另含 FUNCTIONS_METADATA 块与 Outputs。未调用 run_gate/validate_sam（S3b 禁止），改为在 %TEMP% 里合成 part1+part2 并复刻 gate 结构检查（0 findings）+ 本机 samtranslator 真实转换（TRANSLATE OK：12 Lambda、11 集成+OPTIONS mock、ESM BatchSize10/PartialBatch、角色权限与代码动作一致）。",
+  "notes": "给 S3c 的要点：(1) 合并后 Globals.Function 没有 Handler，每个函数自带 index.handler，不应触发 C3；(2) 事件均为 Type: Api + RestApiId: !Ref BookstoreApi，未写 PayloadFormatVersion（REST 不接受该属性），所有端点 auth=required 故无 Auth 块；(3) 纯读端点用 DynamoDBReadPolicy（已核对官方 policy_templates.json：含 Query/Scan 且覆盖 table/<T>/index/*，category-index 不会被漏授）；(4) 未设 Tracing（与 part1 一致，规格无 X-Ray 出处）、未设 Architectures（part1 Globals 未设，留给性能线 run_config_verdict）；(5) FUNCTIONS_METADATA 块以 '# --- END METADATA ---' 结束，其后是顶层 Outputs:。若 validate_sam 报 Cors/AllowCredentials 一类问题，那属于 part1 资源，不在我这次改动范围内。"
+}

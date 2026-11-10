@@ -1,0 +1,24 @@
+{
+  "id": "R-A1-a1-4",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 1,
+  "time": "2026-11-04T00:57:29+0800",
+  "question": "积分副作用改成 SQS 消息之后，“同一条消息被重复投递”与“消息投递失败”这些单体不存在的情况，目标上的对外结果是什么？",
+  "conclusion": "重复投递不多算：消费者 loyalty-award-points 用确定键的整条 PutItem 写积分条目（LoyaltyTable.id 取消息里的 bookingId，而不是新生成的 uuid4），同一条消息重投只会重写同一条目，GET /loyalty/&lt;customer_id&gt; 的总分不变；因此不需要去重表，也不用事务（并且必须保持普通 PutItem，因为故障场景 bookings-loyalty-put-fails 是按 (table, op=PutItem) 定位的）。失败上报分两档：消息体不可用（JSON 解不开、缺 customerId、points 不是 int/float 或 &lt;=0）算永久失败，记日志后从 batch 吞掉、不返回 batchItemFailures；PutItem 的 throttle/network/internal 算可重试失败，返回该条 recordId（模板配 ReportBatchItemFailures），MaxReceiveCount=3 后入 DLQ。两类都不影响已经返回的 201，与单体“这一步失败只 print、积分缺失”的可观察结果一致（用例 bookings-success-read-back#read-loyalty 期望 150，故障 bookings-loyalty-put-fails 期望 0）。",
+  "basis": "m2s-async-patterns-kb 的 REQUIRED correctness rule（消费者必须在重投下幂等）；storage/gap_inventory.json GAP-19 的默认（即发即忘的吞掉副作用改消息 + 幂等消费者）；判定信号 entry_point_dependencies[\"POST /bookings\"] 里 process_booking_loyalty 的 return_value_used=false、is_awaited=false；规格 POST /bookings#business_rules[5]（失败只记日志、不影响 201 也不回滚）；blueprint.metadata SI-9、SI-10；storage/DECISIONS.md D-5、D-17；loyalty 条目的 id 不出现在任何响应里（GET /loyalty 只回 points/level/remainingPoints），换成确定键不改变对外形状。",
+  "category": "implementation-trace",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [],
+    "layers": [
+      "R",
+      "T"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

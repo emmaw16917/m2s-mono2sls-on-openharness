@@ -1,0 +1,27 @@
+{
+  "id": "R-A1-a2-5",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 2,
+  "time": "2026-11-04T01:08:34+0800",
+  "question": "R-A1 spec gap: POST /bookings chargeId type",
+  "conclusion": "`chargeId` is required by key presence only. Falsy values follow Invalid Charge ID; truthy values are stored without coercion and use the monolith's type-tagged PaymentsTable key semantics.",
+  "basis": "analysis_report POST /bookings#request.body[name=chargeId] note; booking.py:17; payment.py:74/177; storage.py:197.",
+  "category": "spec-gap",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [
+      "wb-bookings-non-string-chargeid"
+    ],
+    "layers": [
+      "P",
+      "R",
+      "T"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

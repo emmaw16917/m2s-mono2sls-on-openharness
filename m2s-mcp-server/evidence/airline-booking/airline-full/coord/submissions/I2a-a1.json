@@ -1,0 +1,9 @@
+{
+  "task": "I2a",
+  "attempt": 1,
+  "role": "m2s-sam-engineer",
+  "status": "done",
+  "time": "2026-11-04T03:38:33+0800",
+  "summary": "S3a 完成：output/template.part1.yaml 已按 blueprint 生成共享基础设施（REST API + Cognito 授权器 + GatewayResponses 全局头、UserPool/UserPoolClient、5 张 DynamoDB 表、LoyaltyPointsQueue+DLQ、Globals 无 Handler），并以唯一的 '# --- END METADATA ---' 锚点结束，元数据块齐全；文件不含任何 Lambda Function 资源。",
+  "notes": "供 S3b/S3c 的关键逻辑名：API=AirlineBookingApi（事件需 RestApiId: !Ref AirlineBookingApi）、UserPool/UserPoolClient、表=FlightTable/BookingTable/LoyaltyTable/UserGroupsTable/PaymentsTable、队列=LoyaltyPointsQueue（DLQ=LoyaltyPointsQueueDLQ，消费者 BatchSize 10 与 SQSPollerPolicy/SQSSendMessagePolicy 在 S3b 事件侧写）。Cors 块只有参考模式的 3 个字段且无 AllowCredentials（与 AllowOrigin '*' 冲突，见 D-9/GAP-9）；GatewayResponses 的 DEFAULT_4XX/5XX 与 UNAUTHORIZED 各带 global_middleware[0] 的 4 个头（GM2）。spec 要点已落：api_type=rest + EndpointConfiguration REGIONAL（endpoint_type）、public_routes 的 7 条须在 S3b 加 Auth:{Authorizer: NONE}（DefaultAuthorizer 会被其余 7 条继承）、SI-9 无需幂等表（消费者按 id=bookingId 确定性 PutItem，故无 TTL 表）、cognito 无触发器/无 UserPoolGroup（groups 在 UserGroupsTable，D-3）、\"不需要 X-Ray\" 故未设 Tracing/TracingEnabled。已做结构自检：CFN-tag YAML 解析通过、锚点出现且仅出现一次并位于文件末尾。"
+}

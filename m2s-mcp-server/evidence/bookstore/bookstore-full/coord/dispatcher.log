@@ -1,0 +1,39 @@
+=== 2026-11-03 16:20:43 dispatcher run  (pid 54500; HTTP_PROXY=unset HTTPS_PROXY=unset)
+new run: 26 tasks on the board
+F1: storage/analysis_report.json is already there: kept
+F2: recheck passed
+G1: gap_scan: 10 gaps (10 new): {'auth_semantics': 1, 'fire_and_forget': 1, 'global_middleware': 1, 'monolith_defect': 3, 'multi_write': 1, 'order_and_consistency': 1, 'time': 2}
+J1: recheck passed
+G2: started spec-annotator-G2-a1 (pid 28740)
+G2: attempt 1 passed
+J2: the judge is frozen and unchanged: not run again
+A1: started architect-A1-a1 (pid 980)
+A1: attempt 1 passed
+A1: 1 rulings accepted: ['R-A1-a1-1']
+RC: the judge is frozen and unchanged: not reconciled again
+D1: started verifier-D1-a1 (pid 32188)
+D1: attempt 1 passed
+J3: recheck passed
+J4: recheck passed
+J5: the judge is frozen and unchanged: its score stands
+J5C: recheck passed
+J6: judge v2 frozen (unchanged)
+I1: started code-developer-I1-a1 (pid 12968)
+I1: attempt 1 passed
+I2a: started sam-engineer-I2a-a1 (pid 24496)
+I2a: attempt 1 passed
+I2b: started sam-engineer-I2b-a1 (pid 17076)
+I2b: attempt 1 passed
+I2c: started sam-engineer-I2c-a1 (pid 43092)
+I2c: attempt 1 passed
+I3: started validator-I3-a1 (pid 13976)
+I3: attempt 1 passed
+V1: check_adapter PASS: 26 data steps in 15 cases
+V2: run_judge PASS: cases {'dropped': 15, 'migration-change': 13, 'pass': 46}, fault runs {'dropped': 6, 'pass': 18}
+V3: started verifier-V3-a1 (pid 42960)
+V3: attempt 1 passed
+B0: tagged B0 at 06b8b97
+B0: exception handler started for C001-B0-review
+O: started perf-optimizer-O-a1 (pid 33568)
+O: attempt 1 passed
+C1: gate(final), the judge and the delta tests pass; output/final_report.md written
