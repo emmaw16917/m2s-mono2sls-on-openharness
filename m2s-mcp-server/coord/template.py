@@ -31,6 +31,13 @@ class TaskSpec:
     # "recheck": the first start runs the checks and spends a worker only if they
     # fail (a fact base copied from an earlier run; a J3 with nothing to classify).
     start: str = "spawn"
+    # v3 M2/W2.7: "package" tasks are not created at setup; they are expanded
+    # after `expand_after` closes (one task per work package). Scope may use
+    # {pkg} / {pkg_dir}; deps may use "<family>:*" for every child of a family.
+    split: str = "none"              # none | package
+    expand_after: tuple[str, ...] = ()
+    split_shared: bool = False       # create "<id>:shared" next to the package children
+    shared_scope: tuple[str, ...] = ()  # scope of that shared child (falls back to scope)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -38,6 +45,8 @@ class TaskSpec:
             "deps": list(self.deps), "scope": list(self.scope), "check": list(self.check),
             "on_stale": self.on_stale, "max_turns": self.max_turns, "timeout_min": self.timeout_min,
             "mode": self.mode, "deny_read": list(self.deny_read), "start": self.start,
+            "split": self.split, "expand_after": list(self.expand_after), "split_shared": self.split_shared,
+            "shared_scope": list(self.shared_scope),
         }
 
     @classmethod
@@ -48,6 +57,9 @@ class TaskSpec:
             check=tuple(data.get("check") or ()), on_stale=data.get("on_stale", "recheck"),
             max_turns=int(data.get("max_turns", 200)), timeout_min=float(data.get("timeout_min", 120)),
             mode=data.get("mode"), deny_read=tuple(data.get("deny_read") or ()), start=data.get("start", "spawn"),
+            split=data.get("split", "none"), expand_after=tuple(data.get("expand_after") or ()),
+            split_shared=bool(data.get("split_shared", False)),
+            shared_scope=tuple(data.get("shared_scope") or ()),
         )
 
 
@@ -102,21 +114,39 @@ class Template:
 def load_template(name: str = "v1", path: Path | None = None) -> Template:
     source = path or TEMPLATES_DIR / f"{name}.yaml"
     data = yaml.safe_load(source.read_text(encoding="utf-8"))
-    tasks = []
+    tasks: list[TaskSpec] = []
     known: set[str] = set()
     for raw in data["tasks"]:
         spec = TaskSpec.from_json(raw)
         if spec.id in known:
             raise ValueError(f"{source}: duplicate task id {spec.id}")
-        missing = [dep for dep in spec.deps if dep not in known]
-        if missing:
-            raise ValueError(f"{source}: {spec.id} depends on {missing}, which must be listed earlier")
+        if spec.split not in ("none", "package"):
+            raise ValueError(f"{source}: {spec.id} has unknown split {spec.split!r}")
         if spec.runner == "agent" and not spec.role:
             raise ValueError(f"{source}: agent task {spec.id} has no role")
         if spec.runner == "dispatcher" and not spec.action:
             raise ValueError(f"{source}: dispatcher task {spec.id} has no action")
         known.add(spec.id)
         tasks.append(spec)
+    # Dependencies may name a static task or a split family ("S0:*"). A split
+    # task's own id is never a task on the board, so it must be referenced as
+    # a family.
+    splits = {spec.id: spec for spec in tasks}
+    for spec in tasks:
+        for dep in spec.deps:
+            if dep.endswith(":*"):
+                family = dep[:-2]
+                if family not in splits or splits[family].split != "package":
+                    raise ValueError(f"{source}: {spec.id} depends on {dep}, but {family} is not a split task")
+            elif dep.endswith(":shared") and dep[:-7] in splits and splits[dep[:-7]].split == "package":
+                continue  # the shared child of a split family, created at expansion
+            elif dep not in known:
+                raise ValueError(f"{source}: {spec.id} depends on {dep}, which does not exist")
+            elif splits[dep].split == "package":
+                raise ValueError(f"{source}: {spec.id} depends on split task {dep} directly; use {dep}:*")
+        for trigger in spec.expand_after:
+            if trigger not in known:
+                raise ValueError(f"{source}: {spec.id} expands after unknown task {trigger}")
     return Template(
         name=data.get("name", name),
         tasks=tuple(tasks),
@@ -153,3 +183,29 @@ def glob_to_regex(pattern: str) -> re.Pattern[str]:
 def in_scope(rel_path: str, patterns: tuple[str, ...] | list[str]) -> bool:
     rel = rel_path.replace("\\", "/")
     return any(glob_to_regex(p).match(rel) for p in patterns)
+
+
+def _literal_prefix(pattern: str) -> str:
+    p = pattern.replace("\\", "/")
+    for i, ch in enumerate(p):
+        if ch in "*?":
+            return p[:i].rstrip("/")
+    return p.rstrip("/")
+
+
+def scopes_conflict(a: tuple[str, ...] | list[str], b: tuple[str, ...] | list[str]) -> bool:
+    """Conservative overlap test for two scopes (v3 M2/W2.8).
+
+    Two patterns can name the same file when one literal prefix contains the
+    other; a pattern that starts with a wildcard can name anything. This is
+    used to keep two workers from editing the same file at once; a false
+    positive only serializes them.
+    """
+    for pa in a:
+        for pb in b:
+            x, y = _literal_prefix(pa), _literal_prefix(pb)
+            if not x or not y:
+                return True
+            if x == y or x.startswith(y + "/") or y.startswith(x + "/"):
+                return True
+    return False

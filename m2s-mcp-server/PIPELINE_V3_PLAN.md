@@ -570,6 +570,17 @@ agent_mail 的 build slot 只是建议性的，也不能计数，所以只用来
 - 没有越界写入；
 - 有各任务的 token 统计，可以和 M1 对比。
 
+**M2 进展（2026-11-10）**：W2.1–W2.9 已实现并测试（483 个测试通过）；W2.10 的对照运行待跑。
+- W2.1：`_extract_data_access` 从处理函数出发就跟进同文件辅助函数（最多 2 层）；A/B 对比 7 个应用，没有 script 项丢失。
+- W2.2：`data_store.detect` 的访问模式按调用链挂到接口的 `data_access`；acmeair 的 25 个接口里 17 个拿到集合（业务接口 queryflights→flight/flightSegment、bookflights→booking、customer→customer，身份接口→customerSession）。
+- W2.3：Flask 版用语法树解析，本来就从处理函数跟进同文件函数；airline-booking 的 A/B 结果无变化。
+- W2.4：`coord/packages.py`（规则 1–6、8；确定性、自检）；7 个应用的分组固定在 `tests/fixtures/work_packages/expected.json`。
+- W2.5：事实库新增 `shared_rules`，端点用 `business_rules: [{"rule": "ref: shared/<id>"}]` 引用；`annotate_shared_entry` 工具与 annotator 说明。
+- W2.6：`check_provenance(endpoint=...)`、`run_gate(code, package=/functions_json=...)`；C1 按包/函数过滤。
+- W2.7：`coord/templates/v1-split.yaml`（S0、V1、S2 按包展开，S2 另有 `S2-shared`）+ 调度器展开（`expand_after`、`<family>:*`、`{pkg}`/`{pkg_dir}`）。Windows 路径不能含 `:`，子任务 id 用 `S2-<包>` 记录，计划文档里的 `S2:<包>` 记法仍用于说明。
+- W2.8：`coord/locks.py`（独占/计数锁、死进程与过期回收）；调度器按 scope 冲突串行、`workers` 计数锁限制跨工作区 worker 总数；`run_validate` / `run_rie_verdict` 取 `docker-rie` 槽；提交/打 tag 取 `ws-git:<ws>`。
+- W2.9：worker 的 `M2S_WORKSPACE` 由各自 `mcp.json` 注入，调度器不再切换全局设置；两个工作区并发的调度器测试通过。
+
 ### M3 公告板、讨论室和可见性【必做】
 
 | 编号 | 内容 | 产出 | 验收 | 依赖 | 规模 |

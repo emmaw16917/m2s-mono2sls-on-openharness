@@ -32,7 +32,9 @@ v1 rules ported from .openharness/skills/m2s-migrate/SKILL.md:
 from __future__ import annotations
 
 import argparse
+import inspect
 import json
+import os
 import re
 import subprocess
 import sys
@@ -45,10 +47,11 @@ from coord.board import TaskBoard
 from coord.checks import CHECKS, CheckResult, ToolGuard, _clip, _read_json
 from coord.events import EventLog
 from coord.handler import Case, Casebook
+from coord.locks import LockHandle, Locks
 from coord.policy import DISPATCHER_ACTOR
 from coord.prompts import HANDLER_SYSTEM_PROMPT, handler_prompt, worker_prompt
 from coord.snapshot import Shadow
-from coord.template import Template, TaskSpec, in_scope, load_template
+from coord.template import Template, TaskSpec, in_scope, load_template, scopes_conflict
 from coord.tools import submission_path
 from coord.workers import Launcher, OhLauncher, WorkerHandle, WorkerJob, role_prompt
 
@@ -190,6 +193,7 @@ class Dispatcher:
         stamp: Callable[[], dict[str, Any]] = harness.stamp,
         log: Callable[[str], None] = print,
         stop_after: str | None = None,
+        locks: Locks | None = None,
     ):
         self.ws = Path(ws).resolve()
         self.coord = self.ws / "coord"
@@ -227,6 +231,10 @@ class Dispatcher:
         self.running: dict[str, WorkerHandle] = {}
         self.waiting = False  # a ready task waits out an infra backoff
         self.foreign_runs = other_run_dirs(self.ws, self.monolith)
+        # Machine-wide resources shared with other workspaces (v3 M2/W2.8).
+        self.locks = locks or Locks()
+        self.worker_slots = int(os.environ.get("M2S_WORKER_SLOTS", "3"))
+        self.worker_locks: dict[str, LockHandle] = {}
 
     # ------------------------------------------------------------------ setup / resume
 
@@ -236,7 +244,18 @@ class Dispatcher:
                 raise ValueError("a new run needs --monolith")
             self.board.init()
             for spec in self.template.tasks:
-                self.board.add_task(spec.to_json(), spec.deps)
+                if spec.split != "none":
+                    continue  # expanded after its trigger closes (v3 M2/W2.7)
+                deps: list[str] = []
+                for dep in spec.deps:
+                    family = dep[:-2] if dep.endswith(":*") else (dep[:-7] if dep.endswith(":shared") else None)
+                    if family and family in {t.id for t in self.template.tasks}:
+                        # wait for the trigger; _wire_deps adds the children
+                        trigger = self.template.get(family).expand_after
+                        deps.extend(t for t in trigger if t not in deps)
+                    elif not dep.endswith(":*"):
+                        deps.append(dep)
+                self.board.add_task(spec.to_json(), deps)
             stamp = self.stamp()
             self.events.append("harness", stamp=stamp)
             self.events.append("run_start", ws=str(self.ws), monolith=str(self.monolith),
@@ -244,7 +263,7 @@ class Dispatcher:
             self.events.append("tool_baseline", baseline=self.guard.capture())
             self._write_dispatcher_files()
             self.shadow.init()
-            self.log(f"new run: {len(self.template.tasks)} tasks on the board")
+            self.log(f"new run: {len([t for t in self.template.tasks if t.split == 'none'])} tasks on the board")
             return
         start = next((e for e in self.events.all() if e["type"] == "run_start"), None)
         if self.monolith is None and start:
@@ -286,6 +305,9 @@ class Dispatcher:
                                       spawn["timeout_s"], Path(spawn["run_dir"]))
                 if handle.poll() is None:
                     self.running[task_id] = handle
+                    lock = self.locks.acquire_count("workers", self.worker_slots, task_id)
+                    if lock:
+                        self.worker_locks[task_id] = lock
                     self.events.append("adopt", task=task_id, pid=spawn["pid"])
                     self.log(f"{task_id}: worker {spawn['worker']} still running, adopted")
                 else:
@@ -310,6 +332,7 @@ class Dispatcher:
                     self.running[f"handler:{case.case_id}"] = handle
                 else:
                     self._on_handler_exit(handle, timed_out=False)
+        self._ensure_expansions()
 
     def _open_case_for(self, task_id: str) -> bool:
         decided = {e.get("case") for e in self.events.all() if e["type"] == "case_decision"}
@@ -365,11 +388,32 @@ class Dispatcher:
         held = [t for t in ready if self._backing_off(t)]
         self.waiting = bool(held)
         ready = [t for t in ready if t not in held]
+        running_specs = [self._spec(t) for t, h in self.running.items() if h.kind == "task"]
+        chosen: list[TaskSpec] = []
         for task_id in ready:
             if self._busy_workers() >= self.max_workers:
                 break
+            spec = self._spec(task_id)
+            # W2.8: two tasks whose scopes can name the same file never run together.
+            if spec.runner == "agent" and any(scopes_conflict(spec.scope, other.scope)
+                                              for other in [*running_specs, *chosen]):
+                self.log(f"{task_id}: waits, its scope overlaps a running task")
+                self.waiting = True
+                continue
+            lock = None
+            if spec.runner == "agent":
+                lock = self.locks.acquire_count("workers", self.worker_slots, task_id)
+                if lock is None:
+                    self.waiting = True
+                    break
             self._start(task_id)
+            if lock is not None:
+                if task_id in self.running:
+                    self.worker_locks[task_id] = lock
+                else:
+                    lock.release()  # recheck: no worker was spent
             started += 1
+            chosen.append(spec)
             if self._paused():
                 break
         return started
@@ -401,6 +445,9 @@ class Dispatcher:
             if timed_out:
                 handle.kill()
             del self.running[key]
+            lock = self.worker_locks.pop(key, None)
+            if lock:
+                lock.release()
             if handle.kind == "handler":
                 self._on_handler_exit(handle, timed_out)
             else:
@@ -590,7 +637,9 @@ class Dispatcher:
         results = []
         for name in spec.check:
             try:
-                results.append(self.checks[name](self.ws))
+                check = self.checks[name]
+                takes_spec = len(inspect.signature(check).parameters) >= 2
+                results.append(check(self.ws, spec.to_json()) if takes_spec else check(self.ws))
             except Exception as exc:
                 results.append(CheckResult(name, False, f"check crashed: {type(exc).__name__}: {exc}",
                                            relay=f"检查 {name} 运行出错：{exc}"))
@@ -831,6 +880,7 @@ class Dispatcher:
                             relay="" if not missing else f"这些 spec_issues 在 blueprint.json 的 metadata.spec_resolutions 里还没有裁定：{missing}")]
 
     def _flow_after_close(self, task_id: str) -> None:
+        self._ensure_expansions()
         spec = self._spec(task_id)
         if spec.mode in ("J3", "J4", "J5") and self._judge_settled():
             return  # the judge is frozen: what it found was settled before it froze
@@ -850,6 +900,95 @@ class Dispatcher:
         elif spec.action == "freeze_judge" and self.phase_review and self.events.last(task_id, "judge_frozen") \
                 and not self.events.last(task_id, "judge_frozen").get("unchanged"):
             self._open_case("review", task_id, "裁判已冻结，进入设计线之前的阶段复查", {"运行摘要": self._summary_text()})
+
+    # ------------------------------------------------------------------ work packages (v3 M2/W2.7)
+
+    def _ensure_expansions(self) -> None:
+        """Create the children of every split family whose trigger has closed."""
+        tasks = self.board.tasks()
+        closed = {tid for tid, info in tasks.items() if info["status"] == "closed"}
+        for spec in self.template.tasks:
+            if spec.split != "package" or not spec.expand_after:
+                continue
+            if not any(trigger in closed for trigger in spec.expand_after):
+                continue
+            if any(tid.startswith(spec.id + "-") and tid != spec.id for tid in tasks):
+                continue
+            self._expand_family(spec)
+
+    def _expand_family(self, spec: TaskSpec) -> None:
+        from coord import packages as packages_mod
+
+        if not self.events.count("work_packages"):
+            result = packages_mod.write(self.ws)
+            self.events.append("work_packages", packages=[p["id"] for p in result["packages"]],
+                               sha=(result.get("source") or {}).get("analysis_report_sha256"))
+            self.log(f"work packages: {[p['id'] for p in result['packages']]}")
+        plan = _read_json(self.ws / "storage" / "work_packages.json") or {"packages": []}
+        blueprint = _read_json(self.ws / "storage" / "blueprint.json") or {}
+        functions = blueprint.get("lambda_functions") or []
+        created: list[str] = []
+        for package in plan.get("packages") or []:
+            pid = str(package.get("id"))
+            pkg_dir = re.sub(r"[^a-z0-9_]+", "_", pid.lower())
+            endpoints = [f"{e.get('method')} {e.get('path')}" for e in package.get("endpoints") or []]
+            fns = [f.get("name") for f in functions
+                   if set(f.get("entry_points") or []) & set(endpoints)]
+            child_id = f"{spec.id}-{pid}"
+            deps = self._resolve_deps(spec, child_id, same_package=pid)
+            data = spec.to_json()
+            data.update({"id": child_id, "split": "none", "expand_after": [], "split_shared": False,
+                         "deps": deps, "package": pid, "endpoints": endpoints, "functions": fns,
+                         "scope": [s.replace("{pkg}", pid).replace("{pkg_dir}", pkg_dir) for s in spec.scope]})
+            self.board.add_task(data, deps)
+            created.append(child_id)
+            self.events.append("expand", family=spec.id, task=child_id, package=pid, functions=fns)
+        if spec.split_shared:
+            child_id = f"{spec.id}-shared"
+            deps = self._resolve_deps(spec, child_id, same_package=None)
+            data = spec.to_json()
+            data.update({"id": child_id, "split": "none", "expand_after": [], "split_shared": False,
+                         "deps": deps, "package": "shared", "endpoints": [], "functions": [],
+                         "scope": [s.replace("{pkg}", "shared").replace("{pkg_dir}", "shared")
+                                   for s in (spec.shared_scope or spec.scope)]})
+            self.board.add_task(data, deps)
+            created.append(child_id)
+            self.events.append("expand", family=spec.id, task=child_id, package="shared", functions=[])
+        self._wire_deps(spec.id, created)
+        self.log(f"{spec.id}: expanded to {created}")
+
+    def _resolve_deps(self, spec: TaskSpec, child_id: str, same_package: str | None) -> list[str]:
+        """Resolve "<family>:*" to the same package's child when there is one,
+        else to every child; leave ordinary ids alone."""
+        tasks = self.board.tasks()
+        out: list[str] = []
+        for dep in spec.deps:
+            if dep.endswith(":*"):
+                family = dep[:-2]
+                children = sorted(t for t in tasks if t.startswith(family + "-") and t != family)
+                chosen = [f"{family}-{same_package}"] if same_package and f"{family}-{same_package}" in children else children
+            else:
+                chosen = [dep]
+            for child in chosen:
+                if child and child != child_id and child not in out:
+                    out.append(child)
+        return out
+
+    def _wire_deps(self, family: str, children: list[str]) -> None:
+        """Add the expanded children as dependencies of every task that names
+        "<family>:*". Runs once per family (recorded as deps_wired)."""
+        if any(e.get("type") == "deps_wired" and e.get("family") == family for e in self.events.all()):
+            return
+        for tid, info in self.board.tasks().items():
+            deps = (info.get("spec") or {}).get("deps") or []
+            if f"{family}:*" not in deps:
+                continue
+            for child in children:
+                try:
+                    self.board.add_dep(tid, child)
+                except Exception:
+                    pass  # an already-present dependency
+        self.events.append("deps_wired", family=family, children=children)
 
     def _after_v1(self) -> None:
         if self._active_spec_round():
@@ -1306,19 +1445,24 @@ class Dispatcher:
 
     def _commit_and_tag(self, tag: str, message: str, paths: tuple[str, ...]) -> tuple[str, bool]:
         """Commit `paths` in the workspace's own repo and tag it: (short sha, tag moved)."""
-        if not (self.ws / ".git").is_dir():
-            _git(self.ws, "init", "-q")
-        self._write_dispatcher_files()  # the tag carries the harness and rulings it was built with
-        exclude = self.ws / ".git" / "info" / "exclude"
-        exclude.parent.mkdir(parents=True, exist_ok=True)
-        if "coord/" not in (exclude.read_text(encoding="utf-8") if exclude.exists() else ""):
-            with exclude.open("a", encoding="utf-8") as fh:
-                fh.write("\ncoord/\n")
-        _git(self.ws, "add", "-A", *paths)
-        _git(self.ws, "-c", "user.name=m2s-pipeline", "-c", "user.email=m2s@local", "commit", "-q", "-m", message)
-        moved = bool(_git(self.ws, "tag", "--list", tag).stdout.strip())
-        _git(self.ws, "tag", "-f", tag)
-        return _git(self.ws, "rev-parse", "--short", tag).stdout.strip(), moved
+        lock = self.locks.acquire(f"ws-git:{self.ws.name}", "dispatcher", ttl_s=180, wait_s=60)
+        try:
+            if not (self.ws / ".git").is_dir():
+                _git(self.ws, "init", "-q")
+            self._write_dispatcher_files()  # the tag carries the harness and rulings it was built with
+            exclude = self.ws / ".git" / "info" / "exclude"
+            exclude.parent.mkdir(parents=True, exist_ok=True)
+            if "coord/" not in (exclude.read_text(encoding="utf-8") if exclude.exists() else ""):
+                with exclude.open("a", encoding="utf-8") as fh:
+                    fh.write("\ncoord/\n")
+            _git(self.ws, "add", "-A", *paths)
+            _git(self.ws, "-c", "user.name=m2s-pipeline", "-c", "user.email=m2s@local", "commit", "-q", "-m", message)
+            moved = bool(_git(self.ws, "tag", "--list", tag).stdout.strip())
+            _git(self.ws, "tag", "-f", tag)
+            return _git(self.ws, "rev-parse", "--short", tag).stdout.strip(), moved
+        finally:
+            if lock:
+                lock.release()
 
     def _act_tag_v0(self, spec: TaskSpec) -> CheckResult:
         results = self._acceptance()

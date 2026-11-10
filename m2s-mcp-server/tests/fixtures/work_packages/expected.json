@@ -1,0 +1,170 @@
+{
+  "acmeair": {
+    "ops": [
+      "GET /rest/api/checkstatus",
+      "GET /rest/api/config/activeDataService",
+      "GET /rest/api/config/countAirports",
+      "GET /rest/api/config/countBookings",
+      "GET /rest/api/config/countCustomers",
+      "GET /rest/api/config/countFlightSegments",
+      "GET /rest/api/config/countFlights",
+      "GET /rest/api/config/countSessions",
+      "GET /rest/api/config/dataServices",
+      "GET /rest/api/config/runtime",
+      "GET /rest/api/hystrix.stream",
+      "GET /rest/api/loader/load",
+      "GET /rest/api/loader/query",
+      "GET /status"
+    ],
+    "identity": [
+      "DELETE /:tokenid",
+      "GET /:tokenid",
+      "GET /rest/api/login/logout",
+      "POST /byuserid/:user",
+      "POST /rest/api/login"
+    ],
+    "bookings-flights": [
+      "GET /rest/api/bookings/byuser/:user",
+      "POST /rest/api/bookings/bookflights",
+      "POST /rest/api/bookings/cancelbooking",
+      "POST /rest/api/flights/queryflights"
+    ],
+    "customer": [
+      "GET /rest/api/customer/byid/:user",
+      "POST /rest/api/customer/byid/:user"
+    ]
+  },
+  "bookstore": {
+    "identity": [
+      "GET /api/auth/me",
+      "POST /api/auth/login",
+      "POST /api/auth/refresh",
+      "POST /api/auth/register"
+    ],
+    "bestsellers-books-cart-orders-search": [
+      "DELETE /api/cart",
+      "GET /api/bestsellers",
+      "GET /api/books",
+      "GET /api/books/:id",
+      "GET /api/cart",
+      "GET /api/cart/:bookId",
+      "GET /api/orders",
+      "GET /api/search",
+      "POST /api/cart",
+      "POST /api/orders",
+      "PUT /api/cart"
+    ]
+  },
+  "airline-booking": {
+    "identity": [
+      "GET /auth/me",
+      "GET /auth/users",
+      "POST /auth/login",
+      "POST /auth/register"
+    ],
+    "bookings-customers-flights-loyalty-payments": [
+      "GET /bookings/<booking_id>",
+      "GET /customers/<customer_id>/bookings",
+      "GET /flights/<flight_id>",
+      "GET /flights/search",
+      "GET /loyalty/<customer_id>",
+      "GET /payments/<charge_id>",
+      "POST /bookings",
+      "POST /bookings/<booking_id>/cancel",
+      "POST /bookings/<booking_id>/confirm",
+      "POST /flights/<flight_id>/release",
+      "POST /flights/<flight_id>/reserve",
+      "POST /loyalty/<customer_id>/points",
+      "POST /payments/collect",
+      "POST /payments/refund"
+    ]
+  },
+  "ecommerce": {
+    "identity": [
+      "GET /api/auth/me",
+      "POST /api/auth/login",
+      "POST /api/auth/refresh",
+      "POST /api/auth/register"
+    ],
+    "delivery-orders-products-warehouse": [
+      "DELETE /api/orders/<order_id>",
+      "GET /api/delivery/deliveries",
+      "GET /api/delivery/deliveries/<order_id>",
+      "GET /api/orders",
+      "GET /api/orders/<order_id>",
+      "GET /api/products",
+      "GET /api/products/<product_id>",
+      "GET /api/products/category/<category>",
+      "GET /api/warehouse/packaging-requests",
+      "GET /api/warehouse/packaging-requests/<order_id>",
+      "POST /api/delivery/deliveries/<order_id>/complete",
+      "POST /api/delivery/deliveries/<order_id>/fail",
+      "POST /api/delivery/deliveries/<order_id>/start",
+      "POST /api/orders",
+      "POST /api/orders/delivery-pricing",
+      "POST /api/warehouse/packaging-requests/<order_id>/complete",
+      "POST /api/warehouse/packaging-requests/<order_id>/fail",
+      "POST /api/warehouse/packaging-requests/<order_id>/start",
+      "PUT /api/orders/<order_id>",
+      "PUT /api/warehouse/packaging-requests/<order_id>/products"
+    ],
+    "payment-payment-3p": [
+      "POST /api/payment-3p/cancelPayment",
+      "POST /api/payment-3p/check",
+      "POST /api/payment-3p/preauth",
+      "POST /api/payment-3p/processPayment",
+      "POST /api/payment-3p/updateAmount",
+      "POST /api/payment/validate"
+    ]
+  },
+  "coffee": {
+    "identity": [
+      "GET /me"
+    ],
+    "config-myorders": [
+      "GET /myOrders",
+      "PUT /config"
+    ],
+    "order-journey-orders": [
+      "GET /order-journey/:orderId",
+      "GET /orders",
+      "GET /orders/:id",
+      "POST /orders",
+      "PUT /orders/:id"
+    ],
+    "qr-code": [
+      "GET /qr-code",
+      "POST /qr-code"
+    ]
+  },
+  "shopping-cart": {
+    "identity": [
+      "POST /auth/login",
+      "POST /auth/register"
+    ],
+    "cart-product": [
+      "GET /cart",
+      "GET /cart/<product_id>/total",
+      "GET /product",
+      "GET /product/<product_id>",
+      "POST /cart",
+      "POST /cart/checkout",
+      "POST /cart/migrate",
+      "PUT /cart/<product_id>"
+    ]
+  },
+  "todo": {
+    "identity": [
+      "POST /auth/login",
+      "POST /auth/register"
+    ],
+    "app": [
+      "DELETE /api/item/:id",
+      "GET /api/item",
+      "GET /api/item/:id",
+      "POST /api/item",
+      "POST /api/item/:id/done",
+      "PUT /api/item/:id"
+    ]
+  }
+}

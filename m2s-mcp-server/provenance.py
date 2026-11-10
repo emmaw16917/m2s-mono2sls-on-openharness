@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any
 
@@ -134,7 +135,8 @@ def _validate_request_field(files: _Files, f: Any, where: str, errors: list[str]
         _validate_request_field(files, sub, f"{where}.fields[{i}]", errors)
 
 
-def _validate_field(files: _Files, field: str, value: Any, where: str, errors: list[str]) -> None:
+def _validate_field(files: _Files, field: str, value: Any, where: str, errors: list[str],
+                    shared_ids: set[str] | None = None) -> None:
     if field == "handler_location":
         if not isinstance(value, dict) or not _keys_ok(value, {"file", "start_line", "end_line"}, set(), where, errors):
             if not isinstance(value, dict):
@@ -219,11 +221,23 @@ def _validate_field(files: _Files, field: str, value: Any, where: str, errors: l
             if not isinstance(item["repeated"], bool):
                 errors.append(f"{iw}: 'repeated' must be a boolean")
         elif field == "business_rules":
-            if not _keys_ok(item, {"rule", "kind", "source", "origin"}, {"id", "note", "class", "perf_intent"}, iw, errors):
+            rule = item.get("rule")
+            is_ref = isinstance(rule, str) and rule.strip().lower().startswith("ref:")
+            required = {"rule", "source", "origin"} if is_ref else {"rule", "kind", "source", "origin"}
+            optional = {"id", "note", "class", "perf_intent"} | ({"kind"} if is_ref else set())
+            if not _keys_ok(item, required, optional, iw, errors):
                 continue
-            if not isinstance(item["rule"], str) or not item["rule"].strip():
+            if not isinstance(rule, str) or not rule.strip():
                 errors.append(f"{iw}: 'rule' must be a non-empty string")
-            if item["kind"] not in RULE_KINDS:
+            if is_ref:
+                ref = rule.split(":", 1)[1].strip()
+                if shared_ids is None:
+                    errors.append(f"{iw}: shared reference {ref!r} outside a fact base")
+                elif ref not in shared_ids:
+                    errors.append(f"{iw}: shared reference {ref!r} is not an id in analysis_report.shared_rules")
+                if "kind" in item and item["kind"] not in RULE_KINDS:
+                    errors.append(f"{iw}: 'kind' must be one of {RULE_KINDS}")
+            elif item.get("kind") not in RULE_KINDS:
                 errors.append(f"{iw}: 'kind' must be one of {RULE_KINDS}")
             if "class" in item and item["class"] not in RULE_CLASSES:
                 errors.append(f"{iw}: 'class' must be one of {RULE_CLASSES}")
@@ -304,6 +318,82 @@ def _find_ep(report: dict[str, Any], method: str, path: str) -> dict[str, Any]:
 # Public API
 # ---------------------------------------------------------------------------
 
+SHARED_ID_RE = re.compile(r"^shared/[a-z0-9][a-z0-9._-]*$")
+
+
+def _validate_shared_entry(files: _Files, entry: Any, where: str, errors: list[str]) -> None:
+    """One analysis_report.shared_rules entry (v3 M2/W2.5).
+
+    Shared code is annotated once by F2:shared; endpoints cite it with a
+    business_rules item {"rule": "ref: shared/<id>", ...}.
+    """
+    if not isinstance(entry, dict):
+        errors.append(f"{where}: must be an object")
+        return
+    required = {"id", "file", "function", "rule", "kind", "source", "origin"}
+    if not _keys_ok(entry, required, {"used_by", "note", "class"}, where, errors):
+        return
+    if not isinstance(entry["id"], str) or not SHARED_ID_RE.match(entry["id"]):
+        errors.append(f"{where}: 'id' must look like shared/<slug>")
+    for key in ("file", "function", "rule"):
+        if not isinstance(entry[key], str) or not entry[key].strip():
+            errors.append(f"{where}: '{key}' must be a non-empty string")
+    if isinstance(entry.get("rule"), str) and entry["rule"].strip().lower().startswith("ref:"):
+        errors.append(f"{where}: a shared entry's rule cannot itself be a ref")
+    if entry.get("kind") not in RULE_KINDS:
+        errors.append(f"{where}: 'kind' must be one of {RULE_KINDS}")
+    if "class" in entry and entry["class"] not in RULE_CLASSES:
+        errors.append(f"{where}: 'class' must be one of {RULE_CLASSES}")
+    used_by = entry.get("used_by")
+    if used_by is not None and (not isinstance(used_by, list) or not all(isinstance(x, str) for x in used_by)):
+        errors.append(f"{where}: 'used_by' must be a list of endpoint strings")
+    _origin_ok(entry, where, errors)
+    _check_sources(files, entry.get("source"), where, errors)
+
+
+def _shared_ids(files: _Files, entries: Any, errors: list[str]) -> set[str]:
+    ids: set[str] = set()
+    if entries is None:
+        return ids
+    if not isinstance(entries, list):
+        errors.append("shared_rules: must be a list")
+        return ids
+    for i, entry in enumerate(entries):
+        where = f"shared_rules[{i}]"
+        _validate_shared_entry(files, entry, where, errors)
+        if isinstance(entry, dict) and isinstance(entry.get("id"), str):
+            if entry["id"] in ids:
+                errors.append(f"{where}: duplicate shared id {entry['id']!r}")
+            ids.add(entry["id"])
+    return ids
+
+
+def annotate_shared_entry(workspace: str | Path, entry_json: str) -> dict[str, Any]:
+    """F2:shared: write (replace by id, or append) one shared_rules entry."""
+    try:
+        entry = json.loads(entry_json)
+    except json.JSONDecodeError as exc:
+        raise SpecError(f"entry_json is not valid JSON: {exc}") from exc
+    report, files = _load(workspace)
+    errors: list[str] = []
+    _validate_shared_entry(files, entry, "shared entry", errors)
+    if errors:
+        return {"ok": False, "errors": errors}
+    entries = report.setdefault("shared_rules", [])
+    if not isinstance(entries, list):
+        return {"ok": False, "errors": ["analysis_report.shared_rules is not a list"]}
+    replaced = False
+    for i, old in enumerate(entries):
+        if isinstance(old, dict) and old.get("id") == entry["id"]:
+            entries[i] = entry
+            replaced = True
+            break
+    if not replaced:
+        entries.append(entry)
+    _save(workspace, report)
+    return {"ok": True, "id": entry["id"], "shared_entries": len(entries), "replaced": replaced}
+
+
 GM_KINDS = ("cors", "security_headers", "response_header_hook")
 
 
@@ -376,7 +466,8 @@ def annotate_entry_point(workspace: str | Path, method: str, path: str, field: s
     where = f"{method.upper()} {path}.{field}"
 
     errors: list[str] = []
-    _validate_field(files, field, value, where, errors)
+    shared_ids = _shared_ids(files, report.get("shared_rules"), errors)
+    _validate_field(files, field, value, where, errors, shared_ids)
     existing = set(_script_items(field, ep.get(field)))
     for canon in _script_items(field, value):
         if canon not in existing:
@@ -396,7 +487,7 @@ def annotate_entry_point(workspace: str | Path, method: str, path: str, field: s
             "annotated_fields": status["annotated_fields"], "unknown_items": _count_unknown(ep)}
 
 
-def check_provenance(workspace: str | Path) -> dict[str, Any]:
+def check_provenance(workspace: str | Path, endpoint: str | None = None) -> dict[str, Any]:
     try:
         report, files = _load(workspace)
     except (SpecError, json.JSONDecodeError) as exc:
@@ -405,14 +496,22 @@ def check_provenance(workspace: str | Path) -> dict[str, Any]:
     errors: list[str] = []
     incomplete: list[str] = []
     per_endpoint: list[dict[str, Any]] = []
+    shared_ids = _shared_ids(files, report.get("shared_rules"), errors)
 
-    for ep in report.get("entry_points", []):
+    selected = [ep for ep in report.get("entry_points", [])
+                if not endpoint or f"{(ep.get('method') or '').upper()} {ep.get('path')}".lower() == endpoint.strip().lower()]
+    if endpoint and not selected:
+        known = [f"{ep.get('method')} {ep.get('path')}" for ep in report.get("entry_points", [])]
+        return {"status": "FAIL", "errors": [f"no entry point {endpoint!r}; known: {known}"],
+                "incomplete": [], "checked_sources": 0}
+
+    for ep in selected:
         name = f"{ep.get('method')} {ep.get('path')}"
         for field in SPEC_FIELDS:
             if ep.get(field) is None:
                 incomplete.append(f"{name}: '{field}' is missing")
                 continue
-            _validate_field(files, field, ep[field], f"{name}.{field}", errors)
+            _validate_field(files, field, ep[field], f"{name}.{field}", errors, shared_ids)
         if not ep.get("responses"):
             incomplete.append(f"{name}: no responses")
         elif not any(r.get("kind") == "success" for r in ep["responses"] if isinstance(r, dict)):
@@ -428,9 +527,9 @@ def check_provenance(workspace: str | Path) -> dict[str, Any]:
 
     # A contract-2 spec classifies every rule; a report with some classes but
     # not all is an annotator that stopped halfway.
-    rules = [r for ep in report.get("entry_points", []) for r in ep.get("business_rules") or [] if isinstance(r, dict)]
+    rules = [r for ep in selected for r in ep.get("business_rules") or [] if isinstance(r, dict)]
     if any("class" in r for r in rules):
-        for ep in report.get("entry_points", []):
+        for ep in selected:
             for j, r in enumerate(ep.get("business_rules") or []):
                 if isinstance(r, dict) and "class" not in r:
                     incomplete.append(f"{ep.get('method')} {ep.get('path')}.business_rules[{j}]: no 'class' (contract / implementation-trace)")

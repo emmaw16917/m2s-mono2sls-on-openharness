@@ -98,6 +98,45 @@ def _gate(phase: str, require_pass: bool) -> Callable[[Path], CheckResult]:
     return check
 
 
+def check_provenance_pkg(ws: Path, spec: dict[str, Any]) -> CheckResult:
+    """S0:<pkg> (v3 M2): check_provenance for the endpoints in this package."""
+    import provenance
+
+    endpoints = spec.get("endpoints") or []
+    if not endpoints:
+        return CheckResult("check_provenance_pkg", True, "no endpoints in this package")
+    errors: list[str] = []
+    incomplete: list[str] = []
+    for endpoint in endpoints:
+        result = provenance.check_provenance(str(ws), endpoint)
+        errors.extend(result.get("errors") or [])
+        incomplete.extend(result.get("incomplete") or [])
+    ok = not errors and not incomplete
+    summary = f"{len(endpoints)} endpoints checked" if ok else f"{len(errors)} errors, {len(incomplete)} incomplete"
+    relay = "" if ok else _clip("check_provenance 报告：\n" + json.dumps(
+        {"errors": errors, "incomplete": incomplete}, ensure_ascii=False, indent=1))
+    return CheckResult("check_provenance_pkg", ok, summary, detail={"errors": errors, "incomplete": incomplete},
+                       relay=relay)
+
+
+def gate_code_pkg(ws: Path, spec: dict[str, Any]) -> CheckResult:
+    """S2:<pkg> / S2:shared (v3 M2): gate(code) scoped to the package's functions."""
+    import gates
+
+    functions = spec.get("functions")
+    package = spec.get("package")
+    result = gates.run_gate("code", str(ws), functions=functions,
+                            package=None if package in (None, "shared") else package)
+    status = result.get("status")
+    ok = status in ("PASS", "WARN")
+    findings = [c for c in result.get("checks", []) if c.get("severity") == "ERROR"]
+    summary = f"gate(code) {status}" + (f": {sorted({f['check_id'] for f in findings})}" if findings else "")
+    relay = "" if ok else "run_gate(phase=\"code\") 报告：\n" + _clip(json.dumps(
+        {"status": status, "errors": findings, "mechanical_failures": result.get("mechanical_failures")},
+        ensure_ascii=False, indent=1))
+    return CheckResult("gate_code_pkg", ok, summary, detail=result, relay=relay)
+
+
 def consistency_pass(ws: Path) -> CheckResult:
     report = _read_json(ws / "output" / "consistency_report.json")
     status = report.get("status") if isinstance(report, dict) else None
@@ -329,9 +368,11 @@ CHECKS: dict[str, Callable[[Path], CheckResult]] = {
     "mutant_classes": mutant_classes,
     "analysis_report": analysis_report,
     "check_provenance": check_provenance,
+    "check_provenance_pkg": check_provenance_pkg,
     "blueprint_keys": blueprint_keys,
     "gate_blueprint": _gate("blueprint", require_pass=False),
     "gate_code": _gate("code", require_pass=False),
+    "gate_code_pkg": gate_code_pkg,
     "gate_template": _gate("template", require_pass=False),
     "gate_final": _gate("final", require_pass=True),
     "consistency_pass": consistency_pass,

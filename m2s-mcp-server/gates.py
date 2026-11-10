@@ -870,8 +870,12 @@ def _iter_lambda_dirs(lambdas_root: Path) -> list[Path]:
     return dirs
 
 
-def check_c1_code(workspace: Path) -> list[dict[str, Any]]:
-    """C1, "code" direction: blueprint function names <-> handler directory names."""
+def check_c1_code(workspace: Path, functions: list[str] | None = None) -> list[dict[str, Any]]:
+    """C1, "code" direction: blueprint function names <-> handler directory names.
+
+    `functions` scopes the check to a work package (v3 M2/W2.6): both sides are
+    restricted to those names, so a package task sees only its own mismatch.
+    """
     findings: list[dict[str, Any]] = []
     blueprint_path = workspace / "storage" / "blueprint.json"
     lambdas_root = workspace / "output" / "lambdas"
@@ -881,6 +885,10 @@ def check_c1_code(workspace: Path) -> list[dict[str, Any]]:
     blueprint = json.loads(blueprint_path.read_text(encoding="utf-8"))
     expected_names = {fn.get("name") for fn in blueprint.get("lambda_functions", []) if isinstance(fn, dict) and fn.get("name")}
     actual_names = {d.name for d in _iter_lambda_dirs(lambdas_root)}
+    if functions is not None:
+        scope = set(functions)
+        expected_names &= scope
+        actual_names &= scope
 
     for missing in sorted(expected_names - actual_names):
         findings.append(_finding("C1", "ERROR", f"No handler directory found for blueprint function '{missing}'.", missing))
@@ -1792,8 +1800,36 @@ def check_gaps(ws: Path) -> list[dict[str, Any]]:
     return [_finding("AG", "ERROR", e, "storage/gap_inventory.json") for e in res["errors"]]
 
 
-def run_gate(phase: str, workspace: str) -> dict[str, Any]:
+def _package_functions(ws: Path, package: str) -> tuple[list[str] | None, str | None]:
+    """impl_packages[package] -> function names, or a finding text (v3 M2/W2.6)."""
+    path = ws / "storage" / "work_packages.json"
+    if not path.exists():
+        return None, "storage/work_packages.json does not exist; cannot scope gate(code) by package"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return None, f"storage/work_packages.json is not JSON: {exc}"
+    impl = data.get("impl_packages") or {}
+    entry = impl.get(package)
+    if not entry:
+        return None, f"work_packages.impl_packages has no package {package!r} (S1 fills it from the blueprint)"
+    if isinstance(entry, dict):
+        functions = entry.get("functions")
+    else:
+        functions = entry
+    if not isinstance(functions, list) or not all(isinstance(f, str) for f in functions):
+        return None, f"impl_packages[{package!r}] must be a list of function names or {{functions: [...]}}"
+    return functions, None
+
+
+def run_gate(phase: str, workspace: str, functions: list[str] | None = None,
+             package: str | None = None) -> dict[str, Any]:
     ws = Path(workspace).resolve()
+    extra_findings: list[dict[str, Any]] = []
+    if package and functions is None:
+        functions, error = _package_functions(ws, package)
+        if error:
+            extra_findings.append(_finding("SCOPE", "ERROR", error, "storage/work_packages.json"))
     template_path = ws / "output" / "template.yaml"
     template: dict[str, Any] = {}
     template_error: str | None = None
@@ -1818,13 +1854,14 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
         # S3 ever produces a template, so gate(phase="code") would otherwise
         # never be able to catch a C10 problem at the point it's most
         # useful (before the code-developer's own self-check loop exits).
-        checks = check_c1_code(ws) + check_c10(ws) + check_gm_code(ws)
+        checks = extra_findings + check_c1_code(ws, functions) + check_c10(ws) + check_gm_code(ws)
         if template_error is None and template:
             checks += check_c3(ws, template)
             checks += check_c11(ws, template)
             checks += check_c12(ws, template)
         c1_code_failed = any(f["check_id"] == "C1" for f in checks)
-        severe = c1_code_failed or any(f["check_id"] == "GM1" for f in checks)
+        scope_failed = any(f["check_id"] == "SCOPE" for f in checks)
+        severe = c1_code_failed or scope_failed or any(f["check_id"] == "GM1" for f in checks)
 
     elif phase == "template":
         if template_error is not None:

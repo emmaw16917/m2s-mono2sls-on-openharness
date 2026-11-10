@@ -23,6 +23,7 @@ packaging problems (Runtime.ImportModuleError) show up here too.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import os
@@ -35,6 +36,21 @@ from pathlib import Path
 from typing import Any
 
 import gates
+from coord import locks as coord_locks
+
+
+def _rie_locked(fn):
+    """Full runs need the machine-wide docker-rie slot (§4.11). Dry runs and
+    local mode do not start containers, so they do not take it."""
+    @functools.wraps(fn)
+    def wrapper(workspace, *args, **kwargs):
+        dry = kwargs.get("dry_run", args[2] if len(args) > 2 else False)
+        mode = kwargs.get("mode", args[3] if len(args) > 3 else "auto")
+        if dry or mode == "local":
+            return fn(workspace, *args, **kwargs)
+        with coord_locks.hold_count("docker-rie", owner="run_validate"):
+            return fn(workspace, *args, **kwargs)
+    return wrapper
 
 HERE = Path(__file__).resolve().parent
 VERIFY_TOOLS = HERE / "verify-tools"
@@ -1565,6 +1581,7 @@ def _code_state(ws: Path, ref: str | None) -> dict[str, Any]:
             "uncommitted_output_changes": sorted(l[3:] for l in p.stdout.splitlines() if l.strip())}
 
 
+@_rie_locked
 def run_validate(workspace: str, functions: list[str] | None = None, cases: list[str] | None = None,
                  dry_run: bool = False, mode: str = "auto", ref: str | None = None,
                  assets: str | None = None) -> dict[str, Any]:

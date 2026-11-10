@@ -258,10 +258,10 @@ _USE_RE = re.compile(r"\b(?:router|app)\s*\.\s*use\s*\(")
 
 
 def _requires(src: str) -> dict[str, str]:
-    """local name -> require spec, for both `const x = require()` and
-    `const { a, b: c } = require()` forms."""
+    """local name -> require spec, for `const x = require()`,
+    `const x = new require()(...)` (acmeair) and `const { a, b: c } = require()`."""
     out: dict[str, str] = {}
-    for m in re.finditer(rf"(?:const|let|var)\s+({_IDENT})\s*=\s*require\(\s*['\"]([^'\"]+)['\"]\s*\)", src):
+    for m in re.finditer(rf"(?:const|let|var)\s+({_IDENT})\s*=\s*(?:new\s+)?require\(\s*['\"]([^'\"]+)['\"]", src):
         out[m.group(1)] = m.group(2)
     for m in re.finditer(r"(?:const|let|var)\s*\{([^}]+)\}\s*=\s*require\(\s*['\"]([^'\"]+)['\"]\s*\)", src):
         for part in m.group(1).split(","):
@@ -573,6 +573,72 @@ def _function_ranges(src: str) -> dict[str, tuple[int, int]]:
     return out
 
 
+def _callees(project: _Project, h: _Handler, depth: int, seen: set):
+    """Yield (callee, call_match, name) for project-local calls in `h`.
+
+    Same-file helpers are followed at every depth (v3 M2/W2.1); calls into
+    required modules are followed only when `_requires` resolves them. The
+    handler's own range goes into `seen`, so a handler that matches its own
+    name cannot recurse. Depth 2 is the last level followed (two helpers away
+    from the handler).
+    """
+    if depth >= 2:
+        return
+    reqs = {k: v for k, v in _requires(h.src).items() if v.startswith(".")}
+    local_funcs = _function_ranges(h.src)
+    own = next((name for name, rng in local_funcs.items() if rng == (h.start, h.end)), None)
+    if own:
+        seen.add((h.rel, own))
+    for m in re.finditer(rf"(?<![.\w$])({_IDENT})\s*\(", h.text):
+        name = m.group(1)
+        target_rel, target_name = None, None
+        if name in reqs:
+            target_rel = project.resolve_require(h.rel, reqs[name])
+            target_name = name
+        elif name in local_funcs:
+            target_rel, target_name = h.rel, name
+        if not target_rel or (target_rel, target_name) in seen:
+            continue
+        if _DDB_RECEIVER_RE.search(name):
+            continue
+        tsrc = project.sources.get(target_rel)
+        rng = _function_ranges(tsrc).get(target_name) if tsrc else None
+        if not rng:
+            continue
+        seen.add((target_rel, target_name))
+        yield _Handler(target_rel, tsrc, rng[0], rng[1]), m, target_name
+
+    # Member calls that delegate into another module (`routes.login(req,res)`)
+    # or into this file's exports (`module.foo(...)`): acmeair's app.js entry
+    # handlers are one-line delegations, so without this they reach nothing.
+    for m in re.finditer(rf"(?<![.\w$])({_IDENT})\s*\.\s*({_IDENT})\s*\(", h.text):
+        obj, member = m.group(1), m.group(2)
+        if obj in reqs:
+            target_rel = project.resolve_require(h.rel, reqs[obj])
+        elif obj in ("module", "exports", "this"):
+            target_rel = h.rel
+        else:
+            continue
+        if not target_rel or (target_rel, member) in seen:
+            continue
+        tsrc = project.sources.get(target_rel)
+        rng = _member_function(tsrc, member) if tsrc else None
+        if not rng:
+            continue
+        seen.add((target_rel, member))
+        yield _Handler(target_rel, tsrc, rng[0], rng[1]), m, member
+
+
+def _reachable_ranges(project: _Project, h: _Handler, depth: int = 0,
+                      seen: set | None = None) -> list[tuple[str, int, int]]:
+    """(file, start_line, end_line) of the handler and every helper it reaches."""
+    seen = seen if seen is not None else set()
+    out = [(h.rel, h.line(0), h.line(len(h.text) - 1))]
+    for callee, _m, _name in _callees(project, h, depth, seen):
+        out.extend(_reachable_ranges(project, callee, depth + 1, seen))
+    return out
+
+
 def _extract_data_access(project: _Project, h: _Handler, via: str | None = None,
                          depth: int = 0, seen: set | None = None) -> list[dict[str, Any]]:
     seen = seen if seen is not None else set()
@@ -617,32 +683,8 @@ def _extract_data_access(project: _Project, h: _Handler, via: str | None = None,
             item["via"] = via
         out.append(item)
 
-    if depth >= 2:
-        return out
-    # Follow calls into other project-local modules (and, inside those, into
-    # same-file helpers) so e.g. POST /orders -> updateBestSellers ->
-    # updateBestSeller -> docClient.update shows up with its call path.
-    reqs = {k: v for k, v in _requires(h.src).items() if v.startswith(".")}
-    local_funcs = _function_ranges(h.src) if depth > 0 else {}
-    for m in re.finditer(rf"(?<![.\w$])({_IDENT})\s*\(", h.text):
-        name = m.group(1)
-        target_rel, target_name = None, None
-        if name in reqs:
-            target_rel = project.resolve_require(h.rel, reqs[name])
-            target_name = name
-        elif name in local_funcs:
-            target_rel, target_name = h.rel, name
-        if not target_rel or (target_rel, target_name) in seen:
-            continue
-        if _DDB_RECEIVER_RE.search(name):
-            continue
-        tsrc = project.sources.get(target_rel)
-        rng = _function_ranges(tsrc).get(target_name) if tsrc else None
-        if not rng:
-            continue
-        seen.add((target_rel, target_name))
-        callee = _Handler(target_rel, tsrc, rng[0], rng[1])
-        chain = f"{via} -> {target_name}" if via else target_name
+    for callee, m, name in _callees(project, h, depth, seen):
+        chain = f"{via} -> {name}" if via else name
         inner = _extract_data_access(project, callee, chain, depth + 1, seen)
         if any(s <= m.start() <= e for s, e in repeat_regions):
             for it in inner:
@@ -887,9 +929,51 @@ def _empty_spec(ep: dict[str, Any], reason: str) -> None:
     ep["spec_status"] = {"script": reason, "annotated_fields": []}
 
 
-def enrich_report(report: dict[str, Any], monolith_root: Path) -> dict[str, Any]:
+def _mongo_data_access(project: _Project, h: _Handler, store: dict[str, Any]) -> list[dict[str, Any]]:
+    """MongoDB access patterns reached by this handler, as `data_access` items.
+
+    data_store.detect knows where each collection operation happens but not
+    which endpoint reached it (v3 M2/W2.2). The operation keeps the Mongo
+    value (find/findOne/insert/...); `table` names the collection. S1 maps
+    these onto DynamoDB tables through source_data_store.
+    """
+    reach = _reachable_ranges(project, h)
+
+    def reached(ref: Any) -> bool:
+        if not isinstance(ref, dict):
+            return False
+        rel, line = ref.get("file"), ref.get("line")
+        return bool(rel) and isinstance(line, int) and any(rel == r and a <= line <= b for r, a, b in reach)
+
+    out = []
+    for pattern in store.get("access_patterns") or []:
+        refs = pattern.get("source") or []
+        # source[0] is the call site (for a wrapper: the call that names the
+        # collection); the rest are wrapper definitions shared by every caller,
+        # so matching on them would attach every collection to every endpoint.
+        if not refs or not reached(refs[0]):
+            continue
+        collection = pattern.get("collection")
+        item = {
+            "operation": pattern.get("operation"),
+            "table": {"expr": collection, "config_key": None, "env_var": None, "default_name": collection},
+            "index": None,
+            "repeated": False,
+            "source": refs,
+            "origin": "script",
+        }
+        if pattern.get("via"):
+            item["via"] = pattern["via"]
+        out.append(item)
+    return out
+
+
+def enrich_report(report: dict[str, Any], monolith_root: Path,
+                  source_data_store: dict[str, Any] | None = None) -> dict[str, Any]:
     """Add spec fields to `report` in place (see module docstring). Returns
-    a summary {entry_points, script_extracted, unsupported, unknown_items}."""
+    a summary {entry_points, script_extracted, unsupported, unknown_items}.
+    `source_data_store` is data_store.detect's result, when the monolith uses
+    MongoDB: its access patterns are attached to the endpoints that reach them."""
     project = _Project(monolith_root)
     mounts = _mounts(project)
     local_mounts = _local_mounts(project)
@@ -1003,6 +1087,8 @@ def enrich_report(report: dict[str, Any], monolith_root: Path) -> dict[str, Any]
         ep["request"] = _extract_request(h, route["raw_path"], route["route_line"])
         ep["responses"] = _extract_responses(h, error_handler)
         ep["data_access"] = _extract_data_access(project, h)
+        if source_data_store:
+            ep["data_access"] += _mongo_data_access(project, h, source_data_store)
         ep["business_rules"] = []
         ep["spec_status"] = {"script": "extracted", "annotated_fields": []}
         regs = registrations.get(key) or []

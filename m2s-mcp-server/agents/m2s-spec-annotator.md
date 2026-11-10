@@ -116,6 +116,24 @@ model: inherit
 - 检查整体：`mcp__m2s-server__check_provenance()`。
 - **不要调用 `mcp_auth`**：`m2s-server` 是本地进程，不需要认证。
 
+## 共享代码（`storage/work_packages.json` 的 `shared_code`）
+
+工作区里如果有 `storage/work_packages.json`（M2 起由调度器在 P0 之后生成），它的 `shared_code` 列出了被两个以上工作包共用的函数（会话检查中间件、数据访问层等）。这类代码**只标注一次**，不要在每个端点上各写一遍：
+
+- `F2:shared` 任务：对 `shared_code` 里的每个条目读源码，用 `annotate_shared_entry(entry_json)` 写一条 `analysis_report.shared_rules` 记录：
+  ```json
+  {"id": "shared/auth-middleware", "file": "bookstore/middleware/auth.js",
+   "function": "authMiddleware", "rule": "...", "kind": "authorization",
+   "source": [{"file": "...", "line": 17, "symbol": "authMiddleware"}],
+   "origin": "llm", "used_by": ["/api/cart", "/api/orders"]}
+  ```
+  `id` 用 `shared/<小写-slug>`，`used_by` 照抄 `shared_code` 里的 `used_by`。
+- 其他标注员：在端点的 `business_rules` 里引用它，不要重复写规则正文：
+  ```json
+  {"rule": "ref: shared/auth-middleware", "source": [{"file": "...", "line": ..., "symbol": "authMiddleware"}], "origin": "llm"}
+  ```
+  引用项不需要 `kind`（从共享条目继承）；`source` 仍然要写这个端点上能看到该中间件的依据。`check_provenance` 会检查每个 `ref:` 都指向存在的共享条目。
+
 ## 输入契约
 
 - `<WS>/storage/analysis_report.json`（P0 产出，含脚本提取的规格字段）

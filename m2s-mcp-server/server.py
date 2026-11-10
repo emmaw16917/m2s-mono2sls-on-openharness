@@ -7,6 +7,7 @@ Registered in OpenHarness as `m2s-server`, so tool names resolve to:
     mcp__m2s-server__run_gate
     mcp__m2s-server__merge_blueprint_key
     mcp__m2s-server__annotate_entry_point
+    mcp__m2s-server__annotate_shared_entry
     mcp__m2s-server__check_provenance
     mcp__m2s-server__run_validate
     mcp__m2s-server__run_coverage
@@ -184,7 +185,30 @@ def annotate_global_middleware(index: int, headers_json: str, note: str = "", so
 
 
 @mcp.tool()
-def check_provenance() -> str:
+def annotate_shared_entry(entry_json: str) -> str:
+    """F2:shared: write one shared-code rule into analysis_report.shared_rules.
+
+    Shared code (middleware, data-access helpers) is annotated once, here,
+    instead of once per endpoint. Endpoint business_rules cite it with
+    {"rule": "ref: shared/<id>", "source": [...], "origin": "llm"}.
+
+    Args:
+        entry_json: {"id": "shared/<slug>", "file": "...", "function": "...",
+            "rule": "...", "kind": "validation|authorization|data_scope|...",
+            "source": [{file, line, symbol}], "origin": "llm",
+            "used_by": ["METHOD /path", ...] (optional)}
+
+    Returns: JSON {ok, id, shared_entries, replaced} or {ok: false, errors}.
+    """
+    try:
+        result = provenance.annotate_shared_entry(str(_workspace()), entry_json)
+    except provenance.SpecError as exc:
+        return json.dumps({"ok": False, "errors": [str(exc)]}, ensure_ascii=False)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def check_provenance(endpoint: str = "") -> str:
     """Stage-1 gate for the spec fields in storage/analysis_report.json.
 
     Checks that every cited source line exists and mentions its symbol
@@ -192,10 +216,15 @@ def check_provenance() -> str:
     every endpoint is complete (request, responses incl. a success
     response, auth, handler_location, at least one business rule).
 
+    Args:
+        endpoint: optional "METHOD /path" (for example "POST /api/orders") to
+            check only that endpoint (v3 M2/W2.6). Shared rules are still
+            validated as a whole.
+
     Returns: JSON string {status: PASS|FAIL, errors, incomplete,
         checked_sources, unknown_items, endpoints}.
     """
-    return json.dumps(provenance.check_provenance(str(_workspace())), ensure_ascii=False)
+    return json.dumps(provenance.check_provenance(str(_workspace()), endpoint or None), ensure_ascii=False)
 
 
 @mcp.tool()
@@ -589,15 +618,30 @@ def update_ledger() -> str:
 
 
 @mcp.tool()
-def run_gate(phase: str) -> str:
+def run_gate(phase: str, package: str = "", functions_json: str = "") -> str:
     """Run the deterministic consistency gate for a migration phase.
 
     Args:
         phase: one of "blueprint", "code", "template", "final".
+        package: optional work-package id (M2). For phase "code", C1 is scoped
+            to the functions listed for the package in
+            storage/work_packages.json (impl_packages, filled after S1).
+        functions_json: optional JSON list of function names; an explicit scope
+            that overrides `package` for the C1 code-direction check.
 
     Returns: JSON string {phase, status, mechanical_failures, checks,
         suspects, stage_report}.
     """
+    functions = None
+    if functions_json:
+        try:
+            functions = json.loads(functions_json)
+        except json.JSONDecodeError as exc:
+            return json.dumps({"phase": phase, "status": "ERROR", "error": f"functions_json is not valid JSON: {exc}"},
+                              ensure_ascii=False)
+        if not isinstance(functions, list) or not all(isinstance(f, str) for f in functions):
+            return json.dumps({"phase": phase, "status": "ERROR",
+                               "error": "functions_json must be a JSON list of function names"}, ensure_ascii=False)
     if _gates is None:
         return json.dumps(
             {
@@ -611,7 +655,7 @@ def run_gate(phase: str) -> str:
             },
             ensure_ascii=False,
         )
-    result = _gates.run_gate(phase, str(_workspace()))
+    result = _gates.run_gate(phase, str(_workspace()), functions=functions, package=package or None)
     return json.dumps(result, ensure_ascii=False)
 
 

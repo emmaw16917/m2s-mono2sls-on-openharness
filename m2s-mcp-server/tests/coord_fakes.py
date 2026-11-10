@@ -75,7 +75,7 @@ def ok_action(name: str):
 def make_dispatcher(tmp_path: Path, script: dict[str, Any], *, template: Template | None = None,
                     handler: bool = False, phase_review: bool = False, actions: dict[str, Any] | None = None,
                     guard: FakeGuard | None = None, timeouts: dict[str, float] | None = None,
-                    stop_after: str | None = None) -> Dispatcher:
+                    stop_after: str | None = None, checks: dict[str, Any] | None = None) -> Dispatcher:
     template = template or load_template("v1")
     if timeouts:
         template = replace(template, tasks=tuple(replace(t, timeout_min=timeouts.get(t.id, t.timeout_min)) for t in template.tasks))
@@ -86,7 +86,7 @@ def make_dispatcher(tmp_path: Path, script: dict[str, Any], *, template: Templat
     return Dispatcher(
         ws, monolith=tmp_path / "monolith", template=template,
         launcher=CommandLauncher([sys.executable, str(FAKE_WORKER), str(script_path)]),
-        checks=fake_checks(template),
+        checks=checks or fake_checks(template),
         actions={"analyze_project": ok_action("analyze_project"), "tag_v0": ok_action("tag_v0"),
                  "final": ok_action("final"), **(actions or {})},
         handler=handler, phase_review=phase_review, role_prompts=lambda role: f"ROLE {role}",

@@ -1133,3 +1133,14 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **失败与重试**：airline 的 A1 第 1 次被 DashScope 内容检查拒绝（工作已完成、只差 submit），第 2 次多写范围外临时文件；I1 第 1 次把阶段报告写成 `storage/stage_reports/S2.json`。都由范围/提交检查自动退回，重试后通过，没有人工介入。bookstore 没有失败。两次 B0 后的阶段复查都判 ok。
 - **和 v1 的差别**：bookstore 对 `bookstore-v3a`（18 次启动、1 次人工、约 15 小时）是 10 次启动、0 人工、5.5 小时；airline 对 `airline-booking-c3`（188/188、S5 只保留 R5）的差别主要是 v2 按 D-5 把积分副作用建模成 SQS，因此 R4 有命中并保留。
 - **待人**：airline 的 R1 改动没有落地，补丁在 `perf/patches/REQ-2.patch`，最终报告里标为 `pending_human`。
+
+## v3 M2：工作包并行（W2.1–W2.9，2026-11-10）
+
+- **结构提取**：`_extract_data_access` 从处理函数出发跟进同文件辅助函数（W2.1）；`_requires` 支持 `new require()`；成员调用（`routes.login`）可跟入其他模块。MongoDB 访问模式按调用链挂到接口的 `data_access`（W2.2，acmeair 17/25 个接口拿到集合）。7 个应用的 A/B 对比没有 script 项丢失。
+- **工作包规划** `coord/packages.py`（W2.4）：规则 1–6、8，输出 `storage/work_packages.json`；接口按 URL 首段分组、按非枢纽表/函数/文件与实体 ID 字段合并，按 LOC 预算拆分，<10 个接口不拆；7 个应用的期望分组在 `tests/fixtures/work_packages/expected.json`。
+- **共享代码**（W2.5）：`analysis_report.shared_rules` + 端点 `ref: shared/<id>`；新工具 `annotate_shared_entry`；`check_provenance` 校验引用。
+- **范围检查**（W2.6）：`check_provenance(endpoint=...)`；`run_gate(code, package=/functions_json=...)` 只检查一个包/一组函数的 C1。
+- **按包展开**（W2.7）：新模板 `coord/templates/v1-split.yaml`（S0、V1、S2 按包展开，S2 另有 `S2-shared`）；调度器在触发任务关闭后调用 `packages.write` 并创建子任务（`expand_after`、`<family>:*`、`{pkg}`/`{pkg_dir}`）。Windows 路径不能含冒号，子任务 id 用 `S2-<包>`。
+- **资源锁**（W2.8）：`coord/locks.py`（独占/计数锁、死进程/过期回收）；调度器按 scope 冲突串行、用 `workers` 计数锁限制跨工作区 worker 数；`run_validate` / `run_rie_verdict` 取 `docker-rie` 槽；提交/打 tag 取 `ws-git:<ws>`。
+- **多工作区**（W2.9）：每个 worker 的 `M2S_WORKSPACE` 来自自己的 `mcp.json`，已无全局切换；两个调度器并发的测试通过。
+- **测试**：`test_spec_helpers.py`、`test_coord_packages.py`、`test_provenance_shared.py`、`test_coord_scope.py`、`test_coord_split.py`、`test_coord_locks.py`、`test_coord_workspaces.py`；全量 483 通过、68 跳过。
