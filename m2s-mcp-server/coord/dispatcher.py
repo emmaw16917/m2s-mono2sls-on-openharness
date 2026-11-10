@@ -698,11 +698,29 @@ class Dispatcher:
 
     def _make_stale(self, tasks: list[str], by: str) -> list[str]:
         """The closed ones among `tasks`, and closed tasks downstream of them, go stale and
-        follow their on_stale rule (recheck or rerun)."""
+        follow their on_stale rule (recheck or rerun). A downstream task that is already
+        running is cancelled first: its work was done against the previous upstream."""
         hit: list[str] = []
         for task in tasks:
             for t in [task, *self.template.downstream(task)]:
-                if t not in hit and self.board.status(t) == "closed":
+                if t in hit:
+                    continue
+                handle = self.running.pop(t, None)
+                if handle is not None:
+                    handle.kill()
+                    lock = self.worker_locks.pop(t, None)
+                    if lock:
+                        lock.release()
+                    self.events.append("cancelled", task=t, by=by)
+                    self.events.append("round_start", task=t, cause="cancelled", mode="rerun", by=by)
+                    status = self.board.status(t)
+                    if status == "checking":
+                        self.board.set_status(t, "rework")
+                    elif status in ("in_progress", "stale"):
+                        self.board.set_status(t, "open")
+                    # rework / open / needs_human already wait for a worker
+                    hit.append(t)
+                elif self.board.status(t) == "closed":
                     self.board.set_status(t, "stale")
                     self.board.set_status(t, "open")
                     self.events.append("round_start", task=t, cause="stale", mode=self._spec(t).on_stale, by=by)
@@ -839,8 +857,16 @@ class Dispatcher:
             if action == "escalate":
                 self._human_gate(f"HUMAN_{task_id}", f"阶段复查要求人确认：{decision.get('rationale', '')}", self._next_tasks(task_id))
                 applied = "交给人确认后再继续"
+            elif action == "reroute" and decision.get("target") in {t.id for t in self.template.tasks} \
+                    and task_id in self.template.downstream(decision["target"]) \
+                    and self._rework_budget_ok(decision["target"]):
+                # A review finds a blocking defect in an earlier stage: send that
+                # stage back. _request_rework makes the reviewed task's closed
+                # downstream stale -> open, so it reruns once the target is fixed.
+                self._request_rework(decision["target"], decision.get("feedback", ""), reason="handler", by=case.case_id)
+                applied = f"退回 {decision['target']}"
             else:
-                applied = "继续" if action == "ok" else f"处理者给出 {action!r}，复查只接受 ok/escalate，按继续处理"
+                applied = "继续" if action == "ok" else f"处理者给出 {action!r}，复查只接受 ok/escalate/reroute，按继续处理"
             self.cases.record(case, decision, applied)
             return
         if decision is None or timed_out:
