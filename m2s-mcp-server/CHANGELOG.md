@@ -1144,3 +1144,12 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **资源锁**（W2.8）：`coord/locks.py`（独占/计数锁、死进程/过期回收）；调度器按 scope 冲突串行、用 `workers` 计数锁限制跨工作区 worker 数；`run_validate` / `run_rie_verdict` 取 `docker-rie` 槽；提交/打 tag 取 `ws-git:<ws>`。
 - **多工作区**（W2.9）：每个 worker 的 `M2S_WORKSPACE` 来自自己的 `mcp.json`，已无全局切换；两个调度器并发的测试通过。
 - **测试**：`test_spec_helpers.py`、`test_coord_packages.py`、`test_provenance_shared.py`、`test_coord_scope.py`、`test_coord_split.py`、`test_coord_locks.py`、`test_coord_workspaces.py`；全量 483 通过、68 跳过。
+
+## v3 M3：公告板、讨论室和可见性（W3.1–W3.6，2026-11-10）
+
+- **W3.1 agent_mail**：`coord/mail.ensure_server` 复用本机 8765 端口的共享服务（token 在 `D:/m2s-am/token`）；`ensure_project` 每个工作区一个项目；调度器在 `M2S_MAIL=1` 时启动，并把 `M2S_MAIL_URL/TOKEN/PROJECT` 写进 worker 的 mcp.json。
+- **W3.2 公告板/讨论室代理**：`notice_post/read`、`room_post/read`、`raise_spec_issue`；消息存 `WS/coord/mail/` 并镜像到 agent_mail；可见性按角色过滤（裁定对实现线只给结论/依据）；转达格式检查拒绝 verification 路径/原文；讨论室按调度器轮次限制发言。
+- **W3.3 spec 讨论室**：提出方 → architect → annotator → 提出方回应（最多 2 轮）；architect 的裁定写入事实库后退回提出任务，没有裁定则交处理者。
+- **W3.4 分诊讨论室**：verifier + 嫌疑模块角色；归因一致时退回对应任务，不一致交处理者。
+- **W3.5 v1 裁定**：`record_ruling` 在 v1 模板写 `blueprint.metadata.spec_resolutions`，并发 ruling 公告。
+- **W3.6 泄漏测试**：`tests/test_coord_leak.py`、`tests/test_coord_notices.py`；全量 490 通过（含 M3 新测试），1 个 Node 用例在补齐 `verify-tools/node_modules` 后通过。

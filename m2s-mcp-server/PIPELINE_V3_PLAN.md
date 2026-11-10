@@ -598,6 +598,14 @@ agent_mail 的 build slot 只是建议性的，也不能计数，所以只用来
 - 泄漏测试为 0；
 - 人可以在 agent_mail 的 Web UI 里看到讨论过程。
 
+**M3 进展（2026-11-10）**：W3.1–W3.6 已实现并测试（`feat/v3-m3` 分支）；W3.7 的 acmeair 运行待跑。
+- W3.1：`coord/mail.py` 的 `ensure_server` 复用本机 8765 端口的 agent_mail（token 存在 `D:/m2s-am/token`），`ensure_project` 按工作区建项目；调度器在 `M2S_MAIL=1` 时启动并把 URL/token/项目写进每个 worker 的 mcp.json。
+- W3.2：公告板与讨论室由 m2s-server 代理（`notice_post/read`、`room_post/read`、`raise_spec_issue`）；消息存 `coord/mail/`，并镜像到 agent_mail 供 Web UI 查看；可见性按角色执行，裁定对实现线只给结论与依据；转达格式检查拒绝带 verification 路径/原文的消息。
+- W3.3：spec 讨论室由调度器按轮次启动参与者（提出方 → architect → annotator → 提出方回应，最多 2 轮）；architect 用 `record_ruling` 写裁定后，调度器退回提出任务；没有裁定则交异常处理者。
+- W3.4：分诊讨论室（verifier + 嫌疑模块角色 + verifier 回应）；归因一致时退回对应任务，不一致交处理者。
+- W3.5：v1 模块的 `record_ruling` 写 `blueprint.metadata.spec_resolutions`（v2 仍写 `rulings.json`），并公告 ruling。
+- W3.6：泄漏测试 `tests/test_coord_leak.py` 覆盖公告板/讨论室可见性、裁定过滤、房间参与者；`test_coord_notices.py` 覆盖格式拒绝与 v1 裁定。
+
 ### M4 接入 v2 模块【必做，前提是 v2 模块已经实现】
 
 v2 每实现一个模块，就在 `templates/v2.yaml` 里加一个任务类型，并补上编排侧需要的支持：

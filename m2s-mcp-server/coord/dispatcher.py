@@ -42,7 +42,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
-from coord import harness, rulings
+from coord import harness, notices, rooms, rulings
 from coord.board import TaskBoard
 from coord.checks import CHECKS, CheckResult, ToolGuard, _clip, _read_json
 from coord.events import EventLog
@@ -235,10 +235,27 @@ class Dispatcher:
         self.locks = locks or Locks()
         self.worker_slots = int(os.environ.get("M2S_WORKER_SLOTS", "3"))
         self.worker_locks: dict[str, LockHandle] = {}
+        self.mail_env: dict[str, str] = {}  # M3: set in setup when M2S_MAIL is enabled
 
     # ------------------------------------------------------------------ setup / resume
 
+    def _ensure_mail(self) -> None:
+        if self.mail_env or os.environ.get("M2S_MAIL", "").lower() not in ("1", "true", "yes"):
+            return
+        from coord import mail
+
+        try:
+            server = mail.ensure_server()
+            mail.ensure_project(server, self.ws)
+            self.mail_env = mail.mail_env(server, self.ws)
+            self.events.append("mail_start", url=server.url)
+            self.log(f"mail: {server.url}")
+        except Exception as exc:  # messaging must never stop the pipeline
+            self.events.append("mail_error", error=f"{type(exc).__name__}: {exc}")
+            self.log(f"mail unavailable: {exc}")
+
     def setup(self) -> None:
+        self._ensure_mail()
         if not self.board.exists():
             if self.monolith is None:
                 raise ValueError("a new run needs --monolith")
@@ -388,6 +405,7 @@ class Dispatcher:
 
     def _start_ready(self) -> int:
         self.waiting = False
+        self._ensure_room_turns()
         if self._paused() or self._busy_workers() >= self.max_workers:
             return 0
         started = 0
@@ -476,6 +494,7 @@ class Dispatcher:
             scope=spec.scope, max_turns=spec.max_turns, timeout_s=spec.timeout_min * 60,
             deny_read=self.foreign_runs + closed, deny_commands=closed_cmds,
             deny_write=(str(self.ws / "judge"),) if self._judge_frozen() else (), mode=spec.mode or "",
+            pipeline=self.template.name, extra_env=self.mail_env,
         )
         self.board.claim(spec.id, job.worker_name)
         snapshot = self.shadow.snapshot(f"before {spec.id} a{attempt}")
@@ -837,7 +856,8 @@ class Dispatcher:
                         system_prompt=HANDLER_SYSTEM_PROMPT,
                         prompt=handler_prompt(case.case_id, case.path, self.cases.journal, self.ws, kind),
                         scope=(), max_turns=HANDLER_MAX_TURNS, timeout_s=HANDLER_TIMEOUT_S, read_coord=True,
-                        deny_read=self.foreign_runs, deny_write=(str(self.ws / "judge"),) if self._judge_frozen() else ())
+                        deny_read=self.foreign_runs, deny_write=(str(self.ws / "judge"),) if self._judge_frozen() else (),
+                        pipeline=self.template.name, extra_env=self.mail_env)
         handle = self.launcher.start(job)
         handle.kind = "handler"
         handle.meta = {"case": case}
@@ -915,6 +935,9 @@ class Dispatcher:
 
     def _flow_after_close(self, task_id: str) -> None:
         self._ensure_expansions()
+        if task_id.startswith("ROOM-"):
+            self._room_after_close(task_id)
+            return
         spec = self._spec(task_id)
         if spec.mode in ("J3", "J4", "J5") and self._judge_settled():
             return  # the judge is frozen: what it found was settled before it froze
@@ -1025,6 +1048,104 @@ class Dispatcher:
                     pass  # an already-present dependency
         self.events.append("deps_wired", family=family, children=children)
 
+    # ------------------------------------------------------------------ rooms (v3 M3)
+
+    def _rooms_enabled(self) -> bool:
+        return bool(self.mail_env) or os.environ.get("M2S_ROOMS", "").lower() in ("1", "true", "yes")
+
+    def _ensure_room_turns(self) -> None:
+        """Start the next turn of every open room; open rooms requested by notices."""
+        if not self._rooms_enabled():
+            return
+        room_dir = rooms.rooms_dir(self.coord)
+        if room_dir.is_dir():
+            for path in sorted(room_dir.glob("*.json")):
+                state = rooms.load(self.coord, path.stem)
+                if not state or state.get("status") != "open":
+                    continue
+                room_id = state["id"]
+                busy = [t for t, info in self.board.tasks().items()
+                        if t.startswith(f"ROOM-{room_id}-") and info["status"] != "closed"]
+                if busy:
+                    continue
+                role = rooms.next_role(state)
+                if not role:
+                    self._room_conclude(state)
+                    continue
+                turn = int(state.get("turn") or 0)
+                task_id = f"ROOM-{room_id}-{turn}-{state.get('round', 1)}"
+                scope = [f"storage/stage_reports/{task_id}.json"]
+                if state.get("kind") == "spec":
+                    # the architect writes the ruling into the fact base (v1 blueprint)
+                    scope += ["storage/blueprint.json", "storage/DECISIONS.md", "storage/analysis_report.json"]
+                spec = TaskSpec(id=task_id, role=role, mode="room", check=("room_turn",),
+                                scope=tuple(scope), max_turns=80, timeout_min=60,
+                                extra={"room_id": room_id, "room_kind": state["kind"], "room_role": role})
+                self.board.add_task(spec.to_json(), ())
+                self.events.append("room_turn", room=room_id, task=task_id, role=role)
+                self.log(f"room {room_id}: turn {turn} -> {role}")
+        # a raise_spec_issue notice opens a spec room once
+        for entry in notices.read_notices(self.ws, "dispatcher", ["spec-issue"]):
+            body = entry.get("body") or {}
+            if not isinstance(body, dict) or body.get("status") != "open":
+                continue
+            room_id = body.get("room_id")
+            if room_id and not rooms.load(self.coord, room_id):
+                rooms.open_spec_room(self.coord, room_id, entry.get("sender_role") or "m2s-verifier",
+                                     str(body.get("topic") or entry.get("subject") or ""),
+                                     proposer_task=str(entry.get("task") or ""))
+                self.events.append("room_open", room=room_id, kind="spec")
+                self.log(f"room {room_id}: opened (spec issue)")
+
+    def _room_after_close(self, task_id: str) -> None:
+        spec = self._spec(task_id)
+        room_id = spec.extra.get("room_id")
+        if not room_id:
+            return
+        state = rooms.load(self.coord, room_id)
+        if not state or state.get("status") != "open":
+            return
+        rooms.advance(self.coord, state)
+        if state.get("status") == "concluding":
+            self._room_conclude(state)
+
+    def _room_conclude(self, state: dict[str, Any]) -> None:
+        room_id = state["id"]
+        entries = rooms.messages(self.ws, room_id)
+        self.events.append("room_end", room=room_id, kind=state.get("kind"), messages=len(entries))
+        state["status"] = "closed"
+        rooms.save(self.coord, state)
+        proposer = state.get("proposer_task") or ""
+        if state.get("kind") == "triage":
+            module = rooms.triage_consensus(entries)
+            target = None
+            if module:
+                if module in {t.id for t in self.template.tasks}:
+                    target = module
+                else:
+                    role = ROUTE_ROLES.get(module)
+                    target = next((t.id for t in reversed(self.template.tasks) if t.role == role), None)
+            if target:
+                self._request_rework(target, f"分诊讨论室的结论是 {module}；按讨论串修正。", reason="triage", by=room_id)
+                self.log(f"room {room_id}: consensus {module} -> {target}")
+            else:
+                self._open_case("triage", proposer or "V2", f"分诊讨论室 {room_id} 没有达成一致",
+                                {"讨论串": json.dumps(entries, ensure_ascii=False, indent=1)})
+            return
+        # spec room: a ruling in blueprint.metadata.spec_resolutions settles it
+        blueprint = _read_json(self.ws / "storage" / "blueprint.json") or {}
+        rulings_written = (blueprint.get("metadata") or {}).get("spec_resolutions") or []
+        if rulings_written:
+            if proposer:
+                try:
+                    self._request_rework(proposer, f"规格讨论室 {room_id} 已给出裁定，按裁定重做。", reason="spec_room", by=room_id)
+                except Exception:
+                    pass
+            self.log(f"room {room_id}: settled by a ruling")
+        else:
+            self._open_case("triage", proposer or "V1", f"规格讨论室 {room_id} 没有写出裁定",
+                            {"讨论串": json.dumps(entries, ensure_ascii=False, indent=1)})
+
     def _after_v1(self) -> None:
         if self._active_spec_round():
             self.events.append("spec_round_done", task="V1")
@@ -1075,6 +1196,17 @@ class Dispatcher:
             return False
         if any(self._route_target(r.get("to"), spec.id) is None for r in routing):
             self.board.report_gate(spec.id, False)
+            if self._rooms_enabled():
+                unknown = [str(r.get("to")) for r in routing]
+                suspect = sorted({ROUTE_ROLES[t] for t in unknown if t in ROUTE_ROLES})
+                room_id = f"triage-{spec.id.lower()}-{self.events.count('room_open') + 1}"
+                rooms.open_triage_room(self.coord, room_id, f"{spec.id} 有无法归因的失败",
+                                       suspect or sorted({t.role for t in self.template.tasks if t.role}),
+                                       proposer_task=spec.id)
+                self.events.append("room_open", room=room_id, kind="triage", by=spec.id)
+                self.log(f"room {room_id}: opened (triage of {spec.id})")
+                self._wait_for_upstream(spec.id, room_id)
+                return True
             self._open_case("triage", spec.id, f"{spec.id} 的分诊里有判断不了归因的失败",
                             {f"{spec.id} 的 routing": json.dumps(routing, ensure_ascii=False, indent=1),
                              "检查结果": self._results_text(results)})

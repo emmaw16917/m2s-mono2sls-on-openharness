@@ -94,6 +94,40 @@ def record_ruling(question: str, conclusion: str, category: str, basis: str, rai
                   layers: list[str] | None = None, affected_tasks: list[str] | None = None,
                   deviates_from_monolith: bool = False) -> dict[str, Any]:
     coord, task, attempt, role = _env()
+    pipeline = os.environ.get("M2S_PIPELINE") or ""
+    if pipeline.startswith("v1"):
+        # W3.5: in the v1 modules a ruling is a blueprint spec_resolution, the
+        # same structure S1 used to write by hand.
+        ws = Path(os.environ.get("M2S_WORKSPACE") or coord.parent)
+        blueprint_path = ws / "storage" / "blueprint.json"
+        try:
+            blueprint = json.loads(blueprint_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            return {"ok": False, "error": f"cannot read {blueprint_path}: {exc}"}
+        metadata = blueprint.setdefault("metadata", {})
+        resolutions = metadata.setdefault("spec_resolutions", [])
+        issue_id = raised_by or f"R-{task}-{attempt}"
+        entry = {"issue_id": issue_id, "decision": conclusion, "rationale": basis,
+                 "applies_to": affected_tasks or layers or [],
+                 "question": question, "category": category, "options": options or [],
+                 "raised_by": raised_by, "recorded_by": role}
+        for existing in resolutions:
+            if isinstance(existing, dict) and existing.get("issue_id") == issue_id:
+                existing.update(entry)
+                break
+        else:
+            resolutions.append(entry)
+        write_json_atomic(blueprint_path, blueprint)
+        try:
+            from coord import notices
+
+            notices.post_notice(ws, "m2s-server", "ruling",
+                                {"question": question, "conclusion": conclusion, "basis": basis},
+                                subject=question[:120], task=task)
+        except Exception:
+            pass
+        return {"ok": True, "id": issue_id, "status": "decided",
+                "next": "Recorded in blueprint.metadata.spec_resolutions; cite the id in your stage report."}
     raw = {"question": question, "conclusion": conclusion, "category": category, "basis": basis,
            "raised_by": raised_by, "options": options or [], "relaxation": relaxation or None,
            "affects": {"cases": affected_cases or [], "layers": layers or [], "tasks": affected_tasks or []},

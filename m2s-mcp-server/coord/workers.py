@@ -55,6 +55,8 @@ class WorkerJob:
     deny_commands: tuple[str, ...] = ()  # shell command patterns refused (a closed directory named in a command)
     deny_write: tuple[str, ...] = ()  # directories closed to writes (the frozen judge)
     mode: str = ""  # the task's role mode (M2S_MODE: m2s-server tools can refuse a mode)
+    pipeline: str = ""  # template name: record_ruling's target structure (v1 blueprint vs v2 rulings.json)
+    extra_env: dict[str, str] = field(default_factory=dict)  # mail proxy settings (M3)
 
     @property
     def run_dir(self) -> Path:
@@ -73,6 +75,8 @@ class WorkerJob:
             "M2S_ATTEMPT": str(self.attempt),
             "M2S_ROLE": self.role,
             "M2S_MODE": self.mode,
+            "M2S_PIPELINE": self.pipeline,
+            **self.extra_env,
             "PYTHONUTF8": "1",
         }
 
