@@ -18,12 +18,17 @@ REF = {"file": "mono/server.js", "line": 1, "symbol": "authMiddleware"}
 ENDPOINT = "GET /things/:id"
 
 
-def _workspace(tmp_path: Path, shared: bool = True, rule: str = "ref: shared/auth-middleware") -> Path:
+def _workspace(tmp_path: Path, shared: bool = True, rule: str = "ref: shared/auth-middleware",
+               middleware_headers: dict | None = {"Access-Control-Allow-Origin": "*"}) -> Path:
     mono = tmp_path / "mono"
     mono.mkdir(exist_ok=True)
     (mono / "server.js").write_text(MONO, encoding="utf-8")
     report = {
         "spec_meta": {"monolith_root": str(mono)},
+        "global_middleware": [{
+            "kind": "cors", "call": "app.use(cors(...))", "headers": middleware_headers,
+            "source": [REF], "origin": "script",
+        }],
         "entry_points": [{
             "method": "GET", "path": "/things/:id",
             "handler_location": {"file": "mono/server.js", "start_line": 1, "end_line": 3},
@@ -94,3 +99,21 @@ def test_annotate_entry_point_accepts_refs(tmp_path):
     result = provenance.annotate_entry_point(ws, "GET", "/things/:id", "business_rules", json.dumps(bad))
     assert result["ok"] is False
     assert any("shared/nope" in e for e in result["errors"])
+
+
+def test_scoped_check_skips_global_middleware(tmp_path):
+    ws = _workspace(tmp_path, middleware_headers=None)
+    full = provenance.check_provenance(ws)
+    assert full["status"] == "FAIL"
+    assert any("global_middleware[0]" in item for item in full["incomplete"])
+    scoped = provenance.check_provenance(ws, "GET /things/:id")
+    assert scoped["status"] == "PASS", scoped
+
+
+def test_check_global_middleware(tmp_path):
+    waiting = _workspace(tmp_path, middleware_headers=None)
+    assert provenance.check_global_middleware(waiting)["status"] == "FAIL"
+    headers = {"Access-Control-Allow-Origin": "*"}
+    filled = provenance.annotate_global_middleware(waiting, 0, json.dumps(headers), "cors options", json.dumps([REF]))
+    assert filled["ok"] is True
+    assert provenance.check_global_middleware(waiting)["status"] == "PASS"

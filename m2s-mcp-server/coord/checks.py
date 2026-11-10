@@ -119,8 +119,19 @@ def check_provenance_pkg(ws: Path, spec: dict[str, Any]) -> CheckResult:
                        relay=relay)
 
 
+def global_middleware_determined(ws: Path, spec: dict[str, Any]) -> CheckResult:
+    """S0-shared (v3 M2): app-wide middleware headers are filled in."""
+    import provenance
+
+    result = provenance.check_global_middleware(str(ws))
+    ok = result["status"] == "PASS"
+    summary = "global middleware determined" if ok else "global middleware incomplete"
+    relay = "" if ok else _clip("check_global_middleware 报告：\n" + json.dumps(result, ensure_ascii=False, indent=1))
+    return CheckResult("global_middleware", ok, summary, detail=result, relay=relay)
+
+
 def gate_code_pkg(ws: Path, spec: dict[str, Any]) -> CheckResult:
-    """S2:<pkg> / S2:shared (v3 M2): gate(code) scoped to the package's functions."""
+    """S2:<pkg> / S2-shared (v3 M2): gate(code) scoped to the package's functions."""
     import gates
 
     functions = spec.get("functions")
@@ -369,6 +380,7 @@ CHECKS: dict[str, Callable[[Path], CheckResult]] = {
     "analysis_report": analysis_report,
     "check_provenance": check_provenance,
     "check_provenance_pkg": check_provenance_pkg,
+    "global_middleware": global_middleware_determined,
     "blueprint_keys": blueprint_keys,
     "gate_blueprint": _gate("blueprint", require_pass=False),
     "gate_code": _gate("code", require_pass=False),

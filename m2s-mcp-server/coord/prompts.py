@@ -118,6 +118,14 @@ def worker_prompt(spec: TaskSpec, ws: Path, monolith: Path, attempt: int,
     ]
     if spec.line == "impl":
         sections.append(IMPL_NOTE)
+    if spec.extra.get("package") == "shared":
+        sections.append(
+            "## 共享任务\n"
+            "这是按工作包展开后的共享任务：不负责某个包的接口，而是处理被多个包共用的部分。"
+            "先看 `WS/storage/work_packages.json` 的 `shared_code`（被 2 个以上包用到的函数）和 "
+            "`analysis_report.json` 的 `global_middleware`，按角色说明里的「共享代码」一节处理；"
+            "每个共享条目只写一次，包任务会引用它。"
+        )
     block = _feedback_block(feedback)
     if block:
         sections.append(block)

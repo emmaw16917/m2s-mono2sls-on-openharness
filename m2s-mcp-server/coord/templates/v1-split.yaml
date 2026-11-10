@@ -21,9 +21,12 @@ tasks:
   - id: S0
     role: m2s-spec-annotator
     split: package
+    split_shared: true
     expand_after: [P0]
     deps: [P0]
     scope: [storage/analysis_report.json, "storage/stage_reports/S0-{pkg}.json"]
+    shared_scope: [storage/analysis_report.json, storage/stage_reports/S0-shared.json]
+    shared_check: [global_middleware]
     check: [check_provenance_pkg]
     max_turns: 250
     timeout_min: 150

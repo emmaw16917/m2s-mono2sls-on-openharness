@@ -369,7 +369,15 @@ class Dispatcher:
     def _in_stop_set(self, task_id: str) -> bool:
         if self.stop_set is None or task_id in self.stop_set:
             return True
-        return task_id not in {t.id for t in self.template.tasks}  # human gates added by the flows
+        template_ids = {t.id for t in self.template.tasks}
+        if task_id in template_ids:
+            return False
+        # A dynamic child (S0-identity, S2-shared, ...) belongs to its family:
+        # --stop-after P0 must not run it. Ids the flows add (HUMAN_*) stay allowed.
+        family = task_id.split("-", 1)[0]
+        if family in template_ids:
+            return family in self.stop_set
+        return True  # human gates added by the flows
 
     def _busy_workers(self) -> int:
         return sum(1 for h in self.running.values() if h.kind == "task")
@@ -949,6 +957,7 @@ class Dispatcher:
             data = spec.to_json()
             data.update({"id": child_id, "split": "none", "expand_after": [], "split_shared": False,
                          "deps": deps, "package": "shared", "endpoints": [], "functions": [],
+                         "check": list(spec.shared_check or spec.check),
                          "scope": [s.replace("{pkg}", "shared").replace("{pkg_dir}", "shared")
                                    for s in (spec.shared_scope or spec.scope)]})
             self.board.add_task(data, deps)

@@ -38,6 +38,10 @@ class TaskSpec:
     expand_after: tuple[str, ...] = ()
     split_shared: bool = False       # create "<id>:shared" next to the package children
     shared_scope: tuple[str, ...] = ()  # scope of that shared child (falls back to scope)
+    shared_check: tuple[str, ...] = ()  # checks of that shared child (falls back to check)
+    # Dynamic children carry package/endpoints/functions; checks read them from
+    # to_json(). Unknown template keys are preserved here too.
+    extra: dict[str, Any] = field(default_factory=dict, compare=False, hash=False, repr=False)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -46,11 +50,15 @@ class TaskSpec:
             "on_stale": self.on_stale, "max_turns": self.max_turns, "timeout_min": self.timeout_min,
             "mode": self.mode, "deny_read": list(self.deny_read), "start": self.start,
             "split": self.split, "expand_after": list(self.expand_after), "split_shared": self.split_shared,
-            "shared_scope": list(self.shared_scope),
+            "shared_scope": list(self.shared_scope), "shared_check": list(self.shared_check),
+            **self.extra,
         }
 
     @classmethod
     def from_json(cls, data: dict[str, Any]) -> TaskSpec:
+        known = {"id", "runner", "role", "action", "line", "deps", "scope", "check", "on_stale",
+                 "max_turns", "timeout_min", "mode", "deny_read", "start", "split", "expand_after",
+                 "split_shared", "shared_scope", "shared_check", "extra"}
         return cls(
             id=data["id"], runner=data.get("runner", "agent"), role=data.get("role"), action=data.get("action"),
             line=data.get("line"), deps=tuple(data.get("deps") or ()), scope=tuple(data.get("scope") or ()),
@@ -60,6 +68,8 @@ class TaskSpec:
             split=data.get("split", "none"), expand_after=tuple(data.get("expand_after") or ()),
             split_shared=bool(data.get("split_shared", False)),
             shared_scope=tuple(data.get("shared_scope") or ()),
+            shared_check=tuple(data.get("shared_check") or ()),
+            extra={k: v for k, v in data.items() if k not in known},
         )
 
 

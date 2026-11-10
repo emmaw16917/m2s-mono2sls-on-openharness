@@ -534,7 +534,10 @@ def check_provenance(workspace: str | Path, endpoint: str | None = None) -> dict
                 if isinstance(r, dict) and "class" not in r:
                     incomplete.append(f"{ep.get('method')} {ep.get('path')}.business_rules[{j}]: no 'class' (contract / implementation-trace)")
 
-    _validate_global_middleware(files, report.get("global_middleware"), errors, incomplete)
+    if not endpoint:
+        # A scoped check (M2/W2.6) is one work package; app-wide middleware is
+        # the shared task's job (check_global_middleware below).
+        _validate_global_middleware(files, report.get("global_middleware"), errors, incomplete)
 
     for i, t in enumerate((report.get("dynamodb_info") or {}).get("table_schemas", []) or []):
         where = f"dynamodb_info.table_schemas[{i}]"
@@ -552,3 +555,16 @@ def check_provenance(workspace: str | Path, endpoint: str | None = None) -> dict
         "unknown_items": sum(e["unknown_items"] for e in per_endpoint),
         "endpoints": per_endpoint,
     }
+
+
+def check_global_middleware(workspace: str | Path) -> dict[str, Any]:
+    """S0-shared (v3 M2): every app-wide middleware item has its headers determined."""
+    try:
+        report, files = _load(workspace)
+    except (SpecError, json.JSONDecodeError) as exc:
+        return {"status": "FAIL", "errors": [str(exc)], "incomplete": []}
+    errors: list[str] = []
+    incomplete: list[str] = []
+    _validate_global_middleware(files, report.get("global_middleware"), errors, incomplete)
+    return {"status": "PASS" if not errors and not incomplete else "FAIL",
+            "errors": errors, "incomplete": incomplete}

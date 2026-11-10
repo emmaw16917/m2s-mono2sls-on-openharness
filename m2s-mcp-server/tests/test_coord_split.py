@@ -16,8 +16,17 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from coord_fakes import make_dispatcher  # noqa: E402
 
 from coord.checks import CheckResult  # noqa: E402
-from coord.dispatcher import EXIT_DONE  # noqa: E402
-from coord.template import load_template  # noqa: E402
+from coord.dispatcher import EXIT_DONE, EXIT_STOPPED  # noqa: E402
+from coord.template import TaskSpec, load_template  # noqa: E402
+
+
+def test_dynamic_spec_keeps_package_metadata():
+    spec = TaskSpec.from_json({"id": "S2-books", "package": "books",
+                               "endpoints": ["GET /api/books"], "functions": ["books-list"]})
+    data = spec.to_json()
+    assert data["package"] == "books"
+    assert data["functions"] == ["books-list"]
+    assert data["endpoints"] == ["GET /api/books"]
 
 TEMPLATE = """\
 name: split-test
@@ -124,3 +133,19 @@ def test_split_families_expand_and_wire(tmp_path):
     assert {d for d in shared["deps"] if d.startswith("V1-")} == {"V1-alpha", "V1-beta", "V1-gamma"}
     # S3 waited for every S2 child
     assert set(board_deps("S3")) >= set(children)
+
+
+def test_stop_after_does_not_run_dynamic_children(tmp_path):
+    template_path = tmp_path / "split.yaml"
+    template_path.write_text(TEMPLATE, encoding="utf-8")
+    template = load_template(path=template_path)
+    ws = tmp_path / "ws" / "storage"
+    ws.mkdir(parents=True)
+    (ws / "analysis_report.json").write_text(json.dumps(_report()), encoding="utf-8")
+
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok}, stop_after="P0")
+    d.setup()
+    assert d.run() == EXIT_STOPPED
+    assert not [e for e in d.events.all() if e["type"] == "spawn"]
+    # the children exist (the expansion ran) but none of them started
+    assert "S0-alpha" in d.board.tasks()
