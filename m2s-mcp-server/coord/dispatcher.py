@@ -563,6 +563,18 @@ class Dispatcher:
         self.board.set_status(task_id, "checking")
         self._evaluate(self._spec(task_id), attempt, sub, spawn["snapshot"], timed_out)
 
+    def _write_scope_outside(self, spec: TaskSpec, changes: list[tuple[str, str]]) -> list[tuple[str, str]]:
+        """Paths this task changed outside its scope.
+
+        With parallel work packages, a task's snapshot window also contains the
+        files another task legitimately wrote. Those paths belong to the other
+        task's scope, so they are neither this task's violation nor ours to
+        revert (the M2 acmeair run lost S2 output to a concurrent V1 check)."""
+        other_scopes = [self._spec(t).scope for t in self.board.tasks() if t != spec.id]
+        return [(status, path) for status, path in changes
+                if not in_scope(path, spec.scope) and not in_scope(path, ALWAYS_ALLOWED)
+                and not any(in_scope(path, scope) for scope in other_scopes)]
+
     def _evaluate(self, spec: TaskSpec, attempt: int, sub: dict[str, Any] | None, snapshot: str, timed_out: bool) -> None:
         results: list[CheckResult] = []
 
@@ -572,7 +584,7 @@ class Dispatcher:
         changes = [(s, p) for s, p in changes if p not in DISPATCHER_FILES]
         for path in self._write_dispatcher_files():
             self.events.append("dispatcher_file_rewritten", task=spec.id, attempt=attempt, path=path)
-        outside = [(s, p) for s, p in changes if not in_scope(p, spec.scope) and not in_scope(p, ALWAYS_ALLOWED)]
+        outside = self._write_scope_outside(spec, changes)
         if outside:
             self.shadow.restore(snapshot, outside)
             shown = [p for _, p in outside if not (spec.line == "impl" and p.startswith("verification/"))]

@@ -143,3 +143,15 @@ def test_worker_slots_serialize_disjoint_tasks(tmp_path, monkeypatch):
     exits = [i for i, (k, _t) in enumerate(order) if k == "worker_exit"]
     assert len(spawns) == len(exits) == 2
     assert spawns[1] > exits[0]  # the second worker waits for the single slot
+
+
+def test_write_scope_ignores_files_owned_by_another_task(tmp_path):
+    path = tmp_path / "scopes.yaml"
+    path.write_text(TEMPLATE_DISJOINT, encoding="utf-8")
+    template = load_template(path=path)
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok})
+    d.setup()
+    spec_a = d._spec("A")
+    # storage/b.json belongs to B's scope: A's window must not revert it
+    assert d._write_scope_outside(spec_a, [("??", "storage/b.json")]) == []
+    assert d._write_scope_outside(spec_a, [("??", "storage/not-owned.json")]) == [("??", "storage/not-owned.json")]
