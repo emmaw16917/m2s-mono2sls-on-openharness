@@ -1238,7 +1238,8 @@ def test_at2_template_matches_api_type(tmp_path):
 
 
 def test_at2_http_with_gateway_auth_needs_jwt_authorizer(tmp_path):
-    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "none"}, auth="required")
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "none"},
+                cognito=True, auth="required")
     t = _at_template("http")
     assert _sev(gates.check_api_type_template(ws, t)) == [("AT2", "ERROR")]
     t["Resources"]["A"]["Properties"]["Auth"] = {"DefaultAuthorizer": "J", "Authorizers": {"J": {"JwtConfiguration": {"issuer": "i", "audience": ["a"]}}}}
@@ -1274,3 +1275,31 @@ def test_ph1_perf_hints(tmp_path):
     assert gates.check_contract(_ct_ws(tmp_path, hints=ok)) == []
     bad = [{"kind": "memo", "source": "somewhere", "applies_to": ["x"]}, "str"]
     assert [f["check_id"] for f in gates.check_contract(_ct_ws(tmp_path, hints=bad))] == ["PH1"] * 4
+
+
+def test_at2_cognito_disabled_allows_in_function_auth(tmp_path):
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "none"},
+                cognito=False, auth="required")
+    assert gates.check_api_type_template(ws, _at_template("http")) == []
+
+
+def _c7b_template_with_api(default_authorizer: bool) -> dict:
+    api_props = {"StageName": "Prod"}
+    if default_authorizer:
+        api_props["Auth"] = {"DefaultAuthorizer": "J", "Authorizers": {"J": {"JwtConfiguration": {"issuer": "i", "audience": ["a"]}}}}
+    return {"Resources": {
+        "Api": {"Type": "AWS::Serverless::HttpApi", "Properties": api_props},
+        "PublicFunction": {"Type": "AWS::Serverless::Function", "Properties": {"Events": {
+            "E": {"Type": "HttpApi", "Properties": {"ApiId": "Api", "Path": "/public", "Method": "GET"}}}}},
+    }}
+
+
+def test_c7b_skipped_without_default_authorizer(tmp_path):
+    _write_blueprint_only(tmp_path, _public_endpoint_blueprint("none"))
+    assert gates.check_c7b(tmp_path, _c7b_template_with_api(default_authorizer=False)) == []
+
+
+def test_c7b_still_requires_override_with_default_authorizer(tmp_path):
+    _write_blueprint_only(tmp_path, _public_endpoint_blueprint("none"))
+    findings = gates.check_c7b(tmp_path, _c7b_template_with_api(default_authorizer=True))
+    assert [f["check_id"] for f in findings] == ["C7b"]

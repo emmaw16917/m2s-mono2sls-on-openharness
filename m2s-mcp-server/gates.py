@@ -514,10 +514,15 @@ def check_api_type_template(workspace: Path, template: dict[str, Any]) -> list[d
             findings.append(_finding("AT2", "ERROR", f"{lid}: event Type {etype} but blueprint api_type is 'rest'.", lid))
     if t == "http":
         try:
-            fns = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8")).get("lambda_functions") or []
+            _bp = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError, AttributeError):
-            fns = []
-        if any(isinstance(f, dict) and f.get("auth") == "required" for f in fns):
+            _bp = {}
+        fns = _bp.get("lambda_functions") or []
+        # A monolith that manages its own session declares cognito.enabled=false
+        # and authorizer "None": there is deliberately no gateway authorizer, so
+        # auth="required" functions must not trigger the JWT-default check.
+        cognito_disabled = (_bp.get("cognito") or {}).get("enabled") is False
+        if not cognito_disabled and any(isinstance(f, dict) and f.get("auth") == "required" for f in fns):
             for lid, r in res.items():
                 if not isinstance(r, dict) or r.get("Type") != "AWS::Serverless::HttpApi":
                     continue
@@ -1123,6 +1128,20 @@ def check_c7b(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]
             blueprint_auth[key] = (fn.get("name", ""), auth)
 
     resources = template.get("Resources", {}) or {}
+    # Without a DefaultAuthorizer, `Auth: Authorizer: NONE` is illegal in SAM
+    # (E0001). An app that deliberately has no gateway authorizer
+    # (cognito.enabled=false, in-function session checks) must not be asked for
+    # the override; C7b only applies to APIs that do have one.
+    has_default = False
+    api_resources = [r for r in resources.values()
+                     if isinstance(r, dict) and r.get("Type") in ("AWS::Serverless::HttpApi", "AWS::Serverless::Api")]
+    for resource in api_resources:
+        auth = (resource.get("Properties", {}) or {}).get("Auth") or {}
+        if isinstance(auth, dict) and auth.get("DefaultAuthorizer"):
+            has_default = True
+            break
+    if api_resources and not has_default:
+        return []
     for logical_name, resource in resources.items():
         if not isinstance(resource, dict) or resource.get("Type") != "AWS::Serverless::Function":
             continue
