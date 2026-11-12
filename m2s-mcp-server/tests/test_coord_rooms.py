@@ -68,3 +68,12 @@ def test_spec_room_turns_and_ruling(tmp_path, monkeypatch):
     assert entry["issue_id"] == "R-ROOM"
     assert rooms.load(d.coord, "spec-test")["status"] == "closed"
     assert any(e["type"] == "room_end" and e.get("room") == "spec-test" for e in d.events.all())
+
+
+def test_proposer_outside_regular_roles_can_speak(tmp_path):
+    from coord import notices
+
+    rooms.open_spec_room(tmp_path / "coord", "spec-x", "m2s-code-developer", "which body?",
+                        proposer_task="S2-ops")
+    notices.post_room(tmp_path, "m2s-code-developer", "spec-x", "spec", "my issue", mirror=False)
+    assert notices.read_room(tmp_path, "m2s-code-developer", "spec-x", "spec")[-1]["sender_role"] == "m2s-code-developer"

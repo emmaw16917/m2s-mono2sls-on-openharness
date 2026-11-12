@@ -157,22 +157,28 @@ def room_path(ws: Path | str, room_id: str) -> Path:
     return _mail_dir(ws) / "rooms" / f"{room_id}.jsonl"
 
 
-def room_allowed(kind: str, role: str) -> bool:
+def _room_state(ws: Path | str, room_id: str) -> dict[str, Any] | None:
+    try:
+        return json.loads((Path(ws).resolve() / "coord" / "rooms" / f"{room_id}.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def room_allowed(kind: str, role: str, state: dict[str, Any] | None = None) -> bool:
+    """A room's own participant list wins: the role that raised a spec issue may
+    speak in its room even when that role is not a regular reader of the topic."""
+    if isinstance(state, dict) and role in (state.get("participants") or []):
+        return True
     return role in ROOM_ROLES.get(kind, set())
 
 
 def post_room(ws: Path | str, role: str, room_id: str, kind: str, body: Any, *,
               task: str = "", mirror: bool = True) -> dict[str, Any]:
-    if not room_allowed(kind, role):
+    state = _room_state(ws, room_id)
+    if not room_allowed(kind, role, state):
         raise RelayError(f"role {role!r} is not a participant of a {kind} room")
     # §4.7: turns are dispatcher-driven; only the participant whose turn it is may post.
-    coord = os.environ.get("M2S_COORD_DIR")
-    if coord:
-        try:
-            state = json.loads((Path(coord) / "rooms" / f"{room_id}.json").read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            state = None
-        if isinstance(state, dict) and state.get("status") == "open":
+    if isinstance(state, dict) and state.get("status") == "open":
             participants = state.get("participants") or []
             turn = int(state.get("turn") or 0)
             expected = participants[turn] if turn < len(participants) else None
@@ -193,7 +199,7 @@ def post_room(ws: Path | str, role: str, room_id: str, kind: str, body: Any, *,
 
 
 def read_room(ws: Path | str, role: str, room_id: str, kind: str) -> list[dict[str, Any]]:
-    if not room_allowed(kind, role):
+    if not room_allowed(kind, role, _room_state(ws, room_id)):
         raise RelayError(f"role {role!r} is not a participant of a {kind} room")
     return _read(room_path(ws, room_id))
 
