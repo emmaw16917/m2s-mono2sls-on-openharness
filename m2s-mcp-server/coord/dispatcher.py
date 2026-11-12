@@ -1013,7 +1013,10 @@ class Dispatcher:
             return
         spec = TaskSpec(id=gate_id, runner="dispatcher", action="human")
         self.board.add_task(spec.to_json())
+        board_ids = set(self.board.tasks())
         for task in blocks:
+            if task not in board_ids:
+                continue  # a split family or something not created yet
             self.board.add_dep(task, gate_id)
         self._escalate(gate_id, question)
 
@@ -1091,7 +1094,18 @@ class Dispatcher:
         self.cases.record(case, decision, applied)
 
     def _next_tasks(self, task_id: str) -> list[str]:
-        return [t.id for t in self.template.tasks if task_id in t.deps]
+        """The tasks that wait for task_id. A split family (I1) is not a board
+        task: its expanded children are what a gate or ruling task can block."""
+        board_ids = set(self.board.tasks())
+        out: list[str] = []
+        for spec in self.template.tasks:
+            if task_id not in spec.deps:
+                continue
+            if spec.split in ("package", "domain"):
+                out += sorted(t for t in board_ids if t.startswith(spec.id + "-") and t != spec.id)
+            elif spec.id in board_ids:
+                out.append(spec.id)
+        return out
 
     # ------------------------------------------------------------------ v1 rules
 

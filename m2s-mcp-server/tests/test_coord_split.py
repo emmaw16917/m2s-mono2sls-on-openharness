@@ -271,6 +271,10 @@ def test_domain_split_falls_back_to_the_blueprint(tmp_path):
     assert tasks["I1-alpha"]["spec"]["functions"] == ["alpha-fn"]
     assert tasks["I1-beta"]["spec"]["functions"] == ["beta-fn"]
     assert any(e["type"] == "impl_packages_fallback" for e in d.events.all())
+    # a gate or ruling task that names a split family blocks its children
+    assert d._next_tasks("A1") == ["D1", "I1-alpha", "I1-beta", "I1-shared"]
+    d._human_gate("HUMAN_family_block", "q", ["I1"])
+    assert d.board.status("HUMAN_family_block") == "needs_human"
 
 
 SHARED_AFTER_TEMPLATE = """\
