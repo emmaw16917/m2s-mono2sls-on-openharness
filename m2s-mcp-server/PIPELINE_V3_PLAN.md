@@ -657,7 +657,13 @@ v2 的 26 个任务模板（`coord/templates/v2.yaml`，v2 N5 完成）已经在
 - W4.4 完成：J3 的 `needs_ruling` 在有讨论室时开 spec 房间（proposer=J3）；门任务 `start: recheck`，每个房间回合作为它的依赖；architect 的 `record_ruling` 覆盖全部差异时门通过、被阻塞的下游放行；没有讨论室时退回原来的 architect worker（v2 N1 行为）。测试 `tests/test_coord_room_gate.py`。
 - W4.5 完成（记录口径）：spawn 事件带 `judge_version`；J6 的版本在 `judge_frozen` 事件与 `judge_manifest.json` 中。
 - W4.6 结论：已具备（见上表）。
-- 待做：W4.2（v2 的按包/按领域展开，含规则 7 的重新分组）、W4.7（AWS 实测）、W4.8（验收运行 bookstore + acmeair）。
+- W4.2 部分完成（2026-11-13）：新增 `coord/templates/v2-split.yaml`。
+  - F2 按包展开（F2-<包>），另有一个 F2-shared：`shared_after_children: true` 让它在全部子任务之后运行，用完整的 `check_provenance` 汇总校验事实库；G1/J1 等 `F2:*` 与 `F2:shared`。
+  - I1 按领域展开：新增 `split: domain`，A1 填 `storage/work_packages.json` 的 `impl_packages` 后，按「包 → 函数、目录」创建 I1-<包>，scope 用 `output/lambdas/{app}/{fn}/**`（每函数目录不重叠，可并行），另有 I1-shared 共享层；I2a 等 `I1:*` 与 `I1:shared`。A1 的 scope 加 `storage/work_packages.json`，角色说明新增"填 impl_packages"一节。若 A1 没填（或某个包缺失），`_expand_domain` 用蓝图的 `lambda_functions[].entry_points` 与工作包的 endpoints 机械补齐并记 `impl_packages_fallback` 事件——M3 遗留的 `impl_packages=null` 不再阻塞。
+  - 模板/加载器/展开的测试在 `tests/test_coord_split.py`（domain 展开、shared_after_children、v2-split 可加载）。
+  - 暂不拆 J1/D1/G2：裁判资产（`judge/cases/**` 等）与 `delta_assets`、`gap_inventory` 检查都是按整份资产设计的，拆分要先改资产命名与检查（记录为后续项）。
+  - F2 的包级子任务都写 `storage/analysis_report.json`，按 scope 冲突串行执行（事实库是单文件）；并行的收益在 I1 的按领域代码编写。
+- 待做：W4.2 的 J1/D1/G2 拆分（需要先定资产约定）、W4.7（AWS 实测）、W4.8（验收运行 bookstore + acmeair）。
 
 ### M5 对抗评审室【必做，在第一次升级 harness 时做】
 

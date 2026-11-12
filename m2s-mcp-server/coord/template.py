@@ -32,9 +32,12 @@ class TaskSpec:
     # fail (a fact base copied from an earlier run; a J3 with nothing to classify).
     start: str = "spawn"
     # v3 M2/W2.7: "package" tasks are not created at setup; they are expanded
-    # after `expand_after` closes (one task per work package). Scope may use
-    # {pkg} / {pkg_dir}; deps may use "<family>:*" for every child of a family.
-    split: str = "none"              # none | package
+    # after `expand_after` closes (one task per work package). v3 M4/W4.2 adds
+    # "domain": expand after A1 by the blueprint's impl_packages (function sets
+    # and directories) instead of the monolith-side work packages. Scope may use
+    # {pkg} / {pkg_dir}; deps may use "<family>:*" for every child of a family,
+    # and "<family>:shared" for its shared child.
+    split: str = "none"              # none | package | domain
     expand_after: tuple[str, ...] = ()
     split_shared: bool = False       # create "<id>:shared" next to the package children
     shared_scope: tuple[str, ...] = ()  # scope of that shared child (falls back to scope)
@@ -132,7 +135,7 @@ def load_template(name: str = "v1", path: Path | None = None) -> Template:
         spec = TaskSpec.from_json(raw)
         if spec.id in known:
             raise ValueError(f"{source}: duplicate task id {spec.id}")
-        if spec.split not in ("none", "package"):
+        if spec.split not in ("none", "package", "domain"):
             raise ValueError(f"{source}: {spec.id} has unknown split {spec.split!r}")
         if spec.runner == "agent" and not spec.role:
             raise ValueError(f"{source}: agent task {spec.id} has no role")
@@ -148,13 +151,13 @@ def load_template(name: str = "v1", path: Path | None = None) -> Template:
         for dep in spec.deps:
             if dep.endswith(":*"):
                 family = dep[:-2]
-                if family not in splits or splits[family].split != "package":
+                if family not in splits or splits[family].split not in ("package", "domain"):
                     raise ValueError(f"{source}: {spec.id} depends on {dep}, but {family} is not a split task")
-            elif dep.endswith(":shared") and dep[:-7] in splits and splits[dep[:-7]].split == "package":
+            elif dep.endswith(":shared") and dep[:-7] in splits and splits[dep[:-7]].split in ("package", "domain"):
                 continue  # the shared child of a split family, created at expansion
             elif dep not in known:
                 raise ValueError(f"{source}: {spec.id} depends on {dep}, which does not exist")
-            elif splits[dep].split == "package":
+            elif splits[dep].split in ("package", "domain"):
                 raise ValueError(f"{source}: {spec.id} depends on split task {dep} directly; use {dep}:*")
         for trigger in spec.expand_after:
             if trigger not in known:
