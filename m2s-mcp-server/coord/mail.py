@@ -197,8 +197,20 @@ async def _call(server: AgentMailServer, tool: str, **arguments: Any) -> Any:
 
 def call_sync(server: AgentMailServer, tool: str, **arguments: Any) -> Any:
     import asyncio
+    import concurrent.futures
 
-    return asyncio.run(_call(server, tool, **arguments))
+    def run() -> Any:
+        return asyncio.run(_call(server, tool, **arguments))
+
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return run()
+    # v3 M3: m2s-server runs its sync tools on the event loop thread, and the
+    # room/notice tools mirror from there. asyncio.run inside that loop raises
+    # (and the mirror used to fail silently); give the call its own thread.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(run).result(timeout=60)
 
 
 def ensure_project(server: AgentMailServer, ws: Path | str) -> None:

@@ -231,5 +231,20 @@ def mirror_message(ws: Path | str, thread_id: str, subject: str, body: str, role
                            subject=subject[:200], body_md=body[:20000], thread_id=thread_id,
                            auto_contact_if_blocked=False)
         return True
-    except Exception:
+    except Exception as exc:
+        _record_mirror_error(ws, exc)
         return False
+
+
+def _record_mirror_error(ws: Path | str, exc: BaseException) -> None:
+    """A failed mirror must be visible: the Web UI silently missing a thread is
+    an acceptance failure, not a no-op (v3 M3/W3.7)."""
+    try:
+        path = _mail_dir(ws) / "mirror_errors.jsonl"
+        entry = {"ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                 "error": f"{type(exc).__name__}: {exc}"[:2000]}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass

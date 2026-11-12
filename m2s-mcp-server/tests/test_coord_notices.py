@@ -61,6 +61,25 @@ def test_rooms_are_for_participants_only(tmp_path):
                           "see verification/events/x.json", mirror=False)
 
 
+def test_call_sync_works_from_a_running_event_loop(monkeypatch):
+    """m2s-server runs its sync tools on the event loop thread and mirrors from
+    there; asyncio.run inside that loop raises, and the mirror failed silently
+    (v3 M3/W3.7). The call must get its own loop."""
+    import asyncio
+
+    from coord import mail
+
+    async def fake_call(server, tool, **arguments):
+        return {"tool": tool, "args": arguments}
+
+    monkeypatch.setattr(mail, "_call", fake_call)
+
+    async def main():
+        return mail.call_sync(object(), "ping", x=1)
+
+    assert asyncio.run(main()) == {"tool": "ping", "args": {"x": 1}}
+
+
 def test_record_ruling_v1_writes_spec_resolutions(tmp_path, monkeypatch):
     ws = tmp_path / "ws"
     (ws / "storage").mkdir(parents=True)
