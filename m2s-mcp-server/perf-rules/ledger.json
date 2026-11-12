@@ -793,6 +793,133 @@
         "pending": 0,
         "kept": 0
       }
+    },
+    {
+      "app": "acmeair",
+      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\acmeair-m3-split",
+      "recorded_at": "2026-11-12T22:15:11",
+      "confidence": "normal",
+      "rules": {
+        "R1": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R2": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R3": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R4": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R1b": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R5": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R6": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R8": {
+          "hits": 1,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 1,
+          "fix_attempted": 1,
+          "reviewed": 0
+        }
+      },
+      "spec_relaxations": {
+        "requested": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "pending": 0,
+        "kept": 0
+      }
     }
   ],
   "candidate_rules": [
@@ -813,6 +940,15 @@
         "products-list"
       ],
       "note": "data-driven finding judged effective; promotion to a rule needs human review"
+    },
+    {
+      "app": "acmeair",
+      "change": "C2",
+      "request": "REQ-2",
+      "functions": [
+        "bookings-bookflights"
+      ],
+      "note": "data-driven finding judged effective; promotion to a rule needs human review"
     }
   ],
   "totals": {
@@ -829,7 +965,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 9
+      "apps": 10
     },
     "R2": {
       "hits": 0,
@@ -844,7 +980,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 9
+      "apps": 10
     },
     "R3": {
       "hits": 0,
@@ -859,7 +995,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 9
+      "apps": 10
     },
     "R4": {
       "hits": 4,
@@ -874,7 +1010,7 @@
       "kept_after_fix": 1,
       "fix_attempted": 1,
       "reviewed": 0,
-      "apps": 8
+      "apps": 9
     },
     "R5": {
       "hits": 7,
@@ -889,7 +1025,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 8
+      "apps": 9
     },
     "R1b": {
       "hits": 0,
@@ -904,7 +1040,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 2
+      "apps": 3
     },
     "R6": {
       "hits": 0,
@@ -919,11 +1055,11 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 2
+      "apps": 3
     },
     "R8": {
-      "hits": 0,
-      "kept": 0,
+      "hits": 1,
+      "kept": 1,
       "kept_inconclusive": 0,
       "reverted": 0,
       "pending_human": 0,
@@ -931,10 +1067,10 @@
       "blocked_by_coverage": 0,
       "pending_spec": 0,
       "spec_rejected": 0,
-      "kept_after_fix": 0,
-      "fix_attempted": 0,
+      "kept_after_fix": 1,
+      "fix_attempted": 1,
       "reviewed": 0,
-      "apps": 2
+      "apps": 3
     }
   },
   "totals_spec_relaxations": {
