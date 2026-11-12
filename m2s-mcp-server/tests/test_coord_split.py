@@ -326,6 +326,17 @@ def test_shared_child_waits_for_the_package_children(tmp_path):
     assert {"F2-alpha", "F2-beta", "F2-gamma"} <= board_deps("F2-shared")
     assert {"F2-alpha", "F2-beta", "F2-gamma", "F2-shared"} <= board_deps("G1")
 
+    # J3/J4 fact corrections route to the child that owns the endpoint; an
+    # endpoint no package owns goes to the shared child.
+    targets = d._fact_targets([
+        {"endpoint": "GET /alpha/thing0"},
+        {"request": {"method": "GET", "path": "/beta/thing1"}},
+        {"fact_refs": ["GET /gamma/thing2#responses[0]"]},
+        {"endpoint": "GET /unknown"},
+    ])
+    assert sorted(targets) == ["F2-alpha", "F2-beta", "F2-gamma", "F2-shared"]
+    assert targets["F2-alpha"][0]["endpoint"] == "GET /alpha/thing0"
+
 
 def _run_split_ws(tmp_path):
     template_path = tmp_path / "split.yaml"

@@ -1667,23 +1667,25 @@ class Dispatcher:
         j1 = self._task_by(mode="J1", upstream_of=j3)
         j2 = self._task_by(action="run_monolith", upstream_of=j3)
         f2 = self._task_by(role="m2s-spec-annotator", upstream_of=j1) if j1 else None
+        fact_targets = {f2: groups["fact_error"]} if f2 else self._fact_targets(groups["fact_error"])
         keys = ("id", "case", "step", "request", "check", "predicted", "actual", "fact_refs", "reason", "fact_ref", "fix")
 
         def show(items: list[dict[str, Any]]) -> str:
             return _clip(json.dumps([{k: d[k] for k in keys if d.get(k) is not None} for d in items], ensure_ascii=False, indent=1))
 
         unrouted: list[dict[str, Any]] = []
-        if groups["fact_error"] and f2:
-            self._request_rework(f2, "规格对账（J3）发现事实库和单体的实际行为不一致（判为事实错误）。按单体代码核实，用 "
-                                 "annotate_entry_point 修正下面这些事实（每条都要有出处），不要改动无关的事实；改完 "
-                                 "check_provenance 必须 PASS。`predicted` 是按事实库推出的预期，`actual` 是单体的实际输出：\n"
-                                 + show(groups["fact_error"]), reason="reconcile", by=j3)
+        if groups["fact_error"] and fact_targets:
+            for target, items in fact_targets.items():
+                self._request_rework(target, "规格对账（J3）发现事实库和单体的实际行为不一致（判为事实错误）。按单体代码核实，用 "
+                                     "annotate_entry_point 修正下面这些事实（每条都要有出处），不要改动无关的事实；改完 "
+                                     "check_provenance 必须 PASS。`predicted` 是按事实库推出的预期，`actual` 是单体的实际输出：\n"
+                                     + show(items), reason="reconcile", by=j3)
         else:
             unrouted += groups["fact_error"]
 
         def parts(fact: list[dict[str, Any]], case: list[dict[str, Any]]) -> list[str]:
             out = []
-            if fact and f2:
+            if fact and fact_targets:
                 out.append("事实库已按下面这些差异修正。只更新这些用例的 predicted，使它符合修正后的事实库（重新读事实库），"
                            "不改请求：\n" + show(fact))
             if case:
@@ -1718,6 +1720,47 @@ class Dispatcher:
             self._human_gate("HUMAN_RECONCILE", "规格对账的这些差异在模板里没有可以退回的任务：" + show(unrouted), blocks)
         self.log(f"{j3}: reconcile round {rnd}: " + ", ".join(f"{k} {len(v)}" for k, v in groups.items() if v))
 
+    def _fact_targets(self, items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+        """The annotator task(s) that own these fact corrections (v3 M4/W4.2).
+        In a split template the family (e.g. F2) is not a board task, so each
+        difference is routed to the package child that owns its endpoint; a
+        difference that maps to no package goes to the shared child."""
+        families = [t.id for t in self.template.tasks
+                    if t.role == "m2s-spec-annotator" and t.split in ("package", "domain")]
+        if not families:
+            return {}
+        family = families[-1]
+        tasks = self.board.tasks()
+        children = sorted(t for t in tasks if t.startswith(family + "-") and t != family)
+        if not children:
+            return {}
+        plan = _read_json(self.ws / "storage" / "work_packages.json") or {}
+        owner: dict[str, str] = {}
+        for package in plan.get("packages") or []:
+            child = f"{family}-{package.get('id')}"
+            if child not in children:
+                continue
+            for e in package.get("endpoints") or []:
+                owner[f"{e.get('method')} {e.get('path')}"] = child
+        shared = f"{family}-shared"
+        out: dict[str, list[dict[str, Any]]] = {}
+        for d in items:
+            endpoint = str(d.get("endpoint") or "").strip()
+            if not endpoint:
+                request = d.get("request") or {}
+                endpoint = f"{request.get('method', '')} {request.get('path', '')}".strip()
+            target = owner.get(endpoint)
+            if not target:
+                for ref in d.get("fact_refs") or []:
+                    target = owner.get(str(ref).split("#")[0].strip())
+                    if target:
+                        break
+            if target is None and shared in children:
+                target = shared
+            if target:
+                out.setdefault(target, []).append(d)
+        return out
+
     def _after_j4(self, j4: str) -> None:
         """J4 added white-box cases (§4.10): rules the code has and the facts lack
         (judge/spec_issues.json, status open) go to F2, which puts them into the fact
@@ -1732,14 +1775,16 @@ class Dispatcher:
             if isinstance(issues, list) else []
         j2 = self._task_by(action="run_monolith", upstream_of=j4)
         f2 = self._task_by(role="m2s-spec-annotator", upstream_of=j4)
+        targets = {f2: fresh} if f2 else self._fact_targets(fresh)
         if fresh:
-            if f2:
-                self.events.append("spec_issues_routed", task=j4, to=f2, ids=[i["id"] for i in fresh])
-                self._request_rework(f2, "白盒补测（J4）在单体代码里发现了事实库没有、或者写错了的规则（judge/spec_issues.json）。"
-                                     "按代码核实，用 annotate_entry_point 补进或修正事实库（每条都带出处），不要改动无关的事实；"
-                                     "改完 check_provenance 必须 PASS：\n" + _clip(json.dumps(fresh, ensure_ascii=False, indent=1)),
-                                     reason="spec_issues_j4", by=j4)
-                self.log(f"{j4}: {len(fresh)} spec issues -> {f2}")
+            if targets:
+                self.events.append("spec_issues_routed", task=j4, to=sorted(targets), ids=[i["id"] for i in fresh])
+                for target, items in targets.items():
+                    self._request_rework(target, "白盒补测（J4）在单体代码里发现了事实库没有、或者写错了的规则（judge/spec_issues.json）。"
+                                         "按代码核实，用 annotate_entry_point 补进或修正事实库（每条都带出处），不要改动无关的事实；"
+                                         "改完 check_provenance 必须 PASS：\n" + _clip(json.dumps(items, ensure_ascii=False, indent=1)),
+                                         reason="spec_issues_j4", by=j4)
+                self.log(f"{j4}: {len(fresh)} spec issues -> {sorted(targets)}")
                 return  # F2's rework makes everything after it stale, J2 included
             self._human_gate("HUMAN_SPEC_ISSUES_J4", f"J4 报了 {len(fresh)} 条规格问题，模板里没有 annotator 任务可以退回："
                              + json.dumps([i.get("id") for i in fresh], ensure_ascii=False), self._next_tasks(j4))
