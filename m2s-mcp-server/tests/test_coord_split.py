@@ -206,3 +206,11 @@ def test_upstream_reopened_uses_the_event_log(tmp_path):
     assert d._upstream_reopened("S3") == []
     d.events.append("round_start", task="S2-alpha", cause="rework", mode="rerun", by="test")
     assert d._upstream_reopened("S3") == ["S2-alpha"]
+
+
+def test_route_target_picks_the_package_child_by_function(tmp_path):
+    """v3 M2: V2 failures route to "code"; with work packages the role names
+    the split family, so the routing entry's function picks its child."""
+    d = _run_split_ws(tmp_path)
+    assert d._route_target("code", "S3", "beta-fn") == "S2-beta"
+    assert d._route_target("code", "S3") is None  # no function, no target

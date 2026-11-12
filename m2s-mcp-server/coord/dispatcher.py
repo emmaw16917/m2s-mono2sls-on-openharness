@@ -1239,14 +1239,27 @@ class Dispatcher:
         proposer = state.get("proposer_task") or ""
         if state.get("kind") == "triage":
             module = rooms.triage_consensus(entries)
+            board_ids = set(self.board.tasks())
+            template_ids = {t.id for t in self.template.tasks}
             target = None
-            if module:
-                if module in {t.id for t in self.template.tasks}:
-                    target = module
+            if module and (module in template_ids or module in board_ids):
+                target = module
+            elif module:
+                role = ROUTE_ROLES.get(module) or (module if module in ROUTE_ROLES.values() else None)
+                target = next((t.id for t in reversed(self.template.tasks) if t.role == role), None)
+            if target in template_ids and self.template.get(target).split == "package":
+                # The room named a module whose work is split; the discussion
+                # did not name one package, so every package is reopened.
+                children = sorted(t for t in board_ids if t.startswith(target + "-"))
+                for child in children:
+                    self._request_rework(child, f"分诊讨论室的结论是 {module}；按讨论串修正。",
+                                         reason="triage", by=room_id)
+                if children:
+                    self.log(f"room {room_id}: consensus {module} -> {children}")
                 else:
-                    role = ROUTE_ROLES.get(module)
-                    target = next((t.id for t in reversed(self.template.tasks) if t.role == role), None)
-            if target:
+                    self._open_case("triage", proposer or "V2", f"分诊讨论室 {room_id} 的结论 {module} 没有对应的任务",
+                                    {"讨论串": json.dumps(entries, ensure_ascii=False, indent=1)})
+            elif target:
                 self._request_rework(target, f"分诊讨论室的结论是 {module}；按讨论串修正。", reason="triage", by=room_id)
                 self.log(f"room {room_id}: consensus {module} -> {target}")
             else:
@@ -1295,15 +1308,34 @@ class Dispatcher:
             self.events.append("spec_issues_carried", task="V1", issues=ids)
             self.log(f"V1: {len(ids)} non-blocking spec issues stay open; they go into the final report")
 
-    def _route_target(self, kind: Any, task_id: str) -> str | None:
+    def _route_target(self, kind: Any, task_id: str, function: str | None = None) -> str | None:
         """The nearest earlier task that fixes what a verification failure points at:
-        code, template, spec / blueprint by role; assets (the delta tests) is D1."""
+        code, template, spec / blueprint by role; assets (the delta tests) is D1.
+        v3 M2: with work packages the role resolves to a split family, which is
+        not a task; the routing entry's function picks its package child."""
         earlier = [t for t in self.template.tasks if t.id in self.template.upstream(task_id) and t.id != task_id]
         if kind == "assets":
             found = [t.id for t in earlier if t.mode == "D1"]
         else:
             found = [t.id for t in earlier if kind in ROUTE_ROLES and t.role == ROUTE_ROLES[kind]]
-        return found[-1] if found else None
+        if found:
+            return found[-1]
+        role = ROUTE_ROLES.get(kind) if isinstance(kind, str) else None
+        if role and function:
+            return self._package_child(role, function)
+        return None
+
+    def _package_child(self, role: str, function: str) -> str | None:
+        """The expanded child of the package family for `role` whose functions
+        include `function` (v3 M2/W2.7)."""
+        families = [t.id for t in self.template.tasks if t.role == role and t.split == "package"]
+        if not families:
+            return None
+        for tid, info in self.board.tasks().items():
+            functions = (info.get("spec") or {}).get("functions") or []
+            if function in functions and any(tid.startswith(f + "-") for f in families):
+                return tid
+        return None
 
     def _flow_failed(self, spec: TaskSpec, results: list[CheckResult]) -> bool:
         """The verifier's acceptance failed (v1 V2, v2 V3): its report's routing says
@@ -1315,7 +1347,7 @@ class Dispatcher:
         routing = [r for r in report.get("routing") or [] if isinstance(r, dict)]
         if not routing:
             return False
-        if any(self._route_target(r.get("to"), spec.id) is None for r in routing):
+        if any(self._route_target(r.get("to"), spec.id, r.get("function")) is None for r in routing):
             self.board.report_gate(spec.id, False)
             if self._rooms_enabled():
                 unknown = [str(r.get("to")) for r in routing]
@@ -1334,7 +1366,7 @@ class Dispatcher:
             return True
         targets: dict[str, list[dict[str, Any]]] = {}
         for entry in routing:
-            targets.setdefault(self._route_target(entry["to"], spec.id), []).append(entry)
+            targets.setdefault(self._route_target(entry["to"], spec.id, entry.get("function")), []).append(entry)
         over = [t for t in targets if not self._rework_budget_ok(t)]
         if over:
             self.board.report_gate(spec.id, False)
