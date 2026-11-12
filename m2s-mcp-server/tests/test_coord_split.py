@@ -197,3 +197,12 @@ def test_upstream_open_sees_a_reopened_child(tmp_path):
     d.board.set_status("S2-alpha", "stale")
     d.board.set_status("S2-alpha", "open")
     assert "S2-alpha" in d._upstream_open("S3")
+
+
+def test_upstream_reopened_uses_the_event_log(tmp_path):
+    """The upstream may be closed again by the time the dispatcher restarts;
+    the round_start event after the downstream task's spawn still proves it."""
+    d = _run_split_ws(tmp_path)
+    assert d._upstream_reopened("S3") == []
+    d.events.append("round_start", task="S2-alpha", cause="rework", mode="rerun", by="test")
+    assert d._upstream_reopened("S3") == ["S2-alpha"]

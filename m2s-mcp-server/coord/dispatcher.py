@@ -318,7 +318,7 @@ class Dispatcher:
             if status in ("in_progress", "checking"):
                 # A rework that happened under an older dispatcher may not have
                 # cancelled this task; its worker is working on the old upstream.
-                upstream = self._upstream_open(task_id)
+                upstream = sorted(set(self._upstream_open(task_id)) | set(self._upstream_reopened(task_id)))
                 if upstream:
                     self._cancel_for_upstream(task_id, upstream)
                     continue
@@ -763,10 +763,10 @@ class Dispatcher:
         return out
 
     def _upstream_open(self, task_id: str) -> list[str]:
-        """Upstream tasks that are not closed (v3 M3). While the dispatcher runs
-        this cannot happen: a rework marks running downstream tasks cancelled.
-        It can after a restart, when the rework happened under an older
-        dispatcher; _reconcile then sends the task back."""
+        """Upstream tasks that are not closed right now (v3 M3). While the
+        dispatcher runs this cannot happen: a rework marks running downstream
+        tasks cancelled. It can after a restart, when the rework happened under
+        an older dispatcher; _reconcile then sends the task back."""
         statuses = {t: info["status"] for t, info in self.board.tasks().items()}
         seen = {task_id}
         frontier = [task_id]
@@ -783,6 +783,40 @@ class Dispatcher:
                 seen.add(dep)
                 frontier.append(dep)
                 if statuses.get(dep, "closed") != "closed":
+                    found.append(dep)
+        return found
+
+    def _upstream_reopened(self, task_id: str) -> list[str]:
+        """Upstream tasks reopened after task_id last started (v3 M3).
+
+        The status check in _upstream_open misses the case where the upstream
+        was reopened and closed again while the dispatcher was down: the state
+        is consistent again, but the downstream task still runs on the previous
+        upstream. The event log keeps the evidence -- a round_start for an
+        upstream with a later sequence than this task's spawn.
+        """
+        spawn = self.events.last(task_id, "spawn")
+        if not spawn:
+            return []
+        reopened = {event["task"] for event in self.events.all()
+                    if event["type"] == "round_start" and event.get("seq", 0) > spawn["seq"]}
+        if not reopened:
+            return []
+        seen = {task_id}
+        frontier = [task_id]
+        found: list[str] = []
+        while frontier:
+            current = frontier.pop(0)
+            try:
+                deps = self.board.dependencies(current)
+            except KeyError:
+                continue
+            for dep in deps:
+                if dep in seen:
+                    continue
+                seen.add(dep)
+                frontier.append(dep)
+                if dep in reopened:
                     found.append(dep)
         return found
 
