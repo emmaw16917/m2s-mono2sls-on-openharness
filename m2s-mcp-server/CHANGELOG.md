@@ -1153,3 +1153,20 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **W3.4 分诊讨论室**：verifier + 嫌疑模块角色；归因一致时退回对应任务，不一致交处理者。
 - **W3.5 v1 裁定**：`record_ruling` 在 v1 模板写 `blueprint.metadata.spec_resolutions`，并发 ruling 公告。
 - **W3.6 泄漏测试**：`tests/test_coord_leak.py`、`tests/test_coord_notices.py`；全量 490 通过（含 M3 新测试），1 个 Node 用例在补齐 `verify-tools/node_modules` 后通过。
+
+## v3 M2 W2.10：工作包并行的对照运行（2026-11-11/12，`bookstore-m2`、`acmeair-m2-serial`）
+
+- **bookstore-m2**（`v1-split`，3 worker）：FINAL 111/111 PASS；墙钟 8.2 h、worker 并发峰值 2、worker 墙钟合计 7.9 h。M1 串行基线 bookstore-v3a（`v1`）：墙钟 14.9 h、worker 合计 7.9 h（峰值 1）——同样的 worker 工作量，墙钟 55%。
+- **acmeair-m2-serial**（`v1`，1 worker）：FINAL PASS；墙钟 17.1 h、worker 合计 8.9 h。
+- **acmeair-m3-split**（`v1-split` + 讨论室，3 worker）：FINAL PASS；墙钟 27.4 h、worker 合计 32.0 h（峰值 3）、37 个动过的任务（含 14 个展开子任务）。墙钟包含模型 403 中断、按裁定的回炉与重跑、两次阶段复查（一次 75 分钟的人工门），不是并行变慢。
+- **并发证据**：同一时刻 3 个不同包的 worker；scope 冲突的任务自动串行；`workers` 计数锁未触发；每次尝试的 `write_scope` 全绿，无越界写入。
+- **token 统计**：`stream.jsonl` 不记录 usage，本轮 W2.10 的 token 对比未交付，以 worker 墙钟代替；补 usage 列入 M4 待办。
+
+## v3 M3 W3.7：acmeair 分割运行、讨论室与 Web UI（2026-11-12，`acmeair-m3-split`）
+
+- **运行**：FINAL PASS（gate(final) + validate_full 136/136）；V2 PASS 136/136（新增装载臂 B 的 2 条用例 + 2 个故障场景，既有 133 条未改）；S5 两个改动判 kept 并单独提交；v0 由 TAG_V0 从 `bf54e47` 移到 `ae6c24d`。
+- **讨论室**：两个规格讨论室共 16 个回合（spec-16250 纯数字正文比较；spec-70814 loader 防重入闸门 / 0 客户臂）。architect 用 `record_ruling` 写入 blueprint（SI-26/27，S1 回炉后 SI-28），调度器据裁定回炉 S0-ops / S1 / S2-ops，无主 Agent 转发。分诊讨论室本轮未触发（由单测覆盖）。
+- **人工节点**：第一次阶段复查把 5 件事交人；人的决定记录为 R-human-1/2/3（装载臂 B：零写入仍 200；5 项 migration-change 偏离全部确认；T-1/T-2 接受为过渡形态）与两条 open issue（impl_packages、工具改动排期）。第二次阶段复查自动接受。
+- **泄漏**：`coord/mail/` 扫描 0 命中；`tests/test_coord_leak.py` 4 项通过。
+- **镜像修复（f7b33fb）**：W3.7 发现 agent_mail 里没有任何讨论室消息——m2s-server 在事件循环线程上调用 `mail.call_sync`，`asyncio.run` 在运行中的循环里抛错、异常被吞。`call_sync` 在已有循环时改用独立线程；镜像失败写 `coord/mail/mirror_errors.jsonl`。本次运行的 35 条消息已按工作区文件回填，`room-spec-16250` / `room-spec-70814` 与公告板线程可在 Web UI 检索。
+- **运行中修掉的编排缺陷**：3c13470（回炉动态包子任务沿看板依赖边传播）、2dbdc7c（重启后按事件日志识别“下游在旧上游上跑”）、6806a7c（V2 路由按函数定位 `S2-<包>`；分诊共识可写族名并展开）、984f9f3（`_collect` 跳过同一轮被取消的 worker）、b016fb1（`_downstream` 只走看板边，裁定可写族名）。
