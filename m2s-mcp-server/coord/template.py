@@ -115,6 +115,8 @@ class Template:
         frontier = [task_id]
         while frontier:
             for dep in self.get(frontier.pop()).deps:
+                if dep.endswith(":*") or dep.endswith(":shared"):
+                    continue  # a split family, not a task id
                 if dep not in found:
                     found.add(dep)
                     frontier.append(dep)

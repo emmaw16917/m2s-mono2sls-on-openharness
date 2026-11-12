@@ -149,3 +149,9 @@ def test_stop_after_does_not_run_dynamic_children(tmp_path):
     assert not [e for e in d.events.all() if e["type"] == "spawn"]
     # the children exist (the expansion ran) but none of them started
     assert "S0-alpha" in d.board.tasks()
+
+
+def test_upstream_ignores_split_family_deps():
+    template = load_template("v1-split")
+    assert "S3c" in template.upstream("S4")  # S2:* is a family, not a task id
+    assert "S3c" in template.upstream("FINAL")
