@@ -315,6 +315,13 @@ class Dispatcher:
         """Bring board and processes back in line after a dispatcher restart."""
         for task_id, info in self.board.tasks().items():
             status = info["status"]
+            if status in ("in_progress", "checking"):
+                # A rework that happened under an older dispatcher may not have
+                # cancelled this task; its worker is working on the old upstream.
+                upstream = self._upstream_open(task_id)
+                if upstream:
+                    self._cancel_for_upstream(task_id, upstream)
+                    continue
             spawn = self.events.last(task_id, "spawn")
             exited = self.events.last(task_id, "worker_exit")
             live_spawn = spawn and (not exited or exited["seq"] < spawn["seq"])
@@ -728,38 +735,102 @@ class Dispatcher:
         self.events.append("round_start", task=target, cause="rework", reason=reason, mode=mode, by=by)
         self._feedback(target, by, feedback)
         self.board.reopen(target)
-        self._make_stale(self.template.downstream(target), by=target)
+        self._make_stale([target], by=target)
         self.log(f"{target}: reworked ({reason}, requested by {by})")
 
-    def _make_stale(self, tasks: list[str], by: str) -> list[str]:
-        """The closed ones among `tasks`, and closed tasks downstream of them, go stale and
-        follow their on_stale rule (recheck or rerun). A downstream task that is already
-        running is cancelled first: its work was done against the previous upstream."""
-        hit: list[str] = []
-        for task in tasks:
-            for t in [task, *self.template.downstream(task)]:
-                if t in hit:
+    def _downstream(self, tasks: list[str]) -> list[str]:
+        """Every task downstream of one of `tasks`, directly or transitively, in
+        breadth-first order (v3 M3). The board has the dependency edges for the
+        expanded children ("S2:*" becomes S2-ops, S2-shared, ...), which the
+        template cannot see; without this, reworking one package child left a
+        running V2/S5 behind on the previous upstream."""
+        known = {t.id for t in self.template.tasks}
+        seen = set(tasks)
+        out: list[str] = []
+        frontier = list(tasks)
+        while frontier:
+            current = frontier.pop(0)
+            edges = list(self.template.downstream(current)) if current in known else []
+            try:
+                edges += self.board.dependents(current)
+            except KeyError:
+                pass  # not on the board (e.g. a family name)
+            for task in dict.fromkeys(edges):
+                if task not in seen:
+                    seen.add(task)
+                    out.append(task)
+                    frontier.append(task)
+        return out
+
+    def _upstream_open(self, task_id: str) -> list[str]:
+        """Upstream tasks that are not closed (v3 M3). While the dispatcher runs
+        this cannot happen: a rework marks running downstream tasks cancelled.
+        It can after a restart, when the rework happened under an older
+        dispatcher; _reconcile then sends the task back."""
+        statuses = {t: info["status"] for t, info in self.board.tasks().items()}
+        seen = {task_id}
+        frontier = [task_id]
+        found: list[str] = []
+        while frontier:
+            current = frontier.pop(0)
+            try:
+                deps = self.board.dependencies(current)
+            except KeyError:
+                continue
+            for dep in deps:
+                if dep in seen:
                     continue
-                handle = self.running.pop(t, None)
-                if handle is not None:
-                    handle.kill()
-                    lock = self.worker_locks.pop(t, None)
-                    if lock:
-                        lock.release()
-                    self.events.append("cancelled", task=t, by=by)
-                    self.events.append("round_start", task=t, cause="cancelled", mode="rerun", by=by)
-                    status = self.board.status(t)
-                    if status == "checking":
-                        self.board.set_status(t, "rework")
-                    elif status in ("in_progress", "stale"):
-                        self.board.set_status(t, "open")
-                    # rework / open / needs_human already wait for a worker
-                    hit.append(t)
-                elif self.board.status(t) == "closed":
-                    self.board.set_status(t, "stale")
+                seen.add(dep)
+                frontier.append(dep)
+                if statuses.get(dep, "closed") != "closed":
+                    found.append(dep)
+        return found
+
+    def _cancel_for_upstream(self, task_id: str, upstream: list[str]) -> None:
+        """Send a running task back because an upstream task was reopened under it."""
+        handle = self.running.pop(task_id, None)
+        if handle is not None:
+            handle.kill()
+            lock = self.worker_locks.pop(task_id, None)
+            if lock:
+                lock.release()
+        status = self.board.status(task_id)
+        if status == "checking":
+            self.board.set_status(task_id, "rework")
+        else:
+            self.board.set_status(task_id, "open")
+        self.events.append("cancelled", task=task_id, by="reconcile", upstream=upstream)
+        self.events.append("round_start", task=task_id, cause="cancelled", mode="rerun", by="reconcile")
+        self.log(f"{task_id}: upstream reopened {upstream}; cancelled and will rerun")
+
+    def _make_stale(self, tasks: list[str], by: str) -> list[str]:
+        """The given tasks, everything downstream of them, and closed tasks
+        downstream of those go stale and follow their on_stale rule (recheck or
+        rerun). A downstream task that is already running is cancelled first:
+        its work was done against the previous upstream."""
+        orders = dict.fromkeys([*tasks, *self._downstream(tasks)])
+        hit: list[str] = []
+        for t in orders:
+            handle = self.running.pop(t, None)
+            if handle is not None:
+                handle.kill()
+                lock = self.worker_locks.pop(t, None)
+                if lock:
+                    lock.release()
+                self.events.append("cancelled", task=t, by=by)
+                self.events.append("round_start", task=t, cause="cancelled", mode="rerun", by=by)
+                status = self.board.status(t)
+                if status == "checking":
+                    self.board.set_status(t, "rework")
+                elif status in ("in_progress", "stale"):
                     self.board.set_status(t, "open")
-                    self.events.append("round_start", task=t, cause="stale", mode=self._spec(t).on_stale, by=by)
-                    hit.append(t)
+                # rework / open / needs_human already wait for a worker
+                hit.append(t)
+            elif self.board.status(t) == "closed":
+                self.board.set_status(t, "stale")
+                self.board.set_status(t, "open")
+                self.events.append("round_start", task=t, cause="stale", mode=self._spec(t).on_stale, by=by)
+                hit.append(t)
         return hit
 
     # ------------------------------------------------------------------ rulings (v2 §4.6)
@@ -2006,7 +2077,7 @@ def _rework(args: argparse.Namespace) -> int:
     dispatcher._request_rework(args.task, args.feedback or args.comment, reason="human", by="human", mode=mode)
     events.append("human_rework", task=args.task, comment=args.comment, mode=mode)
     _record_human(ws / "coord", events, args.task, f"退回（{mode}）", args.comment, args.open_issue)
-    reopened = [t for t in dispatcher.template.downstream(args.task) if dispatcher.board.status(t) == "open"]
+    reopened = [t for t in dispatcher._downstream([args.task]) if dispatcher.board.status(t) == "open"]
     print(f"{args.task}: sent back ({mode}); open downstream: {reopened}; run the dispatcher again to continue")
     return EXIT_DONE
 

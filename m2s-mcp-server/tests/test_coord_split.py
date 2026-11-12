@@ -155,3 +155,45 @@ def test_upstream_ignores_split_family_deps():
     template = load_template("v1-split")
     assert "S3c" in template.upstream("S4")  # S2:* is a family, not a task id
     assert "S3c" in template.upstream("FINAL")
+
+
+def _run_split_ws(tmp_path):
+    template_path = tmp_path / "split.yaml"
+    template_path.write_text(TEMPLATE, encoding="utf-8")
+    template = load_template(path=template_path)
+    ws = tmp_path / "ws" / "storage"
+    ws.mkdir(parents=True)
+    (ws / "analysis_report.json").write_text(json.dumps(_report()), encoding="utf-8")
+    (tmp_path / "ws" / "storage" / "blueprint.json").write_text(json.dumps({
+        "lambda_functions": [
+            {"name": "alpha-fn", "entry_points": [f"GET /alpha/thing{i}" for i in range(4)]},
+            {"name": "beta-fn", "entry_points": [f"GET /beta/thing{i}" for i in range(4)]},
+            {"name": "gamma-fn", "entry_points": [f"GET /gamma/thing{i}" for i in range(4)]},
+        ],
+    }), encoding="utf-8")
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok})
+    d.setup()
+    assert d.run() == EXIT_DONE, d.board.status("S3")
+    return d
+
+
+def test_rework_of_a_package_child_reaches_template_downstream(tmp_path):
+    """v3 M3: reworking one package child must reach S3, which waits on the
+    whole family through board edges the template calls "S2:*"."""
+    d = _run_split_ws(tmp_path)
+    assert d.board.status("S3") == "closed"
+    assert "S3" in d._downstream(["S2-alpha"])
+
+    d._request_rework("S2-alpha", "test feedback", reason="test", by="test")
+    assert d.board.status("S2-alpha") == "open"
+    assert d.board.status("S3") == "open"  # stale -> open, will recheck
+
+
+def test_upstream_open_sees_a_reopened_child(tmp_path):
+    """A task running while one of its board upstreams is no longer closed was
+    started against the previous upstream; _reconcile sends it back."""
+    d = _run_split_ws(tmp_path)
+    assert d._upstream_open("S3") == []
+    d.board.set_status("S2-alpha", "stale")
+    d.board.set_status("S2-alpha", "open")
+    assert "S2-alpha" in d._upstream_open("S3")

@@ -151,6 +151,22 @@ class TaskBoard:
     def status(self, task_id: str) -> str:
         return self.br.status(self.issue_id(task_id))
 
+    def _edge_titles(self, task_id: str, field: str) -> list[str]:
+        payload = self.br.run("show", self.issue_id(task_id), "--json").json()
+        issues = issues_of(payload)
+        if not issues:
+            return []
+        return [str(edge.get("title")) for edge in issues[0].get(field) or [] if edge.get("title")]
+
+    def dependencies(self, task_id: str) -> list[str]:
+        """Task ids that task_id directly depends on (the board knows the
+        children `_wire_deps` added for split families)."""
+        return self._edge_titles(task_id, "dependencies")
+
+    def dependents(self, task_id: str) -> list[str]:
+        """Task ids that directly depend on task_id."""
+        return self._edge_titles(task_id, "dependents")
+
     def ready(self) -> list[str]:
         if not self._ids:
             self._refresh()
