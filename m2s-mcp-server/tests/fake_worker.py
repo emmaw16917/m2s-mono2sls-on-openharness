@@ -58,6 +58,12 @@ def main() -> int:
         path.write_text(json.dumps(content, ensure_ascii=False) if not isinstance(content, str) else content, encoding="utf-8")
     for kwargs in step.get("rulings") or []:  # through the real tool, with its role check
         print(json.dumps({"type": "ruling_tool", "result": tools.record_ruling(**kwargs)}, ensure_ascii=False), flush=True)
+    for room in step.get("room_post") or []:  # through the real tool, with its role/turn check
+        from coord import notices
+
+        print(json.dumps({"type": "room_post", "result": notices.post_room(
+            ws, role, room["room_id"], room.get("kind", "spec"), room.get("body", ""), mirror=False)},
+            ensure_ascii=False), flush=True)
     submit = step.get("submit", "done")
     if submit == "done":
         tools.submit_task(f"fake {task} attempt {attempt}")

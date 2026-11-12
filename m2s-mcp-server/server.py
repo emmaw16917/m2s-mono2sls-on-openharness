@@ -9,6 +9,11 @@ Registered in OpenHarness as `m2s-server`, so tool names resolve to:
     mcp__m2s-server__annotate_entry_point
     mcp__m2s-server__annotate_shared_entry
     mcp__m2s-server__check_provenance
+    mcp__m2s-server__notice_post
+    mcp__m2s-server__notice_read
+    mcp__m2s-server__room_post
+    mcp__m2s-server__room_read
+    mcp__m2s-server__raise_spec_issue
     mcp__m2s-server__run_validate
     mcp__m2s-server__run_coverage
     mcp__m2s-server__run_equivalence
@@ -695,6 +700,110 @@ def report_blocked(reason: str, evidence: str = "", suspected_module: str = "") 
 def get_task_context() -> str:
     """Return the full instructions and feedback for your current task."""
     return json.dumps(coord_tools.safe(coord_tools.get_task_context), ensure_ascii=False)
+
+
+@mcp.tool()
+def notice_post(topic: str, body: str, subject: str = "", task: str = "") -> str:
+    """Post to the run's notice board (§4.7). m2s-server enforces who may read it.
+
+    Args:
+        topic: "artifact", "ruling", "task" or "spec-issue".
+        body: the message. Implementation-line readers must not receive test
+            asset paths or text; such a post is refused.
+        subject: short title.
+        task: the task this concerns (optional).
+
+    Returns: JSON {ok, id} or {ok: false, error}.
+    """
+    from coord import notices
+
+    role = os.environ.get("M2S_ROLE") or ""
+    try:
+        result = notices.post_notice(_workspace(), role, topic, body, subject=subject, task=task)
+    except notices.RelayError as exc:
+        return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def notice_read(topics: list[str] | None = None) -> str:
+    """Read the notice board as this role. Filtering is done by m2s-server.
+
+    Args:
+        topics: only these topics; empty: every topic this role may see.
+
+    Returns: JSON list of entries (a ruling is conclusion + basis for the
+        implementation line, never the discussion).
+    """
+    from coord import notices
+
+    role = os.environ.get("M2S_ROLE") or ""
+    return json.dumps(notices.read_notices(_workspace(), role, topics), ensure_ascii=False)
+
+
+@mcp.tool()
+def room_post(room_id: str, kind: str, body: str, task: str = "") -> str:
+    """Post one turn into a discussion room (§4.7). Only participants may post.
+
+    Args:
+        room_id: the room from your prompt (e.g. "spec-SI-1").
+        kind: "spec" or "triage".
+        body: your contribution; same relay-format rule as notice_post.
+        task: the task this concerns (optional).
+
+    Returns: JSON {ok, seq, messages} or {ok: false, error}.
+    """
+    from coord import notices
+
+    role = os.environ.get("M2S_ROLE") or ""
+    try:
+        result = notices.post_room(_workspace(), role, room_id, kind, body, task=task)
+    except notices.RelayError as exc:
+        return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def room_read(room_id: str, kind: str) -> str:
+    """Read a discussion room as one of its participants.
+
+    Returns: JSON list of messages in order.
+    """
+    from coord import notices
+
+    role = os.environ.get("M2S_ROLE") or ""
+    try:
+        return json.dumps(notices.read_room(_workspace(), role, room_id, kind), ensure_ascii=False)
+    except notices.RelayError as exc:
+        return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
+def raise_spec_issue(topic: str, options: list[str] | None = None, evidence: str = "",
+                     affected: list[str] | None = None) -> str:
+    """Open a specification discussion: a spec-issue notice plus a spec room.
+
+    Args:
+        topic: the question in one sentence.
+        options: the readings the spec allows (A, B, ...).
+        evidence: source locations / observations (no test assets if the room
+            includes the implementation line).
+        affected: tasks or endpoints the answer changes.
+
+    Returns: JSON {ok, room_id, notice_id}.
+    """
+    from coord import notices
+
+    ws = _workspace()
+    role = os.environ.get("M2S_ROLE") or ""
+    room_id = f"spec-{abs(hash(topic)) % 100000:05d}"
+    body = {"topic": topic, "options": options or [], "evidence": evidence,
+            "affected": affected or [], "room_id": room_id, "status": "open"}
+    try:
+        posted = notices.post_notice(ws, role, "spec-issue", body, subject=topic, task=os.environ.get("M2S_TASK_ID", ""))
+    except notices.RelayError as exc:
+        return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+    return json.dumps({**posted, "room_id": room_id}, ensure_ascii=False)
 
 
 @mcp.tool()

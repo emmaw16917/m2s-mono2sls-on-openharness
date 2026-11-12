@@ -570,7 +570,7 @@ agent_mail 的 build slot 只是建议性的，也不能计数，所以只用来
 - 没有越界写入；
 - 有各任务的 token 统计，可以和 M1 对比。
 
-**M2 进展（2026-11-10）**：W2.1–W2.9 已实现并测试（483 个测试通过）；W2.10 的对照运行待跑。
+**M2 进展（2026-11-10）**：W2.1–W2.9 已实现并测试（483 个测试通过）；W2.10 的对照运行见下（2026-11-12 完成）。
 - W2.1：`_extract_data_access` 从处理函数出发就跟进同文件辅助函数（最多 2 层）；A/B 对比 7 个应用，没有 script 项丢失。
 - W2.2：`data_store.detect` 的访问模式按调用链挂到接口的 `data_access`；acmeair 的 25 个接口里 17 个拿到集合（业务接口 queryflights→flight/flightSegment、bookflights→booking、customer→customer，身份接口→customerSession）。
 - W2.3：Flask 版用语法树解析，本来就从处理函数跟进同文件函数；airline-booking 的 A/B 结果无变化。
@@ -580,6 +580,13 @@ agent_mail 的 build slot 只是建议性的，也不能计数，所以只用来
 - W2.7：`coord/templates/v1-split.yaml`（S0、V1、S2 按包展开，S2 另有 `S2-shared`）+ 调度器展开（`expand_after`、`<family>:*`、`{pkg}`/`{pkg_dir}`）。Windows 路径不能含 `:`，子任务 id 用 `S2-<包>` 记录，计划文档里的 `S2:<包>` 记法仍用于说明。
 - W2.8：`coord/locks.py`（独占/计数锁、死进程与过期回收）；调度器按 scope 冲突串行、`workers` 计数锁限制跨工作区 worker 总数；`run_validate` / `run_rie_verdict` 取 `docker-rie` 槽；提交/打 tag 取 `ws-git:<ws>`。
 - W2.9：worker 的 `M2S_WORKSPACE` 由各自 `mcp.json` 注入，调度器不再切换全局设置；两个工作区并发的调度器测试通过。
+
+**M2 进展（2026-11-12 收尾，W2.10 完成）**：
+- bookstore-m2（`v1-split`，3 worker）：FINAL 111/111 PASS。墙钟 8.2 h，worker 并发峰值 2，worker 墙钟合计 7.9 h；M1 串行基线 bookstore-v3a（`v1`）墙钟 14.9 h、worker 合计 7.9 h（峰值 1）——同样的 worker 工作量，墙钟缩短到 55%。
+- acmeair-m2-serial（`v1`，1 worker）：FINAL PASS，墙钟 17.1 h，worker 合计 8.9 h。
+- acmeair-m3-split（`v1-split` + 讨论室，3 worker）：FINAL PASS，墙钟 27.4 h，worker 合计 32.0 h，并发峰值 3，动过 37 个任务（含 14 个展开子任务）；墙钟偏长来自 M3 本身更大的工作量（按包展开、两个规格讨论室、模型 403 中断、两次阶段复查与按裁定的重跑），不是并行变慢。
+- 并发证据：同一时刻最多 3 个 worker（不同包的 S0/V1/S2），scope 冲突的任务自动串行，`workers` 计数锁未触发；每次尝试的 `write_scope` 全绿，没有越界写入被判。
+- token 统计：runner 的 `stream.jsonl` 不记录 usage，W2.10 的 token 对比未交付；以 worker 墙钟合计代替。补 token 统计需要 OpenHarness 输出 usage（列入 M4 待办）。
 
 ### M3 公告板、讨论室和可见性【必做】
 
@@ -597,6 +604,21 @@ agent_mail 的 build slot 只是建议性的，也不能计数，所以只用来
 - 规格问题和分诊争议都通过讨论室解决，或者交给了处理者或人；不再需要主 Agent 转发；
 - 泄漏测试为 0；
 - 人可以在 agent_mail 的 Web UI 里看到讨论过程。
+
+**M3 进展（2026-11-10）**：W3.1–W3.6 已实现并测试（`feat/v3-m3` 分支）；W3.7 的 acmeair 运行见下（2026-11-12 完成）。
+- W3.1：`coord/mail.py` 的 `ensure_server` 复用本机 8765 端口的 agent_mail（token 存在 `D:/m2s-am/token`），`ensure_project` 按工作区建项目；调度器在 `M2S_MAIL=1` 时启动并把 URL/token/项目写进每个 worker 的 mcp.json。
+- W3.2：公告板与讨论室由 m2s-server 代理（`notice_post/read`、`room_post/read`、`raise_spec_issue`）；消息存 `coord/mail/`，并镜像到 agent_mail 供 Web UI 查看；可见性按角色执行，裁定对实现线只给结论与依据；转达格式检查拒绝带 verification 路径/原文的消息。
+- W3.3：spec 讨论室由调度器按轮次启动参与者（提出方 → architect → annotator → 提出方回应，最多 2 轮）；architect 用 `record_ruling` 写裁定后，调度器退回提出任务；没有裁定则交异常处理者。
+- W3.4：分诊讨论室（verifier + 嫌疑模块角色 + verifier 回应）；归因一致时退回对应任务，不一致交处理者。
+- W3.5：v1 模块的 `record_ruling` 写 `blueprint.metadata.spec_resolutions`（v2 仍写 `rulings.json`），并公告 ruling。
+- W3.6：泄漏测试 `tests/test_coord_leak.py` 覆盖公告板/讨论室可见性、裁定过滤、房间参与者；`test_coord_notices.py` 覆盖格式拒绝与 v1 裁定。
+
+**M3 进展（2026-11-12 收尾，W3.7 完成）**：
+- acmeair-m3-split：两个规格讨论室共 16 个回合。spec-16250（纯数字正文逐字符比较）与 spec-70814（loader 防重入闸门 / 0 客户臂）都由 architect 用 `record_ruling` 写入 blueprint（SI-26、SI-27；S1 回炉后新增 SI-28），调度器据裁定回炉 S0-ops / S1 / S2-ops；没有主 Agent 转发。分诊讨论室（W3.4）本轮没有触发（V2 没有判断不了的失败），由单测覆盖。
+- 泄漏：运行后扫描 `coord/mail/`（公告板 + 两个讨论室）为 0；`tests/test_coord_leak.py` 4 项通过。
+- Web UI：发现镜像静默失败——m2s-server 在事件循环线程上调用 `mail.call_sync`，`asyncio.run` 在运行中的循环里抛错且异常被吞，agent_mail 里一条讨论室消息都没有。已修：`call_sync` 在已有事件循环时改用独立线程；失败写 `coord/mail/mirror_errors.jsonl`。本运行的 35 条消息已用工作区文件回填，`room-spec-16250` / `room-spec-70814` 与公告板线程可在 agent_mail（Web UI）中检索到。
+- 人工节点：第一次阶段复查把 5 件事交人（装载臂 A/B/C、5 项 migration-change 偏离、T-1/T-2 工具盲区、两件机械欠账）。人的决定：装载臂选 B（零写入仍 200）、5 项偏离全部确认、接受 T-1/T-2 过渡形态（工具改动排期 M4）、两件欠账接受并记录——记录为 R-human-1/2/3 与两条 open issue；第二次阶段复查自动接受，进入 S5。
+- 本轮发现并修掉的编排缺陷（`feat/v3-m3`）：3c13470 回炉动态包子任务要沿看板依赖边传播；2dbdc7c 重启后按事件日志识别“下游在旧上游上跑”；6806a7c V2 路由按函数定位到 `S2-<包>`；984f9f3 `_collect` 跳过同一轮被取消的 worker；b016fb1 `_downstream` 只走看板边且裁定可写族名；f7b33fb 镜像修复（事件循环线程 + 失败可见）。
 
 ### M4 接入 v2 模块【必做，前提是 v2 模块已经实现】
 

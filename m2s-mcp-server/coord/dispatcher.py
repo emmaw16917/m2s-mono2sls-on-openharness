@@ -42,7 +42,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
-from coord import harness, rulings
+from coord import harness, notices, rooms, rulings
 from coord.board import TaskBoard
 from coord.checks import CHECKS, CheckResult, ToolGuard, _clip, _read_json
 from coord.events import EventLog
@@ -235,10 +235,28 @@ class Dispatcher:
         self.locks = locks or Locks()
         self.worker_slots = int(os.environ.get("M2S_WORKER_SLOTS", "3"))
         self.worker_locks: dict[str, LockHandle] = {}
+        self.mail_env: dict[str, str] = {}  # M3: set in setup when M2S_MAIL is enabled
+        self._scope_wait_logged: set[str] = set()
 
     # ------------------------------------------------------------------ setup / resume
 
+    def _ensure_mail(self) -> None:
+        if self.mail_env or os.environ.get("M2S_MAIL", "").lower() not in ("1", "true", "yes"):
+            return
+        from coord import mail
+
+        try:
+            server = mail.ensure_server()
+            mail.ensure_project(server, self.ws)
+            self.mail_env = mail.mail_env(server, self.ws)
+            self.events.append("mail_start", url=server.url)
+            self.log(f"mail: {server.url}")
+        except Exception as exc:  # messaging must never stop the pipeline
+            self.events.append("mail_error", error=f"{type(exc).__name__}: {exc}")
+            self.log(f"mail unavailable: {exc}")
+
     def setup(self) -> None:
+        self._ensure_mail()
         if not self.board.exists():
             if self.monolith is None:
                 raise ValueError("a new run needs --monolith")
@@ -297,6 +315,13 @@ class Dispatcher:
         """Bring board and processes back in line after a dispatcher restart."""
         for task_id, info in self.board.tasks().items():
             status = info["status"]
+            if status in ("in_progress", "checking"):
+                # A rework that happened under an older dispatcher may not have
+                # cancelled this task; its worker is working on the old upstream.
+                upstream = sorted(set(self._upstream_open(task_id)) | set(self._upstream_reopened(task_id)))
+                if upstream:
+                    self._cancel_for_upstream(task_id, upstream)
+                    continue
             spawn = self.events.last(task_id, "spawn")
             exited = self.events.last(task_id, "worker_exit")
             live_spawn = spawn and (not exited or exited["seq"] < spawn["seq"])
@@ -388,11 +413,12 @@ class Dispatcher:
 
     def _start_ready(self) -> int:
         self.waiting = False
+        self._ensure_room_turns()
         if self._paused() or self._busy_workers() >= self.max_workers:
             return 0
         started = 0
         ready = sorted((t for t in self.board.ready() if t not in self.running and self._in_stop_set(t)),
-                       key=self.template.order)
+                       key=lambda t: (self.template.order(t), 0 if self._spec(t).extra.get("package") == "shared" else 1, t))
         held = [t for t in ready if self._backing_off(t)]
         self.waiting = bool(held)
         ready = [t for t in ready if t not in held]
@@ -405,7 +431,9 @@ class Dispatcher:
             # W2.8: two tasks whose scopes can name the same file never run together.
             if spec.runner == "agent" and any(scopes_conflict(spec.scope, other.scope)
                                               for other in [*running_specs, *chosen]):
-                self.log(f"{task_id}: waits, its scope overlaps a running task")
+                if task_id not in self._scope_wait_logged:
+                    self.log(f"{task_id}: waits, its scope overlaps a running task")
+                    self._scope_wait_logged.add(task_id)
                 self.waiting = True
                 continue
             lock = None
@@ -421,6 +449,7 @@ class Dispatcher:
                 else:
                     lock.release()  # recheck: no worker was spent
             started += 1
+            self._scope_wait_logged.discard(task_id)
             chosen.append(spec)
             if self._paused():
                 break
@@ -446,13 +475,17 @@ class Dispatcher:
 
     def _collect(self) -> None:
         for key, handle in list(self.running.items()):
+            if self.running.get(key) is not handle:
+                # A rework handled earlier in this pass cancelled it: _make_stale
+                # already killed it and took it off self.running.
+                continue
             rc = handle.poll()
             timed_out = rc is None and handle.timed_out()
             if rc is None and not timed_out:
                 continue
             if timed_out:
                 handle.kill()
-            del self.running[key]
+            self.running.pop(key, None)
             lock = self.worker_locks.pop(key, None)
             if lock:
                 lock.release()
@@ -476,6 +509,7 @@ class Dispatcher:
             scope=spec.scope, max_turns=spec.max_turns, timeout_s=spec.timeout_min * 60,
             deny_read=self.foreign_runs + closed, deny_commands=closed_cmds,
             deny_write=(str(self.ws / "judge"),) if self._judge_frozen() else (), mode=spec.mode or "",
+            pipeline=self.template.name, extra_env=self.mail_env,
         )
         self.board.claim(spec.id, job.worker_name)
         snapshot = self.shadow.snapshot(f"before {spec.id} a{attempt}")
@@ -705,38 +739,135 @@ class Dispatcher:
         self.events.append("round_start", task=target, cause="rework", reason=reason, mode=mode, by=by)
         self._feedback(target, by, feedback)
         self.board.reopen(target)
-        self._make_stale(self.template.downstream(target), by=target)
+        self._make_stale([target], by=target)
         self.log(f"{target}: reworked ({reason}, requested by {by})")
 
-    def _make_stale(self, tasks: list[str], by: str) -> list[str]:
-        """The closed ones among `tasks`, and closed tasks downstream of them, go stale and
-        follow their on_stale rule (recheck or rerun). A downstream task that is already
-        running is cancelled first: its work was done against the previous upstream."""
-        hit: list[str] = []
-        for task in tasks:
-            for t in [task, *self.template.downstream(task)]:
-                if t in hit:
+    def _downstream(self, tasks: list[str]) -> list[str]:
+        """Every board task downstream of one of `tasks`, directly or transitively,
+        in breadth-first order (v3 M3). The board has the dependency edges for the
+        expanded children ("S2:*" becomes S2-ops, S2-shared, ...); the template
+        cannot see them, and its own downstream edges name split families (V1,
+        S2) that are not tasks on the board."""
+        seen = set(tasks)
+        out: list[str] = []
+        frontier = list(tasks)
+        while frontier:
+            current = frontier.pop(0)
+            try:
+                edges = self.board.dependents(current)
+            except KeyError:
+                edges = []  # not on the board (e.g. a split family)
+            for task in dict.fromkeys(edges):
+                if task not in seen:
+                    seen.add(task)
+                    out.append(task)
+                    frontier.append(task)
+        return out
+
+    def _upstream_open(self, task_id: str) -> list[str]:
+        """Upstream tasks that are not closed right now (v3 M3). While the
+        dispatcher runs this cannot happen: a rework marks running downstream
+        tasks cancelled. It can after a restart, when the rework happened under
+        an older dispatcher; _reconcile then sends the task back."""
+        statuses = {t: info["status"] for t, info in self.board.tasks().items()}
+        seen = {task_id}
+        frontier = [task_id]
+        found: list[str] = []
+        while frontier:
+            current = frontier.pop(0)
+            try:
+                deps = self.board.dependencies(current)
+            except KeyError:
+                continue
+            for dep in deps:
+                if dep in seen:
                     continue
-                handle = self.running.pop(t, None)
-                if handle is not None:
-                    handle.kill()
-                    lock = self.worker_locks.pop(t, None)
-                    if lock:
-                        lock.release()
-                    self.events.append("cancelled", task=t, by=by)
-                    self.events.append("round_start", task=t, cause="cancelled", mode="rerun", by=by)
-                    status = self.board.status(t)
-                    if status == "checking":
-                        self.board.set_status(t, "rework")
-                    elif status in ("in_progress", "stale"):
-                        self.board.set_status(t, "open")
-                    # rework / open / needs_human already wait for a worker
-                    hit.append(t)
-                elif self.board.status(t) == "closed":
-                    self.board.set_status(t, "stale")
+                seen.add(dep)
+                frontier.append(dep)
+                if statuses.get(dep, "closed") != "closed":
+                    found.append(dep)
+        return found
+
+    def _upstream_reopened(self, task_id: str) -> list[str]:
+        """Upstream tasks reopened after task_id last started (v3 M3).
+
+        The status check in _upstream_open misses the case where the upstream
+        was reopened and closed again while the dispatcher was down: the state
+        is consistent again, but the downstream task still runs on the previous
+        upstream. The event log keeps the evidence -- a round_start for an
+        upstream with a later sequence than this task's spawn.
+        """
+        spawn = self.events.last(task_id, "spawn")
+        if not spawn:
+            return []
+        reopened = {event["task"] for event in self.events.all()
+                    if event["type"] == "round_start" and event.get("seq", 0) > spawn["seq"]}
+        if not reopened:
+            return []
+        seen = {task_id}
+        frontier = [task_id]
+        found: list[str] = []
+        while frontier:
+            current = frontier.pop(0)
+            try:
+                deps = self.board.dependencies(current)
+            except KeyError:
+                continue
+            for dep in deps:
+                if dep in seen:
+                    continue
+                seen.add(dep)
+                frontier.append(dep)
+                if dep in reopened:
+                    found.append(dep)
+        return found
+
+    def _cancel_for_upstream(self, task_id: str, upstream: list[str]) -> None:
+        """Send a running task back because an upstream task was reopened under it."""
+        handle = self.running.pop(task_id, None)
+        if handle is not None:
+            handle.kill()
+            lock = self.worker_locks.pop(task_id, None)
+            if lock:
+                lock.release()
+        status = self.board.status(task_id)
+        if status == "checking":
+            self.board.set_status(task_id, "rework")
+        else:
+            self.board.set_status(task_id, "open")
+        self.events.append("cancelled", task=task_id, by="reconcile", upstream=upstream)
+        self.events.append("round_start", task=task_id, cause="cancelled", mode="rerun", by="reconcile")
+        self.log(f"{task_id}: upstream reopened {upstream}; cancelled and will rerun")
+
+    def _make_stale(self, tasks: list[str], by: str) -> list[str]:
+        """The given tasks, everything downstream of them, and closed tasks
+        downstream of those go stale and follow their on_stale rule (recheck or
+        rerun). A downstream task that is already running is cancelled first:
+        its work was done against the previous upstream."""
+        board_ids = set(self.board.tasks())
+        orders = [t for t in dict.fromkeys([*tasks, *self._downstream(tasks)]) if t in board_ids]
+        hit: list[str] = []
+        for t in orders:
+            handle = self.running.pop(t, None)
+            if handle is not None:
+                handle.kill()
+                lock = self.worker_locks.pop(t, None)
+                if lock:
+                    lock.release()
+                self.events.append("cancelled", task=t, by=by)
+                self.events.append("round_start", task=t, cause="cancelled", mode="rerun", by=by)
+                status = self.board.status(t)
+                if status == "checking":
+                    self.board.set_status(t, "rework")
+                elif status in ("in_progress", "stale"):
                     self.board.set_status(t, "open")
-                    self.events.append("round_start", task=t, cause="stale", mode=self._spec(t).on_stale, by=by)
-                    hit.append(t)
+                # rework / open / needs_human already wait for a worker
+                hit.append(t)
+            elif self.board.status(t) == "closed":
+                self.board.set_status(t, "stale")
+                self.board.set_status(t, "open")
+                self.events.append("round_start", task=t, cause="stale", mode=self._spec(t).on_stale, by=by)
+                hit.append(t)
         return hit
 
     # ------------------------------------------------------------------ rulings (v2 §4.6)
@@ -782,7 +913,17 @@ class Dispatcher:
     def _apply_ruling(self, ruling: dict[str, Any], by: str) -> list[str]:
         """A ruling in force: the tasks it names get it as feedback; closed ones go stale."""
         known = {t.id for t in self.template.tasks}
-        targets = [t for t in ruling["affects"]["tasks"] if t in known and t != ruling.get("task")]
+        board_ids = set(self.board.tasks())
+        targets: list[str] = []
+        for task in ruling["affects"]["tasks"]:
+            if task not in known or task == ruling.get("task"):
+                continue
+            if self.template.get(task).split == "package":
+                # A ruling may name the family ("S2"); its work lives in the
+                # expanded children, which are the tasks that can rework.
+                targets += sorted(t for t in board_ids if t.startswith(task + "-"))
+            elif task in board_ids:
+                targets.append(task)
         text = (f"新的裁定 {ruling['id']}（{ruling['category']}）影响这个任务。问题：{ruling['question']}；"
                 f"结论：{ruling['conclusion']}；依据：{ruling['basis']}。见 storage/rulings.json。")
         for task in targets:
@@ -849,7 +990,8 @@ class Dispatcher:
                         system_prompt=HANDLER_SYSTEM_PROMPT,
                         prompt=handler_prompt(case.case_id, case.path, self.cases.journal, self.ws, kind),
                         scope=(), max_turns=HANDLER_MAX_TURNS, timeout_s=HANDLER_TIMEOUT_S, read_coord=True,
-                        deny_read=self.foreign_runs, deny_write=(str(self.ws / "judge"),) if self._judge_frozen() else ())
+                        deny_read=self.foreign_runs, deny_write=(str(self.ws / "judge"),) if self._judge_frozen() else (),
+                        pipeline=self.template.name, extra_env=self.mail_env)
         handle = self.launcher.start(job)
         handle.kind = "handler"
         handle.meta = {"case": case}
@@ -927,6 +1069,9 @@ class Dispatcher:
 
     def _flow_after_close(self, task_id: str) -> None:
         self._ensure_expansions()
+        if task_id.startswith("ROOM-"):
+            self._room_after_close(task_id)
+            return
         spec = self._spec(task_id)
         if spec.mode in ("J3", "J4", "J5") and self._judge_settled():
             return  # the judge is frozen: what it found was settled before it froze
@@ -1037,6 +1182,117 @@ class Dispatcher:
                     pass  # an already-present dependency
         self.events.append("deps_wired", family=family, children=children)
 
+    # ------------------------------------------------------------------ rooms (v3 M3)
+
+    def _rooms_enabled(self) -> bool:
+        return bool(self.mail_env) or os.environ.get("M2S_ROOMS", "").lower() in ("1", "true", "yes")
+
+    def _ensure_room_turns(self) -> None:
+        """Start the next turn of every open room; open rooms requested by notices."""
+        if not self._rooms_enabled():
+            return
+        room_dir = rooms.rooms_dir(self.coord)
+        if room_dir.is_dir():
+            for path in sorted(room_dir.glob("*.json")):
+                state = rooms.load(self.coord, path.stem)
+                if not state or state.get("status") != "open":
+                    continue
+                room_id = state["id"]
+                busy = [t for t, info in self.board.tasks().items()
+                        if t.startswith(f"ROOM-{room_id}-") and info["status"] != "closed"]
+                if busy:
+                    continue
+                role = rooms.next_role(state)
+                if not role:
+                    self._room_conclude(state)
+                    continue
+                turn = int(state.get("turn") or 0)
+                task_id = f"ROOM-{room_id}-{turn}-{state.get('round', 1)}"
+                scope = [f"storage/stage_reports/{task_id}.json"]
+                if state.get("kind") == "spec":
+                    # the architect writes the ruling into the fact base (v1 blueprint)
+                    scope += ["storage/blueprint.json", "storage/DECISIONS.md", "storage/analysis_report.json"]
+                spec = TaskSpec(id=task_id, role=role, mode="room", check=("room_turn",),
+                                scope=tuple(scope), max_turns=80, timeout_min=60,
+                                extra={"room_id": room_id, "room_kind": state["kind"], "room_role": role})
+                self.board.add_task(spec.to_json(), ())
+                self.events.append("room_turn", room=room_id, task=task_id, role=role)
+                self.log(f"room {room_id}: turn {turn} -> {role}")
+        # a raise_spec_issue notice opens a spec room once
+        for entry in notices.read_notices(self.ws, "dispatcher", ["spec-issue"]):
+            body = entry.get("body") or {}
+            if not isinstance(body, dict) or body.get("status") != "open":
+                continue
+            room_id = body.get("room_id")
+            if room_id and not rooms.load(self.coord, room_id):
+                rooms.open_spec_room(self.coord, room_id, entry.get("sender_role") or "m2s-verifier",
+                                     str(body.get("topic") or entry.get("subject") or ""),
+                                     proposer_task=str(entry.get("task") or ""))
+                self.events.append("room_open", room=room_id, kind="spec")
+                self.log(f"room {room_id}: opened (spec issue)")
+
+    def _room_after_close(self, task_id: str) -> None:
+        spec = self._spec(task_id)
+        room_id = spec.extra.get("room_id")
+        if not room_id:
+            return
+        state = rooms.load(self.coord, room_id)
+        if not state or state.get("status") != "open":
+            return
+        rooms.advance(self.coord, state)
+        if state.get("status") == "concluding":
+            self._room_conclude(state)
+
+    def _room_conclude(self, state: dict[str, Any]) -> None:
+        room_id = state["id"]
+        entries = rooms.messages(self.ws, room_id)
+        self.events.append("room_end", room=room_id, kind=state.get("kind"), messages=len(entries))
+        state["status"] = "closed"
+        rooms.save(self.coord, state)
+        proposer = state.get("proposer_task") or ""
+        if state.get("kind") == "triage":
+            module = rooms.triage_consensus(entries)
+            board_ids = set(self.board.tasks())
+            template_ids = {t.id for t in self.template.tasks}
+            target = None
+            if module and (module in template_ids or module in board_ids):
+                target = module
+            elif module:
+                role = ROUTE_ROLES.get(module) or (module if module in ROUTE_ROLES.values() else None)
+                target = next((t.id for t in reversed(self.template.tasks) if t.role == role), None)
+            if target in template_ids and self.template.get(target).split == "package":
+                # The room named a module whose work is split; the discussion
+                # did not name one package, so every package is reopened.
+                children = sorted(t for t in board_ids if t.startswith(target + "-"))
+                for child in children:
+                    self._request_rework(child, f"分诊讨论室的结论是 {module}；按讨论串修正。",
+                                         reason="triage", by=room_id)
+                if children:
+                    self.log(f"room {room_id}: consensus {module} -> {children}")
+                else:
+                    self._open_case("triage", proposer or "V2", f"分诊讨论室 {room_id} 的结论 {module} 没有对应的任务",
+                                    {"讨论串": json.dumps(entries, ensure_ascii=False, indent=1)})
+            elif target:
+                self._request_rework(target, f"分诊讨论室的结论是 {module}；按讨论串修正。", reason="triage", by=room_id)
+                self.log(f"room {room_id}: consensus {module} -> {target}")
+            else:
+                self._open_case("triage", proposer or "V2", f"分诊讨论室 {room_id} 没有达成一致",
+                                {"讨论串": json.dumps(entries, ensure_ascii=False, indent=1)})
+            return
+        # spec room: a ruling in blueprint.metadata.spec_resolutions settles it
+        blueprint = _read_json(self.ws / "storage" / "blueprint.json") or {}
+        rulings_written = (blueprint.get("metadata") or {}).get("spec_resolutions") or []
+        if rulings_written:
+            if proposer:
+                try:
+                    self._request_rework(proposer, f"规格讨论室 {room_id} 已给出裁定，按裁定重做。", reason="spec_room", by=room_id)
+                except Exception:
+                    pass
+            self.log(f"room {room_id}: settled by a ruling")
+        else:
+            self._open_case("triage", proposer or "V1", f"规格讨论室 {room_id} 没有写出裁定",
+                            {"讨论串": json.dumps(entries, ensure_ascii=False, indent=1)})
+
     def _after_v1(self) -> None:
         if self._active_spec_round():
             self.events.append("spec_round_done", task="V1")
@@ -1065,15 +1321,34 @@ class Dispatcher:
             self.events.append("spec_issues_carried", task="V1", issues=ids)
             self.log(f"V1: {len(ids)} non-blocking spec issues stay open; they go into the final report")
 
-    def _route_target(self, kind: Any, task_id: str) -> str | None:
+    def _route_target(self, kind: Any, task_id: str, function: str | None = None) -> str | None:
         """The nearest earlier task that fixes what a verification failure points at:
-        code, template, spec / blueprint by role; assets (the delta tests) is D1."""
+        code, template, spec / blueprint by role; assets (the delta tests) is D1.
+        v3 M2: with work packages the role resolves to a split family, which is
+        not a task; the routing entry's function picks its package child."""
         earlier = [t for t in self.template.tasks if t.id in self.template.upstream(task_id) and t.id != task_id]
         if kind == "assets":
             found = [t.id for t in earlier if t.mode == "D1"]
         else:
             found = [t.id for t in earlier if kind in ROUTE_ROLES and t.role == ROUTE_ROLES[kind]]
-        return found[-1] if found else None
+        if found:
+            return found[-1]
+        role = ROUTE_ROLES.get(kind) if isinstance(kind, str) else None
+        if role and function:
+            return self._package_child(role, function)
+        return None
+
+    def _package_child(self, role: str, function: str) -> str | None:
+        """The expanded child of the package family for `role` whose functions
+        include `function` (v3 M2/W2.7)."""
+        families = [t.id for t in self.template.tasks if t.role == role and t.split == "package"]
+        if not families:
+            return None
+        for tid, info in self.board.tasks().items():
+            functions = (info.get("spec") or {}).get("functions") or []
+            if function in functions and any(tid.startswith(f + "-") for f in families):
+                return tid
+        return None
 
     def _flow_failed(self, spec: TaskSpec, results: list[CheckResult]) -> bool:
         """The verifier's acceptance failed (v1 V2, v2 V3): its report's routing says
@@ -1085,15 +1360,26 @@ class Dispatcher:
         routing = [r for r in report.get("routing") or [] if isinstance(r, dict)]
         if not routing:
             return False
-        if any(self._route_target(r.get("to"), spec.id) is None for r in routing):
+        if any(self._route_target(r.get("to"), spec.id, r.get("function")) is None for r in routing):
             self.board.report_gate(spec.id, False)
+            if self._rooms_enabled():
+                unknown = [str(r.get("to")) for r in routing]
+                suspect = sorted({ROUTE_ROLES[t] for t in unknown if t in ROUTE_ROLES})
+                room_id = f"triage-{spec.id.lower()}-{self.events.count('room_open') + 1}"
+                rooms.open_triage_room(self.coord, room_id, f"{spec.id} 有无法归因的失败",
+                                       suspect or sorted({t.role for t in self.template.tasks if t.role}),
+                                       proposer_task=spec.id)
+                self.events.append("room_open", room=room_id, kind="triage", by=spec.id)
+                self.log(f"room {room_id}: opened (triage of {spec.id})")
+                self._wait_for_upstream(spec.id, room_id)
+                return True
             self._open_case("triage", spec.id, f"{spec.id} 的分诊里有判断不了归因的失败",
                             {f"{spec.id} 的 routing": json.dumps(routing, ensure_ascii=False, indent=1),
                              "检查结果": self._results_text(results)})
             return True
         targets: dict[str, list[dict[str, Any]]] = {}
         for entry in routing:
-            targets.setdefault(self._route_target(entry["to"], spec.id), []).append(entry)
+            targets.setdefault(self._route_target(entry["to"], spec.id, entry.get("function")), []).append(entry)
         over = [t for t in targets if not self._rework_budget_ok(t)]
         if over:
             self.board.report_gate(spec.id, False)
@@ -1870,7 +2156,7 @@ def _rework(args: argparse.Namespace) -> int:
     dispatcher._request_rework(args.task, args.feedback or args.comment, reason="human", by="human", mode=mode)
     events.append("human_rework", task=args.task, comment=args.comment, mode=mode)
     _record_human(ws / "coord", events, args.task, f"退回（{mode}）", args.comment, args.open_issue)
-    reopened = [t for t in dispatcher.template.downstream(args.task) if dispatcher.board.status(t) == "open"]
+    reopened = [t for t in dispatcher._downstream([args.task]) if dispatcher.board.status(t) == "open"]
     print(f"{args.task}: sent back ({mode}); open downstream: {reopened}; run the dispatcher again to continue")
     return EXIT_DONE
 

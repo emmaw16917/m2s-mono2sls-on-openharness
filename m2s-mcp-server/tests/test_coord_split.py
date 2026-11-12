@@ -149,3 +149,129 @@ def test_stop_after_does_not_run_dynamic_children(tmp_path):
     assert not [e for e in d.events.all() if e["type"] == "spawn"]
     # the children exist (the expansion ran) but none of them started
     assert "S0-alpha" in d.board.tasks()
+
+
+def test_upstream_ignores_split_family_deps():
+    template = load_template("v1-split")
+    assert "S3c" in template.upstream("S4")  # S2:* is a family, not a task id
+    assert "S3c" in template.upstream("FINAL")
+
+
+def _run_split_ws(tmp_path):
+    template_path = tmp_path / "split.yaml"
+    template_path.write_text(TEMPLATE, encoding="utf-8")
+    template = load_template(path=template_path)
+    ws = tmp_path / "ws" / "storage"
+    ws.mkdir(parents=True)
+    (ws / "analysis_report.json").write_text(json.dumps(_report()), encoding="utf-8")
+    (tmp_path / "ws" / "storage" / "blueprint.json").write_text(json.dumps({
+        "lambda_functions": [
+            {"name": "alpha-fn", "entry_points": [f"GET /alpha/thing{i}" for i in range(4)]},
+            {"name": "beta-fn", "entry_points": [f"GET /beta/thing{i}" for i in range(4)]},
+            {"name": "gamma-fn", "entry_points": [f"GET /gamma/thing{i}" for i in range(4)]},
+        ],
+    }), encoding="utf-8")
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok})
+    d.setup()
+    assert d.run() == EXIT_DONE, d.board.status("S3")
+    return d
+
+
+def test_rework_of_a_package_child_reaches_template_downstream(tmp_path):
+    """v3 M3: reworking one package child must reach S3, which waits on the
+    whole family through board edges the template calls "S2:*"."""
+    d = _run_split_ws(tmp_path)
+    assert d.board.status("S3") == "closed"
+    assert "S3" in d._downstream(["S2-alpha"])
+
+    d._request_rework("S2-alpha", "test feedback", reason="test", by="test")
+    assert d.board.status("S2-alpha") == "open"
+    assert d.board.status("S3") == "open"  # stale -> open, will recheck
+
+
+def test_upstream_open_sees_a_reopened_child(tmp_path):
+    """A task running while one of its board upstreams is no longer closed was
+    started against the previous upstream; _reconcile sends it back."""
+    d = _run_split_ws(tmp_path)
+    assert d._upstream_open("S3") == []
+    d.board.set_status("S2-alpha", "stale")
+    d.board.set_status("S2-alpha", "open")
+    assert "S2-alpha" in d._upstream_open("S3")
+
+
+def test_upstream_reopened_uses_the_event_log(tmp_path):
+    """The upstream may be closed again by the time the dispatcher restarts;
+    the round_start event after the downstream task's spawn still proves it."""
+    d = _run_split_ws(tmp_path)
+    assert d._upstream_reopened("S3") == []
+    d.events.append("round_start", task="S2-alpha", cause="rework", mode="rerun", by="test")
+    assert d._upstream_reopened("S3") == ["S2-alpha"]
+
+
+def test_route_target_picks_the_package_child_by_function(tmp_path):
+    """v3 M2: V2 failures route to "code"; with work packages the role names
+    the split family, so the routing entry's function picks its child."""
+    d = _run_split_ws(tmp_path)
+    assert d._route_target("code", "S3", "beta-fn") == "S2-beta"
+    assert d._route_target("code", "S3") is None  # no function, no target
+
+
+class _Exited:
+    kind = "worker"
+
+    def poll(self):
+        return 0
+
+    def timed_out(self):
+        return False
+
+    def kill(self):
+        pass
+
+
+def test_collect_survives_a_cancel_in_the_same_pass(tmp_path, monkeypatch):
+    """A room conclusion can rework a package child while _collect handles the
+    room turn: _make_stale kills and drops the running V2, and the loop must
+    neither delete it twice nor evaluate a cancelled worker."""
+    template_path = tmp_path / "split.yaml"
+    template_path.write_text(TEMPLATE, encoding="utf-8")
+    d = make_dispatcher(tmp_path, {}, template=load_template(path=template_path), checks={"ok": _ok})
+    room, v2 = _Exited(), _Exited()
+    d.running = {"ROOM-x": room, "V2": v2}
+    seen = []
+
+    def fake_on_exit(handle, timed_out, rc):
+        seen.append(handle)
+        if handle is room:  # like _request_rework -> _make_stale
+            d.running.pop("V2", None)
+            v2.kill()
+
+    monkeypatch.setattr(d, "_on_exit", fake_on_exit)
+    d._collect()
+    assert seen == [room]
+    assert d.running == {}
+
+
+def test_rework_of_a_template_task_reaches_expanded_families(tmp_path):
+    """Template downstream edges name split families (V1, S2), which are not
+    tasks on the board; the walk must use the board's edges instead of asking
+    the board for a family's status."""
+    d = _run_split_ws(tmp_path)
+    d._request_rework("S1", "test feedback", reason="test", by="test")
+    assert d.board.status("S1") == "open"
+    for task in ("V1-alpha", "S2-alpha", "S2-shared", "S3"):
+        assert d.board.status(task) == "open", task
+
+
+def test_ruling_naming_a_family_expands_to_its_children(tmp_path):
+    """A human ruling may name "S2"; the tasks that can rework are its children."""
+    d = _run_split_ws(tmp_path)
+    ruling = {
+        "id": "R-test", "question": "q", "conclusion": "c", "basis": "b", "category": "contract",
+        "affects": {"tasks": ["S2"], "cases": [], "layers": []}, "raised_by": "test",
+        "deviates_from_monolith": False, "status": "decided", "task": None, "attempt": None,
+        "time": "t", "decider": "human",
+    }
+    d._apply_ruling(ruling, by="human")
+    for task in ("S2-alpha", "S2-shared"):
+        assert d.board.status(task) == "open", task

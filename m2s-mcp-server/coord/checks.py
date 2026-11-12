@@ -119,6 +119,25 @@ def check_provenance_pkg(ws: Path, spec: dict[str, Any]) -> CheckResult:
                        relay=relay)
 
 
+def room_turn(ws: Path, spec: dict[str, Any]) -> CheckResult:
+    """M3: this turn's participant posted its contribution into the room."""
+    from coord import notices
+
+    room_id = spec.get("room_id") or ""
+    role = spec.get("room_role") or ""
+    kind = spec.get("room_kind") or "spec"
+    if not room_id or not role:
+        return CheckResult("room_turn", False, "task spec has no room_id/room_role")
+    try:
+        entries = notices.read_room(ws, role, room_id, kind)
+    except notices.RelayError as exc:
+        return CheckResult("room_turn", False, str(exc))
+    if entries and entries[-1].get("sender_role") == role:
+        return CheckResult("room_turn", True, f"room {room_id}: {role} posted #{len(entries)}")
+    return CheckResult("room_turn", False, f"room {room_id}: {role} has not posted yet",
+                       relay="轮到你发言：用 mcp__m2s-server__room_post 提交你的意见，然后调用 submit_task。")
+
+
 def global_middleware_determined(ws: Path, spec: dict[str, Any]) -> CheckResult:
     """S0-shared (v3 M2): app-wide middleware headers are filled in."""
     import provenance
@@ -381,6 +400,7 @@ CHECKS: dict[str, Callable[[Path], CheckResult]] = {
     "check_provenance": check_provenance,
     "check_provenance_pkg": check_provenance_pkg,
     "global_middleware": global_middleware_determined,
+    "room_turn": room_turn,
     "blueprint_keys": blueprint_keys,
     "gate_blueprint": _gate("blueprint", require_pass=False),
     "gate_code": _gate("code", require_pass=False),

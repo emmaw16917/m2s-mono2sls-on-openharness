@@ -7,6 +7,7 @@ itself comes from the agent definition, passed as the system prompt.
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -125,6 +126,25 @@ def worker_prompt(spec: TaskSpec, ws: Path, monolith: Path, attempt: int,
             "先看 `WS/storage/work_packages.json` 的 `shared_code`（被 2 个以上包用到的函数）和 "
             "`analysis_report.json` 的 `global_middleware`，按角色说明里的「共享代码」一节处理；"
             "每个共享条目只写一次，包任务会引用它。"
+        )
+    if spec.extra.get("room_id"):
+        from coord import rooms as rooms_mod
+
+        room_id = str(spec.extra["room_id"])
+        kind = str(spec.extra.get("room_kind") or "spec")
+        role = str(spec.extra.get("room_role") or spec.role or "")
+        state = rooms_mod.load(ws / "coord", room_id) or {}
+        history = rooms_mod.messages(ws, room_id)
+        sections.append(
+            "## 讨论室\n"
+            f"这是 {kind} 讨论室 `{room_id}`，主题：{state.get('theme', '')}。你这一轮以 `{role}` 身份发言。\n"
+            "规则：只在你这一轮发言；用 `mcp__m2s-server__room_post(room_id, kind, body)` 提交一条意见，"
+            "然后用 `submit_task` 结束。不要修改工作区文件（这是讨论，不是实现）。\n"
+            "讨论室和公告板里给实现线看的内容只能有：失败的函数、出处、期望和实际结果；"
+            "不能出现 verification/ 下的路径或原文，否则会被拒绝。\n"
+            "spec 讨论室：architect 的发言里用 `record_ruling` 写出结论；triage 讨论室："
+            "每个嫌疑模块用 JSON 归因 {\"module\": \"code|template|spec|任务 id\", \"reason\": \"...\", \"confidence\": \"high|medium|low\"}。\n"
+            "当前讨论：\n" + json.dumps(history[-12:], ensure_ascii=False, indent=1)
         )
     block = _feedback_block(feedback)
     if block:
