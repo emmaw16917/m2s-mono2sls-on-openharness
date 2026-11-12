@@ -622,21 +622,42 @@ agent_mail 的 build slot 只是建议性的，也不能计数，所以只用来
 
 ### M4 接入 v2 模块【必做，前提是 v2 模块已经实现】
 
-v2 每实现一个模块，就在 `templates/v2.yaml` 里加一个任务类型，并补上编排侧需要的支持：
+v2 的 26 个任务模板（`coord/templates/v2.yaml`，v2 N5 完成）已经在 v3 调度器下跑通 bookstore 和 airline（串行、`--max-workers 1`、无讨论室）。M4 补的是编排侧：让 v2 的模块用上 v3 的按包/按领域并行、讨论室、资源锁和 AWS 实测，并按本节的验收跑 bookstore + acmeair。
 
-| v2 模块 | 编排侧要补的 |
+**M4 工作项（2026-11-13 拆出）**：
+
+| 编号 | 内容 | 产出 | 验收 | 规模 |
+|---|---|---|---|---|
+| W4.1 | 事实库版本与 artifact 公告：`storage/facts_version.json`（自增版本 + facts sha）；F2 关闭时调度器升版本并发 `artifact` 公告；每个 spawn 记录当时的 facts_version | 调度器 + `server.py` 读版本 | 假 worker：F2 回炉后版本 +1，下游 spawn 带新版本；报告可查 | S |
+| W4.2 | v2 的按包/按领域展开：新增 `templates/v2-split.yaml`；F1 后生成工作包；F2 按包（另有 F2-shared）、J1 按包；G2 按包写 `storage/gaps/<pkg>.json` 再由合并任务合成 `gap_inventory.json`；A1 填 `work_packages.impl_packages`；A1 后按领域展开 D1/I1（I1 另有共享层任务） | 模板 + 调度器展开逻辑 | 假 worker 的依赖图正确；每个包/领域一个子任务；scope 不重叠 | L |
+| W4.3 | J2 的资源锁：`run_monolith` 取 `docker-rie` 槽 | 调度器 | 同一时刻两个工作区的 J2/RIE 不会并发 | S |
+| W4.4 | J3 争议进规格讨论室：`_after_j3` 的 `needs_ruling` 不再起孤立裁定任务，改开 spec 房间（proposer=J3）；房间结束接受 architect 的 `record_ruling`，并把被阻塞的任务放行；没有一致结论时交异常处理者 | 调度器 + 假 worker 测试 | 一致时按裁定继续，不一致交处理者 | M |
+| W4.5 | J6 的裁判版本进下游输入：spawn 事件与任务上下文记录 judge_version，最终报告列出 | 调度器 | 事件日志与报告 | S |
+| W4.6 | 规则 7 可行性探针：J2 能否按用例分别记录覆盖率（Node inspector 的 `takePreciseCoverage`，Python coverage.py 的 `switch_context`） | 探针脚本 + 结论 | **2026-11-13 结论：已具备**——`run_monolith` 已经在 `judge/coverage_monolith/units/<用例>.json` 按用例记录每个文件的行号；重新分组的算法并入 W4.2 | M |
+| W4.7 | O 阶段 AWS 实测：工具 `measure_aws`（每个候选一个栈、B0/候选 ABAB、`aws-load-client` 锁、CloudWatch 调用次数覆盖检查、噪声规则、费用记录）；默认关闭，`M2S_AWS=1` 才启用 | `coord/aws.py`、`perf.py` | 未启用时行为不变；真实运行前需人确认费用 | L |
+| W4.8 | 验收运行：`v2-split` 在 bookstore 和 acmeair 上跑到 C2，开讨论室 | 两个新工作区 | 见下 | L |
+
+| v2 模块 | 编排侧要补的（原始清单，逐项对应上面的工作项） |
 |---|---|
-| M0、F1–F3 | 事实库版本号：每次修正都升版本，并在公告板发 `artifact` 事件，用来驱动失效传播 |
-| G | 按包展开（G2） |
-| J1–J6 | 按包展开 J1；J2 运行单体时拿 `docker-rie` 等资源锁；J3 对账有争议的差异进规格讨论室；J3 判为事实错误的，新建 F2 修正任务；J6 冻结后记下裁判版本，之后的任务都以它为输入 |
-| 规则 7 | 先做可行性检查：J2 能不能按用例分别记录覆盖率（Node 用 inspector 的 `takePreciseCoverage`，Python 用 coverage.py 的 `switch_context`）。可行就实现 J3 之后的重新分组 |
-| A1、A2 | 按蓝图领域展开 D、I1 |
-| D1 | 按包展开；可见性规则：增量测试的目录对实现线禁止读取 |
-| I1–I3、V1–V4 | 和 v1 对应模块的做法相同；B0 打 tag 后做阶段复查 |
-| O1–O4 | §4.13 的 AWS 实测：W4.6 校准噪声规则；工具 `measure_aws`；每个候选一个栈；覆盖检查；费用记录 |
-| C1、C2 | `archive_run` 把 `coord/` 也打包进去 |
+| M0、F1–F3 | 事实库版本号：每次修正都升版本，并在公告板发 `artifact` 事件，用来驱动失效传播（W4.1） |
+| G | 按包展开（G2）（W4.2） |
+| J1–J6 | 按包展开 J1；J2 运行单体时拿 `docker-rie` 等资源锁（W4.2/W4.3）；J3 对账有争议的差异进规格讨论室（W4.4）；J3 判为事实错误的，退回 F2 修正（现状已这样）；J6 冻结后记下裁判版本，之后的任务都以它为输入（W4.5） |
+| 规则 7 | 先做可行性检查（W4.6） |
+| A1、A2 | 按蓝图领域展开 D、I1（W4.2） |
+| D1 | 按包展开；可见性规则：增量测试的目录对实现线禁止读取（W4.2；deny_read 已生效） |
+| I1–I3、V1–V4 | 和 v1 对应模块的做法相同；B0 打 tag 后做阶段复查（已生效） |
+| O1–O4 | §4.13 的 AWS 实测（W4.7） |
+| C1、C2 | `archive_run` 把 `coord/` 也打包进去（已完成，见 `coord/closing.py`） |
 
 **M4 的验收标准**：v2 流水线在 v3 调度下跑通 bookstore 和 acmeair。
+
+**M4 进展（2026-11-13）**：
+- W4.1 完成：`coord/facts.py`。annotator 任务（v1 S0/<pkg>、v2 F2）关闭时按 sha 去重、升版本、写 `storage/facts_version.json`，并发 `artifact` 公告；spawn 事件记录当时的 `facts_version` 与 `judge_version`。测试 `tests/test_coord_facts.py`。
+- W4.3 完成：`run_monolith` 取 `docker-rie` 槽（与 `run_validate` / `run_rie_verdict` 同一个机器级资源）。
+- W4.4 完成：J3 的 `needs_ruling` 在有讨论室时开 spec 房间（proposer=J3）；门任务 `start: recheck`，每个房间回合作为它的依赖；architect 的 `record_ruling` 覆盖全部差异时门通过、被阻塞的下游放行；没有讨论室时退回原来的 architect worker（v2 N1 行为）。测试 `tests/test_coord_room_gate.py`。
+- W4.5 完成（记录口径）：spawn 事件带 `judge_version`；J6 的版本在 `judge_frozen` 事件与 `judge_manifest.json` 中。
+- W4.6 结论：已具备（见上表）。
+- 待做：W4.2（v2 的按包/按领域展开，含规则 7 的重新分组）、W4.7（AWS 实测）、W4.8（验收运行 bookstore + acmeair）。
 
 ### M5 对抗评审室【必做，在第一次升级 harness 时做】
 

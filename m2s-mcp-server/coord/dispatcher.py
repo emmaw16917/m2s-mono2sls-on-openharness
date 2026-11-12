@@ -42,6 +42,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
+from coord import facts as facts_mod
 from coord import harness, notices, rooms, rulings
 from coord.board import TaskBoard
 from coord.checks import CHECKS, CheckResult, ToolGuard, _clip, _read_json
@@ -58,7 +59,8 @@ from coord.workers import Launcher, OhLauncher, WorkerHandle, WorkerJob, role_pr
 # Changes no task is blamed for: dispatcher state, the v1 orchestrator's TODO, caches.
 ALWAYS_ALLOWED = ("coord/**", "storage/TODO.md", "**/node_modules/**", "**/__pycache__/**")
 # Workspace files only the dispatcher writes; rebuilt from the event log after every worker.
-DISPATCHER_FILES = (harness.WORKSPACE_FILE.as_posix(), rulings.WORKSPACE_FILE.as_posix())
+DISPATCHER_FILES = (harness.WORKSPACE_FILE.as_posix(), rulings.WORKSPACE_FILE.as_posix(),
+                    facts_mod.WORKSPACE_FILE.as_posix())
 # Who fixes what a verification failure points at, by role: v1 S2 / S3c / S1, v2 I1 / I2 / A1.
 ROUTE_ROLES = {"code": "m2s-code-developer", "template": "m2s-sam-engineer", "spec": "m2s-architect", "blueprint": "m2s-architect"}
 RELAY_FIELDS = ("function", "spec_refs", "expected_per_spec", "observed")
@@ -306,7 +308,51 @@ class Dispatcher:
         entries = [e["entry"] for e in events if e["type"] == "ruling"]
         if (entries or (self.ws / rulings.WORKSPACE_FILE).exists()) and rulings.write_workspace_file(self.ws, entries):
             changed.append(rulings.WORKSPACE_FILE.as_posix())
+        if self._write_facts_file():
+            changed.append(facts_mod.WORKSPACE_FILE.as_posix())
         return changed
+
+    def _facts_state(self) -> dict[str, Any] | None:
+        return next((e for e in reversed(self.events.all()) if e["type"] == "facts"), None)
+
+    def _write_facts_file(self) -> bool:
+        last = self._facts_state()
+        return facts_mod.write(self.ws, last) if last else False
+
+    def _judge_version(self) -> int | None:
+        event = next((e for e in reversed(self.events.all()) if e["type"] == "judge_frozen"), None)
+        try:
+            return int(event["version"]) if event and event.get("version") is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    def _record_facts_version(self, task_id: str) -> None:
+        """v3 M4/W4.1: every fact-base change gets a version and an artifact
+        notice. The sha dedupes: a recheck of an unchanged fact base is a no-op.
+        Tasks record the version they start from in their spawn event."""
+        spec = self._spec(task_id)
+        if spec.role != "m2s-spec-annotator":
+            return
+        import hashlib
+
+        path = self.ws / "storage" / "analysis_report.json"
+        try:
+            sha = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError:
+            return
+        last = self._facts_state()
+        if last and last.get("sha") == sha:
+            return
+        version = int(last.get("version") or 0) + 1 if last else 1
+        self.events.append("facts", task=task_id, version=version, sha=sha)
+        self._write_facts_file()
+        self.log(f"facts v{version} ({sha[:12]}) after {task_id}")
+        try:
+            notices.post_notice(self.ws, "m2s-server", "artifact",
+                                {"facts_version": version, "sha": sha, "by": task_id},
+                                subject=f"facts v{version}", task=task_id)
+        except Exception as exc:  # messaging must never stop the pipeline
+            self.events.append("notice_error", task=task_id, error=f"{type(exc).__name__}: {exc}")
 
     def _ruling_entries(self) -> list[dict[str, Any]]:
         return [e["entry"] for e in self.events.all() if e["type"] == "ruling"]
@@ -517,7 +563,8 @@ class Dispatcher:
         self.running[spec.id] = handle
         self.events.append("spawn", task=spec.id, attempt=attempt, worker=job.worker_name, pid=handle.pid,
                            started=handle.started, timeout_s=job.timeout_s, run_dir=str(handle.run_dir),
-                           snapshot=snapshot, feedback_items=len(feedback))
+                           snapshot=snapshot, feedback_items=len(feedback),
+                           facts_version=(self._facts_state() or {}).get("version"), judge_version=self._judge_version())
         self.log(f"{spec.id}: started {job.worker_name} (pid {handle.pid})")
 
     def _recheck(self, spec: TaskSpec) -> None:
@@ -711,6 +758,7 @@ class Dispatcher:
         self.board.report_gate(task_id, True)
         self.board.close(task_id)
         self.events.append("status", task=task_id, to="closed")
+        self._record_facts_version(task_id)
         self._flow_after_close(task_id)
 
     def _fail(self, spec: TaskSpec, results: list[CheckResult]) -> None:
@@ -1210,12 +1258,25 @@ class Dispatcher:
                 task_id = f"ROOM-{room_id}-{turn}-{state.get('round', 1)}"
                 scope = [f"storage/stage_reports/{task_id}.json"]
                 if state.get("kind") == "spec":
-                    # the architect writes the ruling into the fact base (v1 blueprint)
-                    scope += ["storage/blueprint.json", "storage/DECISIONS.md", "storage/analysis_report.json"]
+                    if self.template.name.startswith("v1"):
+                        # v1: the architect writes the ruling into the blueprint
+                        scope += ["storage/blueprint.json", "storage/DECISIONS.md", "storage/analysis_report.json"]
+                    else:
+                        # v2 (M4): the ruling goes through record_ruling; the
+                        # annotator may correct the fact base. A1 owns the blueprint.
+                        scope += ["storage/analysis_report.json"]
                 spec = TaskSpec(id=task_id, role=role, mode="room", check=("room_turn",),
                                 scope=tuple(scope), max_turns=80, timeout_min=60,
                                 extra={"room_id": room_id, "room_kind": state["kind"], "room_role": role})
                 self.board.add_task(spec.to_json(), ())
+                gate = state.get("ruling_gate")
+                if gate:
+                    # J3's downstream waits for the last room turn; adding each
+                    # new turn as a dependency keeps the gate from starting early.
+                    try:
+                        self.board.add_dep(gate, task_id)
+                    except Exception:
+                        pass
                 self.events.append("room_turn", room=room_id, task=task_id, role=role)
                 self.log(f"room {room_id}: turn {turn} -> {role}")
         # a raise_spec_issue notice opens a spec room once
@@ -1278,6 +1339,12 @@ class Dispatcher:
             else:
                 self._open_case("triage", proposer or "V2", f"分诊讨论室 {room_id} 没有达成一致",
                                 {"讨论串": json.dumps(entries, ensure_ascii=False, indent=1)})
+            return
+        if state.get("ruling_gate"):
+            # v2 (M4/W4.4): a J3 disagreement room. Its rulings were accepted as
+            # the turns passed (record_ruling); the gate task's recheck now checks
+            # that they cover every difference and releases the blocked tasks.
+            self.log(f"room {room_id}: closed; the ruling gate {state['ruling_gate']} checks coverage")
             return
         # spec room: a ruling in blueprint.metadata.spec_resolutions settles it
         blueprint = _read_json(self.ws / "storage" / "blueprint.json") or {}
@@ -1624,15 +1691,28 @@ class Dispatcher:
         self.log(f"{j5c}: strength round {done + 1}: {len(found)} gaps -> {j4}")
 
     def _ruling_task(self, j3: str, rnd: int, items: list[dict[str, Any]], blocks: list[str], shown: str) -> None:
-        """Differences that need a ruling go to an architect task created for them;
-        the tasks after J3 wait for it (and for a person when a ruling departs from the monolith)."""
+        """Differences that need a ruling. With rooms on (v3 M4/W4.4) they go to a
+        spec discussion room: each new turn task is added as a dependency of the
+        gate, whose start=recheck passes once the architect's rulings cover every
+        difference. Without rooms, the gate spawns an architect worker directly
+        (the v2 N1 behaviour)."""
         task_id = f"RULE_{j3}_{rnd}"
-        spec = TaskSpec(id=task_id, role="m2s-architect", mode="ruling", scope=(f"storage/stage_reports/{task_id}.json",),
-                        max_turns=120, timeout_min=60)
+        room_id = None
+        if self._rooms_enabled():
+            room_id = f"spec-{j3.lower()}-r{rnd}"
+            state = rooms.open_spec_room(self.coord, room_id, "m2s-verifier",
+                                         "规格对账（J3）有争议的差异需要裁定：\n" + shown, proposer_task=j3)
+            state["ruling_gate"] = task_id
+            rooms.save(self.coord, state)
+            self.events.append("room_open", room=room_id, kind="spec", by=j3)
+            self.log(f"room {room_id}: opened (J3 differences)")
+        spec = TaskSpec(id=task_id, role="m2s-architect", mode="ruling",
+                        start="recheck" if room_id else "spawn",
+                        scope=(f"storage/stage_reports/{task_id}.json",), max_turns=120, timeout_min=60)
         self.board.add_task(spec.to_json())
         for task in blocks:
             self.board.add_dep(task, task_id)
-        self.events.append("ruling_task", task=task_id, by=j3, round=rnd, blocks=blocks,
+        self.events.append("ruling_task", task=task_id, by=j3, round=rnd, blocks=blocks, room=room_id,
                            differences=[{"id": d["id"], "case": d["case"]} for d in items])
         self._feedback(task_id, j3, "规格对账（J3）发现下面这些地方需要裁定（单体本身的缺陷，或者可能可以放宽的行为）。"
                        "逐条用 mcp__m2s-server__record_ruling 裁定，affected_cases 写差异所在的用例：\n" + shown)
@@ -1652,11 +1732,15 @@ class Dispatcher:
 
     def _act_run_monolith(self, spec: TaskSpec) -> CheckResult:
         import judge
+        from coord import locks as coord_locks
 
         if self._judge_settled():
             return CheckResult("run_monolith", True, "the judge is frozen and unchanged: not run again")
         try:
-            r = judge.run_monolith(self.ws)
+            # v3 M4/W4.3: the monolith run starts containers too; share the one
+            # machine-wide slot with run_validate / run_rie_verdict.
+            with coord_locks.hold_count("docker-rie", owner="run_monolith"):
+                r = judge.run_monolith(self.ws)
         except judge.JudgeError as exc:
             return CheckResult("run_monolith", False, f"run_monolith: {exc}", detail={"status": "ERROR", "error": str(exc)})
         cov = (r.get("coverage") or {}).get("lines")
