@@ -743,22 +743,20 @@ class Dispatcher:
         self.log(f"{target}: reworked ({reason}, requested by {by})")
 
     def _downstream(self, tasks: list[str]) -> list[str]:
-        """Every task downstream of one of `tasks`, directly or transitively, in
-        breadth-first order (v3 M3). The board has the dependency edges for the
-        expanded children ("S2:*" becomes S2-ops, S2-shared, ...), which the
-        template cannot see; without this, reworking one package child left a
-        running V2/S5 behind on the previous upstream."""
-        known = {t.id for t in self.template.tasks}
+        """Every board task downstream of one of `tasks`, directly or transitively,
+        in breadth-first order (v3 M3). The board has the dependency edges for the
+        expanded children ("S2:*" becomes S2-ops, S2-shared, ...); the template
+        cannot see them, and its own downstream edges name split families (V1,
+        S2) that are not tasks on the board."""
         seen = set(tasks)
         out: list[str] = []
         frontier = list(tasks)
         while frontier:
             current = frontier.pop(0)
-            edges = list(self.template.downstream(current)) if current in known else []
             try:
-                edges += self.board.dependents(current)
+                edges = self.board.dependents(current)
             except KeyError:
-                pass  # not on the board (e.g. a family name)
+                edges = []  # not on the board (e.g. a split family)
             for task in dict.fromkeys(edges):
                 if task not in seen:
                     seen.add(task)
@@ -846,7 +844,8 @@ class Dispatcher:
         downstream of those go stale and follow their on_stale rule (recheck or
         rerun). A downstream task that is already running is cancelled first:
         its work was done against the previous upstream."""
-        orders = dict.fromkeys([*tasks, *self._downstream(tasks)])
+        board_ids = set(self.board.tasks())
+        orders = [t for t in dict.fromkeys([*tasks, *self._downstream(tasks)]) if t in board_ids]
         hit: list[str] = []
         for t in orders:
             handle = self.running.pop(t, None)
@@ -914,7 +913,17 @@ class Dispatcher:
     def _apply_ruling(self, ruling: dict[str, Any], by: str) -> list[str]:
         """A ruling in force: the tasks it names get it as feedback; closed ones go stale."""
         known = {t.id for t in self.template.tasks}
-        targets = [t for t in ruling["affects"]["tasks"] if t in known and t != ruling.get("task")]
+        board_ids = set(self.board.tasks())
+        targets: list[str] = []
+        for task in ruling["affects"]["tasks"]:
+            if task not in known or task == ruling.get("task"):
+                continue
+            if self.template.get(task).split == "package":
+                # A ruling may name the family ("S2"); its work lives in the
+                # expanded children, which are the tasks that can rework.
+                targets += sorted(t for t in board_ids if t.startswith(task + "-"))
+            elif task in board_ids:
+                targets.append(task)
         text = (f"新的裁定 {ruling['id']}（{ruling['category']}）影响这个任务。问题：{ruling['question']}；"
                 f"结论：{ruling['conclusion']}；依据：{ruling['basis']}。见 storage/rulings.json。")
         for task in targets:

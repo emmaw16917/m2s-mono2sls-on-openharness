@@ -250,3 +250,28 @@ def test_collect_survives_a_cancel_in_the_same_pass(tmp_path, monkeypatch):
     d._collect()
     assert seen == [room]
     assert d.running == {}
+
+
+def test_rework_of_a_template_task_reaches_expanded_families(tmp_path):
+    """Template downstream edges name split families (V1, S2), which are not
+    tasks on the board; the walk must use the board's edges instead of asking
+    the board for a family's status."""
+    d = _run_split_ws(tmp_path)
+    d._request_rework("S1", "test feedback", reason="test", by="test")
+    assert d.board.status("S1") == "open"
+    for task in ("V1-alpha", "S2-alpha", "S2-shared", "S3"):
+        assert d.board.status(task) == "open", task
+
+
+def test_ruling_naming_a_family_expands_to_its_children(tmp_path):
+    """A human ruling may name "S2"; the tasks that can rework are its children."""
+    d = _run_split_ws(tmp_path)
+    ruling = {
+        "id": "R-test", "question": "q", "conclusion": "c", "basis": "b", "category": "contract",
+        "affects": {"tasks": ["S2"], "cases": [], "layers": []}, "raised_by": "test",
+        "deviates_from_monolith": False, "status": "decided", "task": None, "attempt": None,
+        "time": "t", "decider": "human",
+    }
+    d._apply_ruling(ruling, by="human")
+    for task in ("S2-alpha", "S2-shared"):
+        assert d.board.status(task) == "open", task
