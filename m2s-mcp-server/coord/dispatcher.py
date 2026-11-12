@@ -475,13 +475,17 @@ class Dispatcher:
 
     def _collect(self) -> None:
         for key, handle in list(self.running.items()):
+            if self.running.get(key) is not handle:
+                # A rework handled earlier in this pass cancelled it: _make_stale
+                # already killed it and took it off self.running.
+                continue
             rc = handle.poll()
             timed_out = rc is None and handle.timed_out()
             if rc is None and not timed_out:
                 continue
             if timed_out:
                 handle.kill()
-            del self.running[key]
+            self.running.pop(key, None)
             lock = self.worker_locks.pop(key, None)
             if lock:
                 lock.release()

@@ -214,3 +214,39 @@ def test_route_target_picks_the_package_child_by_function(tmp_path):
     d = _run_split_ws(tmp_path)
     assert d._route_target("code", "S3", "beta-fn") == "S2-beta"
     assert d._route_target("code", "S3") is None  # no function, no target
+
+
+class _Exited:
+    kind = "worker"
+
+    def poll(self):
+        return 0
+
+    def timed_out(self):
+        return False
+
+    def kill(self):
+        pass
+
+
+def test_collect_survives_a_cancel_in_the_same_pass(tmp_path, monkeypatch):
+    """A room conclusion can rework a package child while _collect handles the
+    room turn: _make_stale kills and drops the running V2, and the loop must
+    neither delete it twice nor evaluate a cancelled worker."""
+    template_path = tmp_path / "split.yaml"
+    template_path.write_text(TEMPLATE, encoding="utf-8")
+    d = make_dispatcher(tmp_path, {}, template=load_template(path=template_path), checks={"ok": _ok})
+    room, v2 = _Exited(), _Exited()
+    d.running = {"ROOM-x": room, "V2": v2}
+    seen = []
+
+    def fake_on_exit(handle, timed_out, rc):
+        seen.append(handle)
+        if handle is room:  # like _request_rework -> _make_stale
+            d.running.pop("V2", None)
+            v2.kill()
+
+    monkeypatch.setattr(d, "_on_exit", fake_on_exit)
+    d._collect()
+    assert seen == [room]
+    assert d.running == {}
