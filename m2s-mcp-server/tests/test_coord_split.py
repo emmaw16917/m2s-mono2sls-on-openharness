@@ -464,3 +464,46 @@ def test_ruling_naming_a_family_expands_to_its_children(tmp_path):
     d._apply_ruling(ruling, by="human")
     for task in ("S2-alpha", "S2-shared"):
         assert d.board.status(task) == "open", task
+
+
+STALE_READY_TEMPLATE = """\
+name: stale-ready
+tasks:
+  - id: X
+    runner: dispatcher
+    action: analyze_project
+    scope: [storage/x.json]
+    check: [ok]
+  - id: Y
+    role: m2s-spec-annotator
+    scope: [storage/analysis_report.json, storage/stage_reports/Y.json]
+    check: [ok]
+  - id: Z
+    role: m2s-code-developer
+    deps: [Y]
+    scope: [output/lambdas/**, storage/stage_reports/Z.json]
+    check: [ok]
+"""
+
+
+def test_an_action_that_reopens_tasks_does_not_use_a_stale_ready_list(tmp_path):
+    """v3 M4: run_monolith runs in-process and can send J1 back; a ready list
+    computed before it still names tasks the rework has just made blocked."""
+    template_path = tmp_path / "stale.yaml"
+    template_path.write_text(STALE_READY_TEMPLATE, encoding="utf-8")
+    template = load_template(path=template_path)
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok})
+    d.setup()
+    assert d.run() == EXIT_DONE
+
+    holder = {}
+
+    def act(spec):
+        holder["d"]._request_rework("Y", "test feedback", reason="test", by="test")
+        return CheckResult("analyze_project", True, "ok")
+
+    holder["d"] = d
+    d.actions["analyze_project"] = act
+    d.board.reopen("X")
+    d.board.reopen("Z")
+    assert d.run() == EXIT_DONE

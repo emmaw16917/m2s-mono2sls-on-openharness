@@ -497,6 +497,11 @@ class Dispatcher:
             started += 1
             self._scope_wait_logged.discard(task_id)
             chosen.append(spec)
+            if spec.runner == "dispatcher":
+                # An action runs synchronously and may reopen tasks (a failed
+                # run_monolith sends J1 back); the ready list is stale from
+                # here, so re-evaluate on the next pass.
+                break
             if self._paused():
                 break
         return started
