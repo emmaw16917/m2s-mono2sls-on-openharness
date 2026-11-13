@@ -275,6 +275,8 @@ def test_domain_split_falls_back_to_the_blueprint(tmp_path):
     assert d._next_tasks("A1") == ["D1", "I1-alpha", "I1-beta", "I1-shared"]
     d._human_gate("HUMAN_family_block", "q", ["I1"])
     assert d.board.status("HUMAN_family_block") == "needs_human"
+    d._expand_domain(template.get("I1"))  # a repeated check only completes the family
+    assert {t for t in d.board.tasks() if t.startswith("I1-")} == {"I1-alpha", "I1-beta", "I1-shared"}
 
 
 SHARED_AFTER_TEMPLATE = """\
@@ -340,6 +342,8 @@ def test_shared_child_waits_for_the_package_children(tmp_path):
     ])
     assert sorted(targets) == ["F2-alpha", "F2-beta", "F2-gamma", "F2-shared"]
     assert targets["F2-alpha"][0]["endpoint"] == "GET /alpha/thing0"
+    d._expand_family(template.get("F2"))  # idempotent: a crash may leave a partial family
+    assert {t for t in d.board.tasks() if t.startswith("F2-")} == {"F2-alpha", "F2-beta", "F2-gamma", "F2-shared"}
 
 
 def _run_split_ws(tmp_path):

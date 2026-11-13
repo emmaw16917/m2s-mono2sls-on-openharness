@@ -110,7 +110,7 @@ class TaskBoard:
         self.br.init()
 
     def add_task(self, spec: dict[str, Any], deps: list[str] | tuple[str, ...] = ()) -> str:
-        labels = [f"kind:{spec['id']}", f"runner:{spec.get('runner', 'agent')}"]
+        labels = [self._label("kind", spec["id"]), f"runner:{spec.get('runner', 'agent')}"]
         if spec.get("role"):
             labels.append(f"role:{spec['role']}")
         args = ["create", "--title", spec["id"], "--description", json.dumps(spec, ensure_ascii=False),
@@ -121,6 +121,13 @@ class TaskBoard:
         issue_id = self.br.run(*args).stdout.strip()
         self._ids[spec["id"]] = issue_id
         return issue_id
+
+    @staticmethod
+    def _label(prefix: str, value: str) -> str:
+        """br rejects labels over 50 characters; a dynamic task id (F2-<package>)
+        can exceed that (v3 M4). The label is only for display."""
+        text = f"{prefix}:{value}"
+        return text if len(text) <= 50 else text[:50]
 
     def add_dep(self, task_id: str, depends_on: str) -> None:
         self.br.run("dep", "add", self.issue_id(task_id), self.issue_id(depends_on))

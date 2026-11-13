@@ -1165,8 +1165,8 @@ class Dispatcher:
                 continue
             if not any(trigger in closed for trigger in spec.expand_after):
                 continue
-            if any(tid.startswith(spec.id + "-") and tid != spec.id for tid in tasks):
-                continue
+            # Idempotent: a crash in the middle of an expansion leaves some
+            # children on the board; the next check completes the family.
             if spec.split == "domain":
                 self._expand_domain(spec)
             else:
@@ -1183,6 +1183,7 @@ class Dispatcher:
         plan = _read_json(self.ws / "storage" / "work_packages.json") or {"packages": []}
         blueprint = _read_json(self.ws / "storage" / "blueprint.json") or {}
         functions = blueprint.get("lambda_functions") or []
+        existing = set(self.board.tasks())
         created: list[str] = []
         for package in plan.get("packages") or []:
             pid = str(package.get("id"))
@@ -1191,6 +1192,9 @@ class Dispatcher:
             fns = [f.get("name") for f in functions
                    if set(f.get("entry_points") or []) & set(endpoints)]
             child_id = f"{spec.id}-{pid}"
+            if child_id in existing:
+                created.append(child_id)
+                continue
             deps = self._resolve_deps(spec, child_id, same_package=pid)
             data = spec.to_json()
             data.update({"id": child_id, "split": "none", "expand_after": [], "split_shared": False,
@@ -1201,18 +1205,21 @@ class Dispatcher:
             self.events.append("expand", family=spec.id, task=child_id, package=pid, functions=fns)
         if spec.split_shared:
             child_id = f"{spec.id}-shared"
-            deps = self._resolve_deps(spec, child_id, same_package=None)
-            if spec.extra.get("shared_after_children"):
-                deps += [c for c in created if c not in deps]
-            data = spec.to_json()
-            data.update({"id": child_id, "split": "none", "expand_after": [], "split_shared": False,
-                         "deps": deps, "package": "shared", "endpoints": [], "functions": [],
-                         "check": list(spec.shared_check or spec.check),
-                         "scope": [s.replace("{pkg}", "shared").replace("{pkg_dir}", "shared")
-                                   for s in (spec.shared_scope or spec.scope)]})
-            self.board.add_task(data, deps)
-            created.append(child_id)
-            self.events.append("expand", family=spec.id, task=child_id, package="shared", functions=[])
+            if child_id in existing:
+                created.append(child_id)
+            else:
+                deps = self._resolve_deps(spec, child_id, same_package=None)
+                if spec.extra.get("shared_after_children"):
+                    deps += [c for c in created if c not in deps]
+                data = spec.to_json()
+                data.update({"id": child_id, "split": "none", "expand_after": [], "split_shared": False,
+                             "deps": deps, "package": "shared", "endpoints": [], "functions": [],
+                             "check": list(spec.shared_check or spec.check),
+                             "scope": [s.replace("{pkg}", "shared").replace("{pkg_dir}", "shared")
+                                       for s in (spec.shared_scope or spec.scope)]})
+                self.board.add_task(data, deps)
+                created.append(child_id)
+                self.events.append("expand", family=spec.id, task=child_id, package="shared", functions=[])
         self._wire_deps(spec.id, created)
         self.log(f"{spec.id}: expanded to {created}")
 
@@ -1241,6 +1248,7 @@ class Dispatcher:
                                     "and the blueprint has no lambda_functions to compute them from")
             return
         created: list[str] = []
+        existing = set(self.board.tasks())
         for pid, info in impl.items():
             pid = str(pid)
             if isinstance(info, dict):
@@ -1251,6 +1259,9 @@ class Dispatcher:
                 pkg_dir = ""
             pkg_dir = re.sub(r"[^a-z0-9_]+", "_", (pkg_dir or pid).lower())
             child_id = f"{spec.id}-{pid}"
+            if child_id in existing:
+                created.append(child_id)
+                continue
             deps = self._resolve_deps(spec, child_id, same_package=pid)
             app_name = self.monolith.name if self.monolith is not None else ""
             scope: list[str] = []
@@ -1269,18 +1280,21 @@ class Dispatcher:
             self.events.append("expand", family=spec.id, task=child_id, package=pid, functions=functions)
         if spec.split_shared:
             child_id = f"{spec.id}-shared"
-            deps = self._resolve_deps(spec, child_id, same_package=None)
-            if spec.extra.get("shared_after_children"):
-                deps += [c for c in created if c not in deps]
-            data = spec.to_json()
-            data.update({"id": child_id, "split": "none", "expand_after": [], "split_shared": False,
-                         "deps": deps, "package": "shared", "endpoints": [], "functions": [],
-                         "check": list(spec.shared_check or spec.check),
-                         "scope": [s.replace("{pkg}", "shared").replace("{pkg_dir}", "shared")
-                                   for s in (spec.shared_scope or spec.scope)]})
-            self.board.add_task(data, deps)
-            created.append(child_id)
-            self.events.append("expand", family=spec.id, task=child_id, package="shared", functions=[])
+            if child_id in existing:
+                created.append(child_id)
+            else:
+                deps = self._resolve_deps(spec, child_id, same_package=None)
+                if spec.extra.get("shared_after_children"):
+                    deps += [c for c in created if c not in deps]
+                data = spec.to_json()
+                data.update({"id": child_id, "split": "none", "expand_after": [], "split_shared": False,
+                             "deps": deps, "package": "shared", "endpoints": [], "functions": [],
+                             "check": list(spec.shared_check or spec.check),
+                             "scope": [s.replace("{pkg}", "shared").replace("{pkg_dir}", "shared")
+                                       for s in (spec.shared_scope or spec.scope)]})
+                self.board.add_task(data, deps)
+                created.append(child_id)
+                self.events.append("expand", family=spec.id, task=child_id, package="shared", functions=[])
         self._wire_deps(spec.id, created)
         self.log(f"{spec.id}: expanded by domain to {created}")
 

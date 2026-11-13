@@ -649,7 +649,7 @@ v2 的 26 个任务模板（`coord/templates/v2.yaml`，v2 N5 完成）已经在
 | O1–O4 | §4.13 的 AWS 实测（W4.7） |
 | C1、C2 | `archive_run` 把 `coord/` 也打包进去（已完成，见 `coord/closing.py`） |
 
-**M4 的验收标准**：v2 流水线在 v3 调度下跑通 bookstore 和 acmeair。
+**M4 的验收标准**：v2 流水线在 v3 调度下跑通 bookstore 和 airline-booking（Flask）。acmeair / MongoDB 按 v2 方案 V2P-08 与 Q5 列为扩展（单体只能做接口层比对），不在 M4 验收内。
 
 **M4 进展（2026-11-13）**：
 - W4.1 完成：`coord/facts.py`。annotator 任务（v1 S0/<pkg>、v2 F2）关闭时按 sha 去重、升版本、写 `storage/facts_version.json`，并发 `artifact` 公告；spawn 事件记录当时的 `facts_version` 与 `judge_version`。测试 `tests/test_coord_facts.py`。
