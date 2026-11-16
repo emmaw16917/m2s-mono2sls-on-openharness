@@ -157,6 +157,195 @@ def test_upstream_ignores_split_family_deps():
     assert "S3c" in template.upstream("FINAL")
 
 
+DOMAIN_TEMPLATE = """\
+name: domain-test
+tasks:
+  - id: A1
+    runner: dispatcher
+    action: analyze_project
+    scope: [storage/blueprint.json, storage/work_packages.json]
+    check: [ok]
+  - id: D1
+    role: m2s-verifier
+    deps: [A1]
+    scope: [verification/delta/**, storage/stage_reports/D1.json]
+    check: [ok]
+  - id: I1
+    role: m2s-code-developer
+    split: domain
+    split_shared: true
+    expand_after: [A1]
+    deps: [A1, D1]
+    scope: ["output/lambdas/{app}/{fn}/**", "storage/stage_reports/I1-{pkg}.json"]
+    shared_scope: [output/layers/**, storage/stage_reports/I1-shared.json]
+    check: [ok]
+  - id: I2
+    role: m2s-sam-engineer
+    deps: ["I1:*", "I1:shared"]
+    scope: [output/template.yaml, storage/stage_reports/I2.json]
+    check: [ok]
+"""
+
+
+def test_domain_split_expands_by_impl_packages(tmp_path):
+    """v3 M4/W4.2: I1 follows the blueprint's domains (impl_packages), one child
+    per domain with its functions and per-function directories, plus the shared
+    layer; I2 waits for the children and the shared task."""
+    template_path = tmp_path / "domain.yaml"
+    template_path.write_text(DOMAIN_TEMPLATE, encoding="utf-8")
+    template = load_template(path=template_path)
+    ws = tmp_path / "ws"
+
+    def a1(spec):
+        (ws / "storage").mkdir(parents=True, exist_ok=True)
+        (ws / "storage" / "work_packages.json").write_text(json.dumps({
+            "version": 1,
+            "packages": [{"id": "alpha"}, {"id": "beta"}],
+            "impl_packages": {"alpha": {"functions": ["a1-fn", "a2-fn"], "dir": "alpha"},
+                              "beta": {"functions": ["b1-fn"], "dir": "beta"}},
+        }), encoding="utf-8")
+        return CheckResult("analyze_project", True, "ok")
+
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok}, actions={"analyze_project": a1})
+    d.setup()
+    assert d.run() == EXIT_DONE, d.board.status("I2")
+
+    tasks = d.board.tasks()
+    assert "I1" not in tasks  # the family itself is not a board task
+    assert {"I1-alpha", "I1-beta", "I1-shared"} <= set(tasks)
+    alpha = tasks["I1-alpha"]["spec"]
+    assert alpha["functions"] == ["a1-fn", "a2-fn"] and alpha["package"] == "alpha"
+    assert alpha["scope"][0] == "output/lambdas/monolith/a1-fn/**"
+    assert alpha["scope"][1] == "output/lambdas/monolith/a2-fn/**"
+    assert "storage/stage_reports/I1-alpha.json" in alpha["scope"]
+    assert tasks["I1-shared"]["spec"]["scope"][0] == "output/layers/**"
+
+    def board_deps(task):
+        show = d.board.br.run("show", tasks[task]["issue"], "--json").json()
+        row = show[0] if isinstance(show, list) else show
+        return {x["title"] for x in row.get("dependencies") or []}
+
+    assert {"I1-alpha", "I1-beta", "I1-shared"} <= board_deps("I2")
+    assert ["a1-fn", "a2-fn"] == tasks["I1-alpha"]["spec"]["functions"]
+
+
+def test_v2_split_template_loads():
+    template = load_template("v2-split")
+    f2 = template.get("F2")
+    assert f2.split == "package" and f2.split_shared and f2.extra.get("shared_after_children")
+    i1 = template.get("I1")
+    assert i1.split == "domain" and i1.split_shared and "I1:shared" in template.get("I2a").deps
+
+
+def test_domain_split_falls_back_to_the_blueprint(tmp_path):
+    """W4.2: when A1 did not fill impl_packages, the mapping is computed from
+    the blueprint's entry_points and the work packages (the M3 open issue)."""
+    template_path = tmp_path / "domain.yaml"
+    template_path.write_text(DOMAIN_TEMPLATE, encoding="utf-8")
+    template = load_template(path=template_path)
+    ws = tmp_path / "ws"
+
+    def a1(spec):
+        (ws / "storage").mkdir(parents=True, exist_ok=True)
+        (ws / "storage" / "work_packages.json").write_text(json.dumps({
+            "version": 1,
+            "packages": [
+                {"id": "alpha", "endpoints": [{"method": "GET", "path": f"/alpha/thing{i}"} for i in range(4)]},
+                {"id": "beta", "endpoints": [{"method": "GET", "path": "/beta/thing0"}]},
+            ],
+            "impl_packages": None,
+        }), encoding="utf-8")
+        (ws / "storage" / "blueprint.json").write_text(json.dumps({
+            "lambda_functions": [
+                {"name": "alpha-fn", "entry_points": ["GET /alpha/thing0", "GET /alpha/thing1"]},
+                {"name": "beta-fn", "entry_points": ["GET /beta/thing0"]},
+            ],
+        }), encoding="utf-8")
+        return CheckResult("analyze_project", True, "ok")
+
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok}, actions={"analyze_project": a1})
+    d.setup()
+    assert d.run() == EXIT_DONE, d.board.status("I2")
+
+    tasks = d.board.tasks()
+    assert tasks["I1-alpha"]["spec"]["functions"] == ["alpha-fn"]
+    assert tasks["I1-beta"]["spec"]["functions"] == ["beta-fn"]
+    assert any(e["type"] == "impl_packages_fallback" for e in d.events.all())
+    # a gate or ruling task that names a split family blocks its children
+    assert d._next_tasks("A1") == ["D1", "I1-alpha", "I1-beta", "I1-shared"]
+    d._human_gate("HUMAN_family_block", "q", ["I1"])
+    assert d.board.status("HUMAN_family_block") == "needs_human"
+    d._expand_domain(template.get("I1"))  # a repeated check only completes the family
+    assert {t for t in d.board.tasks() if t.startswith("I1-")} == {"I1-alpha", "I1-beta", "I1-shared"}
+
+
+SHARED_AFTER_TEMPLATE = """\
+name: shared-after-test
+tasks:
+  - id: F1
+    runner: dispatcher
+    action: analyze_project
+    scope: [storage/analysis_report.json, storage/symbol_table.json]
+    check: [ok]
+  - id: F2
+    role: m2s-spec-annotator
+    split: package
+    split_shared: true
+    shared_after_children: true
+    expand_after: [F1]
+    deps: [F1]
+    scope: [storage/analysis_report.json, "storage/stage_reports/F2-{pkg}.json"]
+    shared_scope: [storage/analysis_report.json, storage/stage_reports/F2-shared.json]
+    check: [ok]
+  - id: G1
+    runner: dispatcher
+    action: analyze_project
+    deps: ["F2:*", "F2:shared"]
+    scope: [storage/gap_inventory.json]
+    check: [ok]
+"""
+
+
+def test_shared_child_waits_for_the_package_children(tmp_path):
+    """v2-split's F2-shared consolidates and validates the whole fact base, so
+    it runs after every F2 child; G1 waits for both."""
+    template_path = tmp_path / "shared.yaml"
+    template_path.write_text(SHARED_AFTER_TEMPLATE, encoding="utf-8")
+    template = load_template(path=template_path)
+    ws = tmp_path / "ws" / "storage"
+    ws.mkdir(parents=True)
+    (ws / "analysis_report.json").write_text(json.dumps(_report()), encoding="utf-8")
+
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok})
+    d.setup()
+    assert d.run() == EXIT_DONE
+
+    tasks = d.board.tasks()
+    children = sorted(t for t in tasks if t.startswith("F2-"))
+    assert children == ["F2-alpha", "F2-beta", "F2-gamma", "F2-shared"]
+
+    def board_deps(task):
+        show = d.board.br.run("show", tasks[task]["issue"], "--json").json()
+        row = show[0] if isinstance(show, list) else show
+        return {x["title"] for x in row.get("dependencies") or []}
+
+    assert {"F2-alpha", "F2-beta", "F2-gamma"} <= board_deps("F2-shared")
+    assert {"F2-alpha", "F2-beta", "F2-gamma", "F2-shared"} <= board_deps("G1")
+
+    # J3/J4 fact corrections route to the child that owns the endpoint; an
+    # endpoint no package owns goes to the shared child.
+    targets = d._fact_targets([
+        {"endpoint": "GET /alpha/thing0"},
+        {"request": {"method": "GET", "path": "/beta/thing1"}},
+        {"fact_refs": ["GET /gamma/thing2#responses[0]"]},
+        {"endpoint": "GET /unknown"},
+    ])
+    assert sorted(targets) == ["F2-alpha", "F2-beta", "F2-gamma", "F2-shared"]
+    assert targets["F2-alpha"][0]["endpoint"] == "GET /alpha/thing0"
+    d._expand_family(template.get("F2"))  # idempotent: a crash may leave a partial family
+    assert {t for t in d.board.tasks() if t.startswith("F2-")} == {"F2-alpha", "F2-beta", "F2-gamma", "F2-shared"}
+
+
 def _run_split_ws(tmp_path):
     template_path = tmp_path / "split.yaml"
     template_path.write_text(TEMPLATE, encoding="utf-8")
@@ -275,3 +464,46 @@ def test_ruling_naming_a_family_expands_to_its_children(tmp_path):
     d._apply_ruling(ruling, by="human")
     for task in ("S2-alpha", "S2-shared"):
         assert d.board.status(task) == "open", task
+
+
+STALE_READY_TEMPLATE = """\
+name: stale-ready
+tasks:
+  - id: X
+    runner: dispatcher
+    action: analyze_project
+    scope: [storage/x.json]
+    check: [ok]
+  - id: Y
+    role: m2s-spec-annotator
+    scope: [storage/analysis_report.json, storage/stage_reports/Y.json]
+    check: [ok]
+  - id: Z
+    role: m2s-code-developer
+    deps: [Y]
+    scope: [output/lambdas/**, storage/stage_reports/Z.json]
+    check: [ok]
+"""
+
+
+def test_an_action_that_reopens_tasks_does_not_use_a_stale_ready_list(tmp_path):
+    """v3 M4: run_monolith runs in-process and can send J1 back; a ready list
+    computed before it still names tasks the rework has just made blocked."""
+    template_path = tmp_path / "stale.yaml"
+    template_path.write_text(STALE_READY_TEMPLATE, encoding="utf-8")
+    template = load_template(path=template_path)
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok})
+    d.setup()
+    assert d.run() == EXIT_DONE
+
+    holder = {}
+
+    def act(spec):
+        holder["d"]._request_rework("Y", "test feedback", reason="test", by="test")
+        return CheckResult("analyze_project", True, "ok")
+
+    holder["d"] = d
+    d.actions["analyze_project"] = act
+    d.board.reopen("X")
+    d.board.reopen("Z")
+    assert d.run() == EXIT_DONE

@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r2-1-1",
+  "attempt": 1,
+  "role": "m2s-architect",
+  "status": "done",
+  "time": "2026-11-13T17:02:11+0800",
+  "summary": "spec-j3-r2 的 architect 轮已发言并写入裁定 R-ROOM-spec-j3-r2-1-1-a1-1：接受 register-read-back-by-admin#list 的 users 数组顺序放宽（contract / relaxation=order / layers=[R] / deviates=false），判定内容承接在案两条裁定，本轮把三个执行口径钉死——裁判在 R 层自行按等长多重集比较、用例与 fixtures 不改写也不降级为 has_fields；原则可引用但放宽只按 case#step 逐条施加，不挂事实 ref 做全局规则；affected_cases 维持带步骤写法。business_rules[2] 不是 fact_error，目标侧不得为对齐次序加 sorted()。",
+  "notes": "收尾需要验证线动作：judge/reconcile.json 是 16:09 生成的陈旧文件（第一条裁定在 16:15），J3 重跑 reconcile_spec 后本差异会移入 resolved_by_rulings、differences 归零，reconcile_classes.json 不再需要 needs_ruling 条目；用例/fixtures/identities 一律不动。已只读核实裁判实现（_rulings_in_force / judge_unit / unify 的 unordered 分支 / reconcile 的 _rulings_by_case 按去掉 # 的用例 id 匹配），未改任何工具。本轮只写 storage/stage_reports/ROOM-spec-j3-r2-1-1.json 与经 record_ruling 追加的 storage/rulings.json，blueprint/adapter_map/gap_inventory/judge/ 未改。三条相关裁定 status=decided、deviates=false，不触发人工确认。"
+}

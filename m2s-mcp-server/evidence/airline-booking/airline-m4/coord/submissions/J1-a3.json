@@ -1,0 +1,9 @@
+{
+  "task": "J1",
+  "attempt": 3,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T16:05:33+0800",
+  "summary": "J1 第 3 次尝试：只按回炉信息更新 predicted，未改任何请求。1 处跟随事实库修正（release#responses[1] 的 error 带 'Failed to release seat: ' 前缀，release-missing-or-at-max/ghost 的 equals.error 改为完整串 'Failed to release seat: Flight flight-ghost does not exist'，at-max 臂走 ConditionalCheckFailedException 无前缀故不动）；2 处用例写错（booking-body-and-field-failures 的 ghost-flight / full-flight 属 Step 1 扣座失败，按 POST /bookings#responses[2] 把 subset.step 由 'Reserve Booking' 改为 'Reserve Flight'，同用例 no-charge 是 Step 2 失败保持 'Reserve Booking'）。未加严事实库没给确定文案的 error 断言。资产总量不变：46 用例 / 18 接口全覆盖 / 8 夹具 / 3 身份 / 12 故障场景 / 13 条 uncovered。check_judge_assets = PASS（errors、warnings 均空），报告已写 storage/stage_reports/J1.json。",
+  "notes": "受影响的只有 judge/cases/post-flights-flight-id-release/release-missing-or-at-max.json 与 judge/cases/post-bookings/booking-body-and-field-failures.json，其余 44 个用例、identities.json、fixtures/、faults/、uncovered.json 一字未动（已用 grep 核对 release#responses[1] 全库仅此一处引用、bookings 相关 step 值分布正确，两个文件 json 解析通过）。给 J2/run_monolith 的提示：ghost-flight 与 full-flight 两步的 error 文案事实库只说\"以 'Flight reservation failed: ' 开头\"，用例不断言完整串，若单体实际串不同不会报差异；如果后续希望这类前缀文案被逐字钉住，需要 annotator 先把 responses[2] 的确定文案补进事实库。"
+}

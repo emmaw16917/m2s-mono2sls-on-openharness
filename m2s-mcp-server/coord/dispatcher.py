@@ -42,6 +42,7 @@ import time
 from pathlib import Path
 from typing import Any, Callable
 
+from coord import facts as facts_mod
 from coord import harness, notices, rooms, rulings
 from coord.board import TaskBoard
 from coord.checks import CHECKS, CheckResult, ToolGuard, _clip, _read_json
@@ -58,7 +59,8 @@ from coord.workers import Launcher, OhLauncher, WorkerHandle, WorkerJob, role_pr
 # Changes no task is blamed for: dispatcher state, the v1 orchestrator's TODO, caches.
 ALWAYS_ALLOWED = ("coord/**", "storage/TODO.md", "**/node_modules/**", "**/__pycache__/**")
 # Workspace files only the dispatcher writes; rebuilt from the event log after every worker.
-DISPATCHER_FILES = (harness.WORKSPACE_FILE.as_posix(), rulings.WORKSPACE_FILE.as_posix())
+DISPATCHER_FILES = (harness.WORKSPACE_FILE.as_posix(), rulings.WORKSPACE_FILE.as_posix(),
+                    facts_mod.WORKSPACE_FILE.as_posix())
 # Who fixes what a verification failure points at, by role: v1 S2 / S3c / S1, v2 I1 / I2 / A1.
 ROUTE_ROLES = {"code": "m2s-code-developer", "template": "m2s-sam-engineer", "spec": "m2s-architect", "blueprint": "m2s-architect"}
 RELAY_FIELDS = ("function", "spec_refs", "expected_per_spec", "observed")
@@ -306,7 +308,51 @@ class Dispatcher:
         entries = [e["entry"] for e in events if e["type"] == "ruling"]
         if (entries or (self.ws / rulings.WORKSPACE_FILE).exists()) and rulings.write_workspace_file(self.ws, entries):
             changed.append(rulings.WORKSPACE_FILE.as_posix())
+        if self._write_facts_file():
+            changed.append(facts_mod.WORKSPACE_FILE.as_posix())
         return changed
+
+    def _facts_state(self) -> dict[str, Any] | None:
+        return next((e for e in reversed(self.events.all()) if e["type"] == "facts"), None)
+
+    def _write_facts_file(self) -> bool:
+        last = self._facts_state()
+        return facts_mod.write(self.ws, last) if last else False
+
+    def _judge_version(self) -> int | None:
+        event = next((e for e in reversed(self.events.all()) if e["type"] == "judge_frozen"), None)
+        try:
+            return int(event["version"]) if event and event.get("version") is not None else None
+        except (TypeError, ValueError):
+            return None
+
+    def _record_facts_version(self, task_id: str) -> None:
+        """v3 M4/W4.1: every fact-base change gets a version and an artifact
+        notice. The sha dedupes: a recheck of an unchanged fact base is a no-op.
+        Tasks record the version they start from in their spawn event."""
+        spec = self._spec(task_id)
+        if spec.role != "m2s-spec-annotator":
+            return
+        import hashlib
+
+        path = self.ws / "storage" / "analysis_report.json"
+        try:
+            sha = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError:
+            return
+        last = self._facts_state()
+        if last and last.get("sha") == sha:
+            return
+        version = int(last.get("version") or 0) + 1 if last else 1
+        self.events.append("facts", task=task_id, version=version, sha=sha)
+        self._write_facts_file()
+        self.log(f"facts v{version} ({sha[:12]}) after {task_id}")
+        try:
+            notices.post_notice(self.ws, "m2s-server", "artifact",
+                                {"facts_version": version, "sha": sha, "by": task_id},
+                                subject=f"facts v{version}", task=task_id)
+        except Exception as exc:  # messaging must never stop the pipeline
+            self.events.append("notice_error", task=task_id, error=f"{type(exc).__name__}: {exc}")
 
     def _ruling_entries(self) -> list[dict[str, Any]]:
         return [e["entry"] for e in self.events.all() if e["type"] == "ruling"]
@@ -451,6 +497,11 @@ class Dispatcher:
             started += 1
             self._scope_wait_logged.discard(task_id)
             chosen.append(spec)
+            if spec.runner == "dispatcher":
+                # An action runs synchronously and may reopen tasks (a failed
+                # run_monolith sends J1 back); the ready list is stale from
+                # here, so re-evaluate on the next pass.
+                break
             if self._paused():
                 break
         return started
@@ -517,7 +568,8 @@ class Dispatcher:
         self.running[spec.id] = handle
         self.events.append("spawn", task=spec.id, attempt=attempt, worker=job.worker_name, pid=handle.pid,
                            started=handle.started, timeout_s=job.timeout_s, run_dir=str(handle.run_dir),
-                           snapshot=snapshot, feedback_items=len(feedback))
+                           snapshot=snapshot, feedback_items=len(feedback),
+                           facts_version=(self._facts_state() or {}).get("version"), judge_version=self._judge_version())
         self.log(f"{spec.id}: started {job.worker_name} (pid {handle.pid})")
 
     def _recheck(self, spec: TaskSpec) -> None:
@@ -711,6 +763,7 @@ class Dispatcher:
         self.board.report_gate(task_id, True)
         self.board.close(task_id)
         self.events.append("status", task=task_id, to="closed")
+        self._record_facts_version(task_id)
         self._flow_after_close(task_id)
 
     def _fail(self, spec: TaskSpec, results: list[CheckResult]) -> None:
@@ -965,7 +1018,10 @@ class Dispatcher:
             return
         spec = TaskSpec(id=gate_id, runner="dispatcher", action="human")
         self.board.add_task(spec.to_json())
+        board_ids = set(self.board.tasks())
         for task in blocks:
+            if task not in board_ids:
+                continue  # a split family or something not created yet
             self.board.add_dep(task, gate_id)
         self._escalate(gate_id, question)
 
@@ -1043,7 +1099,18 @@ class Dispatcher:
         self.cases.record(case, decision, applied)
 
     def _next_tasks(self, task_id: str) -> list[str]:
-        return [t.id for t in self.template.tasks if task_id in t.deps]
+        """The tasks that wait for task_id. A split family (I1) is not a board
+        task: its expanded children are what a gate or ruling task can block."""
+        board_ids = set(self.board.tasks())
+        out: list[str] = []
+        for spec in self.template.tasks:
+            if task_id not in spec.deps:
+                continue
+            if spec.split in ("package", "domain"):
+                out += sorted(t for t in board_ids if t.startswith(spec.id + "-") and t != spec.id)
+            elif spec.id in board_ids:
+                out.append(spec.id)
+        return out
 
     # ------------------------------------------------------------------ v1 rules
 
@@ -1099,13 +1166,16 @@ class Dispatcher:
         tasks = self.board.tasks()
         closed = {tid for tid, info in tasks.items() if info["status"] == "closed"}
         for spec in self.template.tasks:
-            if spec.split != "package" or not spec.expand_after:
+            if spec.split not in ("package", "domain") or not spec.expand_after:
                 continue
             if not any(trigger in closed for trigger in spec.expand_after):
                 continue
-            if any(tid.startswith(spec.id + "-") and tid != spec.id for tid in tasks):
-                continue
-            self._expand_family(spec)
+            # Idempotent: a crash in the middle of an expansion leaves some
+            # children on the board; the next check completes the family.
+            if spec.split == "domain":
+                self._expand_domain(spec)
+            else:
+                self._expand_family(spec)
 
     def _expand_family(self, spec: TaskSpec) -> None:
         from coord import packages as packages_mod
@@ -1118,7 +1188,9 @@ class Dispatcher:
         plan = _read_json(self.ws / "storage" / "work_packages.json") or {"packages": []}
         blueprint = _read_json(self.ws / "storage" / "blueprint.json") or {}
         functions = blueprint.get("lambda_functions") or []
+        existing = set(self.board.tasks())
         created: list[str] = []
+        new: list[str] = []
         for package in plan.get("packages") or []:
             pid = str(package.get("id"))
             pkg_dir = re.sub(r"[^a-z0-9_]+", "_", pid.lower())
@@ -1126,6 +1198,9 @@ class Dispatcher:
             fns = [f.get("name") for f in functions
                    if set(f.get("entry_points") or []) & set(endpoints)]
             child_id = f"{spec.id}-{pid}"
+            if child_id in existing:
+                created.append(child_id)
+                continue
             deps = self._resolve_deps(spec, child_id, same_package=pid)
             data = spec.to_json()
             data.update({"id": child_id, "split": "none", "expand_after": [], "split_shared": False,
@@ -1133,21 +1208,108 @@ class Dispatcher:
                          "scope": [s.replace("{pkg}", pid).replace("{pkg_dir}", pkg_dir) for s in spec.scope]})
             self.board.add_task(data, deps)
             created.append(child_id)
+            new.append(child_id)
             self.events.append("expand", family=spec.id, task=child_id, package=pid, functions=fns)
         if spec.split_shared:
             child_id = f"{spec.id}-shared"
-            deps = self._resolve_deps(spec, child_id, same_package=None)
+            if child_id in existing:
+                created.append(child_id)
+            else:
+                deps = self._resolve_deps(spec, child_id, same_package=None)
+                if spec.extra.get("shared_after_children"):
+                    deps += [c for c in created if c not in deps]
+                data = spec.to_json()
+                data.update({"id": child_id, "split": "none", "expand_after": [], "split_shared": False,
+                             "deps": deps, "package": "shared", "endpoints": [], "functions": [],
+                             "check": list(spec.shared_check or spec.check),
+                             "scope": [s.replace("{pkg}", "shared").replace("{pkg_dir}", "shared")
+                                       for s in (spec.shared_scope or spec.scope)]})
+                self.board.add_task(data, deps)
+                created.append(child_id)
+                new.append(child_id)
+                self.events.append("expand", family=spec.id, task=child_id, package="shared", functions=[])
+        self._wire_deps(spec.id, created)
+        if new:
+            self.log(f"{spec.id}: expanded to {created}")
+
+    def _expand_domain(self, spec: TaskSpec) -> None:
+        """v3 M4/W4.2: expand by the blueprint's domains (rule 8). A1 fills
+        work_packages.impl_packages as {package: {functions, dir}}; when it did not
+        (or a package is missing), the same mapping is computed from the blueprint's
+        lambda_functions and the package's endpoints, so the split never depends on
+        a worker remembering to write it."""
+        plan = _read_json(self.ws / "storage" / "work_packages.json") or {}
+        impl = plan.get("impl_packages") or {}
+        if not isinstance(impl, dict) or not impl:
+            blueprint = _read_json(self.ws / "storage" / "blueprint.json") or {}
+            functions = [f for f in blueprint.get("lambda_functions") or [] if isinstance(f, dict)]
+            impl = {}
+            for package in plan.get("packages") or []:
+                pid = str(package.get("id"))
+                endpoints = {f"{e.get('method')} {e.get('path')}" for e in package.get("endpoints") or []}
+                fns = [f.get("name") for f in functions if set(f.get("entry_points") or []) & endpoints]
+                impl[pid] = {"functions": fns, "dir": pid}
+            if impl:
+                self.events.append("impl_packages_fallback", task=spec.id, packages=list(impl))
+                self.log(f"{spec.id}: impl_packages missing; computed from the blueprint and the work packages")
+        if not isinstance(impl, dict) or not impl:
+            self._escalate(spec.id, f"{spec.id}: storage/work_packages.json has no impl_packages "
+                                    "and the blueprint has no lambda_functions to compute them from")
+            return
+        created: list[str] = []
+        new: list[str] = []
+        existing = set(self.board.tasks())
+        for pid, info in impl.items():
+            pid = str(pid)
+            if isinstance(info, dict):
+                functions = [str(f) for f in (info.get("functions") or [])]
+                pkg_dir = str(info.get("dir") or "")
+            else:
+                functions = [str(f) for f in (info or [])]
+                pkg_dir = ""
+            pkg_dir = re.sub(r"[^a-z0-9_]+", "_", (pkg_dir or pid).lower())
+            child_id = f"{spec.id}-{pid}"
+            if child_id in existing:
+                created.append(child_id)
+                continue
+            deps = self._resolve_deps(spec, child_id, same_package=pid)
+            app_name = self.monolith.name if self.monolith is not None else ""
+            scope: list[str] = []
+            for pattern in spec.scope:
+                if "{fn}" in pattern:
+                    scope += [pattern.replace("{fn}", fn).replace("{app}", app_name) for fn in functions]
+                else:
+                    scope.append(pattern.replace("{pkg}", pid).replace("{pkg_dir}", pkg_dir)
+                                 .replace("{app}", app_name))
             data = spec.to_json()
             data.update({"id": child_id, "split": "none", "expand_after": [], "split_shared": False,
-                         "deps": deps, "package": "shared", "endpoints": [], "functions": [],
-                         "check": list(spec.shared_check or spec.check),
-                         "scope": [s.replace("{pkg}", "shared").replace("{pkg_dir}", "shared")
-                                   for s in (spec.shared_scope or spec.scope)]})
+                         "deps": deps, "package": pid, "endpoints": [], "functions": functions,
+                         "scope": scope})
             self.board.add_task(data, deps)
             created.append(child_id)
-            self.events.append("expand", family=spec.id, task=child_id, package="shared", functions=[])
+            new.append(child_id)
+            self.events.append("expand", family=spec.id, task=child_id, package=pid, functions=functions)
+        if spec.split_shared:
+            child_id = f"{spec.id}-shared"
+            if child_id in existing:
+                created.append(child_id)
+            else:
+                deps = self._resolve_deps(spec, child_id, same_package=None)
+                if spec.extra.get("shared_after_children"):
+                    deps += [c for c in created if c not in deps]
+                data = spec.to_json()
+                data.update({"id": child_id, "split": "none", "expand_after": [], "split_shared": False,
+                             "deps": deps, "package": "shared", "endpoints": [], "functions": [],
+                             "check": list(spec.shared_check or spec.check),
+                             "scope": [s.replace("{pkg}", "shared").replace("{pkg_dir}", "shared")
+                                       for s in (spec.shared_scope or spec.scope)]})
+                self.board.add_task(data, deps)
+                created.append(child_id)
+                new.append(child_id)
+                self.events.append("expand", family=spec.id, task=child_id, package="shared", functions=[])
         self._wire_deps(spec.id, created)
-        self.log(f"{spec.id}: expanded to {created}")
+        if new:
+            self.log(f"{spec.id}: expanded by domain to {created}")
 
     def _resolve_deps(self, spec: TaskSpec, child_id: str, same_package: str | None) -> list[str]:
         """Resolve "<family>:*" to the same package's child when there is one,
@@ -1168,14 +1330,21 @@ class Dispatcher:
 
     def _wire_deps(self, family: str, children: list[str]) -> None:
         """Add the expanded children as dependencies of every task that names
-        "<family>:*". Runs once per family (recorded as deps_wired)."""
+        "<family>:*" (all children) or "<family>:shared" (just the shared one).
+        Runs once per family (recorded as deps_wired)."""
         if any(e.get("type") == "deps_wired" and e.get("family") == family for e in self.events.all()):
             return
-        for tid, info in self.board.tasks().items():
+        shared = f"{family}-shared"
+        tasks = self.board.tasks()
+        for tid, info in tasks.items():
             deps = (info.get("spec") or {}).get("deps") or []
-            if f"{family}:*" not in deps:
+            if f"{family}:*" in deps:
+                wanted = children
+            elif f"{family}:shared" in deps and shared in children:
+                wanted = [shared]
+            else:
                 continue
-            for child in children:
+            for child in wanted:
                 try:
                     self.board.add_dep(tid, child)
                 except Exception:
@@ -1210,12 +1379,25 @@ class Dispatcher:
                 task_id = f"ROOM-{room_id}-{turn}-{state.get('round', 1)}"
                 scope = [f"storage/stage_reports/{task_id}.json"]
                 if state.get("kind") == "spec":
-                    # the architect writes the ruling into the fact base (v1 blueprint)
-                    scope += ["storage/blueprint.json", "storage/DECISIONS.md", "storage/analysis_report.json"]
+                    if self.template.name.startswith("v1"):
+                        # v1: the architect writes the ruling into the blueprint
+                        scope += ["storage/blueprint.json", "storage/DECISIONS.md", "storage/analysis_report.json"]
+                    else:
+                        # v2 (M4): the ruling goes through record_ruling; the
+                        # annotator may correct the fact base. A1 owns the blueprint.
+                        scope += ["storage/analysis_report.json"]
                 spec = TaskSpec(id=task_id, role=role, mode="room", check=("room_turn",),
                                 scope=tuple(scope), max_turns=80, timeout_min=60,
                                 extra={"room_id": room_id, "room_kind": state["kind"], "room_role": role})
                 self.board.add_task(spec.to_json(), ())
+                gate = state.get("ruling_gate")
+                if gate:
+                    # J3's downstream waits for the last room turn; adding each
+                    # new turn as a dependency keeps the gate from starting early.
+                    try:
+                        self.board.add_dep(gate, task_id)
+                    except Exception:
+                        pass
                 self.events.append("room_turn", room=room_id, task=task_id, role=role)
                 self.log(f"room {room_id}: turn {turn} -> {role}")
         # a raise_spec_issue notice opens a spec room once
@@ -1278,6 +1460,12 @@ class Dispatcher:
             else:
                 self._open_case("triage", proposer or "V2", f"分诊讨论室 {room_id} 没有达成一致",
                                 {"讨论串": json.dumps(entries, ensure_ascii=False, indent=1)})
+            return
+        if state.get("ruling_gate"):
+            # v2 (M4/W4.4): a J3 disagreement room. Its rulings were accepted as
+            # the turns passed (record_ruling); the gate task's recheck now checks
+            # that they cover every difference and releases the blocked tasks.
+            self.log(f"room {room_id}: closed; the ruling gate {state['ruling_gate']} checks coverage")
             return
         # spec room: a ruling in blueprint.metadata.spec_resolutions settles it
         blueprint = _read_json(self.ws / "storage" / "blueprint.json") or {}
@@ -1520,23 +1708,25 @@ class Dispatcher:
         j1 = self._task_by(mode="J1", upstream_of=j3)
         j2 = self._task_by(action="run_monolith", upstream_of=j3)
         f2 = self._task_by(role="m2s-spec-annotator", upstream_of=j1) if j1 else None
+        fact_targets = {f2: groups["fact_error"]} if f2 else self._fact_targets(groups["fact_error"])
         keys = ("id", "case", "step", "request", "check", "predicted", "actual", "fact_refs", "reason", "fact_ref", "fix")
 
         def show(items: list[dict[str, Any]]) -> str:
             return _clip(json.dumps([{k: d[k] for k in keys if d.get(k) is not None} for d in items], ensure_ascii=False, indent=1))
 
         unrouted: list[dict[str, Any]] = []
-        if groups["fact_error"] and f2:
-            self._request_rework(f2, "规格对账（J3）发现事实库和单体的实际行为不一致（判为事实错误）。按单体代码核实，用 "
-                                 "annotate_entry_point 修正下面这些事实（每条都要有出处），不要改动无关的事实；改完 "
-                                 "check_provenance 必须 PASS。`predicted` 是按事实库推出的预期，`actual` 是单体的实际输出：\n"
-                                 + show(groups["fact_error"]), reason="reconcile", by=j3)
+        if groups["fact_error"] and fact_targets:
+            for target, items in fact_targets.items():
+                self._request_rework(target, "规格对账（J3）发现事实库和单体的实际行为不一致（判为事实错误）。按单体代码核实，用 "
+                                     "annotate_entry_point 修正下面这些事实（每条都要有出处），不要改动无关的事实；改完 "
+                                     "check_provenance 必须 PASS。`predicted` 是按事实库推出的预期，`actual` 是单体的实际输出：\n"
+                                     + show(items), reason="reconcile", by=j3)
         else:
             unrouted += groups["fact_error"]
 
         def parts(fact: list[dict[str, Any]], case: list[dict[str, Any]]) -> list[str]:
             out = []
-            if fact and f2:
+            if fact and fact_targets:
                 out.append("事实库已按下面这些差异修正。只更新这些用例的 predicted，使它符合修正后的事实库（重新读事实库），"
                            "不改请求：\n" + show(fact))
             if case:
@@ -1571,6 +1761,47 @@ class Dispatcher:
             self._human_gate("HUMAN_RECONCILE", "规格对账的这些差异在模板里没有可以退回的任务：" + show(unrouted), blocks)
         self.log(f"{j3}: reconcile round {rnd}: " + ", ".join(f"{k} {len(v)}" for k, v in groups.items() if v))
 
+    def _fact_targets(self, items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+        """The annotator task(s) that own these fact corrections (v3 M4/W4.2).
+        In a split template the family (e.g. F2) is not a board task, so each
+        difference is routed to the package child that owns its endpoint; a
+        difference that maps to no package goes to the shared child."""
+        families = [t.id for t in self.template.tasks
+                    if t.role == "m2s-spec-annotator" and t.split in ("package", "domain")]
+        if not families:
+            return {}
+        family = families[-1]
+        tasks = self.board.tasks()
+        children = sorted(t for t in tasks if t.startswith(family + "-") and t != family)
+        if not children:
+            return {}
+        plan = _read_json(self.ws / "storage" / "work_packages.json") or {}
+        owner: dict[str, str] = {}
+        for package in plan.get("packages") or []:
+            child = f"{family}-{package.get('id')}"
+            if child not in children:
+                continue
+            for e in package.get("endpoints") or []:
+                owner[f"{e.get('method')} {e.get('path')}"] = child
+        shared = f"{family}-shared"
+        out: dict[str, list[dict[str, Any]]] = {}
+        for d in items:
+            endpoint = str(d.get("endpoint") or "").strip()
+            if not endpoint:
+                request = d.get("request") or {}
+                endpoint = f"{request.get('method', '')} {request.get('path', '')}".strip()
+            target = owner.get(endpoint)
+            if not target:
+                for ref in d.get("fact_refs") or []:
+                    target = owner.get(str(ref).split("#")[0].strip())
+                    if target:
+                        break
+            if target is None and shared in children:
+                target = shared
+            if target:
+                out.setdefault(target, []).append(d)
+        return out
+
     def _after_j4(self, j4: str) -> None:
         """J4 added white-box cases (§4.10): rules the code has and the facts lack
         (judge/spec_issues.json, status open) go to F2, which puts them into the fact
@@ -1585,14 +1816,16 @@ class Dispatcher:
             if isinstance(issues, list) else []
         j2 = self._task_by(action="run_monolith", upstream_of=j4)
         f2 = self._task_by(role="m2s-spec-annotator", upstream_of=j4)
+        targets = {f2: fresh} if f2 else self._fact_targets(fresh)
         if fresh:
-            if f2:
-                self.events.append("spec_issues_routed", task=j4, to=f2, ids=[i["id"] for i in fresh])
-                self._request_rework(f2, "白盒补测（J4）在单体代码里发现了事实库没有、或者写错了的规则（judge/spec_issues.json）。"
-                                     "按代码核实，用 annotate_entry_point 补进或修正事实库（每条都带出处），不要改动无关的事实；"
-                                     "改完 check_provenance 必须 PASS：\n" + _clip(json.dumps(fresh, ensure_ascii=False, indent=1)),
-                                     reason="spec_issues_j4", by=j4)
-                self.log(f"{j4}: {len(fresh)} spec issues -> {f2}")
+            if targets:
+                self.events.append("spec_issues_routed", task=j4, to=sorted(targets), ids=[i["id"] for i in fresh])
+                for target, items in targets.items():
+                    self._request_rework(target, "白盒补测（J4）在单体代码里发现了事实库没有、或者写错了的规则（judge/spec_issues.json）。"
+                                         "按代码核实，用 annotate_entry_point 补进或修正事实库（每条都带出处），不要改动无关的事实；"
+                                         "改完 check_provenance 必须 PASS：\n" + _clip(json.dumps(items, ensure_ascii=False, indent=1)),
+                                         reason="spec_issues_j4", by=j4)
+                self.log(f"{j4}: {len(fresh)} spec issues -> {sorted(targets)}")
                 return  # F2's rework makes everything after it stale, J2 included
             self._human_gate("HUMAN_SPEC_ISSUES_J4", f"J4 报了 {len(fresh)} 条规格问题，模板里没有 annotator 任务可以退回："
                              + json.dumps([i.get("id") for i in fresh], ensure_ascii=False), self._next_tasks(j4))
@@ -1624,15 +1857,28 @@ class Dispatcher:
         self.log(f"{j5c}: strength round {done + 1}: {len(found)} gaps -> {j4}")
 
     def _ruling_task(self, j3: str, rnd: int, items: list[dict[str, Any]], blocks: list[str], shown: str) -> None:
-        """Differences that need a ruling go to an architect task created for them;
-        the tasks after J3 wait for it (and for a person when a ruling departs from the monolith)."""
+        """Differences that need a ruling. With rooms on (v3 M4/W4.4) they go to a
+        spec discussion room: each new turn task is added as a dependency of the
+        gate, whose start=recheck passes once the architect's rulings cover every
+        difference. Without rooms, the gate spawns an architect worker directly
+        (the v2 N1 behaviour)."""
         task_id = f"RULE_{j3}_{rnd}"
-        spec = TaskSpec(id=task_id, role="m2s-architect", mode="ruling", scope=(f"storage/stage_reports/{task_id}.json",),
-                        max_turns=120, timeout_min=60)
+        room_id = None
+        if self._rooms_enabled():
+            room_id = f"spec-{j3.lower()}-r{rnd}"
+            state = rooms.open_spec_room(self.coord, room_id, "m2s-verifier",
+                                         "规格对账（J3）有争议的差异需要裁定：\n" + shown, proposer_task=j3)
+            state["ruling_gate"] = task_id
+            rooms.save(self.coord, state)
+            self.events.append("room_open", room=room_id, kind="spec", by=j3)
+            self.log(f"room {room_id}: opened (J3 differences)")
+        spec = TaskSpec(id=task_id, role="m2s-architect", mode="ruling",
+                        start="recheck" if room_id else "spawn",
+                        scope=(f"storage/stage_reports/{task_id}.json",), max_turns=120, timeout_min=60)
         self.board.add_task(spec.to_json())
         for task in blocks:
             self.board.add_dep(task, task_id)
-        self.events.append("ruling_task", task=task_id, by=j3, round=rnd, blocks=blocks,
+        self.events.append("ruling_task", task=task_id, by=j3, round=rnd, blocks=blocks, room=room_id,
                            differences=[{"id": d["id"], "case": d["case"]} for d in items])
         self._feedback(task_id, j3, "规格对账（J3）发现下面这些地方需要裁定（单体本身的缺陷，或者可能可以放宽的行为）。"
                        "逐条用 mcp__m2s-server__record_ruling 裁定，affected_cases 写差异所在的用例：\n" + shown)
@@ -1652,11 +1898,15 @@ class Dispatcher:
 
     def _act_run_monolith(self, spec: TaskSpec) -> CheckResult:
         import judge
+        from coord import locks as coord_locks
 
         if self._judge_settled():
             return CheckResult("run_monolith", True, "the judge is frozen and unchanged: not run again")
         try:
-            r = judge.run_monolith(self.ws)
+            # v3 M4/W4.3: the monolith run starts containers too; share the one
+            # machine-wide slot with run_validate / run_rie_verdict.
+            with coord_locks.hold_count("docker-rie", owner="run_monolith"):
+                r = judge.run_monolith(self.ws)
         except judge.JudgeError as exc:
             return CheckResult("run_monolith", False, f"run_monolith: {exc}", detail={"status": "ERROR", "error": str(exc)})
         cov = (r.get("coverage") or {}).get("lines")

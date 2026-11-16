@@ -1,0 +1,9 @@
+{
+  "task": "J5C",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T22:29:31+0800",
+  "summary": "补全了回炉点名的 6 个未分类变异体，写入 judge/mutant_classes.json：5 条 equivalent（services/payment.py:81 与 303 共 4 条是裁判运行态无 STRIPE_SECRET_KEY 的真 Stripe 死代码/被 StripeError 吞掉后仍落同一条 ValueError；app.py:224 的 branch_off 因收款成功后任何异常都被 Step 4 的 except Exception 吸收、catch-all 处 payment_result 恒为 None 而等价），1 条 gap（negate:app.py:224：取反后 catch-all 反倒退款，模拟模式会把内存 _payments 里同一 chargeId 的 status 改成 refunded，可被 GET /payments/<charge_id> 读回，现有 3 个到 catch-all 的单元既没复用已收款 chargeId 也没有支付读回步骤），并给出 suggest 用例 wb-booking-catchall-refunds-collected-charge 供 J4 补测。check_mutant_classes 返回 PASS（survivors 6，equivalent 5，gap 1，errors 空）。",
+  "notes": "只写了 judge/mutant_classes.json 和 storage/stage_reports/J5C.json，未改用例、事实库或工具。分类依据：app.py:104-235（POST /bookings 四步 Saga 与 catch-all）、services/payment.py:47-50/78-81/161-177/276-277/298-325；运行态证据来自 judge/uncovered.json（POST /payments/collect#responses[3]、GET /payments/<charge_id>#responses[1] 标为真 Stripe 臂不可达）与 judge_validation 的 units 存活情况（payment-read-missing 用 pi_ 前缀走内存未命中仍得 400，说明 stripe 库可用且异常被 except stripe.error.StripeError 吞掉）。field:services/payment.py:309 已带 class(source=uncovered)，按规则未重复分类；serial 反向检查未察觉（reverse_ok=true），符合预期。"
+}

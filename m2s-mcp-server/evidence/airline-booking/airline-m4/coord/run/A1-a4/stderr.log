@@ -1,0 +1,46 @@
+C:\Users\36029\miniconda3\envs\mono2sls\Lib\site-packages\pydantic_settings\sources\utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(
+[11/13/26 21:17:38] INFO     Processing request of type           server.py:733
+                             ListToolsRequest                                  
+                    INFO     Processing request of type           server.py:733
+                             ListResourcesRequest                              
+[11/13/26 21:17:53] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 21:18:10] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 21:18:17] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 21:24:53] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 21:25:23] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+OpenAI API request failed (attempt 1/9), retrying in 1.0s: Connection error.
+OpenAI API request failed (attempt 1/9), retrying in 1.0s: Connection error.
+OpenAI API request failed (attempt 2/9), retrying in 2.0s: Connection error.
+OpenAI API request failed (attempt 3/9), retrying in 4.0s: Connection error.
+OpenAI API request failed (attempt 4/9), retrying in 8.0s: Connection error.
+OpenAI API request failed (attempt 5/9), retrying in 16.0s: Connection error.
+OpenAI API request failed (attempt 6/9), retrying in 32.0s: Connection error.
+OpenAI API request failed (attempt 7/9), retrying in 60.0s: Connection error.
+[11/13/26 21:57:59] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 21:58:17] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 22:00:56] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 22:01:11] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 22:04:28] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 22:04:39] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 22:06:50] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 22:07:40] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 22:08:03] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 22:09:59] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 22:10:15] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   

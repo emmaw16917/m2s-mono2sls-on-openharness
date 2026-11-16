@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r1-2-1",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T01:42:27+0800",
+  "summary": "在 spec-j3-r1 完成本轮发言（seq 3）：逐行回查单体后确认两条 search 顺序差异不是事实错误——routes/search.js:30/33/43-45 只有保序的 filter+map，全仓唯一 .sort( 在 bestsellers.js:25，:42 `total: results.length` 与 business_rules[3] 同源，故集合内容在放宽顺序后仍被完整检查，我维持 needs_ruling 且规格侧不需 fix，裁定 R-ROOM-spec-j3-r1-1-1-a1-1 的方向我认同。同时对裁定适用范围提出三点需 architect 补写的边界：(B) 两分法没覆盖\"顺序由表/索引键序决定\"的 GET /api/cart#responses[0] 与 GET /api/orders#responses[0]（按字面会被当成契约、替 architect 锁定目标键结构），且 GET /api/books#responses[0]（category-index 只有 HASH 键、无排序键）事实库对它的顺序只字未提，最可能引发下一轮同形差异；(C) relaxation=order 按步骤全列表生效会连带放宽由请求体原样存下的订单 books 数组（POST /api/orders#business_rules[1]/[11] 是原样快照契约）；(D) GET /api/bestsellers#business_rules[2] 的\"不保证稳定\"在单体内其实是确定的（ES2019 稳定排序 + engines node>=14 + 无第二排序键），建议改写成\"跨实现不构成约束\"。B/D 的 annotate_entry_point 修改（出处已备好）留待裁定确认后的规格轮执行；本轮未改工作区文件。",
+  "notes": "本轮为讨论轮，未调用 annotate_entry_point，storage/analysis_report.json 未改动。工作报告 storage/stage_reports/ROOM-spec-j3-r1-2-1.json 里含 proposed_spec_fixes_next_round 两条（GET /api/books responses[0] 补 category-index 无排序键的顺序表述；GET /api/bestsellers business_rules[2] 措辞精度），各带可核出处，需 architect 在本室先确认它们属于裁定第 2 栏、以及裁定第 5 节是否把嵌套原样快照数组排除在多重集配对之外，之后由后续规格轮落地。另外提请裁定文字明确：第一页完整性（不处理 LastEvaluatedKey）与顺序无关，将来另立裁定；这三步不应登记为残余盲区。"
+}

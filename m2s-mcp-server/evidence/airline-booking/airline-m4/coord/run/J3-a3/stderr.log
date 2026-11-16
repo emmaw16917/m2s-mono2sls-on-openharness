@@ -1,0 +1,18 @@
+C:\Users\36029\miniconda3\envs\mono2sls\Lib\site-packages\pydantic_settings\sources\utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(
+[11/13/26 20:51:18] INFO     Processing request of type           server.py:733
+                             ListToolsRequest                                  
+                    INFO     Processing request of type           server.py:733
+                             ListResourcesRequest                              
+[11/13/26 20:51:54] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 20:52:59] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+                    INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 20:54:32] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 20:55:17] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 20:56:08] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   

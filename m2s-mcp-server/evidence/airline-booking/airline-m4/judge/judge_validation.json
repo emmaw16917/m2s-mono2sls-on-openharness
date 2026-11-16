@@ -1,0 +1,6302 @@
+{
+ "meta": {
+  "generated_at": "2026-11-13T15:12:47Z",
+  "backend": "ddblocal",
+  "oracle_generated_at": "2026-11-13T14:48:04Z"
+ },
+ "summary": {
+  "mutants": 119,
+  "killed": 113,
+  "survived": 6,
+  "not_covered": 0,
+  "trace_only": 0,
+  "invalid": 0,
+  "equivalent": 6,
+  "score": 1.0,
+  "by_operator": {
+   "auth": {
+    "killed": 9,
+    "survived": 0,
+    "not_covered": 0,
+    "trace_only": 0,
+    "invalid": 0
+   },
+   "branch_off": {
+    "killed": 23,
+    "survived": 3,
+    "not_covered": 0,
+    "trace_only": 0,
+    "invalid": 0
+   },
+   "drop_write": {
+    "killed": 5,
+    "survived": 0,
+    "not_covered": 0,
+    "trace_only": 0,
+    "invalid": 0
+   },
+   "field": {
+    "killed": 38,
+    "survived": 1,
+    "not_covered": 0,
+    "trace_only": 0,
+    "invalid": 0
+   },
+   "negate": {
+    "killed": 24,
+    "survived": 2,
+    "not_covered": 0,
+    "trace_only": 0,
+    "invalid": 0
+   },
+   "status": {
+    "killed": 14,
+    "survived": 0,
+    "not_covered": 0,
+    "trace_only": 0,
+    "invalid": 0
+   }
+  },
+  "reverse": {
+   "serial": "survived"
+  },
+  "reverse_ok": true,
+  "seconds": 1456.3
+ },
+ "mutants": [
+  {
+   "id": "negate:app.py:48",
+   "kind": "source",
+   "operator": "negate",
+   "file": "app.py",
+   "line": 48,
+   "before": "if not all([departure_code, arrival_code, departure_date]):",
+   "after": "if not (not all([departure_code, arrival_code, departure_date])):",
+   "refs": [
+    "GET /flights/search#business_rules[0]",
+    "GET /flights/search#responses[1]"
+   ],
+   "endpoints": [
+    "GET /flights/search"
+   ],
+   "units": [
+    "search-missing-params",
+    "search-route-match",
+    "flight-search-scan-error/search-route-match",
+    "flight-search-scan-error/search-missing-params"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "search-missing-params",
+    "mismatches": [
+     {
+      "path": "steps.no-date.status",
+      "expected": 400,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-date.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "flights"
+      ]
+     },
+     {
+      "path": "steps.empty-date.status",
+      "expected": 400,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "branch_off:app.py:48",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "app.py",
+   "line": 48,
+   "before": "if not all([departure_code, arrival_code, departure_date]):",
+   "after": "if False:",
+   "refs": [
+    "GET /flights/search#business_rules[0]",
+    "GET /flights/search#responses[1]"
+   ],
+   "endpoints": [
+    "GET /flights/search"
+   ],
+   "units": [
+    "search-missing-params",
+    "search-route-match",
+    "flight-search-scan-error/search-route-match",
+    "flight-search-scan-error/search-missing-params"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "search-missing-params",
+    "mismatches": [
+     {
+      "path": "steps.no-date.status",
+      "expected": 400,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-date.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "flights"
+      ]
+     },
+     {
+      "path": "steps.empty-date.status",
+      "expected": 400,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "status:app.py:49",
+   "kind": "source",
+   "operator": "status",
+   "file": "app.py",
+   "line": 49,
+   "before": "return jsonify({'error': 'Missing required parameters'}), 400",
+   "after": "return jsonify({'error': 'Missing required parameters'}), 422",
+   "refs": [
+    "GET /flights/search#business_rules[0]",
+    "GET /flights/search#responses[1]"
+   ],
+   "endpoints": [
+    "GET /flights/search"
+   ],
+   "units": [
+    "search-missing-params",
+    "flight-search-scan-error/search-missing-params"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "search-missing-params",
+    "mismatches": [
+     {
+      "path": "steps.no-date.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-date.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-dep.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:app.py:49",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 49,
+   "before": "return jsonify({'error': 'Missing required parameters'}), 400",
+   "after": "return jsonify({'error_m2s': 'Missing required parameters'}), 400",
+   "refs": [
+    "GET /flights/search#business_rules[0]",
+    "GET /flights/search#responses[1]"
+   ],
+   "endpoints": [
+    "GET /flights/search"
+   ],
+   "units": [
+    "search-missing-params",
+    "flight-search-scan-error/search-missing-params"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "search-missing-params",
+    "mismatches": [
+     {
+      "path": "steps.no-date.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.empty-date.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.empty-dep.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:app.py:52",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 52,
+   "before": "return jsonify({'flights': flights})",
+   "after": "return jsonify({'flights_m2s': flights})",
+   "refs": [
+    "GET /flights/search#business_rules[3]",
+    "GET /flights/search#responses[0]"
+   ],
+   "endpoints": [
+    "GET /flights/search"
+   ],
+   "units": [
+    "search-route-match",
+    "flight-search-scan-error/search-route-match"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "search-route-match",
+    "mismatches": [
+     {
+      "path": "steps.hit.body",
+      "why": "keys differ",
+      "missing": [
+       "flights"
+      ],
+      "extra": [
+       "flights_m2s"
+      ]
+     },
+     {
+      "path": "steps.lowercase.body",
+      "why": "keys differ",
+      "missing": [
+       "flights"
+      ],
+      "extra": [
+       "flights_m2s"
+      ]
+     },
+     {
+      "path": "steps.wrong-date.body",
+      "why": "keys differ",
+      "missing": [
+       "flights"
+      ],
+      "extra": [
+       "flights_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "auth:app.py:78",
+   "kind": "source",
+   "operator": "auth",
+   "file": "app.py",
+   "line": 78,
+   "before": "@login_required",
+   "after": "",
+   "refs": [
+    "POST /bookings#auth",
+    "POST /bookings#business_rules[0]",
+    "POST /bookings#responses[0]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-auth-guards",
+    "booking-body-and-field-failures",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-missing-outbound-key",
+    "booking-same-charge-twice",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-loyalty-put-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-auth-guards",
+    "mismatches": [
+     {
+      "path": "steps.anon.status",
+      "expected": 401,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.anon.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "type"
+      ]
+     },
+     {
+      "path": "steps.anon.body.error",
+      "expected": "Authentication required. Please provide a valid token.",
+      "actual": "'Request' object has no attribute 'current_user'",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 18
+  },
+  {
+   "id": "negate:app.py:91",
+   "kind": "source",
+   "operator": "negate",
+   "file": "app.py",
+   "line": 91,
+   "before": "if not data:",
+   "after": "if not (not data):",
+   "refs": [
+    "POST /bookings#business_rules[16]",
+    "POST /bookings#business_rules[2]",
+    "POST /bookings#responses[1]",
+    "POST /bookings#responses[8]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-body-and-field-failures",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-missing-outbound-key",
+    "booking-same-charge-twice",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-loyalty-put-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-body-and-field-failures",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "message"
+      ]
+     },
+     {
+      "path": "steps.empty-body.body.error",
+      "expected": "Request body is required",
+      "actual": "Unexpected error during booking: 'outboundFlightId'",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 17
+  },
+  {
+   "id": "branch_off:app.py:91",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "app.py",
+   "line": 91,
+   "before": "if not data:",
+   "after": "if False:",
+   "refs": [
+    "POST /bookings#business_rules[16]",
+    "POST /bookings#business_rules[2]",
+    "POST /bookings#responses[1]",
+    "POST /bookings#responses[8]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-body-and-field-failures",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-missing-outbound-key",
+    "booking-same-charge-twice",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-loyalty-put-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-body-and-field-failures",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "message"
+      ]
+     },
+     {
+      "path": "steps.empty-body.body.error",
+      "expected": "Request body is required",
+      "actual": "Unexpected error during booking: 'outboundFlightId'",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:app.py:92",
+   "kind": "source",
+   "operator": "status",
+   "file": "app.py",
+   "line": 92,
+   "before": "return jsonify({'error': 'Request body is required'}), 400",
+   "after": "return jsonify({'error': 'Request body is required'}), 422",
+   "refs": [
+    "POST /bookings#responses[1]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-body-and-field-failures"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-body-and-field-failures",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:app.py:92",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 92,
+   "before": "return jsonify({'error': 'Request body is required'}), 400",
+   "after": "return jsonify({'error_m2s': 'Request body is required'}), 400",
+   "refs": [
+    "POST /bookings#responses[1]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-body-and-field-failures"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-body-and-field-failures",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:app.py:113",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 113,
+   "before": "'step': 'Reserve Flight'",
+   "after": "'step_m2s': 'Reserve Flight'",
+   "refs": [
+    "POST /bookings#responses[2]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-body-and-field-failures",
+    "booking-create-reserve-fails/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-body-and-field-failures",
+    "mismatches": [
+     {
+      "path": "steps.ghost-flight.body",
+      "why": "keys differ",
+      "missing": [
+       "step"
+      ],
+      "extra": [
+       "step_m2s"
+      ]
+     },
+     {
+      "path": "steps.full-flight.body",
+      "why": "keys differ",
+      "missing": [
+       "step"
+      ],
+      "extra": [
+       "step_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:app.py:129",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 129,
+   "before": "'step': 'Reserve Booking'",
+   "after": "'step_m2s': 'Reserve Booking'",
+   "refs": [
+    "POST /bookings#responses[3]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-body-and-field-failures",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-body-and-field-failures",
+    "mismatches": [
+     {
+      "path": "steps.no-charge.body",
+      "why": "keys differ",
+      "missing": [
+       "step"
+      ],
+      "extra": [
+       "step_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:app.py:151",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 151,
+   "before": "'bookingId': booking_id",
+   "after": "'bookingId_m2s': booking_id",
+   "refs": [
+    "POST /bookings#responses[4]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-body-and-field-failures",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-body-and-field-failures",
+    "mismatches": [
+     {
+      "path": "steps.empty-charge.body",
+      "why": "keys differ",
+      "missing": [
+       "bookingId"
+      ],
+      "extra": [
+       "bookingId_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 3
+  },
+  {
+   "id": "field:app.py:185",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 185,
+   "before": "'message': 'Payment has been refunded'",
+   "after": "'message_m2s': 'Payment has been refunded'",
+   "refs": [
+    "POST /bookings#business_rules[8]",
+    "POST /bookings#responses[5]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "mismatches": [
+     {
+      "path": "steps.create.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "message_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:app.py:214",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 214,
+   "before": "'status': 'CONFIRMED',",
+   "after": "'status_m2s': 'CONFIRMED',",
+   "refs": [
+    "POST /bookings#responses[6]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-create-put-fails/booking-happy-path",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-customerid-overwritten",
+    "mismatches": [
+     {
+      "path": "steps.create.body",
+      "why": "keys differ",
+      "missing": [
+       "status"
+      ],
+      "extra": [
+       "status_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 10
+  },
+  {
+   "id": "negate:app.py:224",
+   "kind": "source",
+   "operator": "negate",
+   "file": "app.py",
+   "line": 224,
+   "before": "if payment_result:",
+   "after": "if not (payment_result):",
+   "refs": [
+    "POST /bookings#business_rules[11]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-missing-outbound-key",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "wb-booking-catchall-refunds-collected-charge",
+    "mismatches": [
+     {
+      "path": "steps.read-payment-after.body.status",
+      "expected": "captured",
+      "actual": "refunded",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "branch_off:app.py:224",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "app.py",
+   "line": 224,
+   "before": "if payment_result:",
+   "after": "if False:",
+   "refs": [
+    "POST /bookings#business_rules[11]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-missing-outbound-key",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim"
+   ],
+   "outcome": "survived",
+   "units_run": 4,
+   "class": {
+    "class": "equivalent",
+    "reason": "关掉 catch-all 的退款。只有 payment_result 为真时才有差别，而收款成功之后落不到 app.py:219 的 catch-all：Step 4 confirm_booking 由 except Exception（app.py:158，不止 ValueError）接住并返回 responses[5]，其内部三次补偿各自再套 try/except（app.py:163-186）；Step 5 积分、Step 6 通知也各自 except Exception 吞掉（app.py:193-207）。故能走到 224 行的输入处 payment_result 永远是 None，if False: 与原条件完全一致（都不退款，同一个 500 体，表状态由后面的 booking_id/flight_reserved 决定），3 个相关单元结果不变。"
+   }
+  },
+  {
+   "id": "negate:app.py:231",
+   "kind": "source",
+   "operator": "negate",
+   "file": "app.py",
+   "line": 231,
+   "before": "if booking_id:",
+   "after": "if not (booking_id):",
+   "refs": [
+    "POST /bookings#business_rules[11]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-missing-outbound-key",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "wb-booking-charge-id-non-string-stored-verbatim",
+    "mismatches": [
+     {
+      "path": "steps.read-list.body.bookings[0].status",
+      "expected": "CANCELLED",
+      "actual": "UNCONFIRMED",
+      "why": "differs"
+     },
+     {
+      "path": "tables_after.Airline-Booking-{stage}[0].paymentToken",
+      "expected": [
+       "a",
+       "b"
+      ],
+      "actual": 15.5,
+      "why": "expected 2 items"
+     },
+     {
+      "path": "tables_after.Airline-Booking-{stage}[0].bookingReference",
+      "expected": null,
+      "actual": "vOoV_Q",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "branch_off:app.py:231",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "app.py",
+   "line": 231,
+   "before": "if booking_id:",
+   "after": "if False:",
+   "refs": [
+    "POST /bookings#business_rules[11]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-missing-outbound-key",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "wb-booking-charge-id-non-string-stored-verbatim",
+    "mismatches": [
+     {
+      "path": "steps.read-list.body.bookings[0].status",
+      "expected": "CANCELLED",
+      "actual": "UNCONFIRMED",
+      "why": "differs"
+     },
+     {
+      "path": "tables_after.Airline-Booking-{stage}[0].status",
+      "expected": "CANCELLED",
+      "actual": "UNCONFIRMED",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "negate:app.py:238",
+   "kind": "source",
+   "operator": "negate",
+   "file": "app.py",
+   "line": 238,
+   "before": "if flight_reserved:",
+   "after": "if not (flight_reserved):",
+   "refs": [
+    "POST /bookings#business_rules[11]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-missing-outbound-key",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "wb-booking-charge-id-non-string-stored-verbatim",
+    "mismatches": [
+     {
+      "path": "steps.seat-after.body.seatCapacity",
+      "expected": 4,
+      "actual": 3,
+      "why": "differs"
+     },
+     {
+      "path": "tables_after.Airline-Flight-{stage}[2].seatCapacity",
+      "expected": 4,
+      "actual": 3,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "branch_off:app.py:238",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "app.py",
+   "line": 238,
+   "before": "if flight_reserved:",
+   "after": "if False:",
+   "refs": [
+    "POST /bookings#business_rules[11]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-missing-outbound-key",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "wb-booking-charge-id-non-string-stored-verbatim",
+    "mismatches": [
+     {
+      "path": "steps.seat-after.body.seatCapacity",
+      "expected": 4,
+      "actual": 3,
+      "why": "differs"
+     },
+     {
+      "path": "tables_after.Airline-Flight-{stage}[2].seatCapacity",
+      "expected": 4,
+      "actual": 3,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:app.py:247",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 247,
+   "before": "'message': 'The booking has been rolled back. Please try again.'",
+   "after": "'message_m2s': 'The booking has been rolled back. Please try again.'",
+   "refs": [
+    "POST /bookings#responses[7]"
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-missing-outbound-key",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-missing-outbound-key",
+    "mismatches": [
+     {
+      "path": "steps.create.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "message_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "auth:app.py:252",
+   "kind": "source",
+   "operator": "auth",
+   "file": "app.py",
+   "line": 252,
+   "before": "@booking_owner_or_admin_required",
+   "after": "",
+   "refs": [
+    "GET /bookings/<booking_id>#auth",
+    "GET /bookings/<booking_id>#business_rules[0]",
+    "GET /bookings/<booking_id>#responses[0]"
+   ],
+   "endpoints": [
+    "GET /bookings/<booking_id>"
+   ],
+   "units": [
+    "booking-cancel-and-read",
+    "booking-cancel-guards",
+    "booking-cancel-twice",
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-guards",
+    "booking-confirm-unconfirmed",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-read-guards",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "booking-get-item-error/booking-read-guards",
+    "wb-booking-cancel-read-fails-in-service/booking-cancel-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards",
+    "wb-booking-loyalty-put-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-customerid-overwritten",
+    "mismatches": [
+     {
+      "path": "steps.other-read.status",
+      "expected": 403,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.other-read.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "bookingOutboundFlightId",
+       "bookingReference",
+       "checkedIn",
+       "createdAt",
+       "customer",
+       "id",
+       "paymentToken",
+       "status"
+      ]
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "auth:app.py:260",
+   "kind": "source",
+   "operator": "auth",
+   "file": "app.py",
+   "line": 260,
+   "before": "@booking_owner_or_admin_required",
+   "after": "",
+   "refs": [
+    "POST /bookings/<booking_id>/confirm#auth",
+    "POST /bookings/<booking_id>/confirm#business_rules[0]",
+    "POST /bookings/<booking_id>/confirm#responses[0]"
+   ],
+   "endpoints": [
+    "POST /bookings/<booking_id>/confirm"
+   ],
+   "units": [
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-guards",
+    "booking-confirm-unconfirmed",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-confirm-guards",
+    "mismatches": [
+     {
+      "path": "steps.anon.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.anon.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "bookingId",
+       "bookingReference",
+       "status"
+      ]
+     },
+     {
+      "path": "steps.other.status",
+      "expected": 403,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:app.py:267",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 267,
+   "before": "'status': 'CONFIRMED'",
+   "after": "'status_m2s': 'CONFIRMED'",
+   "refs": [
+    "POST /bookings/<booking_id>/confirm#responses[3]"
+   ],
+   "endpoints": [
+    "POST /bookings/<booking_id>/confirm"
+   ],
+   "units": [
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-unconfirmed"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-confirm-cancelled-allowed",
+    "mismatches": [
+     {
+      "path": "steps.confirm.body",
+      "why": "keys differ",
+      "missing": [
+       "status"
+      ],
+      "extra": [
+       "status_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "auth:app.py:272",
+   "kind": "source",
+   "operator": "auth",
+   "file": "app.py",
+   "line": 272,
+   "before": "@booking_owner_or_admin_required",
+   "after": "",
+   "refs": [
+    "POST /bookings/<booking_id>/cancel#auth",
+    "POST /bookings/<booking_id>/cancel#business_rules[0]",
+    "POST /bookings/<booking_id>/cancel#responses[0]"
+   ],
+   "endpoints": [
+    "POST /bookings/<booking_id>/cancel"
+   ],
+   "units": [
+    "booking-cancel-and-read",
+    "booking-cancel-guards",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "wb-booking-cancel-read-fails-in-service/booking-cancel-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-cancel-guards",
+    "mismatches": [
+     {
+      "path": "steps.anon.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.anon.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "bookingId",
+       "notification",
+       "refund",
+       "status"
+      ]
+     },
+     {
+      "path": "steps.other.status",
+      "expected": 403,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:app.py:292",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 292,
+   "before": "refund_result = {'refundId': 'N/A', 'status': 'failed'}",
+   "after": "refund_result = {'refundId': 'N/A', 'status_m2s': 'failed'}",
+   "refs": [
+    "POST /bookings/<booking_id>/cancel#business_rules[4]",
+    "POST /bookings/<booking_id>/cancel#responses[3]"
+   ],
+   "endpoints": [
+    "POST /bookings/<booking_id>/cancel"
+   ],
+   "units": [
+    "wb-booking-cancel-empty-token-refund-fails"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "wb-booking-cancel-empty-token-refund-fails",
+    "mismatches": [
+     {
+      "path": "steps.cancel.body.refund",
+      "why": "keys differ",
+      "missing": [
+       "status"
+      ],
+      "extra": [
+       "status_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:app.py:303",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 303,
+   "before": "'status': 'CANCELLED',",
+   "after": "'status_m2s': 'CANCELLED',",
+   "refs": [
+    "POST /bookings/<booking_id>/cancel#responses[3]"
+   ],
+   "endpoints": [
+    "POST /bookings/<booking_id>/cancel"
+   ],
+   "units": [
+    "booking-cancel-and-read",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-cancel-and-read",
+    "mismatches": [
+     {
+      "path": "steps.cancel.body",
+      "why": "keys differ",
+      "missing": [
+       "status"
+      ],
+      "extra": [
+       "status_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 7
+  },
+  {
+   "id": "auth:app.py:310",
+   "kind": "source",
+   "operator": "auth",
+   "file": "app.py",
+   "line": 310,
+   "before": "@owner_or_admin_required",
+   "after": "",
+   "refs": [
+    "GET /customers/<customer_id>/bookings#auth",
+    "GET /customers/<customer_id>/bookings#business_rules[5]",
+    "GET /customers/<customer_id>/bookings#responses[0]"
+   ],
+   "endpoints": [
+    "GET /customers/<customer_id>/bookings"
+   ],
+   "units": [
+    "customer-bookings-owner-only",
+    "customer-bookings-status-filter",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "customer-bookings-scan-error/customer-bookings-status-filter",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "customer-bookings-owner-only",
+    "mismatches": [
+     {
+      "path": "steps.anon.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.anon.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "bookings"
+      ]
+     },
+     {
+      "path": "steps.other-asking.status",
+      "expected": 403,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:app.py:315",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 315,
+   "before": "return jsonify({'bookings': bookings})",
+   "after": "return jsonify({'bookings_m2s': bookings})",
+   "refs": [
+    "GET /customers/<customer_id>/bookings#responses[2]"
+   ],
+   "endpoints": [
+    "GET /customers/<customer_id>/bookings"
+   ],
+   "units": [
+    "customer-bookings-owner-only",
+    "customer-bookings-status-filter",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "customer-bookings-scan-error/customer-bookings-status-filter",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "customer-bookings-owner-only",
+    "mismatches": [
+     {
+      "path": "steps.own.body",
+      "why": "keys differ",
+      "missing": [
+       "bookings"
+      ],
+      "extra": [
+       "bookings_m2s"
+      ]
+     },
+     {
+      "path": "steps.other-own.body",
+      "why": "keys differ",
+      "missing": [
+       "bookings"
+      ],
+      "extra": [
+       "bookings_m2s"
+      ]
+     },
+     {
+      "path": "steps.admin-asking.body",
+      "why": "keys differ",
+      "missing": [
+       "bookings"
+      ],
+      "extra": [
+       "bookings_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 6
+  },
+  {
+   "id": "negate:app.py:327",
+   "kind": "source",
+   "operator": "negate",
+   "file": "app.py",
+   "line": 327,
+   "before": "if not data or 'chargeId' not in data:",
+   "after": "if not (not data or 'chargeId' not in data):",
+   "refs": [
+    "POST /payments/collect#business_rules[1]",
+    "POST /payments/collect#responses[1]"
+   ],
+   "endpoints": [
+    "POST /payments/collect"
+   ],
+   "units": [
+    "collect-then-read-payment",
+    "collect-validation",
+    "payment-read-missing",
+    "refund-then-read-payment"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "collect-then-read-payment",
+    "mismatches": [
+     {
+      "path": "steps.collect.status",
+      "expected": 200,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.collect.body",
+      "why": "keys differ",
+      "missing": [
+       "price",
+       "receiptUrl"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "steps.read-back.status",
+      "expected": 200,
+      "actual": 400,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "branch_off:app.py:327",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "app.py",
+   "line": 327,
+   "before": "if not data or 'chargeId' not in data:",
+   "after": "if False:",
+   "refs": [
+    "POST /payments/collect#business_rules[1]",
+    "POST /payments/collect#responses[1]"
+   ],
+   "endpoints": [
+    "POST /payments/collect"
+   ],
+   "units": [
+    "collect-then-read-payment",
+    "collect-validation",
+    "payment-read-missing",
+    "refund-then-read-payment"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "collect-validation",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "type"
+      ]
+     },
+     {
+      "path": "steps.empty-body.body.error",
+      "expected": "chargeId is required",
+      "actual": "'chargeId'",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:app.py:328",
+   "kind": "source",
+   "operator": "status",
+   "file": "app.py",
+   "line": 328,
+   "before": "return jsonify({'error': 'chargeId is required'}), 400",
+   "after": "return jsonify({'error': 'chargeId is required'}), 422",
+   "refs": [
+    "POST /payments/collect#business_rules[1]",
+    "POST /payments/collect#responses[1]"
+   ],
+   "endpoints": [
+    "POST /payments/collect"
+   ],
+   "units": [
+    "collect-validation"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "collect-validation",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.other-key.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:app.py:328",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 328,
+   "before": "return jsonify({'error': 'chargeId is required'}), 400",
+   "after": "return jsonify({'error_m2s': 'chargeId is required'}), 400",
+   "refs": [
+    "POST /payments/collect#business_rules[1]",
+    "POST /payments/collect#responses[1]"
+   ],
+   "endpoints": [
+    "POST /payments/collect"
+   ],
+   "units": [
+    "collect-validation"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "collect-validation",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.other-key.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "negate:app.py:342",
+   "kind": "source",
+   "operator": "negate",
+   "file": "app.py",
+   "line": 342,
+   "before": "if not data or 'chargeId' not in data:",
+   "after": "if not (not data or 'chargeId' not in data):",
+   "refs": [
+    "POST /payments/refund#business_rules[1]",
+    "POST /payments/refund#responses[1]"
+   ],
+   "endpoints": [
+    "POST /payments/refund"
+   ],
+   "units": [
+    "refund-then-read-payment",
+    "refund-validation"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refund-then-read-payment",
+    "mismatches": [
+     {
+      "path": "steps.refund.status",
+      "expected": 200,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.refund.body",
+      "why": "keys differ",
+      "missing": [
+       "refundId"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "steps.read-back.body.status",
+      "expected": "refunded",
+      "actual": "captured",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "branch_off:app.py:342",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "app.py",
+   "line": 342,
+   "before": "if not data or 'chargeId' not in data:",
+   "after": "if False:",
+   "refs": [
+    "POST /payments/refund#business_rules[1]",
+    "POST /payments/refund#responses[1]"
+   ],
+   "endpoints": [
+    "POST /payments/refund"
+   ],
+   "units": [
+    "refund-then-read-payment",
+    "refund-validation"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refund-validation",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "type"
+      ]
+     },
+     {
+      "path": "steps.empty-body.body.error",
+      "expected": "chargeId is required",
+      "actual": "'chargeId'",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:app.py:343",
+   "kind": "source",
+   "operator": "status",
+   "file": "app.py",
+   "line": 343,
+   "before": "return jsonify({'error': 'chargeId is required'}), 400",
+   "after": "return jsonify({'error': 'chargeId is required'}), 422",
+   "refs": [
+    "POST /payments/refund#responses[1]"
+   ],
+   "endpoints": [
+    "POST /payments/refund"
+   ],
+   "units": [
+    "refund-validation"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refund-validation",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.other-key.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:app.py:343",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 343,
+   "before": "return jsonify({'error': 'chargeId is required'}), 400",
+   "after": "return jsonify({'error_m2s': 'chargeId is required'}), 400",
+   "refs": [
+    "POST /payments/refund#responses[1]"
+   ],
+   "endpoints": [
+    "POST /payments/refund"
+   ],
+   "units": [
+    "refund-validation"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refund-validation",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.other-key.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "auth:app.py:358",
+   "kind": "source",
+   "operator": "auth",
+   "file": "app.py",
+   "line": 358,
+   "before": "@owner_or_admin_required",
+   "after": "",
+   "refs": [
+    "GET /loyalty/<customer_id>#auth",
+    "GET /loyalty/<customer_id>#business_rules[0]",
+    "GET /loyalty/<customer_id>#responses[0]"
+   ],
+   "endpoints": [
+    "GET /loyalty/<customer_id>"
+   ],
+   "units": [
+    "booking-confirm-unconfirmed",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "loyalty-no-records",
+    "loyalty-sum-and-level",
+    "loyalty-tier-boundaries",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "loyalty-sum-and-level",
+    "mismatches": [
+     {
+      "path": "steps.anon.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.anon.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "level",
+       "points",
+       "remainingPoints"
+      ]
+     },
+     {
+      "path": "steps.other-asking.status",
+      "expected": 403,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "auth:app.py:366",
+   "kind": "source",
+   "operator": "auth",
+   "file": "app.py",
+   "line": 366,
+   "before": "@admin_required",
+   "after": "",
+   "refs": [
+    "POST /loyalty/<customer_id>/points#auth",
+    "POST /loyalty/<customer_id>/points#business_rules[0]",
+    "POST /loyalty/<customer_id>/points#responses[0]"
+   ],
+   "endpoints": [
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "units": [
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "points-guards",
+    "mismatches": [
+     {
+      "path": "steps.anon.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.anon.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "customerId",
+       "message",
+       "pointsAdded"
+      ]
+     },
+     {
+      "path": "steps.user-token.status",
+      "expected": 403,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "negate:app.py:374",
+   "kind": "source",
+   "operator": "negate",
+   "file": "app.py",
+   "line": 374,
+   "before": "if not data or 'points' not in data:",
+   "after": "if not (not data or 'points' not in data):",
+   "refs": [
+    "POST /loyalty/<customer_id>/points#business_rules[1]",
+    "POST /loyalty/<customer_id>/points#responses[2]"
+   ],
+   "endpoints": [
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "units": [
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "points-add-and-read",
+    "mismatches": [
+     {
+      "path": "steps.add.status",
+      "expected": 200,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.add.body",
+      "why": "keys differ",
+      "missing": [
+       "customerId",
+       "message",
+       "pointsAdded"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "steps.read-back.body.points",
+      "expected": 500,
+      "actual": 0,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 6
+  },
+  {
+   "id": "branch_off:app.py:374",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "app.py",
+   "line": 374,
+   "before": "if not data or 'points' not in data:",
+   "after": "if False:",
+   "refs": [
+    "POST /loyalty/<customer_id>/points#business_rules[1]",
+    "POST /loyalty/<customer_id>/points#responses[2]"
+   ],
+   "endpoints": [
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "units": [
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "points-guards",
+    "mismatches": [
+     {
+      "path": "steps.missing-key.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.missing-key.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "type"
+      ]
+     },
+     {
+      "path": "steps.missing-key.body.error",
+      "expected": "points is required",
+      "actual": "'points'",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:app.py:375",
+   "kind": "source",
+   "operator": "status",
+   "file": "app.py",
+   "line": 375,
+   "before": "return jsonify({'error': 'points is required'}), 400",
+   "after": "return jsonify({'error': 'points is required'}), 422",
+   "refs": [
+    "POST /loyalty/<customer_id>/points#responses[2]"
+   ],
+   "endpoints": [
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "units": [
+    "points-guards"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "points-guards",
+    "mismatches": [
+     {
+      "path": "steps.missing-key.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:app.py:375",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 375,
+   "before": "return jsonify({'error': 'points is required'}), 400",
+   "after": "return jsonify({'error_m2s': 'points is required'}), 400",
+   "refs": [
+    "POST /loyalty/<customer_id>/points#responses[2]"
+   ],
+   "endpoints": [
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "units": [
+    "points-guards"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "points-guards",
+    "mismatches": [
+     {
+      "path": "steps.missing-key.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "negate:app.py:390",
+   "kind": "source",
+   "operator": "negate",
+   "file": "app.py",
+   "line": 390,
+   "before": "if not data or 'email' not in data or 'password' not in data:",
+   "after": "if not (not data or 'email' not in data or 'password' not in data):",
+   "refs": [
+    "POST /auth/register#business_rules[0]",
+    "POST /auth/register#responses[0]"
+   ],
+   "endpoints": [
+    "POST /auth/register"
+   ],
+   "units": [
+    "register-duplicates",
+    "register-new-user",
+    "register-read-back-by-admin",
+    "register-validation",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user",
+    "wb-register-put-invalid-request/register-new-user",
+    "wb-users-email-lookup-fails/wb-register-email-lookup-fails-allows-duplicate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-duplicates",
+    "mismatches": [
+     {
+      "path": "steps.dup-email.body.error",
+      "expected": "User with email u1@example.com already exists",
+      "actual": "email and password are required",
+      "why": "differs"
+     },
+     {
+      "path": "steps.dup-sub.body.error",
+      "expected": "User with ID cust-u1 already exists",
+      "actual": "email and password are required",
+      "why": "differs"
+     },
+     {
+      "path": "steps.login-original.status",
+      "expected": 200,
+      "actual": 401,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 8
+  },
+  {
+   "id": "branch_off:app.py:390",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "app.py",
+   "line": 390,
+   "before": "if not data or 'email' not in data or 'password' not in data:",
+   "after": "if False:",
+   "refs": [
+    "POST /auth/register#business_rules[0]",
+    "POST /auth/register#responses[0]"
+   ],
+   "endpoints": [
+    "POST /auth/register"
+   ],
+   "units": [
+    "register-duplicates",
+    "register-new-user",
+    "register-read-back-by-admin",
+    "register-validation",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user",
+    "wb-register-put-invalid-request/register-new-user",
+    "wb-users-email-lookup-fails/wb-register-email-lookup-fails-allows-duplicate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-validation",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "type"
+      ]
+     },
+     {
+      "path": "steps.empty-body.body.error",
+      "expected": "email and password are required",
+      "actual": "'email'",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:app.py:391",
+   "kind": "source",
+   "operator": "status",
+   "file": "app.py",
+   "line": 391,
+   "before": "return jsonify({'error': 'email and password are required'}), 400",
+   "after": "return jsonify({'error': 'email and password are required'}), 422",
+   "refs": [
+    "POST /auth/register#business_rules[0]",
+    "POST /auth/register#responses[0]"
+   ],
+   "endpoints": [
+    "POST /auth/register"
+   ],
+   "units": [
+    "register-validation"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-validation",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-password.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-email.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:app.py:391",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 391,
+   "before": "return jsonify({'error': 'email and password are required'}), 400",
+   "after": "return jsonify({'error_m2s': 'email and password are required'}), 400",
+   "refs": [
+    "POST /auth/register#business_rules[0]",
+    "POST /auth/register#responses[0]"
+   ],
+   "endpoints": [
+    "POST /auth/register"
+   ],
+   "units": [
+    "register-validation"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-validation",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.no-password.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.no-email.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:app.py:399",
+   "kind": "source",
+   "operator": "status",
+   "file": "app.py",
+   "line": 399,
+   "before": "return jsonify(user), 201",
+   "after": "return jsonify(user), 200",
+   "refs": [
+    "POST /auth/register#business_rules[5]",
+    "POST /auth/register#responses[1]"
+   ],
+   "endpoints": [
+    "POST /auth/register"
+   ],
+   "units": [
+    "register-new-user",
+    "register-read-back-by-admin",
+    "register-validation",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user",
+    "wb-register-put-invalid-request/register-new-user",
+    "wb-users-email-lookup-fails/wb-register-email-lookup-fails-allows-duplicate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-new-user",
+    "mismatches": [
+     {
+      "path": "steps.register.status",
+      "expected": 201,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.register-generated-id.status",
+      "expected": 201,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 7
+  },
+  {
+   "id": "status:app.py:401",
+   "kind": "source",
+   "operator": "status",
+   "file": "app.py",
+   "line": 401,
+   "before": "return jsonify({'error': str(e)}), 400",
+   "after": "return jsonify({'error': str(e)}), 422",
+   "refs": [
+    "POST /auth/register#responses[2]"
+   ],
+   "endpoints": [
+    "POST /auth/register"
+   ],
+   "units": [
+    "register-duplicates",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "wb-register-put-invalid-request/register-new-user"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-duplicates",
+    "mismatches": [
+     {
+      "path": "steps.dup-email.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.dup-sub.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 3
+  },
+  {
+   "id": "field:app.py:401",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 401,
+   "before": "return jsonify({'error': str(e)}), 400",
+   "after": "return jsonify({'error_m2s': str(e)}), 400",
+   "refs": [
+    "POST /auth/register#responses[2]"
+   ],
+   "endpoints": [
+    "POST /auth/register"
+   ],
+   "units": [
+    "register-duplicates",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "wb-register-put-invalid-request/register-new-user"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-duplicates",
+    "mismatches": [
+     {
+      "path": "steps.dup-email.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.dup-sub.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 3
+  },
+  {
+   "id": "negate:app.py:412",
+   "kind": "source",
+   "operator": "negate",
+   "file": "app.py",
+   "line": 412,
+   "before": "if not data or 'email' not in data or 'password' not in data:",
+   "after": "if not (not data or 'email' not in data or 'password' not in data):",
+   "refs": [
+    "POST /auth/login#business_rules[0]",
+    "POST /auth/login#responses[0]"
+   ],
+   "endpoints": [
+    "POST /auth/login"
+   ],
+   "units": [
+    "login-bad-credentials",
+    "login-success",
+    "login-validation-and-bad-json",
+    "register-duplicates",
+    "register-new-user",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user",
+    "wb-register-put-invalid-request/register-new-user",
+    "wb-users-email-lookup-fails/wb-register-email-lookup-fails-allows-duplicate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-bad-credentials",
+    "mismatches": [
+     {
+      "path": "steps.wrong-password.status",
+      "expected": 401,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.wrong-password.body.error",
+      "expected": "Invalid email or password",
+      "actual": "email and password are required",
+      "why": "differs"
+     },
+     {
+      "path": "steps.unknown-email.status",
+      "expected": 401,
+      "actual": 400,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 9
+  },
+  {
+   "id": "branch_off:app.py:412",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "app.py",
+   "line": 412,
+   "before": "if not data or 'email' not in data or 'password' not in data:",
+   "after": "if False:",
+   "refs": [
+    "POST /auth/login#business_rules[0]",
+    "POST /auth/login#responses[0]"
+   ],
+   "endpoints": [
+    "POST /auth/login"
+   ],
+   "units": [
+    "login-bad-credentials",
+    "login-success",
+    "login-validation-and-bad-json",
+    "register-duplicates",
+    "register-new-user",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user",
+    "wb-register-put-invalid-request/register-new-user",
+    "wb-users-email-lookup-fails/wb-register-email-lookup-fails-allows-duplicate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-validation-and-bad-json",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "type"
+      ]
+     },
+     {
+      "path": "steps.empty-body.body.error",
+      "expected": "email and password are required",
+      "actual": "'email'",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:app.py:413",
+   "kind": "source",
+   "operator": "status",
+   "file": "app.py",
+   "line": 413,
+   "before": "return jsonify({'error': 'email and password are required'}), 400",
+   "after": "return jsonify({'error': 'email and password are required'}), 422",
+   "refs": [
+    "POST /auth/login#responses[0]"
+   ],
+   "endpoints": [
+    "POST /auth/login"
+   ],
+   "units": [
+    "login-validation-and-bad-json"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-validation-and-bad-json",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-password.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:app.py:413",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 413,
+   "before": "return jsonify({'error': 'email and password are required'}), 400",
+   "after": "return jsonify({'error_m2s': 'email and password are required'}), 400",
+   "refs": [
+    "POST /auth/login#responses[0]"
+   ],
+   "endpoints": [
+    "POST /auth/login"
+   ],
+   "units": [
+    "login-validation-and-bad-json"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-validation-and-bad-json",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.no-password.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "negate:app.py:417",
+   "kind": "source",
+   "operator": "negate",
+   "file": "app.py",
+   "line": 417,
+   "before": "if not user:",
+   "after": "if not (not user):",
+   "refs": [
+    "POST /auth/login#business_rules[3]",
+    "POST /auth/login#responses[1]"
+   ],
+   "endpoints": [
+    "POST /auth/login"
+   ],
+   "units": [
+    "login-bad-credentials",
+    "login-success",
+    "register-duplicates",
+    "register-new-user",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user",
+    "wb-register-put-invalid-request/register-new-user",
+    "wb-users-email-lookup-fails/wb-register-email-lookup-fails-allows-duplicate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-bad-credentials",
+    "mismatches": [
+     {
+      "path": "steps.wrong-password.status",
+      "expected": 401,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.wrong-password.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "type"
+      ]
+     },
+     {
+      "path": "steps.wrong-password.body.error",
+      "expected": "Invalid email or password",
+      "actual": "'NoneType' object is not subscriptable",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 8
+  },
+  {
+   "id": "branch_off:app.py:417",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "app.py",
+   "line": 417,
+   "before": "if not user:",
+   "after": "if False:",
+   "refs": [
+    "POST /auth/login#business_rules[3]",
+    "POST /auth/login#responses[1]"
+   ],
+   "endpoints": [
+    "POST /auth/login"
+   ],
+   "units": [
+    "login-bad-credentials",
+    "login-success",
+    "register-duplicates",
+    "register-new-user",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user",
+    "wb-register-put-invalid-request/register-new-user",
+    "wb-users-email-lookup-fails/wb-register-email-lookup-fails-allows-duplicate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-bad-credentials",
+    "mismatches": [
+     {
+      "path": "steps.wrong-password.status",
+      "expected": 401,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.wrong-password.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "type"
+      ]
+     },
+     {
+      "path": "steps.wrong-password.body.error",
+      "expected": "Invalid email or password",
+      "actual": "'NoneType' object is not subscriptable",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 3
+  },
+  {
+   "id": "status:app.py:418",
+   "kind": "source",
+   "operator": "status",
+   "file": "app.py",
+   "line": 418,
+   "before": "return jsonify({'error': 'Invalid email or password'}), 401",
+   "after": "return jsonify({'error': 'Invalid email or password'}), 403",
+   "refs": [
+    "POST /auth/login#business_rules[2]",
+    "POST /auth/login#responses[1]"
+   ],
+   "endpoints": [
+    "POST /auth/login"
+   ],
+   "units": [
+    "login-bad-credentials",
+    "wb-register-put-invalid-request/register-new-user",
+    "wb-users-email-lookup-fails/wb-register-email-lookup-fails-allows-duplicate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-bad-credentials",
+    "mismatches": [
+     {
+      "path": "steps.wrong-password.status",
+      "expected": 401,
+      "actual": 403,
+      "why": "differs"
+     },
+     {
+      "path": "steps.unknown-email.status",
+      "expected": 401,
+      "actual": 403,
+      "why": "differs"
+     },
+     {
+      "path": "steps.case-sensitive-email.status",
+      "expected": 401,
+      "actual": 403,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 3
+  },
+  {
+   "id": "field:app.py:418",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 418,
+   "before": "return jsonify({'error': 'Invalid email or password'}), 401",
+   "after": "return jsonify({'error_m2s': 'Invalid email or password'}), 401",
+   "refs": [
+    "POST /auth/login#business_rules[2]",
+    "POST /auth/login#responses[1]"
+   ],
+   "endpoints": [
+    "POST /auth/login"
+   ],
+   "units": [
+    "login-bad-credentials",
+    "wb-register-put-invalid-request/register-new-user",
+    "wb-users-email-lookup-fails/wb-register-email-lookup-fails-allows-duplicate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-bad-credentials",
+    "mismatches": [
+     {
+      "path": "steps.wrong-password.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.unknown-email.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.case-sensitive-email.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 3
+  },
+  {
+   "id": "field:app.py:425",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 425,
+   "before": "'token_type': 'Bearer',",
+   "after": "'token_type_m2s': 'Bearer',",
+   "refs": [
+    "POST /auth/login#responses[2]"
+   ],
+   "endpoints": [
+    "POST /auth/login"
+   ],
+   "units": [
+    "login-success",
+    "register-duplicates",
+    "register-new-user",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-success",
+    "mismatches": [
+     {
+      "path": "steps.login.body",
+      "why": "keys differ",
+      "missing": [
+       "token_type"
+      ],
+      "extra": [
+       "token_type_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "field:app.py:426",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 426,
+   "before": "'expires_in': AuthService.ACCESS_TOKEN_EXPIRE_MINUTES * 60,",
+   "after": "'expires_in_m2s': AuthService.ACCESS_TOKEN_EXPIRE_MINUTES * 60,",
+   "refs": [
+    "POST /auth/login#business_rules[4]",
+    "POST /auth/login#responses[2]"
+   ],
+   "endpoints": [
+    "POST /auth/login"
+   ],
+   "units": [
+    "login-success",
+    "register-duplicates",
+    "register-new-user",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-success",
+    "mismatches": [
+     {
+      "path": "steps.login.body",
+      "why": "keys differ",
+      "missing": [
+       "expires_in"
+      ],
+      "extra": [
+       "expires_in_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "auth:app.py:436",
+   "kind": "source",
+   "operator": "auth",
+   "file": "app.py",
+   "line": 436,
+   "before": "@login_required",
+   "after": "",
+   "refs": [
+    "GET /auth/me#auth",
+    "GET /auth/me#business_rules[0]",
+    "GET /auth/me#responses[0]"
+   ],
+   "endpoints": [
+    "GET /auth/me"
+   ],
+   "units": [
+    "me-returns-table-record",
+    "me-token-of-deleted-or-forged-sub"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "me-returns-table-record",
+    "mismatches": [
+     {
+      "path": "steps.me.status",
+      "expected": 200,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.me.body",
+      "why": "keys differ",
+      "missing": [
+       "email",
+       "groups",
+       "sub"
+      ],
+      "extra": [
+       "error",
+       "type"
+      ]
+     },
+     {
+      "path": "steps.me-admin.status",
+      "expected": 200,
+      "actual": 500,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:app.py:443",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 443,
+   "before": "'groups': user.get('groups', [])",
+   "after": "'groups_m2s': user.get('groups', [])",
+   "refs": [
+    "GET /auth/me#business_rules[3]",
+    "GET /auth/me#responses[1]"
+   ],
+   "endpoints": [
+    "GET /auth/me"
+   ],
+   "units": [
+    "me-returns-table-record"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "me-returns-table-record",
+    "mismatches": [
+     {
+      "path": "steps.me.body",
+      "why": "keys differ",
+      "missing": [
+       "groups"
+      ],
+      "extra": [
+       "groups_m2s"
+      ]
+     },
+     {
+      "path": "steps.me-admin.body",
+      "why": "keys differ",
+      "missing": [
+       "groups"
+      ],
+      "extra": [
+       "groups_m2s"
+      ]
+     },
+     {
+      "path": "steps.other-prefix.body",
+      "why": "keys differ",
+      "missing": [
+       "groups"
+      ],
+      "extra": [
+       "groups_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "auth:app.py:448",
+   "kind": "source",
+   "operator": "auth",
+   "file": "app.py",
+   "line": 448,
+   "before": "@admin_required",
+   "after": "",
+   "refs": [
+    "GET /auth/users#auth",
+    "GET /auth/users#business_rules[0]",
+    "GET /auth/users#responses[0]"
+   ],
+   "endpoints": [
+    "GET /auth/users"
+   ],
+   "units": [
+    "register-read-back-by-admin",
+    "users-admin-list",
+    "users-admin-only",
+    "wb-users-list-row-missing-email-500",
+    "wb-user-record-read-fails/users-admin-list"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "users-admin-only",
+    "mismatches": [
+     {
+      "path": "steps.user-list.status",
+      "expected": 403,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.user-list.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "users"
+      ]
+     },
+     {
+      "path": "steps.anon.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 3
+  },
+  {
+   "id": "field:app.py:452",
+   "kind": "source",
+   "operator": "field",
+   "file": "app.py",
+   "line": 452,
+   "before": "return jsonify({'users': users})",
+   "after": "return jsonify({'users_m2s': users})",
+   "refs": [
+    "GET /auth/users#business_rules[4]",
+    "GET /auth/users#responses[2]"
+   ],
+   "endpoints": [
+    "GET /auth/users"
+   ],
+   "units": [
+    "register-read-back-by-admin",
+    "users-admin-list",
+    "users-admin-only"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-read-back-by-admin",
+    "mismatches": [
+     {
+      "path": "steps.list.body",
+      "why": "keys differ",
+      "missing": [
+       "users"
+      ],
+      "extra": [
+       "users_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 3
+  },
+  {
+   "id": "negate:data/storage.py:254",
+   "kind": "source",
+   "operator": "negate",
+   "file": "data/storage.py",
+   "line": 254,
+   "before": "if status:",
+   "after": "if not (status):",
+   "refs": [
+    "GET /customers/<customer_id>/bookings#business_rules[2]"
+   ],
+   "endpoints": [
+    "GET /customers/<customer_id>/bookings"
+   ],
+   "units": [
+    "customer-bookings-owner-only",
+    "customer-bookings-status-filter",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "customer-bookings-scan-error/customer-bookings-status-filter",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "customer-bookings-owner-only",
+    "mismatches": [
+     {
+      "path": "steps.own.body.bookings",
+      "expected": [
+       {
+        "bookingOutboundFlightId": "flight-sfo-lax",
+        "bookingReference": "ref_u1_one",
+        "checkedIn": false,
+        "createdAt": "2025-11-02T10:00:00.000000",
+        "customer": "<id:u1>",
+        "id": "booking-u1-one",
+        "paymentToken": "pi_u1_one",
+        "status": "CONFIRMED"
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     },
+     {
+      "path": "steps.other-own.body.bookings",
+      "expected": [
+       {
+        "bookingOutboundFlightId": "flight-at-max",
+        "bookingReference": null,
+        "checkedIn": false,
+        "createdAt": "2025-11-03T10:00:00.000000",
+        "customer": "<id:u2>",
+        "id": "booking-u2-one",
+        "paymentToken": "pi_u2_one",
+        "status": "UNCONFIRMED"
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     },
+     {
+      "path": "steps.admin-asking.body.bookings",
+      "expected": [
+       {
+        "bookingOutboundFlightId": "flight-sfo-lax",
+        "bookingReference": "ref_u1_one",
+        "checkedIn": false,
+        "createdAt": "2025-11-02T10:00:00.000000",
+        "customer": "<id:u1>",
+        "id": "booking-u1-one",
+        "paymentToken": "pi_u1_one",
+        "status": "CONFIRMED"
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "branch_off:data/storage.py:254",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "data/storage.py",
+   "line": 254,
+   "before": "if status:",
+   "after": "if False:",
+   "refs": [
+    "GET /customers/<customer_id>/bookings#business_rules[2]"
+   ],
+   "endpoints": [
+    "GET /customers/<customer_id>/bookings"
+   ],
+   "units": [
+    "customer-bookings-owner-only",
+    "customer-bookings-status-filter",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "customer-bookings-scan-error/customer-bookings-status-filter",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "customer-bookings-status-filter",
+    "mismatches": [
+     {
+      "path": "steps.confirmed.body.bookings",
+      "expected": [
+       {
+        "bookingOutboundFlightId": "flight-conf-target",
+        "bookingReference": "refconf",
+        "checkedIn": false,
+        "createdAt": "2025-11-02T10:00:00.000000",
+        "customer": "<id:u1>",
+        "id": "booking-u1-confirmed",
+        "paymentToken": "pi_conf",
+        "status": "CONFIRMED"
+       }
+      ],
+      "actual": [
+       {
+        "bookingOutboundFlightId": "flight-conf-target",
+        "bookingReference": "refconf",
+        "checkedIn": false,
+        "createdAt": "2025-11-02T10:00:00.000000",
+        "customer": "cust-u1",
+        "id": "booking-u1-confirmed",
+        "paymentToken": "pi_conf",
+        "status": "CONFIRMED"
+       },
+       {
+        "bookingOutboundFlightId": "flight-full",
+        "bookingReference": "refcanc",
+        "checkedIn": false,
+        "createdAt": "2025-11-04T10:00:00.000000",
+        "customer": "cust-u1",
+        "id": "booking-u1-cancelled",
+        "paymentToken": "pi_canc",
+        "status": "CANCELLED"
+       }
+      ],
+      "why": "expected 1 items"
+     },
+     {
+      "path": "steps.cancelled.body.bookings",
+      "expected": [
+       {
+        "bookingOutboundFlightId": "flight-full",
+        "bookingReference": "refcanc",
+        "checkedIn": false,
+        "createdAt": "2025-11-04T10:00:00.000000",
+        "customer": "<id:u1>",
+        "id": "booking-u1-cancelled",
+        "paymentToken": "pi_canc",
+        "status": "CANCELLED"
+       }
+      ],
+      "actual": [
+       {
+        "bookingOutboundFlightId": "flight-conf-target",
+        "bookingReference": "refconf",
+        "checkedIn": false,
+        "createdAt": "2025-11-02T10:00:00.000000",
+        "customer": "cust-u1",
+        "id": "booking-u1-confirmed",
+        "paymentToken": "pi_conf",
+        "status": "CONFIRMED"
+       },
+       {
+        "bookingOutboundFlightId": "flight-full",
+        "bookingReference": "refcanc",
+        "checkedIn": false,
+        "createdAt": "2025-11-04T10:00:00.000000",
+        "customer": "cust-u1",
+        "id": "booking-u1-cancelled",
+        "paymentToken": "pi_canc",
+        "status": "CANCELLED"
+       }
+      ],
+      "why": "expected 1 items"
+     },
+     {
+      "path": "steps.lowercase.body.bookings",
+      "expected": [],
+      "actual": [
+       {
+        "bookingOutboundFlightId": "flight-conf-target",
+        "bookingReference": "refconf",
+        "checkedIn": false,
+        "createdAt": "2025-11-02T10:00:00.000000",
+        "customer": "cust-u1",
+        "id": "booking-u1-confirmed",
+        "paymentToken": "pi_conf",
+        "status": "CONFIRMED"
+       },
+       {
+        "bookingOutboundFlightId": "flight-full",
+        "bookingReference": "refcanc",
+        "checkedIn": false,
+        "createdAt": "2025-11-04T10:00:00.000000",
+        "customer": "cust-u1",
+        "id": "booking-u1-cancelled",
+        "paymentToken": "pi_canc",
+        "status": "CANCELLED"
+       }
+      ],
+      "why": "expected 0 items"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:services/auth.py:67",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/auth.py",
+   "line": 67,
+   "before": "'sub': user['sub'],",
+   "after": "'sub_m2s': user['sub'],",
+   "refs": [
+    "POST /auth/register#responses[1]"
+   ],
+   "endpoints": [
+    "POST /auth/register"
+   ],
+   "units": [
+    "register-new-user",
+    "register-read-back-by-admin",
+    "register-validation",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user",
+    "wb-register-put-invalid-request/register-new-user",
+    "wb-users-email-lookup-fails/wb-register-email-lookup-fails-allows-duplicate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-new-user",
+    "mismatches": [
+     {
+      "path": "steps.register.body",
+      "why": "keys differ",
+      "missing": [
+       "sub"
+      ],
+      "extra": [
+       "sub_m2s"
+      ]
+     },
+     {
+      "path": "steps.register-generated-id.body",
+      "why": "keys differ",
+      "missing": [
+       "sub"
+      ],
+      "extra": [
+       "sub_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 7
+  },
+  {
+   "id": "field:services/auth.py:69",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/auth.py",
+   "line": 69,
+   "before": "'message': 'User registered successfully'",
+   "after": "'message_m2s': 'User registered successfully'",
+   "refs": [
+    "POST /auth/register#business_rules[5]",
+    "POST /auth/register#responses[1]"
+   ],
+   "endpoints": [
+    "POST /auth/register"
+   ],
+   "units": [
+    "register-new-user",
+    "register-read-back-by-admin",
+    "register-validation",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user",
+    "wb-register-put-invalid-request/register-new-user",
+    "wb-users-email-lookup-fails/wb-register-email-lookup-fails-allows-duplicate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-new-user",
+    "mismatches": [
+     {
+      "path": "steps.register.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "message_m2s"
+      ]
+     },
+     {
+      "path": "steps.register-generated-id.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "message_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 7
+  },
+  {
+   "id": "negate:services/auth.py:79",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/auth.py",
+   "line": 79,
+   "before": "if user.get('password_hash') == AuthService._hash_password(password):",
+   "after": "if not (user.get('password_hash') == AuthService._hash_password(password)):",
+   "refs": [
+    "POST /auth/login#business_rules[2]"
+   ],
+   "endpoints": [
+    "POST /auth/login"
+   ],
+   "units": [
+    "login-bad-credentials",
+    "login-success",
+    "register-duplicates",
+    "register-new-user",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-bad-credentials",
+    "mismatches": [
+     {
+      "path": "steps.wrong-password.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.wrong-password.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "access_token",
+       "expires_in",
+       "token_type",
+       "user"
+      ]
+     }
+    ]
+   },
+   "killing_units": 6
+  },
+  {
+   "id": "branch_off:services/auth.py:79",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/auth.py",
+   "line": 79,
+   "before": "if user.get('password_hash') == AuthService._hash_password(password):",
+   "after": "if False:",
+   "refs": [
+    "POST /auth/login#business_rules[2]"
+   ],
+   "endpoints": [
+    "POST /auth/login"
+   ],
+   "units": [
+    "login-bad-credentials",
+    "login-success",
+    "register-duplicates",
+    "register-new-user",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-success",
+    "mismatches": [
+     {
+      "path": "steps.login.status",
+      "expected": 200,
+      "actual": 401,
+      "why": "differs"
+     },
+     {
+      "path": "steps.login.body",
+      "why": "keys differ",
+      "missing": [
+       "access_token",
+       "expires_in",
+       "token_type",
+       "user"
+      ],
+      "extra": [
+       "error"
+      ]
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "negate:services/auth.py:160",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/auth.py",
+   "line": 160,
+   "before": "if 'Authorization' not in request.headers:",
+   "after": "if not ('Authorization' not in request.headers):",
+   "refs": [
+    "GET /auth/me#business_rules[0]"
+   ],
+   "endpoints": [
+    "GET /auth/me"
+   ],
+   "units": [
+    "booking-auth-guards",
+    "booking-body-and-field-failures",
+    "booking-cancel-and-read",
+    "booking-cancel-guards",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-guards",
+    "booking-confirm-unconfirmed",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-missing-outbound-key",
+    "booking-read-guards",
+    "booking-same-charge-twice",
+    "customer-bookings-owner-only",
+    "customer-bookings-status-filter",
+    "loyalty-no-records",
+    "loyalty-sum-and-level",
+    "loyalty-tier-boundaries",
+    "me-returns-table-record",
+    "me-token-of-deleted-or-forged-sub",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "register-read-back-by-admin",
+    "users-admin-list",
+    "users-admin-only",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "wb-users-list-row-missing-email-500",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "booking-get-item-error/booking-read-guards",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "customer-bookings-scan-error/customer-bookings-status-filter",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-cancel-read-fails-in-service/booking-cancel-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read",
+    "wb-user-record-read-fails/users-admin-list"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-auth-guards",
+    "mismatches": [
+     {
+      "path": "steps.anon.status",
+      "expected": 401,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.anon.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "type"
+      ]
+     },
+     {
+      "path": "steps.anon.body.error",
+      "expected": "Authentication required. Please provide a valid token.",
+      "actual": "'HTTP_AUTHORIZATION'",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 56
+  },
+  {
+   "id": "branch_off:services/auth.py:160",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/auth.py",
+   "line": 160,
+   "before": "if 'Authorization' not in request.headers:",
+   "after": "if False:",
+   "refs": [
+    "GET /auth/me#business_rules[0]"
+   ],
+   "endpoints": [
+    "GET /auth/me"
+   ],
+   "units": [
+    "booking-auth-guards",
+    "booking-body-and-field-failures",
+    "booking-cancel-and-read",
+    "booking-cancel-guards",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-guards",
+    "booking-confirm-unconfirmed",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-missing-outbound-key",
+    "booking-read-guards",
+    "booking-same-charge-twice",
+    "customer-bookings-owner-only",
+    "customer-bookings-status-filter",
+    "loyalty-no-records",
+    "loyalty-sum-and-level",
+    "loyalty-tier-boundaries",
+    "me-returns-table-record",
+    "me-token-of-deleted-or-forged-sub",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "register-read-back-by-admin",
+    "users-admin-list",
+    "users-admin-only",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "wb-users-list-row-missing-email-500",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "booking-get-item-error/booking-read-guards",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "customer-bookings-scan-error/customer-bookings-status-filter",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-cancel-read-fails-in-service/booking-cancel-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read",
+    "wb-user-record-read-fails/users-admin-list"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-auth-guards",
+    "mismatches": [
+     {
+      "path": "steps.anon.status",
+      "expected": 401,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.anon.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "type"
+      ]
+     },
+     {
+      "path": "steps.anon.body.error",
+      "expected": "Authentication required. Please provide a valid token.",
+      "actual": "'HTTP_AUTHORIZATION'",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 14
+  },
+  {
+   "id": "field:services/auth.py:161",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/auth.py",
+   "line": 161,
+   "before": "return None, (jsonify({'error': 'Authentication required. Please provide a valid token.'}), 401)",
+   "after": "return None, (jsonify({'error_m2s': 'Authentication required. Please provide a valid token.'}), 401)",
+   "refs": [
+    "GET /auth/me#responses[0]",
+    "GET /auth/users#responses[0]",
+    "GET /bookings/<booking_id>#business_rules[0]",
+    "GET /bookings/<booking_id>#responses[0]",
+    "GET /customers/<customer_id>/bookings#responses[0]",
+    "GET /loyalty/<customer_id>#responses[0]",
+    "POST /bookings#business_rules[0]",
+    "POST /bookings#responses[0]",
+    "POST /bookings/<booking_id>/cancel#responses[0]",
+    "POST /bookings/<booking_id>/confirm#responses[0]",
+    "POST /loyalty/<customer_id>/points#responses[0]"
+   ],
+   "endpoints": [
+    "GET /auth/me",
+    "GET /auth/users",
+    "GET /bookings/<booking_id>",
+    "GET /customers/<customer_id>/bookings",
+    "GET /loyalty/<customer_id>",
+    "POST /bookings",
+    "POST /bookings/<booking_id>/cancel",
+    "POST /bookings/<booking_id>/confirm",
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "units": [
+    "booking-auth-guards",
+    "booking-cancel-guards",
+    "booking-confirm-guards",
+    "booking-read-guards",
+    "customer-bookings-owner-only",
+    "loyalty-sum-and-level",
+    "me-returns-table-record",
+    "points-guards",
+    "users-admin-only",
+    "wb-users-list-row-missing-email-500",
+    "booking-get-item-error/booking-read-guards",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-auth-guards",
+    "mismatches": [
+     {
+      "path": "steps.anon.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 14
+  },
+  {
+   "id": "field:services/auth.py:167",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/auth.py",
+   "line": 167,
+   "before": "return None, (jsonify({'error': 'Invalid token format. Use: Bearer <token>'}), 401)",
+   "after": "return None, (jsonify({'error_m2s': 'Invalid token format. Use: Bearer <token>'}), 401)",
+   "refs": [
+    "GET /auth/me#responses[0]"
+   ],
+   "endpoints": [
+    "GET /auth/me"
+   ],
+   "units": [
+    "booking-auth-guards",
+    "me-returns-table-record",
+    "users-admin-only"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-auth-guards",
+    "mismatches": [
+     {
+      "path": "steps.bad-format.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 3
+  },
+  {
+   "id": "negate:services/auth.py:170",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/auth.py",
+   "line": 170,
+   "before": "if not current_user:",
+   "after": "if not (not current_user):",
+   "refs": [
+    "GET /auth/users#business_rules[6]"
+   ],
+   "endpoints": [
+    "GET /auth/users"
+   ],
+   "units": [
+    "booking-auth-guards",
+    "booking-body-and-field-failures",
+    "booking-cancel-and-read",
+    "booking-cancel-guards",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-guards",
+    "booking-confirm-unconfirmed",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-missing-outbound-key",
+    "booking-read-guards",
+    "booking-same-charge-twice",
+    "customer-bookings-owner-only",
+    "customer-bookings-status-filter",
+    "loyalty-no-records",
+    "loyalty-sum-and-level",
+    "loyalty-tier-boundaries",
+    "me-returns-table-record",
+    "me-token-of-deleted-or-forged-sub",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "register-read-back-by-admin",
+    "users-admin-list",
+    "users-admin-only",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "wb-users-list-row-missing-email-500",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "booking-get-item-error/booking-read-guards",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "customer-bookings-scan-error/customer-bookings-status-filter",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-cancel-read-fails-in-service/booking-cancel-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read",
+    "wb-user-record-read-fails/users-admin-list"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-auth-guards",
+    "mismatches": [
+     {
+      "path": "steps.forged.status",
+      "expected": 401,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.forged.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "type"
+      ]
+     },
+     {
+      "path": "steps.forged.body.error",
+      "expected": "Invalid or expired token",
+      "actual": "'NoneType' object is not subscriptable",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 56
+  },
+  {
+   "id": "branch_off:services/auth.py:170",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/auth.py",
+   "line": 170,
+   "before": "if not current_user:",
+   "after": "if False:",
+   "refs": [
+    "GET /auth/users#business_rules[6]"
+   ],
+   "endpoints": [
+    "GET /auth/users"
+   ],
+   "units": [
+    "booking-auth-guards",
+    "booking-body-and-field-failures",
+    "booking-cancel-and-read",
+    "booking-cancel-guards",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-guards",
+    "booking-confirm-unconfirmed",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-missing-outbound-key",
+    "booking-read-guards",
+    "booking-same-charge-twice",
+    "customer-bookings-owner-only",
+    "customer-bookings-status-filter",
+    "loyalty-no-records",
+    "loyalty-sum-and-level",
+    "loyalty-tier-boundaries",
+    "me-returns-table-record",
+    "me-token-of-deleted-or-forged-sub",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "register-read-back-by-admin",
+    "users-admin-list",
+    "users-admin-only",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "wb-users-list-row-missing-email-500",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "booking-get-item-error/booking-read-guards",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "customer-bookings-scan-error/customer-bookings-status-filter",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-cancel-read-fails-in-service/booking-cancel-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read",
+    "wb-user-record-read-fails/users-admin-list"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-auth-guards",
+    "mismatches": [
+     {
+      "path": "steps.forged.status",
+      "expected": 401,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.forged.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "type"
+      ]
+     },
+     {
+      "path": "steps.forged.body.error",
+      "expected": "Invalid or expired token",
+      "actual": "'NoneType' object is not subscriptable",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "field:services/auth.py:171",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/auth.py",
+   "line": 171,
+   "before": "return None, (jsonify({'error': 'Invalid or expired token'}), 401)",
+   "after": "return None, (jsonify({'error_m2s': 'Invalid or expired token'}), 401)",
+   "refs": [
+    "GET /auth/me#business_rules[0]",
+    "GET /auth/me#responses[0]",
+    "GET /auth/users#business_rules[6]",
+    "POST /bookings#business_rules[0]",
+    "POST /bookings#responses[0]"
+   ],
+   "endpoints": [
+    "GET /auth/me",
+    "GET /auth/users",
+    "POST /bookings"
+   ],
+   "units": [
+    "booking-auth-guards",
+    "me-returns-table-record",
+    "me-token-of-deleted-or-forged-sub",
+    "wb-user-record-read-fails/users-admin-list"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-auth-guards",
+    "mismatches": [
+     {
+      "path": "steps.forged.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "negate:services/auth.py:197",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/auth.py",
+   "line": 197,
+   "before": "if not AuthService.is_admin(current_user):",
+   "after": "if not (not AuthService.is_admin(current_user)):",
+   "refs": [
+    "GET /auth/users#responses[1]",
+    "POST /loyalty/<customer_id>/points#responses[1]"
+   ],
+   "endpoints": [
+    "GET /auth/users",
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "units": [
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "register-read-back-by-admin",
+    "users-admin-list",
+    "users-admin-only",
+    "wb-users-list-row-missing-email-500",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "points-add-and-read",
+    "mismatches": [
+     {
+      "path": "steps.add.status",
+      "expected": 200,
+      "actual": 403,
+      "why": "differs"
+     },
+     {
+      "path": "steps.add.body",
+      "why": "keys differ",
+      "missing": [
+       "customerId",
+       "message",
+       "pointsAdded"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "steps.read-back.body.points",
+      "expected": 500,
+      "actual": 0,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 10
+  },
+  {
+   "id": "branch_off:services/auth.py:197",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/auth.py",
+   "line": 197,
+   "before": "if not AuthService.is_admin(current_user):",
+   "after": "if False:",
+   "refs": [
+    "GET /auth/users#responses[1]",
+    "POST /loyalty/<customer_id>/points#responses[1]"
+   ],
+   "endpoints": [
+    "GET /auth/users",
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "units": [
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "register-read-back-by-admin",
+    "users-admin-list",
+    "users-admin-only",
+    "wb-users-list-row-missing-email-500",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "points-guards",
+    "mismatches": [
+     {
+      "path": "steps.user-token.status",
+      "expected": 403,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.user-token.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "customerId",
+       "message",
+       "pointsAdded"
+      ]
+     },
+     {
+      "path": "steps.read-back.body.points",
+      "expected": 0,
+      "actual": 10,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "status:services/auth.py:198",
+   "kind": "source",
+   "operator": "status",
+   "file": "services/auth.py",
+   "line": 198,
+   "before": "return jsonify({'error': 'Admin privileges required'}), 403",
+   "after": "return jsonify({'error': 'Admin privileges required'}), 401",
+   "refs": [
+    "GET /auth/users#business_rules[0]",
+    "GET /auth/users#responses[1]",
+    "POST /loyalty/<customer_id>/points#business_rules[0]",
+    "POST /loyalty/<customer_id>/points#responses[1]"
+   ],
+   "endpoints": [
+    "GET /auth/users",
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "units": [
+    "points-guards",
+    "users-admin-only"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "points-guards",
+    "mismatches": [
+     {
+      "path": "steps.user-token.status",
+      "expected": 403,
+      "actual": 401,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:services/auth.py:198",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/auth.py",
+   "line": 198,
+   "before": "return jsonify({'error': 'Admin privileges required'}), 403",
+   "after": "return jsonify({'error_m2s': 'Admin privileges required'}), 403",
+   "refs": [
+    "GET /auth/users#business_rules[0]",
+    "GET /auth/users#responses[1]",
+    "POST /loyalty/<customer_id>/points#business_rules[0]",
+    "POST /loyalty/<customer_id>/points#responses[1]"
+   ],
+   "endpoints": [
+    "GET /auth/users",
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "units": [
+    "points-guards",
+    "users-admin-only"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "points-guards",
+    "mismatches": [
+     {
+      "path": "steps.user-token.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "negate:services/auth.py:215",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/auth.py",
+   "line": 215,
+   "before": "if not (AuthService.is_admin(current_user) or is_owner):",
+   "after": "if not (not (AuthService.is_admin(current_user) or is_owner)):",
+   "refs": [
+    "GET /customers/<customer_id>/bookings#business_rules[0]"
+   ],
+   "endpoints": [
+    "GET /customers/<customer_id>/bookings"
+   ],
+   "units": [
+    "booking-confirm-unconfirmed",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "customer-bookings-owner-only",
+    "customer-bookings-status-filter",
+    "loyalty-no-records",
+    "loyalty-sum-and-level",
+    "loyalty-tier-boundaries",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "customer-bookings-scan-error/customer-bookings-status-filter",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-confirm-unconfirmed",
+    "mismatches": [
+     {
+      "path": "steps.read-loyalty.status",
+      "expected": 200,
+      "actual": 403,
+      "why": "differs"
+     },
+     {
+      "path": "steps.read-loyalty.body",
+      "why": "keys differ",
+      "missing": [
+       "level",
+       "points",
+       "remainingPoints"
+      ],
+      "extra": [
+       "error"
+      ]
+     }
+    ]
+   },
+   "killing_units": 28
+  },
+  {
+   "id": "branch_off:services/auth.py:215",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/auth.py",
+   "line": 215,
+   "before": "if not (AuthService.is_admin(current_user) or is_owner):",
+   "after": "if False:",
+   "refs": [
+    "GET /customers/<customer_id>/bookings#business_rules[0]"
+   ],
+   "endpoints": [
+    "GET /customers/<customer_id>/bookings"
+   ],
+   "units": [
+    "booking-confirm-unconfirmed",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "customer-bookings-owner-only",
+    "customer-bookings-status-filter",
+    "loyalty-no-records",
+    "loyalty-sum-and-level",
+    "loyalty-tier-boundaries",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "customer-bookings-scan-error/customer-bookings-status-filter",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "customer-bookings-owner-only",
+    "mismatches": [
+     {
+      "path": "steps.other-asking.status",
+      "expected": 403,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.other-asking.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "bookings"
+      ]
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "status:services/auth.py:216",
+   "kind": "source",
+   "operator": "status",
+   "file": "services/auth.py",
+   "line": 216,
+   "before": "return jsonify({'error': 'Access denied. You can only access your own resources.'}), 403",
+   "after": "return jsonify({'error': 'Access denied. You can only access your own resources.'}), 401",
+   "refs": [
+    "GET /customers/<customer_id>/bookings#business_rules[5]",
+    "GET /customers/<customer_id>/bookings#responses[1]",
+    "GET /loyalty/<customer_id>#responses[1]"
+   ],
+   "endpoints": [
+    "GET /customers/<customer_id>/bookings",
+    "GET /loyalty/<customer_id>"
+   ],
+   "units": [
+    "customer-bookings-owner-only",
+    "loyalty-sum-and-level",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "loyalty-scan-error/loyalty-sum-and-level"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "customer-bookings-owner-only",
+    "mismatches": [
+     {
+      "path": "steps.other-asking.status",
+      "expected": 403,
+      "actual": 401,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "field:services/auth.py:216",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/auth.py",
+   "line": 216,
+   "before": "return jsonify({'error': 'Access denied. You can only access your own resources.'}), 403",
+   "after": "return jsonify({'error_m2s': 'Access denied. You can only access your own resources.'}), 403",
+   "refs": [
+    "GET /customers/<customer_id>/bookings#business_rules[5]",
+    "GET /customers/<customer_id>/bookings#responses[1]",
+    "GET /loyalty/<customer_id>#responses[1]"
+   ],
+   "endpoints": [
+    "GET /customers/<customer_id>/bookings",
+    "GET /loyalty/<customer_id>"
+   ],
+   "units": [
+    "customer-bookings-owner-only",
+    "loyalty-sum-and-level",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "loyalty-scan-error/loyalty-sum-and-level"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "customer-bookings-owner-only",
+    "mismatches": [
+     {
+      "path": "steps.other-asking.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "negate:services/auth.py:234",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/auth.py",
+   "line": 234,
+   "before": "if not booking:",
+   "after": "if not (not booking):",
+   "refs": [
+    "GET /bookings/<booking_id>#business_rules[2]"
+   ],
+   "endpoints": [
+    "GET /bookings/<booking_id>"
+   ],
+   "units": [
+    "booking-cancel-and-read",
+    "booking-cancel-guards",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-guards",
+    "booking-confirm-unconfirmed",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-read-guards",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "booking-get-item-error/booking-read-guards",
+    "wb-booking-cancel-read-fails-in-service/booking-cancel-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards",
+    "wb-booking-loyalty-put-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-cancel-and-read",
+    "mismatches": [
+     {
+      "path": "steps.cancel.status",
+      "expected": 200,
+      "actual": 404,
+      "why": "differs"
+     },
+     {
+      "path": "steps.cancel.body",
+      "why": "keys differ",
+      "missing": [
+       "bookingId",
+       "notification",
+       "refund",
+       "status"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "steps.read-booking.status",
+      "expected": 200,
+      "actual": 404,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 30
+  },
+  {
+   "id": "branch_off:services/auth.py:234",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/auth.py",
+   "line": 234,
+   "before": "if not booking:",
+   "after": "if False:",
+   "refs": [
+    "GET /bookings/<booking_id>#business_rules[2]"
+   ],
+   "endpoints": [
+    "GET /bookings/<booking_id>"
+   ],
+   "units": [
+    "booking-cancel-and-read",
+    "booking-cancel-guards",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-guards",
+    "booking-confirm-unconfirmed",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-read-guards",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "booking-get-item-error/booking-read-guards",
+    "wb-booking-cancel-read-fails-in-service/booking-cancel-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards",
+    "wb-booking-loyalty-put-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-cancel-guards",
+    "mismatches": [
+     {
+      "path": "steps.missing.status",
+      "expected": 404,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.missing.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "type"
+      ]
+     },
+     {
+      "path": "steps.missing.body.error",
+      "expected": "Booking not found",
+      "actual": "'NoneType' object is not subscriptable",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 6
+  },
+  {
+   "id": "status:services/auth.py:235",
+   "kind": "source",
+   "operator": "status",
+   "file": "services/auth.py",
+   "line": 235,
+   "before": "return jsonify({'error': 'Booking not found'}), 404",
+   "after": "return jsonify({'error': 'Booking not found'}), 410",
+   "refs": [
+    "GET /bookings/<booking_id>#business_rules[2]",
+    "GET /bookings/<booking_id>#responses[1]",
+    "POST /bookings/<booking_id>/cancel#responses[1]",
+    "POST /bookings/<booking_id>/confirm#business_rules[6]",
+    "POST /bookings/<booking_id>/confirm#responses[1]"
+   ],
+   "endpoints": [
+    "GET /bookings/<booking_id>",
+    "POST /bookings/<booking_id>/cancel",
+    "POST /bookings/<booking_id>/confirm"
+   ],
+   "units": [
+    "booking-cancel-guards",
+    "booking-confirm-guards",
+    "booking-read-guards",
+    "booking-create-reserve-fails/booking-happy-path",
+    "booking-get-item-error/booking-read-guards",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-cancel-guards",
+    "mismatches": [
+     {
+      "path": "steps.missing.status",
+      "expected": 404,
+      "actual": 410,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 6
+  },
+  {
+   "id": "field:services/auth.py:235",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/auth.py",
+   "line": 235,
+   "before": "return jsonify({'error': 'Booking not found'}), 404",
+   "after": "return jsonify({'error_m2s': 'Booking not found'}), 404",
+   "refs": [
+    "GET /bookings/<booking_id>#business_rules[2]",
+    "GET /bookings/<booking_id>#responses[1]",
+    "POST /bookings/<booking_id>/cancel#responses[1]",
+    "POST /bookings/<booking_id>/confirm#business_rules[6]",
+    "POST /bookings/<booking_id>/confirm#responses[1]"
+   ],
+   "endpoints": [
+    "GET /bookings/<booking_id>",
+    "POST /bookings/<booking_id>/cancel",
+    "POST /bookings/<booking_id>/confirm"
+   ],
+   "units": [
+    "booking-cancel-guards",
+    "booking-confirm-guards",
+    "booking-read-guards",
+    "booking-create-reserve-fails/booking-happy-path",
+    "booking-get-item-error/booking-read-guards",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-cancel-guards",
+    "mismatches": [
+     {
+      "path": "steps.missing.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 6
+  },
+  {
+   "id": "negate:services/auth.py:238",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/auth.py",
+   "line": 238,
+   "before": "if not (AuthService.is_admin(current_user) or is_owner):",
+   "after": "if not (not (AuthService.is_admin(current_user) or is_owner)):",
+   "refs": [
+    "POST /bookings/<booking_id>/confirm#responses[2]"
+   ],
+   "endpoints": [
+    "POST /bookings/<booking_id>/confirm"
+   ],
+   "units": [
+    "booking-cancel-and-read",
+    "booking-cancel-guards",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-guards",
+    "booking-confirm-unconfirmed",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-read-guards",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "wb-booking-cancel-read-fails-in-service/booking-cancel-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards",
+    "wb-booking-loyalty-put-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-cancel-and-read",
+    "mismatches": [
+     {
+      "path": "steps.cancel.status",
+      "expected": 200,
+      "actual": 403,
+      "why": "differs"
+     },
+     {
+      "path": "steps.cancel.body",
+      "why": "keys differ",
+      "missing": [
+       "bookingId",
+       "notification",
+       "refund",
+       "status"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "steps.read-booking.status",
+      "expected": 200,
+      "actual": 403,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 28
+  },
+  {
+   "id": "branch_off:services/auth.py:238",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/auth.py",
+   "line": 238,
+   "before": "if not (AuthService.is_admin(current_user) or is_owner):",
+   "after": "if False:",
+   "refs": [
+    "POST /bookings/<booking_id>/confirm#responses[2]"
+   ],
+   "endpoints": [
+    "POST /bookings/<booking_id>/confirm"
+   ],
+   "units": [
+    "booking-cancel-and-read",
+    "booking-cancel-guards",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-guards",
+    "booking-confirm-unconfirmed",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-read-guards",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "wb-booking-cancel-read-fails-in-service/booking-cancel-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards",
+    "wb-booking-loyalty-put-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-cancel-guards",
+    "mismatches": [
+     {
+      "path": "steps.other.status",
+      "expected": 403,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.other.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "bookingId",
+       "notification",
+       "refund",
+       "status"
+      ]
+     },
+     {
+      "path": "steps.read-booking.body.status",
+      "expected": "UNCONFIRMED",
+      "actual": "CANCELLED",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "status:services/auth.py:239",
+   "kind": "source",
+   "operator": "status",
+   "file": "services/auth.py",
+   "line": 239,
+   "before": "return jsonify({'error': 'Access denied. You can only access your own bookings.'}), 403",
+   "after": "return jsonify({'error': 'Access denied. You can only access your own bookings.'}), 401",
+   "refs": [
+    "GET /bookings/<booking_id>#business_rules[1]",
+    "GET /bookings/<booking_id>#responses[2]",
+    "POST /bookings/<booking_id>/cancel#responses[2]"
+   ],
+   "endpoints": [
+    "GET /bookings/<booking_id>",
+    "POST /bookings/<booking_id>/cancel"
+   ],
+   "units": [
+    "booking-cancel-guards",
+    "booking-confirm-guards",
+    "booking-customerid-overwritten",
+    "booking-read-guards",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-cancel-guards",
+    "mismatches": [
+     {
+      "path": "steps.other.status",
+      "expected": 403,
+      "actual": 401,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "field:services/auth.py:239",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/auth.py",
+   "line": 239,
+   "before": "return jsonify({'error': 'Access denied. You can only access your own bookings.'}), 403",
+   "after": "return jsonify({'error_m2s': 'Access denied. You can only access your own bookings.'}), 403",
+   "refs": [
+    "GET /bookings/<booking_id>#business_rules[1]",
+    "GET /bookings/<booking_id>#responses[2]",
+    "POST /bookings/<booking_id>/cancel#responses[2]"
+   ],
+   "endpoints": [
+    "GET /bookings/<booking_id>",
+    "POST /bookings/<booking_id>/cancel"
+   ],
+   "units": [
+    "booking-cancel-guards",
+    "booking-confirm-guards",
+    "booking-customerid-overwritten",
+    "booking-read-guards",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-cancel-guards",
+    "mismatches": [
+     {
+      "path": "steps.other.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "negate:services/booking.py:58",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/booking.py",
+   "line": 58,
+   "before": "if not booking:",
+   "after": "if not (not booking):",
+   "refs": [
+    "POST /bookings/<booking_id>/confirm#business_rules[5]"
+   ],
+   "endpoints": [
+    "POST /bookings/<booking_id>/confirm"
+   ],
+   "units": [
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-unconfirmed",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-confirm-cancelled-allowed",
+    "mismatches": [
+     {
+      "path": "steps.confirm.status",
+      "expected": 200,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.confirm.body",
+      "why": "keys differ",
+      "missing": [
+       "bookingId",
+       "bookingReference",
+       "status"
+      ],
+      "extra": [
+       "error",
+       "type"
+      ]
+     },
+     {
+      "path": "steps.read-back.body.status",
+      "expected": "CONFIRMED",
+      "actual": "CANCELLED",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 16
+  },
+  {
+   "id": "branch_off:services/booking.py:58",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/booking.py",
+   "line": 58,
+   "before": "if not booking:",
+   "after": "if False:",
+   "refs": [
+    "POST /bookings/<booking_id>/confirm#business_rules[5]"
+   ],
+   "endpoints": [
+    "POST /bookings/<booking_id>/confirm"
+   ],
+   "units": [
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-unconfirmed",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "mismatches": [
+     {
+      "path": "steps.confirm.status",
+      "expected": 400,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.confirm.body",
+      "why": "keys differ",
+      "missing": [
+       "error",
+       "type"
+      ],
+      "extra": [
+       "bookingId",
+       "bookingReference",
+       "status"
+      ]
+     },
+     {
+      "path": "steps.read-booking.body.bookingReference",
+      "expected": null,
+      "actual": "ZnuKKw",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:services/catalog.py:65",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/catalog.py",
+   "line": 65,
+   "before": "return {'status': 'SUCCESS'}",
+   "after": "return {'status_m2s': 'SUCCESS'}",
+   "refs": [
+    "POST /flights/<flight_id>/reserve#responses[0]"
+   ],
+   "endpoints": [
+    "POST /flights/<flight_id>/reserve"
+   ],
+   "units": [
+    "booking-body-and-field-failures",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "reserve-decrements-seat",
+    "reserve-then-release",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "booking-create-put-fails/booking-happy-path",
+    "reserve-update-network/reserve-then-release",
+    "reserve-update-throttled-once/reserve-decrements-seat",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-release-update-invalid-request/reserve-then-release"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "reserve-decrements-seat",
+    "mismatches": [
+     {
+      "path": "steps.reserve.body",
+      "why": "keys differ",
+      "missing": [
+       "status"
+      ],
+      "extra": [
+       "status_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "field:services/catalog.py:85",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/catalog.py",
+   "line": 85,
+   "before": "return {'status': 'SUCCESS'}",
+   "after": "return {'status_m2s': 'SUCCESS'}",
+   "refs": [
+    "POST /flights/<flight_id>/release#responses[0]"
+   ],
+   "endpoints": [
+    "POST /flights/<flight_id>/release"
+   ],
+   "units": [
+    "booking-body-and-field-failures",
+    "booking-cancel-and-read",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "reserve-then-release",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "reserve-update-network/reserve-then-release"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "reserve-then-release",
+    "mismatches": [
+     {
+      "path": "steps.release.body",
+      "why": "keys differ",
+      "missing": [
+       "status"
+      ],
+      "extra": [
+       "status_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "negate:services/loyalty.py:18",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/loyalty.py",
+   "line": 18,
+   "before": "if points >= LoyaltyService.TIER_GOLD:",
+   "after": "if not (points >= LoyaltyService.TIER_GOLD):",
+   "refs": [
+    "GET /loyalty/<customer_id>#business_rules[3]"
+   ],
+   "endpoints": [
+    "GET /loyalty/<customer_id>"
+   ],
+   "units": [
+    "booking-confirm-unconfirmed",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "loyalty-no-records",
+    "loyalty-sum-and-level",
+    "loyalty-tier-boundaries",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-confirm-unconfirmed",
+    "mismatches": [
+     {
+      "path": "steps.read-loyalty.body.level",
+      "expected": "bronze",
+      "actual": "gold",
+      "why": "differs"
+     },
+     {
+      "path": "steps.read-loyalty.body.remainingPoints",
+      "expected": 50000,
+      "actual": 0,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 22
+  },
+  {
+   "id": "branch_off:services/loyalty.py:18",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/loyalty.py",
+   "line": 18,
+   "before": "if points >= LoyaltyService.TIER_GOLD:",
+   "after": "if False:",
+   "refs": [
+    "GET /loyalty/<customer_id>#business_rules[3]"
+   ],
+   "endpoints": [
+    "GET /loyalty/<customer_id>"
+   ],
+   "units": [
+    "booking-confirm-unconfirmed",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "loyalty-no-records",
+    "loyalty-sum-and-level",
+    "loyalty-tier-boundaries",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "loyalty-tier-boundaries",
+    "mismatches": [
+     {
+      "path": "steps.gold.body.level",
+      "expected": "gold",
+      "actual": "silver",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "negate:services/loyalty.py:20",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/loyalty.py",
+   "line": 20,
+   "before": "elif points >= LoyaltyService.TIER_SILVER:",
+   "after": "elif not (points >= LoyaltyService.TIER_SILVER):",
+   "refs": [
+    "GET /loyalty/<customer_id>#business_rules[3]"
+   ],
+   "endpoints": [
+    "GET /loyalty/<customer_id>"
+   ],
+   "units": [
+    "booking-confirm-unconfirmed",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "loyalty-no-records",
+    "loyalty-sum-and-level",
+    "loyalty-tier-boundaries",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-confirm-unconfirmed",
+    "mismatches": [
+     {
+      "path": "steps.read-loyalty.body.level",
+      "expected": "bronze",
+      "actual": "silver",
+      "why": "differs"
+     },
+     {
+      "path": "steps.read-loyalty.body.remainingPoints",
+      "expected": 50000,
+      "actual": 100000,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 22
+  },
+  {
+   "id": "branch_off:services/loyalty.py:20",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/loyalty.py",
+   "line": 20,
+   "before": "elif points >= LoyaltyService.TIER_SILVER:",
+   "after": "elif False:",
+   "refs": [
+    "GET /loyalty/<customer_id>#business_rules[3]"
+   ],
+   "endpoints": [
+    "GET /loyalty/<customer_id>"
+   ],
+   "units": [
+    "booking-confirm-unconfirmed",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "loyalty-no-records",
+    "loyalty-sum-and-level",
+    "loyalty-tier-boundaries",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "loyalty-sum-and-level",
+    "mismatches": [
+     {
+      "path": "steps.own.body.level",
+      "expected": "silver",
+      "actual": "bronze",
+      "why": "differs"
+     },
+     {
+      "path": "steps.own.body.remainingPoints",
+      "expected": 35000,
+      "actual": -15000,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:services/loyalty.py:47",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/loyalty.py",
+   "line": 47,
+   "before": "'points': total_points,",
+   "after": "'points_m2s': total_points,",
+   "refs": [
+    "GET /loyalty/<customer_id>#responses[2]"
+   ],
+   "endpoints": [
+    "GET /loyalty/<customer_id>"
+   ],
+   "units": [
+    "booking-confirm-unconfirmed",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "loyalty-no-records",
+    "loyalty-sum-and-level",
+    "loyalty-tier-boundaries",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-confirm-unconfirmed",
+    "mismatches": [
+     {
+      "path": "steps.read-loyalty.body",
+      "why": "keys differ",
+      "missing": [
+       "points"
+      ],
+      "extra": [
+       "points_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 22
+  },
+  {
+   "id": "negate:services/loyalty.py:59",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/loyalty.py",
+   "line": 59,
+   "before": "if not isinstance(points, (int, float)) or points <= 0:",
+   "after": "if not (not isinstance(points, (int, float)) or points <= 0):",
+   "refs": [
+    "POST /loyalty/<customer_id>/points#business_rules[2]"
+   ],
+   "endpoints": [
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "units": [
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-create-put-fails/booking-happy-path",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-customerid-overwritten",
+    "mismatches": [
+     {
+      "path": "tables_after.Airline-Loyalty-{stage}",
+      "expected": [
+       {
+        "customerId": "<id:u1>",
+        "date": "<time#5>",
+        "id": "<uuid#6>",
+        "flag": "active",
+        "points": 150
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ]
+   },
+   "killing_units": 16
+  },
+  {
+   "id": "branch_off:services/loyalty.py:59",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/loyalty.py",
+   "line": 59,
+   "before": "if not isinstance(points, (int, float)) or points <= 0:",
+   "after": "if False:",
+   "refs": [
+    "POST /loyalty/<customer_id>/points#business_rules[2]"
+   ],
+   "endpoints": [
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "units": [
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-create-put-fails/booking-happy-path",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "points-guards",
+    "mismatches": [
+     {
+      "path": "steps.zero.status",
+      "expected": 400,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.zero.body",
+      "why": "keys differ",
+      "missing": [
+       "error",
+       "type"
+      ],
+      "extra": [
+       "customerId",
+       "message",
+       "pointsAdded"
+      ]
+     },
+     {
+      "path": "steps.negative.status",
+      "expected": 400,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:services/loyalty.py:65",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/loyalty.py",
+   "line": 65,
+   "before": "'message': 'Loyalty points added successfully',",
+   "after": "'message_m2s': 'Loyalty points added successfully',",
+   "refs": [
+    "POST /loyalty/<customer_id>/points#responses[4]"
+   ],
+   "endpoints": [
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "units": [
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-create-put-fails/booking-happy-path",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "points-add-and-read",
+    "mismatches": [
+     {
+      "path": "steps.add.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "message_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "negate:services/payment.py:81",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/payment.py",
+   "line": 81,
+   "before": "if charge_id.startswith('pi_'):",
+   "after": "if not (charge_id.startswith('pi_')):",
+   "refs": [
+    "POST /payments/collect#business_rules[5]"
+   ],
+   "endpoints": [
+    "POST /payments/collect"
+   ],
+   "units": [
+    "collect-then-read-payment",
+    "collect-validation",
+    "payment-read-missing",
+    "refund-then-read-payment"
+   ],
+   "outcome": "survived",
+   "units_run": 4,
+   "class": {
+    "class": "equivalent",
+    "reason": "81 行嵌在 if PaymentService._is_using_real_stripe():（services/payment.py:78）里面。裁判运行态没有 STRIPE_SECRET_KEY，_is_using_real_stripe() = STRIPE_AVAILABLE and _stripe_configured 为 False（services/payment.py:47-50、39-45），collect_payment 走 services/payment.py:162 起的模拟模式（receiptUrl 'https://payment.example.com/receipts/<chargeId>'、price 150，同 POST /bookings#responses[6]、business_rules[15]）。真 Stripe 分支从不执行，改动落在死代码上；judge/uncovered.json 已记 POST /payments/collect#responses[3] 在本运行态不可达。引用该行的 4 个单元结果不变。"
+   }
+  },
+  {
+   "id": "branch_off:services/payment.py:81",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/payment.py",
+   "line": 81,
+   "before": "if charge_id.startswith('pi_'):",
+   "after": "if False:",
+   "refs": [
+    "POST /payments/collect#business_rules[5]"
+   ],
+   "endpoints": [
+    "POST /payments/collect"
+   ],
+   "units": [
+    "collect-then-read-payment",
+    "collect-validation",
+    "payment-read-missing",
+    "refund-then-read-payment"
+   ],
+   "outcome": "survived",
+   "units_run": 4,
+   "class": {
+    "class": "equivalent",
+    "reason": "同 negate:services/payment.py:81：81 行是 services/payment.py:78 真 Stripe 分支内部的 pi_/ch_ 判别。裁判运行态 STRIPE_SECRET_KEY 未配置，_is_using_real_stripe() 为 False（services/payment.py:47-50），外层分支一次都不执行，改成 if False: 不改变任何外部行为（收款始终走 services/payment.py:162 起的模拟模式，POST /payments/collect#responses[0]）。真 Stripe 那一臂已由 judge/uncovered.json 标为 POST /payments/collect#responses[3] 在本运行态不可达。"
+   }
+  },
+  {
+   "id": "negate:services/payment.py:276",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/payment.py",
+   "line": 276,
+   "before": "if charge_id in PaymentService._payments:",
+   "after": "if not (charge_id in PaymentService._payments):",
+   "refs": [
+    "POST /payments/refund#business_rules[3]"
+   ],
+   "endpoints": [
+    "POST /payments/refund"
+   ],
+   "units": [
+    "booking-cancel-and-read",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "refund-then-read-payment",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-cancel-and-read",
+    "mismatches": [
+     {
+      "path": "steps.cancel.body.refund",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "status"
+      ]
+     }
+    ]
+   },
+   "killing_units": 7
+  },
+  {
+   "id": "branch_off:services/payment.py:276",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/payment.py",
+   "line": 276,
+   "before": "if charge_id in PaymentService._payments:",
+   "after": "if False:",
+   "refs": [
+    "POST /payments/refund#business_rules[3]"
+   ],
+   "endpoints": [
+    "POST /payments/refund"
+   ],
+   "units": [
+    "booking-cancel-and-read",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "refund-then-read-payment",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refund-then-read-payment",
+    "mismatches": [
+     {
+      "path": "steps.read-back.body.status",
+      "expected": "refunded",
+      "actual": "captured",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:services/payment.py:280",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/payment.py",
+   "line": 280,
+   "before": "'refundId': refund_id",
+   "after": "'refundId_m2s': refund_id",
+   "refs": [
+    "POST /payments/refund#responses[0]"
+   ],
+   "endpoints": [
+    "POST /payments/refund"
+   ],
+   "units": [
+    "booking-cancel-and-read",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "refund-then-read-payment",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-cancel-and-read",
+    "mismatches": [
+     {
+      "path": "steps.cancel.body.refund",
+      "why": "keys differ",
+      "missing": [
+       "refundId"
+      ],
+      "extra": [
+       "refundId_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 7
+  },
+  {
+   "id": "negate:services/payment.py:303",
+   "kind": "source",
+   "operator": "negate",
+   "file": "services/payment.py",
+   "line": 303,
+   "before": "if PaymentService._is_using_real_stripe():",
+   "after": "if not (PaymentService._is_using_real_stripe()):",
+   "refs": [
+    "GET /payments/<charge_id>#business_rules[1]"
+   ],
+   "endpoints": [
+    "GET /payments/<charge_id>"
+   ],
+   "units": [
+    "payment-read-missing"
+   ],
+   "outcome": "survived",
+   "units_run": 1,
+   "class": {
+    "class": "equivalent",
+    "reason": "取反后 get_payment 在内存未命中时会进入 Stripe 回落块（services/payment.py:304-321）。运行态 _is_using_real_stripe() 为 False 但 stripe 库可用（若库不可用，306 行会抛 NameError，连 322 行的 except 表达式本身也再抛，结果变 500，payment-read-missing 就会被抓到；它实际存活，说明库可用），此时 stripe.api_key 从未设置，stripe.PaymentIntent.retrieve / stripe.Charge.retrieve 抛的是 StripeError 的子类（AuthenticationError），被 services/payment.py:322-323 的 except stripe.error.StripeError: pass 吞掉，仍旧落到 services/payment.py:325 的 raise ValueError('Payment ... not found') -> 同一个 400 {error, type: ValueError}；chargeId 不以 pi_/ch_ 开头时两个子分支都不进，结果同样是这条 ValueError。唯一走到这行的单元 payment-read-missing（GET /payments/pi_totally_absent -> 400；随后 collect 再读是内存命中，services/payment.py:298-300 直接返回，不经这行）看不出差异，与此分析一致。"
+   }
+  },
+  {
+   "id": "branch_off:services/payment.py:303",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "services/payment.py",
+   "line": 303,
+   "before": "if PaymentService._is_using_real_stripe():",
+   "after": "if False:",
+   "refs": [
+    "GET /payments/<charge_id>#business_rules[1]"
+   ],
+   "endpoints": [
+    "GET /payments/<charge_id>"
+   ],
+   "units": [
+    "payment-read-missing"
+   ],
+   "outcome": "survived",
+   "units_run": 1,
+   "class": {
+    "class": "equivalent",
+    "reason": "改成 if False: 与原条件在裁判运行态等价：_is_using_real_stripe() 本就是 False（STRIPE_SECRET_KEY 未配置，services/payment.py:47-50），原来也不会进入 services/payment.py:304-321 的 Stripe 回落块，内存未命中后同样直接落到 services/payment.py:325 的 raise ValueError('Payment ... not found') -> 400。真 Stripe 回落那一臂已由 judge/uncovered.json 标为 GET /payments/<charge_id>#responses[1] 在本运行态不可达；走到这行的单元 payment-read-missing 结果不变。"
+   }
+  },
+  {
+   "id": "field:services/payment.py:309",
+   "kind": "source",
+   "operator": "field",
+   "file": "services/payment.py",
+   "line": 309,
+   "before": "'amount': payment_intent.amount,",
+   "after": "'amount_m2s': payment_intent.amount,",
+   "refs": [
+    "GET /payments/<charge_id>#responses[1]"
+   ],
+   "endpoints": [
+    "GET /payments/<charge_id>"
+   ],
+   "units": [
+    "collect-then-read-payment",
+    "payment-read-missing",
+    "refund-then-read-payment",
+    "wb-booking-catchall-refunds-collected-charge"
+   ],
+   "outcome": "survived",
+   "units_run": 4,
+   "class": {
+    "class": "equivalent",
+    "source": "uncovered",
+    "reason": "judge/uncovered.json: GET /payments/<charge_id>#responses[1]: 内存未命中后回落到 Stripe 查询，需要 STRIPE_SECRET_KEY；默认运行态不存在这一臂。"
+   }
+  },
+  {
+   "id": "drop_write:Airline-Booking-{stage}:PutItem",
+   "kind": "drop_write",
+   "operator": "drop_write",
+   "table": "Airline-Booking-{stage}",
+   "op": "PutItem",
+   "refs": [
+    "POST /bookings#data_access[1]"
+   ],
+   "units": [
+    "booking-body-and-field-failures",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "booking-create-put-fails/booking-happy-path",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-loyalty-put-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-body-and-field-failures",
+    "mismatches": [
+     {
+      "path": "tables_after.Airline-Booking-{stage}",
+      "expected": [
+       {
+        "paymentToken": "",
+        "bookingReference": null,
+        "createdAt": "<time#2>",
+        "checkedIn": false,
+        "bookingOutboundFlightId": "flight-sfo-lax",
+        "id": "<uuid#1>",
+        "customer": "<id:u1>",
+        "status": "CANCELLED"
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ]
+   },
+   "killing_units": 15
+  },
+  {
+   "id": "drop_write:Airline-Booking-{stage}:UpdateItem",
+   "kind": "drop_write",
+   "operator": "drop_write",
+   "table": "Airline-Booking-{stage}",
+   "op": "UpdateItem",
+   "refs": [
+    "POST /bookings#data_access[3]",
+    "POST /bookings#data_access[6]",
+    "POST /bookings/<booking_id>/confirm#data_access[1]",
+    "POST /bookings/<booking_id>/cancel#data_access[1]"
+   ],
+   "units": [
+    "booking-body-and-field-failures",
+    "booking-cancel-and-read",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-unconfirmed",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-loyalty-put-server-error/booking-happy-path"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-body-and-field-failures",
+    "mismatches": [
+     {
+      "path": "tables_after.Airline-Booking-{stage}[0].status",
+      "expected": "CANCELLED",
+      "actual": "UNCONFIRMED",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 21
+  },
+  {
+   "id": "drop_write:Airline-Flight-{stage}:UpdateItem",
+   "kind": "drop_write",
+   "operator": "drop_write",
+   "table": "Airline-Flight-{stage}",
+   "op": "UpdateItem",
+   "refs": [
+    "POST /flights/<flight_id>/reserve#data_access[0]",
+    "POST /flights/<flight_id>/release#data_access[0]",
+    "POST /bookings#data_access[0]",
+    "POST /bookings#data_access[4]",
+    "POST /bookings/<booking_id>/cancel#data_access[2]"
+   ],
+   "units": [
+    "booking-body-and-field-failures",
+    "booking-cancel-and-read",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "release-missing-or-at-max",
+    "reserve-decrements-seat",
+    "reserve-full-or-missing",
+    "reserve-then-release",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "reserve-update-network/reserve-then-release",
+    "reserve-update-throttled-once/reserve-decrements-seat",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-release-update-invalid-request/reserve-then-release",
+    "wb-reserve-update-invalid-request/reserve-decrements-seat"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-body-and-field-failures",
+    "mismatches": [
+     {
+      "path": "steps.ghost-flight.status",
+      "expected": 400,
+      "actual": 201,
+      "why": "differs"
+     },
+     {
+      "path": "steps.ghost-flight.body",
+      "why": "keys differ",
+      "missing": [
+       "error",
+       "step"
+      ],
+      "extra": [
+       "bookingId",
+       "bookingReference",
+       "notification",
+       "payment",
+       "status"
+      ]
+     },
+     {
+      "path": "steps.full-flight.status",
+      "expected": 400,
+      "actual": 201,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 26
+  },
+  {
+   "id": "drop_write:Airline-Loyalty-{stage}:PutItem",
+   "kind": "drop_write",
+   "operator": "drop_write",
+   "table": "Airline-Loyalty-{stage}",
+   "op": "PutItem",
+   "refs": [
+    "POST /bookings#data_access[5]",
+    "POST /loyalty/<customer_id>/points#data_access[0]"
+   ],
+   "units": [
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-same-charge-twice",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "booking-create-put-fails/booking-happy-path",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/points-add-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-loyalty-points-put-server-error/points-add-and-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "booking-customerid-overwritten",
+    "mismatches": [
+     {
+      "path": "tables_after.Airline-Loyalty-{stage}",
+      "expected": [
+       {
+        "customerId": "<id:u1>",
+        "date": "<time#5>",
+        "id": "<uuid#6>",
+        "flag": "active",
+        "points": 150
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ]
+   },
+   "killing_units": 13
+  },
+  {
+   "id": "drop_write:Airline-Users-{stage}:PutItem",
+   "kind": "drop_write",
+   "operator": "drop_write",
+   "table": "Airline-Users-{stage}",
+   "op": "PutItem",
+   "refs": [
+    "POST /auth/register#data_access[1]"
+   ],
+   "units": [
+    "register-duplicates",
+    "register-new-user",
+    "register-read-back-by-admin",
+    "register-validation",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "register-put-fails/register-new-user",
+    "wb-register-put-invalid-request/register-new-user",
+    "wb-users-email-lookup-fails/wb-register-email-lookup-fails-allows-duplicate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-duplicates",
+    "mismatches": [
+     {
+      "path": "steps.dup-sub.status",
+      "expected": 400,
+      "actual": 201,
+      "why": "differs"
+     },
+     {
+      "path": "steps.dup-sub.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "email",
+       "message",
+       "sub"
+      ]
+     }
+    ]
+   },
+   "killing_units": 8
+  },
+  {
+   "id": "serial",
+   "kind": "serial",
+   "operator": "serial",
+   "reverse": true,
+   "note": "the proxy takes one SDK request at a time: must NOT be noticed",
+   "units": [
+    "booking-auth-guards",
+    "booking-body-and-field-failures",
+    "booking-cancel-and-read",
+    "booking-cancel-guards",
+    "booking-cancel-releases-stored-flight",
+    "booking-cancel-twice",
+    "booking-confirm-cancelled-allowed",
+    "booking-confirm-guards",
+    "booking-confirm-unconfirmed",
+    "booking-customerid-overwritten",
+    "booking-happy-path",
+    "booking-missing-outbound-key",
+    "booking-read-guards",
+    "booking-same-charge-twice",
+    "collect-then-read-payment",
+    "collect-validation",
+    "customer-bookings-owner-only",
+    "customer-bookings-status-filter",
+    "get-flight-found-and-missing",
+    "login-bad-credentials",
+    "login-success",
+    "login-validation-and-bad-json",
+    "loyalty-no-records",
+    "loyalty-sum-and-level",
+    "loyalty-tier-boundaries",
+    "me-returns-table-record",
+    "me-token-of-deleted-or-forged-sub",
+    "payment-read-missing",
+    "points-add-and-read",
+    "points-fractional-and-duplicate",
+    "points-guards",
+    "refund-then-read-payment",
+    "refund-validation",
+    "register-bad-json",
+    "register-duplicates",
+    "register-new-user",
+    "register-read-back-by-admin",
+    "register-validation",
+    "release-missing-or-at-max",
+    "reserve-decrements-seat",
+    "reserve-full-or-missing",
+    "reserve-then-release",
+    "search-missing-params",
+    "search-route-match",
+    "users-admin-list",
+    "users-admin-only",
+    "wb-booking-cancel-empty-token-refund-fails",
+    "wb-booking-cancel-flight-missing-swallowed",
+    "wb-booking-cancel-seat-at-max-swallowed",
+    "wb-booking-catchall-refunds-collected-charge",
+    "wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-empty-charge-rollback-and-array-body",
+    "wb-register-email-lookup-fails-allows-duplicate",
+    "wb-users-list-row-missing-email-500",
+    "booking-cancel-release-seat-fails/booking-cancel-and-read",
+    "booking-confirm-update-fails/booking-confirm-unconfirmed",
+    "booking-create-put-fails/booking-happy-path",
+    "booking-create-reserve-fails/booking-happy-path",
+    "booking-get-item-error/booking-read-guards",
+    "customer-bookings-scan-error/customer-bookings-owner-only",
+    "customer-bookings-scan-error/customer-bookings-status-filter",
+    "flight-search-scan-error/search-route-match",
+    "flight-search-scan-error/search-missing-params",
+    "loyalty-points-put-fails/points-add-and-read",
+    "loyalty-scan-error/loyalty-sum-and-level",
+    "loyalty-scan-error/points-add-and-read",
+    "register-put-fails/register-new-user",
+    "reserve-update-network/reserve-then-release",
+    "reserve-update-throttled-once/reserve-decrements-seat",
+    "wb-booking-cancel-read-fails-in-service/booking-cancel-and-read",
+    "wb-booking-catchall-seat-release-rollback-fails/wb-booking-charge-id-non-string-stored-verbatim",
+    "wb-booking-confirm-read-fails-after-authz/booking-confirm-unconfirmed",
+    "wb-booking-confirm-update-server-error/wb-booking-confirm-write-fails-rollback-partial",
+    "wb-booking-confirm-update-server-error/booking-happy-path",
+    "wb-booking-create-put-invalid-and-release-fails/booking-same-charge-twice",
+    "wb-booking-empty-charge-rollback-writes-fail/wb-booking-empty-charge-rollback-and-array-body",
+    "wb-booking-handler-read-fails-after-authz/booking-read-guards",
+    "wb-booking-loyalty-put-server-error/booking-happy-path",
+    "wb-flight-get-read-error/get-flight-found-and-missing",
+    "wb-loyalty-points-put-server-error/points-add-and-read",
+    "wb-register-put-invalid-request/register-new-user",
+    "wb-release-update-invalid-request/reserve-then-release",
+    "wb-reserve-update-invalid-request/reserve-decrements-seat",
+    "wb-user-record-read-fails/users-admin-list",
+    "wb-users-email-lookup-fails/wb-register-email-lookup-fails-allows-duplicate"
+   ],
+   "outcome": "survived",
+   "units_run": 86
+  }
+ ]
+}

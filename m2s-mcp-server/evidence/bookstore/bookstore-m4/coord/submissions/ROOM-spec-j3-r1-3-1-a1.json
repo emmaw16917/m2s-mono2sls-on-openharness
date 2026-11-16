@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r1-3-1",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T01:46:15+0800",
+  "summary": "spec-j3-r1 第 3 轮 verifier 发言（seq 4）：接受通用列表顺序裁定 R-ROOM-spec-j3-r1-1-1-a1-1（contract + relaxation=order，layers=R），确认 search 三步预期一字不改、两条差异登记为\"已裁定覆盖\"而非残余盲区，J3 分类维持 needs_ruling 等下一遍对账折入；撤回我第四节那个退化写法请求（P 层 contains 只支持数组体，改成它会丢集合内容检查）。提了两点需要 architect 再落一句的：(1) 栏1\"显式排序键\"必须限定为应用层按业务字段显式 sort，否则 GET /api/orders 的随机 uuid 排序键（事实库自己注明\"顺序不代表下单时间\"）与 GET /api/cart 的 bookId 键序会被一条顺序裁定锁定成目标键结构契约，而今天 cart/books/orders 的列表断言本来就是无序形态、无需新增 affected_cases；(2) 采纳并强化 annotator 的 C——relaxation 不得覆盖\"请求体原样快照\"的内层数组（POST /api/orders#business_rules[1]/[11]），因为已有下单读回步骤靠 books 的位置断言承载\"重复条目逐条执行\"，请要么把 relaxation 限制在最外层结果集、要么改为按路径声明，否则允许我把那类步骤登记为过度放宽盲区。并列次序、翻页完整性、bestsellers 顺序契约都按裁定维持不动，未再追。本轮只写工作报告，未改任何测试或规格文件。",
+  "notes": "给后续轮/复核：需要 architect 落笔的两处都是措辞与适用范围（报告里 V-room-1、V-room-2），不推翻结论、不需要新增 affected_cases。R 层对嵌套数组的多重集配对是否真生效，由 V2 实证；若 V2 仍因顺序失败，我会按机制问题报出而不是改用例。另请 annotator 在下一次规格轮补写 GET /api/books 带 category 那一臂时直接用\"无排序键、顺序不作为比较项\"的措辞，避免同类差异第三轮再来这个房间。"
+}

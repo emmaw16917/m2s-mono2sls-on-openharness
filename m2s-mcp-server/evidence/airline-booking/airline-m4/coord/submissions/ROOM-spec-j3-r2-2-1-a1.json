@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r2-2-1",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T17:09:15+0800",
+  "summary": "讨论室 spec-j3-r2 的 annotator 一轮发言已提交（seq 3）：核对确认差异 register-read-back-by-admin/list/body.subset 不涉及事实错误——GET /auth/users#business_rules[2] 与 data/storage.py:352-356、services/auth.py:140-150、app.py:447-452 逐行一致（全仓 grep 无 sorted/.sort(/order_by），因此本轮 annotate_entry_point 调用 0 次、analysis_report.json 未改动，支持 R-ROOM-spec-j3-r2-1-1-a1-1 的三条执行口径（裁判做无序多重集、不改用例、affected_cases 维持 case#step）。",
+  "notes": "给后续阶段的两条边界与一条留白：(1) 次序放宽只覆盖\"响应数组元素次序\"，不外溢到 data/storage.py:322 `items[0]`（= POST /auth/login#business_rules[1]、POST /auth/register#business_rules[2] 的\"取到哪条记录\"契约）；(2) groups 内层次序按 R-ROOM-spec-j3-r1-1-2-a1-1 第 2 点生效，GET /auth/me#business_rules[3] 未承诺次序，将来若出现多元素次序断言须另开裁定点名 case#step（R-A1-a2-4）；(3) GET /flights/search 目前没有多元素次序用例，我有意不预先给它的 business_rules 补\"次序不承诺\"那句，等 J4 补出断言（新事实）再按同口径改。收尾需 J3 重跑对账（现有对账文件生成于 16:09，早于 16:15 的第一条裁定）。工作报告：storage/stage_reports/ROOM-spec-j3-r2-2-1.json。"
+}

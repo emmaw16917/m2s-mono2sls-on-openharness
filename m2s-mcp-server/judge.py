@@ -2163,17 +2163,32 @@ def compare_target_step(template: dict[str, Any], actual: dict[str, Any], bindin
     return out
 
 
-def _unit_identities(amap: dict[str, Any], identities: dict[str, Any], aliases: list[str], unit_id: str
+def _unit_identities(amap: dict[str, Any], identities: dict[str, Any], aliases: list[str], unit_id: str,
+                     identity_values: dict[str, str] | None = None
                      ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
-    """(vars, auth, bindings, seeds) of a unit's aliases on the target."""
+    """(vars, auth, bindings, seeds) of a unit's aliases on the target.
+
+    identity_values: alias -> the monolith's own id literal (masks.json `<id:alias>`,
+    or the register body's userId). check_adapter uses it as the target id so both
+    sides name the same user; without it (a case where the id never showed up) the
+    old per-unit uuid5 stands in.
+    """
     import uuid
+    identity_values = identity_values or {}
     vars_: dict[str, Any] = {}
     auth: dict[str, Any] = {}
     bindings: dict[str, Any] = {}
     seeds: list[dict[str, Any]] = []
     for alias in aliases:
         mono = (identities.get(alias) or {}).get("monolith") or {}
-        target_id = str(uuid.uuid5(ID_NAMESPACE, f"{unit_id}/{alias}"))
+        literal = identity_values.get(alias)
+        if not literal:
+            for step in mono.get("steps") or []:
+                body = step.get("body") if isinstance(step, dict) else None
+                if isinstance(body, dict) and isinstance(body.get("userId"), str) and body["userId"]:
+                    literal = body["userId"]
+                    break
+        target_id = str(literal or uuid.uuid5(ID_NAMESPACE, f"{unit_id}/{alias}"))
         ti = adapter.target_identity(amap, alias, mono, target_id)
         own = {"id": ti["user_id"]}
         for s in mono.get("steps") or []:
@@ -2195,10 +2210,18 @@ def _plan_units(ws: Path, facts: Facts, assets: dict[str, Any], amap: dict[str, 
     dropped = _dropped_endpoints(amap)
     by_case = {c["id"]: c for c in assets["cases"] if "_load_error" not in c}
     identities = assets["identities"] or {}
+    masks_path = judge_dir(ws) / "masks.json"
+    masks = (_read(masks_path) if masks_path.is_file() else {}) or {}
+    identity_values: dict[str, str] = {}
+    for unit in (masks.get("units") or {}).values():
+        for symbol, info in (unit.get("symbols") or {}).items():
+            match = re.fullmatch(r"<id:([^>]+)>", str(symbol))
+            if match and isinstance(info, dict) and isinstance(info.get("value"), str):
+                identity_values.setdefault(match.group(1), info["value"])
     job_units, ctx = [], {}
     for u in units:
         case = by_case[u["case"]]
-        vars_, auth, bindings, seeds = _unit_identities(amap, identities, u["aliases"], u["id"])
+        vars_, auth, bindings, seeds = _unit_identities(amap, identities, u["aliases"], u["id"], identity_values)
         fixtures = adapter.fixtures_to_target(amap, u["fixtures"])
         for s in seeds:
             fixtures.setdefault(s["table"], []).append(s["item"])

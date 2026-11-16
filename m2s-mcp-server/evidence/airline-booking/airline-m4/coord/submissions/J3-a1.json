@@ -1,0 +1,9 @@
+{
+  "task": "J3",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T15:55:13+0800",
+  "summary": "4 条对账差异全部分类写入 judge/reconcile_classes.json：fact_error 1 条（release 400 的 error 文案漏了 'Failed to release seat: ' 包装前缀，证据 data/storage.py:169 与 :185-186）、case_error 2 条（booking 用例把 Step 1 失败写成 step='Reserve Booking'，事实库 POST /bookings#responses[2] 和 app.py:103-113 都是 'Reserve Flight'）、needs_ruling 1 条（GET /auth/users 的 users 数组顺序：事实库 business_rules[2] 明说顺序不属于对外承诺，而 predicted 格式在对象响应下无法表达嵌套数组的无序集合，请 architect 出 relaxation=order 的 R 层裁定）。无 mask_gap，未新增 mask_rules。check_reconcile_classes = PASS。",
+  "notes": "后续动作已写进 storage/stage_reports/J3.json 的 handoff：needs_ruling 一条（含 question/suggested_relaxation/affected_cases/basis）；fact_error 需要 annotator 修 responses[1] 与 business_rules[3] 的文案后由 J1 更新 predicted['ghost']；case_error 只需 J1 把 ghost-flight/full-flight 两步的 subset step 改成 'Reserve Flight'，请求和 fact_refs 不用动。本轮未修改用例、事实库或工具文件。"
+}

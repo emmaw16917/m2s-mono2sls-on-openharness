@@ -622,21 +622,57 @@ agent_mail 的 build slot 只是建议性的，也不能计数，所以只用来
 
 ### M4 接入 v2 模块【必做，前提是 v2 模块已经实现】
 
-v2 每实现一个模块，就在 `templates/v2.yaml` 里加一个任务类型，并补上编排侧需要的支持：
+v2 的 26 个任务模板（`coord/templates/v2.yaml`，v2 N5 完成）已经在 v3 调度器下跑通 bookstore 和 airline（串行、`--max-workers 1`、无讨论室）。M4 补的是编排侧：让 v2 的模块用上 v3 的按包/按领域并行、讨论室、资源锁和 AWS 实测，并按本节的验收跑 bookstore + acmeair。
 
-| v2 模块 | 编排侧要补的 |
+**M4 工作项（2026-11-13 拆出）**：
+
+| 编号 | 内容 | 产出 | 验收 | 规模 |
+|---|---|---|---|---|
+| W4.1 | 事实库版本与 artifact 公告：`storage/facts_version.json`（自增版本 + facts sha）；F2 关闭时调度器升版本并发 `artifact` 公告；每个 spawn 记录当时的 facts_version | 调度器 + `server.py` 读版本 | 假 worker：F2 回炉后版本 +1，下游 spawn 带新版本；报告可查 | S |
+| W4.2 | v2 的按包/按领域展开：新增 `templates/v2-split.yaml`；F1 后生成工作包；F2 按包（另有 F2-shared）、J1 按包；G2 按包写 `storage/gaps/<pkg>.json` 再由合并任务合成 `gap_inventory.json`；A1 填 `work_packages.impl_packages`；A1 后按领域展开 D1/I1（I1 另有共享层任务） | 模板 + 调度器展开逻辑 | 假 worker 的依赖图正确；每个包/领域一个子任务；scope 不重叠 | L |
+| W4.3 | J2 的资源锁：`run_monolith` 取 `docker-rie` 槽 | 调度器 | 同一时刻两个工作区的 J2/RIE 不会并发 | S |
+| W4.4 | J3 争议进规格讨论室：`_after_j3` 的 `needs_ruling` 不再起孤立裁定任务，改开 spec 房间（proposer=J3）；房间结束接受 architect 的 `record_ruling`，并把被阻塞的任务放行；没有一致结论时交异常处理者 | 调度器 + 假 worker 测试 | 一致时按裁定继续，不一致交处理者 | M |
+| W4.5 | J6 的裁判版本进下游输入：spawn 事件与任务上下文记录 judge_version，最终报告列出 | 调度器 | 事件日志与报告 | S |
+| W4.6 | 规则 7 可行性探针：J2 能否按用例分别记录覆盖率（Node inspector 的 `takePreciseCoverage`，Python coverage.py 的 `switch_context`） | 探针脚本 + 结论 | **2026-11-13 结论：已具备**——`run_monolith` 已经在 `judge/coverage_monolith/units/<用例>.json` 按用例记录每个文件的行号；重新分组的算法并入 W4.2 | M |
+| W4.7 | O 阶段 AWS 实测：工具 `measure_aws`（每个候选一个栈、B0/候选 ABAB、`aws-load-client` 锁、CloudWatch 调用次数覆盖检查、噪声规则、费用记录）；默认关闭，`M2S_AWS=1` 才启用 | `coord/aws.py`、`perf.py` | 未启用时行为不变；真实运行前需人确认费用 | L |
+| W4.8 | 验收运行：`v2-split` 在 bookstore 和 acmeair 上跑到 C2，开讨论室 | 两个新工作区 | 见下 | L |
+
+| v2 模块 | 编排侧要补的（原始清单，逐项对应上面的工作项） |
 |---|---|
-| M0、F1–F3 | 事实库版本号：每次修正都升版本，并在公告板发 `artifact` 事件，用来驱动失效传播 |
-| G | 按包展开（G2） |
-| J1–J6 | 按包展开 J1；J2 运行单体时拿 `docker-rie` 等资源锁；J3 对账有争议的差异进规格讨论室；J3 判为事实错误的，新建 F2 修正任务；J6 冻结后记下裁判版本，之后的任务都以它为输入 |
-| 规则 7 | 先做可行性检查：J2 能不能按用例分别记录覆盖率（Node 用 inspector 的 `takePreciseCoverage`，Python 用 coverage.py 的 `switch_context`）。可行就实现 J3 之后的重新分组 |
-| A1、A2 | 按蓝图领域展开 D、I1 |
-| D1 | 按包展开；可见性规则：增量测试的目录对实现线禁止读取 |
-| I1–I3、V1–V4 | 和 v1 对应模块的做法相同；B0 打 tag 后做阶段复查 |
-| O1–O4 | §4.13 的 AWS 实测：W4.6 校准噪声规则；工具 `measure_aws`；每个候选一个栈；覆盖检查；费用记录 |
-| C1、C2 | `archive_run` 把 `coord/` 也打包进去 |
+| M0、F1–F3 | 事实库版本号：每次修正都升版本，并在公告板发 `artifact` 事件，用来驱动失效传播（W4.1） |
+| G | 按包展开（G2）（W4.2） |
+| J1–J6 | 按包展开 J1；J2 运行单体时拿 `docker-rie` 等资源锁（W4.2/W4.3）；J3 对账有争议的差异进规格讨论室（W4.4）；J3 判为事实错误的，退回 F2 修正（现状已这样）；J6 冻结后记下裁判版本，之后的任务都以它为输入（W4.5） |
+| 规则 7 | 先做可行性检查（W4.6） |
+| A1、A2 | 按蓝图领域展开 D、I1（W4.2） |
+| D1 | 按包展开；可见性规则：增量测试的目录对实现线禁止读取（W4.2；deny_read 已生效） |
+| I1–I3、V1–V4 | 和 v1 对应模块的做法相同；B0 打 tag 后做阶段复查（已生效） |
+| O1–O4 | §4.13 的 AWS 实测（W4.7） |
+| C1、C2 | `archive_run` 把 `coord/` 也打包进去（已完成，见 `coord/closing.py`） |
 
-**M4 的验收标准**：v2 流水线在 v3 调度下跑通 bookstore 和 acmeair。
+**M4 的验收标准**：v2 流水线在 v3 调度下跑通 bookstore 和 airline-booking（Flask）。acmeair / MongoDB 按 v2 方案 V2P-08 与 Q5 列为扩展（单体只能做接口层比对），不在 M4 验收内。
+
+**M4 进展（2026-11-13）**：
+- W4.1 完成：`coord/facts.py`。annotator 任务（v1 S0/<pkg>、v2 F2）关闭时按 sha 去重、升版本、写 `storage/facts_version.json`，并发 `artifact` 公告；spawn 事件记录当时的 `facts_version` 与 `judge_version`。测试 `tests/test_coord_facts.py`。
+- W4.3 完成：`run_monolith` 取 `docker-rie` 槽（与 `run_validate` / `run_rie_verdict` 同一个机器级资源）。
+- W4.4 完成：J3 的 `needs_ruling` 在有讨论室时开 spec 房间（proposer=J3）；门任务 `start: recheck`，每个房间回合作为它的依赖；architect 的 `record_ruling` 覆盖全部差异时门通过、被阻塞的下游放行；没有讨论室时退回原来的 architect worker（v2 N1 行为）。测试 `tests/test_coord_room_gate.py`。
+- W4.5 完成（记录口径）：spawn 事件带 `judge_version`；J6 的版本在 `judge_frozen` 事件与 `judge_manifest.json` 中。
+- W4.6 结论：已具备（见上表）。
+- W4.2 部分完成（2026-11-13）：新增 `coord/templates/v2-split.yaml`。
+  - F2 按包展开（F2-<包>），另有一个 F2-shared：`shared_after_children: true` 让它在全部子任务之后运行，用完整的 `check_provenance` 汇总校验事实库；G1/J1 等 `F2:*` 与 `F2:shared`。
+  - I1 按领域展开：新增 `split: domain`，A1 填 `storage/work_packages.json` 的 `impl_packages` 后，按「包 → 函数、目录」创建 I1-<包>，scope 用 `output/lambdas/{app}/{fn}/**`（每函数目录不重叠，可并行），另有 I1-shared 共享层；I2a 等 `I1:*` 与 `I1:shared`。A1 的 scope 加 `storage/work_packages.json`，角色说明新增"填 impl_packages"一节。若 A1 没填（或某个包缺失），`_expand_domain` 用蓝图的 `lambda_functions[].entry_points` 与工作包的 endpoints 机械补齐并记 `impl_packages_fallback` 事件——M3 遗留的 `impl_packages=null` 不再阻塞。
+  - 模板/加载器/展开的测试在 `tests/test_coord_split.py`（domain 展开、shared_after_children、v2-split 可加载）。
+  - 暂不拆 J1/D1/G2：裁判资产（`judge/cases/**` 等）与 `delta_assets`、`gap_inventory` 检查都是按整份资产设计的，拆分要先改资产命名与检查（记录为后续项）。
+  - F2 的包级子任务都写 `storage/analysis_report.json`，按 scope 冲突串行执行（事实库是单文件）；并行的收益在 I1 的按领域代码编写。
+- 待做（2026-11-13 时的口径）：W4.2 的 J1/D1/G2 拆分（需要先定资产约定）、W4.7（AWS 实测）、W4.8（验收运行 bookstore + acmeair）。**W4.8 已于 2026-11-16 完成，见下。**
+
+**M4 验收（2026-11-16）：bookstore-m4 + airline-m4 都跑到 C2**
+- 两个新工作区都用 `v2-split`、3 个 worker、开讨论室，`run done` / `dispatcher exit 0`，C2 分别归档到 `evidence/bookstore/bookstore-m4` 与 `evidence/airline-booking/airline-m4`。
+- **bookstore-m4**：两轮 J3 规格室（spec-j3-r1/r2，共 16+ 回合），裁定 `R-A1-a3-1..4`；两个 HUMAN_J6 决定（未认证超大体按网关 401 先于 413、`wb-cart-x-customer-id-header-ignored#spoof-*` 记账延伸）由人接受；O 的 REQ-1（`update-bestsellers`）由人接受，连同 1 条未覆盖的防御性行；C1 的 `gate(final)`/裁判/delta PASS。
+- **airline-m4**：身份 id 冲突由人定方案 (A)；工具修复 `788d9cf`（`check_adapter` 的 `${id}` 取裁判记录的字面值，回退 register body 的 userId）。V2 首跑败在 3 个按「同一条预订第 n 次读」注入的故障场景；异常处理者按 A1 的 D-20 补裁定 `R-C003-V2-triage-a1-1`（implementation-trace，7 个 `case#step`，`deviates_from_monolith=false`），重跑 PASS。终局裁判 cases `34 pass / 7 migration-change / 14 dropped`、fault runs `21 pass / 4 migration-change / 4 dropped / 2 ruled`；delta 16/16；`gate(final)` PASS；22 条 gap 全 decided；B0 复查 `ok`（C6 的 `SharedUtilsLayer` 未被引用一项交优化线）。O 保留 1 处改动（`bookings-cancel` 两步补偿并发化，`5fe0c7c`；串行深度 5→4，调用数/RRU/WRU 不变）。裁判 v1 冻结后未变（`judge_unchanged` 全程通过）。
+- 运行中发现并修掉的调度器缺陷：`63ab894`（J3/J4 的事实修正按端点路由到 F2 包子任务）、`f286ec3`（门阻塞拆分子任务的整个族，而不是族名）、`8c06d7f`（`br` label 截断到 50 字符；崩溃留下的部分展开可续）、`61e37e3`（一个 action 可能重开任务，ready 列表不能跨 action 复用）、`788d9cf`（身份 id 字面值）。
+- 验收口径：v2 方案 V2P-08 指定的两个应用（bookstore、airline-booking）已覆盖；acmeair/MongoDB 仍是 Q5 扩展，不在 M4 内。
+- 顺带收敛：`_expand_family`/`_expand_domain` 只在真正新建了子任务时才打 "expanded to" 日志（此前每轮都刷一行）。
+- 仍未做：W4.2 的 J1/D1/G2 拆分（需要先定资产约定）、W4.7（AWS 实测，真实运行需人确认费用）。
 
 ### M5 对抗评审室【必做，在第一次升级 harness 时做】
 

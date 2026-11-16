@@ -1,0 +1,9 @@
+{
+  "task": "I2c",
+  "attempt": 1,
+  "role": "m2s-sam-engineer",
+  "status": "done",
+  "time": "2026-11-13T12:39:18+0800",
+  "summary": "合并 part1(416行)+part2(446行) 生成 output/template.yaml(863行)，run_gate(phase=\"template\") 与 validate_sam 均在第 1 次尝试即通过（gate status=PASS / mechanical_failures=[]；validate ok=true / errors=[] / warnings=[]），自我修正循环用了 0 次，模板内容未作任何改动。",
+  "notes": "拼接后结构已核验：顶层段 AWSTemplateFormatVersion/Transform/Description/Parameters/Globals/Resources/Outputs 各 1 次，Resources 只出现 1 次（part2 的函数块确实续在 part1 的 Resources: 之下），共 24 个资源 = 12 共享资源 + 12 函数，无重名。两处 '# --- END METADATA ---' 都是注释块（part1 的 SHARED_RESOURCES_METADATA、part2 的 FUNCTIONS_METADATA），不影响解析。\n\n合并后对照规格的复核（全部一致，故无需修改）：12 个函数与 blueprint.lambda_functions 双向 1:1；11 个 Type: Api 事件与 blueprint entry_points 双向逐条相等；/api/auth/* 四条端点无对应资源（D-1 由 Cognito 取代，identity 包 functions=[]）；11 个端点在 analysis_report 里 auth.classification 全为 required 且不存在 auth=none 端点，故全部继承 DefaultAuthorizer、模板中无需 Authorizer: NONE；DEFAULT_4XX/DEFAULT_5XX 覆盖 global_middleware[0] 记录的全部 6 个头名（GM2），Cors 保持三字段未加 AllowCredentials；api_type=rest 用 AWS::Serverless::Api + EndpointConfiguration REGIONAL；IdempotencyTable 带 TimeToLiveSpecification(expiresAt)；消费者带 ReportBatchItemFailures 与两表 CrudPolicy；Globals.Function 无 Handler，所以 C3 占位值坑不适用。\n\n需要调度器知道的两点：\n1) gate 的 suspects.C6.functions_referencing_shared_layer=[] 是 I2b 已预告的字面量匹配问题（工具只认 'SharedUtilsLayer'，本项目的层叫 'SharedLayer'；同一项里 shared_layer_dir_exists=true）。它属于 suspects 而非 mechanical_failures，status 仍为 PASS，消除需改流水线工具，按禁止事项未动。\n2) I2a 报告里记了一条 GM2 与 D-9 第 3 条的口径差（suspected_module: A1），本次合并后 gate 未因此报错，模板按 GM2 字面要求写全 6 个头名，该 issue 状态不变、留给既有裁定线处理，本阶段未重复提出。\n\n工具改动情况：git status --porcelain 对 m2s-mcp-server/ 与 .openharness/ 均为空。本次只新增 output/template.yaml 与 storage/stage_reports/I2c.json，part1/part2 与 DECISIONS.md 未改动。"
+}

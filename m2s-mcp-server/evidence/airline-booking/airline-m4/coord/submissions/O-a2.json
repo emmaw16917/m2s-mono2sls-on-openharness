@@ -1,0 +1,9 @@
+{
+  "task": "O",
+  "attempt": 2,
+  "role": "m2s-perf-optimizer",
+  "status": "done",
+  "time": "2026-11-16T19:41:51+0800",
+  "summary": "S5/O 完成：在 B0 上跑完基准（第一次尝试已提交 d58df18，本轮沿用未改）、逐条规则扫描 14 个 handler、只保留 1 处语义保持改动并补齐全部判决与报告。保留的改动 REQ-1（commit 5fe0c7c）把 bookings-cancel 两步互不依赖的尽力而为补偿（放座 / 退款）并发化：顺序深度 5→4、调用次数与 RRU/WRU 不变、conflicts 全 0，run_rie_verdict=kept（5/10/15ms 热调用与基线区间不重叠地更好，0ms no_diff，init no_diff，cost better）。本轮四项检查全部重跑通过：run_judge(bookings-cancel)=PASS、run_validate(delta)=PASS(1/1)、run_equivalence(diff)=EQUIVALENT（0 differences；该 delta 用例在 unstable_in_baseline 里，已如实记入 uncovered_paths）、run_coverage(changed_since=B0, with_judge)=9/9 all_covered，gate(final)=PASS。收尾全量回归：run_judge()=PASS（34 cases + 21 fault runs，0 failures）、run_validate(assets=verification/delta)=PASS（16/16），judge/** 一字未动。",
+  "notes": "产物：output/perf_report.json（含 rule_scan、baseline=B0 的 run_proxy_metrics 数据、advisories A1-A4、uncovered_paths）、storage/stage_reports/O.json、perf/requests/REQ-1.json、perf/verdicts/cancel-own-booking-20261116-190411.json；提交 74fc685（报告）+ 一笔 verification 回归产物；工作树干净。计数：kept 1 / reverted 0 / pending_human 0 / blocked_by_test 0 / blocked_by_coverage 0 / pending_spec 0，没有 blocked 项需要复核。规则命中：R1/R2/R3/R4/R1b/R5/R6/R8 均 0 处可允许命中（无异步消费者故 R4 无对象；无 requirements.txt 故 R3 无对象；模板已 arm64 + HTTP API 故 R5/R6 无对象；blueprint/rulings 无 bounded_staleness 裁定故 R8 禁止；存在的读-读串联都隔着 authz 守卫，R1b 禁止越过），保留的那处来自基线热点分析（source=analysis）。4 条诊断只写 advisory 未改代码：A1 Scan→GSI（SI-12 把\"只取第一页\"钉成契约，改索引会改变返回条目集合，不满足放宽申请前提，故未申请）、A2 UserGroups TTL 缓存（需 bounded_staleness 裁定）、A3 bookings-create 的 5 步 Saga 写链（提前任何一步都是写）、A4 配置类（MemorySize/Tracing）。工具侧：update_ledger 已写 m2s-mcp-server/perf-rules/ledger.json（candidates=1，各规则 hits=0），该文件由工具自身写入，我没有手工编辑任何工具文件。"
+}

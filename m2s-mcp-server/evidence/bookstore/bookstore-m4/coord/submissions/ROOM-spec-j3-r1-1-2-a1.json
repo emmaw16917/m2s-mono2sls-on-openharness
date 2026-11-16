@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r1-1-2",
+  "attempt": 1,
+  "role": "m2s-architect",
+  "status": "done",
+  "time": "2026-11-13T02:06:30+0800",
+  "summary": "spec-j3-r1 房间 architect 轮：用 record_ruling 落库 R-ROOM-spec-j3-r1-1-2-a1-1（contract + relaxation=order，layers=R，deviates_from_monolith=false），对既有的列表顺序裁定做四处收窄——栏 1 改为\"应用层按业务字段显式排序\"并新增\"键序不等于排序契约\"、affected_cases 由 3 步扩到两个 search 用例的全部 6 步并同时写入裸用例条目（同端点新步骤自动继承）、relaxation 限定只作用于结果集决定的最外层列表（请求体原样快照的内层数组仍逐位置比较，并批准被迫整步骤放宽时登记过度放宽盲区）、确认 V2 下内容差异仍必判 fail 而 J3 记账确按用例粒度故加一条按步骤复核 resolved_by_rulings 的纪律；另批准 annotator 两条规格轮补写（GET /api/books#responses[0] 的顺序语义、GET /api/bestsellers#business_rules[2] 的稳定性措辞）。",
+  "notes": "本轮只发言 + 记裁定，未改 judge/、output/、blueprint、analysis_report。所有判断都回查过源码与机制：routes/search.js:26-46（scan→filter→map，无排序调用）、routes/bestsellers.js:24-27（唯一应用层显式 sort）、routes/cart.js:19-28 与 routes/orders.js:20-29（纯键序，orderId 每单 uuid）、routes/books.js:25-35 + scripts/init-db.js:82-85（category-index 只有 HASH 键）、routes/orders.js:60-66（books 原样快照）；judge.py 的 _rulings_in_force（\"case#step\" 精确到步骤、裸 case 覆盖整用例）、_rulings_by_case（J3 记账剥步骤名）、_all_list_paths + unify（无序路径仍要求条目数相等、键集合相同、取值逐字相等，order 不参与判 ruled）。核对结果：全部 74 用例里位置敏感列表断言只在两个 search 用例的 6 步，verifier 第二节\"6 步不是 3 步\"属实，已并入裁定。给下游的两点提醒：①J1 不要改用例预期，这三步与另三步都按原样比较；②下单读回类步骤不得引用本条放宽。若 V2 仍因顺序判这三步失败，属机制/工具问题（嵌套数组的无序配对已读码确认应生效），按 verifier 的承诺报出即可，不要靠改预期变绿。"
+}

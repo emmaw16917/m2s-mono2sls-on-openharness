@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r2-0-2",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T17:34:51+0800",
+  "summary": "在 spec 讨论室 spec-j3-r2 以 m2s-verifier 身份完成第 3 轮（seq 5，结室确认）发言：接受并确认裁定 R-ROOM-spec-j3-r2-1-1-a1-1（category=contract、relaxation=order、layers=[R]、affects.cases=[register-read-back-by-admin#list]、deviates_from_monolith=false、status=decided），验证线对本差异零改动。",
+  "notes": "本轮全部为只读实测，只写了本报告文件；未改用例/fixtures/identities/faults/事实库（judge 与 verification 两目录 git status 为空）。\n\n实测结论：\n1) 裁定正文已把验证线两条硬要求写成文字：第 (1) 条「由裁判在 R 层做无序多重集比较，验证线不重写用例，不允许把 body.subset 降级成 has_fields」，第 (3) 条维持 case#step 收窄。我据此撤回上一轮的两项建议（裸用例 id、把原则挂到事实条目上），本线无遗留 ASK。\n2) 用例实况：layer=\"R\"，steps=[register, list]，read_back 只挂在 list → 与登记粒度自洽，register 步骤仍严格比较。\n3) blueprint dropped_functions 实测同时含 POST /auth/register 与 GET /auth/users（Replaced by Cognito），本放宽作用面收敛在单体侧对账，目标侧风险为零；V2 若整体跳过该用例属预期内。\n4) 收尾状态：judge/reconcile.json 仍是裁定之前的陈旧文件（mtime 16:09:08，oracle_generated_at 08:09:00Z；differences=1、resolved_by_rulings=0）；check_reconcile_classes 现值 PASS，classes={needs_ruling:1}，errors=[]，即现存分类与陈旧对账自洽，J3 可径直重跑。\n\n交给 J3 的两条验收判据（已写进报告 acceptance_criteria_handed_to_J3）：\nA. 重跑后 differences 归零，resolved_by_rulings 出现本条并带裁定编号。\nB. 「已被裁定覆盖」按用例粒度匹配而差异 id 是 <case>/<step>/<check>：转入后须核对被吞掉的差异确属 list 步骤的数组次序；凡 step≠list 或表现为条数不等、字段取值不同、脱敏泄漏、status≠200，一律视为未解决、另开差异（新事实按 R-A1-a2-4 另开点名 case#step 的裁定）。\n\n边界：放宽仅限该步骤记录里出现的数组路径（users 与元素内 groups）的次序；GAP-18 的「目标不得为凑字面次序新增 sorted()」裁判看不见，需实现线代码复核保留。本室可结。"
+}

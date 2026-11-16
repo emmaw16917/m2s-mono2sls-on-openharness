@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r2-2-2",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T18:09:23+0800",
+  "summary": "在 spec-j3-r2 以 m2s-spec-annotator 身份发言一轮（seq 7）：规格侧结论是差异 register-read-back-by-admin/list/body.subset 不需要动事实库，GET /auth/users#business_rules[2] 保持原文，annotate_entry_point 调用 0 次、analysis_report.json 未改动。新增三项内容：把 architect 的原则句升级为仓库级实测不变量（全仓无 sorted/.sort(/reverse/order_by、无 LastEvaluatedKey，6 处 scan 逐一归类，只有 users/bookings/flights-search 把 scan 原序带进响应体，其中仅 users 有 ≥2 元素次序断言）；给\"次序即内容\"划出可执行边界线（storage.py:322 items[0] 属契约不受放宽覆盖；:61-64 Limit=1 是播种条件属 GAP-15；:287-298 求和天然与次序无关）；并给 J3 重跑补一条规格侧验收判据 C（差异归零必须表现为移入已解决并带裁定编号，且 predicted 未被按单体 scan 字面次序改写——因单体三趟次序本就稳定，抄记录会让 differences 自动消失却把存储布局写进契约）。",
+  "notes": "本轮为讨论轮，唯一写入为 storage/stage_reports/ROOM-spec-j3-r2-2-2.json；只读核对了单体源码（data/storage.py、services/auth.py、app.py）与本室在案裁定。规格侧无待办：接受 R-ROOM-spec-j3-r2-1-1-a1-1 / R-ROOM-spec-j3-r2-1-2-a1-1，事实库与用例/夹具/身份均不改。遗留动作在 J3（重跑对账），验收判据 A/B/C 齐备；其中 C 为本轮提出，请对账线确认差异归零走的是\"被裁定覆盖\"而不是\"predicted 被重写\"。另维持两处口径：本类放宽不外溢到 storage.py:322 的\"取第一条\"；GET /flights/search 与 bookings 的\"次序不承诺\"句子留白，等真出现多元素次序断言时与那条点名 case#step 的新裁定同轮补上。"
+}

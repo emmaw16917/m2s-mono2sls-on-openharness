@@ -1,0 +1,149 @@
+C:\Users\36029\miniconda3\envs\mono2sls\Lib\site-packages\pydantic_settings\sources\utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(
+[11/13/26 13:58:55] INFO     Processing request of type           server.py:733
+                             ListToolsRequest                                  
+                    INFO     Processing request of type           server.py:733
+                             ListResourcesRequest                              
+[11/13/26 13:59:06] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+OpenAI API request failed (attempt 1/9), retrying in 1.0s: 
+[11/13/26 14:17:25] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:19:55] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:20:05] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:20:35] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:20:53] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:21:08] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:21:22] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:21:38] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:21:51] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:23:34] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:24:12] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:24:47] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:25:05] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:25:28] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:25:43] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:26:15] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:26:33] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:26:54] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:27:25] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:27:40] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:27:59] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:28:40] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:29:10] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:29:58] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:30:16] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:30:38] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:30:55] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:31:21] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:31:50] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:32:09] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:32:28] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:32:52] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:33:46] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:34:11] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:34:31] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:34:54] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:35:02] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:35:12] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:35:25] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:35:37] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:35:56] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:36:07] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:36:18] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:36:27] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:36:37] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:36:55] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:37:04] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:37:24] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:37:34] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:37:56] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:38:22] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:38:30] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:39:05] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:39:20] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:39:28] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:39:45] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:40:40] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:41:28] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:41:53] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:42:02] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:42:11] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:42:20] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:44:48] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:45:08] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:45:18] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:47:09] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:47:21] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:47:32] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:47:44] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 14:48:44] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   

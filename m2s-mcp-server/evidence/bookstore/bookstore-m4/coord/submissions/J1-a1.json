@@ -1,0 +1,9 @@
+{
+  "task": "J1",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T00:43:45+0800",
+  "summary": "J1 完成：只读事实库（judge_facts）写出 73 个裁判用例（232 步，覆盖全部 15 个接口）、3 份 fixtures、identities（u1/u2 用注册接口准备，save 出 token/id/refresh）、13 个故障场景、14 条 uncovered。check_judge_assets = PASS：63/66 个必需（<500 且非 catch）响应被引用、14 条豁免有原因、82/104 条 business_rules 被引用、36 个用例含写后读回、15 个接口都断言了全局 CORS 响应头。工作报告在 storage/stage_reports/J1.json，其中列了 13 个需要 J2/J3 对账确认的 questions（易变值断言写法、字符串 quantity、非字符串 password → 500、数组 q → 500、畅销榜未 await 的计数等）。",
+  "notes": "没有读单体源码、blueprint.json 或 output/，所有 expected 只来自事实库的 responses/business_rules/request/auth 与 global_middleware。易变值（userId/orderId/token/createdAt/orderDate）一律不写字面值，只用 has_fields/types/subset(稳定字段)/length/contains/not_contains。Cart 与 Orders 的分区键是注册生成的 uuid，夹具里无法给出，所以这两个表的状态都用接口步骤建立后再读回。layer 只有 order-bestsellers-async 标 R（POST /api/orders#business_rules[7] 说畅销榜更新未被 await）。故障规则都按表/条目钉（读用 op=@read，写用 PutItem/UpdateItem/DeleteItem + match.item），nth 非 all 的都带 item。以下几条预期完全依赖事实库的陈述，若 run_monolith 对账不上请按 J3 分类处理：register/login 的非字符串 password → 500；GET /api/search?q=a&q=b → 500；POST /api/cart 的字符串 quantity/price 原样存取；PUT /api/cart 对不存在的 bookId 直接新建条目并返回 200；GET /api/bestsellers 的降序前 20 数组（夹具刻意让 salesCount 互不相同，避免同分并列）。"
+}

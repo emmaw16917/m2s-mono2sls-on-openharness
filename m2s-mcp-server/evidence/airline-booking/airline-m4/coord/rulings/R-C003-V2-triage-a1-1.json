@@ -1,0 +1,31 @@
+{
+  "id": "R-C003-V2-triage-a1-1",
+  "decider": "handler",
+  "task": "C003-V2-triage",
+  "attempt": 1,
+  "time": "2026-11-16T17:45:23+0800",
+  "question": "白盒故障场景 wb-booking-handler-read-fails-after-authz（nth=2）、wb-booking-confirm-read-fails-after-authz（nth=2）、wb-booking-cancel-read-fails-in-service（nth=3）按「同一条预订的第 n 次读」注入，在只读一次条目的目标上落点与单体不同，V2 判 3 个 fault run 失败：这些「第 2/3 次重复读落空 → 400」的臂算不算对外契约？（承接 storage/DECISIONS.md D-20 / SI-1，D-20 明写此裁定留给 V2 报差异后补）",
+  "conclusion": "是实现轨迹，不作 P 层判定。目标在这三条注入涉及的 7 个步骤上不再判失败（其余步骤、其余用例、其它故障场景一律仍严格比对）：booking-read-guards#owner、booking-read-guards#other、booking-confirm-unconfirmed#confirm、booking-confirm-unconfirmed#read-booking、booking-cancel-and-read#cancel、booking-cancel-and-read#read-booking、booking-cancel-and-read#read-seat。准确口径：(1) bookings-get / bookings-confirm / bookings-cancel 每个请求只按主键读一次该条目（SI-1），单体只有在第 2/3 次冗余读落空时才会产出的 'Booking <booking_id> not found' / 'Invalid booking ID: <booking_id>' 400 臂在目标上不存在，因此 nth=2/nth=3 注入要么命中不到（booking-cancel-and-read 全案对该条目只读 2 次 < nth=3），要么落到同一次运行里另一步的那次读（booking-read-guards 落在 #other、booking-confirm-unconfirmed 落在 #read-booking）；(2) 注入实际命中的那一步按 SI-13 的读失败语义回答（按主键读失败＝与「不存在」同一结果 → 404 {'error': 'Booking not found'}），实现不得为了让注入命中而补做冗余读（D-20 反向约束，perf 规则亦禁止靠加读凑数），也不得把这类读失败改写成 400；(3) 真实（未注入）流量下目标的行为落在单体既有臂之内（读失败 → 404、正常 → 200/403/404 逐字不变），故本条不是契约变化；(4) 已知代价并如实登记：裁判按「用例#步骤」取裁定且不区分正常运行与故障运行，这 7 步在同名用例的正常运行里也因此不再判失败（仍照常记录 status/body/headers/表差异，只是不判 fail）；这 7 步的对外行为仍由 booking-happy-path、booking-cancel-guards、booking-confirm-guards、booking-cancel-twice、booking-cancel-releases-stored-flight 等未受本裁定影响的用例覆盖；(5) table_differences 与 rules_fired（单体 true / 目标 false）继续作为信息项记录，不参与判定。若要恢复这 7 步在正常运行中的判定，只能由人解冻裁判改写这三条按 nth 读注入的场景——分诊与验证线都不得改 judge/。",
+  "basis": "storage/DECISIONS.md D-20（「留给 V2 报差异之后按本节口径补裁定」+ 落点与 nth 的事实描述）、D-17/D-18（SI-1 作废四条第二/三次读臂；「读次数、先读后写是做法，文案与状态码才是契约」）、D-18 汇总表第 3 行 category=implementation-trace；事实库 POST /bookings/<booking_id>/cancel#business_rules[8]「三次读的是同一个 Key，合成一次读对外部效果相同」；blueprint.metadata.spec_resolutions SI-1 / SI-13；judge/faults/ 三条场景的 nth=2/2/3 与 judge/fault_baseline_monolith.json 的落点（booking-read-guards#owner 400、booking-confirm-unconfirmed#confirm 400、booking-cancel-and-read#cancel 400）；verification/verdict_judge.json：3 个 fault run fail，rules_fired 目标 [false]（cancel 场景注入根本未命中），失败面与 D-20 预测逐字相符；m2s-mcp-server/judge.py `_rulings_in_force` / `judge_unit`（category implementation-trace → 步骤记 ruled，run_judge 仅把 fail/infra_error 计为失败）。",
+  "category": "implementation-trace",
+  "raised_by": "V2",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [
+      "booking-read-guards#owner",
+      "booking-read-guards#other",
+      "booking-confirm-unconfirmed#confirm",
+      "booking-confirm-unconfirmed#read-booking",
+      "booking-cancel-and-read#cancel",
+      "booking-cancel-and-read#read-booking",
+      "booking-cancel-and-read#read-seat"
+    ],
+    "layers": [
+      "P"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

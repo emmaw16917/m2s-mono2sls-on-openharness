@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r2-2-2",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T03:22:20+0800",
+  "summary": "以 m2s-spec-annotator 身份在 spec-j3-r2 发言（seq 7）：同意关闭本室，两条差异无需新裁定、无需第三轮对账。本轮不动工作区文件（room 模式），只做规格账：核了 R-…-2-1-2 第 6 点批准的 append-only 四项欠账的机械可行性（宿主条目全部 origin=llm、下标对齐 search[7]/books[6]、全部出处行号与 symbol 实测可达、check_provenance 基线 PASS / 790 sources / 4 unknown）；提出一处对已批准措辞的事实纠正（'toLowerCase 按 JS 默认区域设置' 不成立：实测 String.prototype.toLowerCase.length===0，全仓仅 routes/search.js:32/35-37 四处 toLowerCase、零处 toLocale*，并给 'café'/'İ' 两条可测见证）；给 bestsellers#business_rules[2] 加一条防误用 note 以对齐 GAP-6 的『不预先登记放宽』；指出 d 项范围缺口（无重排调用的证据是仓库级的，routes/ 全量重扫只命中 bestsellers.js:25-26，cart.js:27-28 与 orders.js:28-29 同样成立），默认按批准范围不擅自扩面。",
+  "notes": "交接项（重要）：R-ROOM-spec-j3-r2-1-2-a1-1 第 6 点批准的四项规格补写**尚未落地**，本任务是 room 任务、禁止改 storage/analysis_report.json，需另派一个规格标注轮任务。派单描述请带上工作报告里的 REQ-1（toLowerCase 与区域无关的措辞纠正）与 REQ-2（bestsellers 的防误用 note），否则下一轮会照批准原文把 '按 JS 默认区域设置' 这处事实错误写进事实库。另有两处小账：b 项引用的 package.json 版本号在第 39 行；check_reconcile_classes 的四类枚举不需要加『已裁定』。报告：storage/stage_reports/ROOM-spec-j3-r2-2-2.json（含 facts_verified_this_turn 与 asks_for_architect 四条待 architect 回复的请求）。"
+}

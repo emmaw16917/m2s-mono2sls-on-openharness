@@ -1,0 +1,9 @@
+{
+  "task": "J3",
+  "attempt": 3,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T20:56:08+0800",
+  "summary": "本轮 5 条差异（全部来自 wb-booking-charge-id-non-string-stored-verbatim 的数组 chargeId 臂）全部判为 fact_error：事实库 POST /bookings 声称数组 chargeId 也能建单成功（#business_rules[15]/#responses[6]/#request.body[1]），单体实际在 Step 3 模拟收款记账行 services/payment.py:177 抛 TypeError('unhashable type: list')，Step 3 只接 ValueError（app.py:135-136），落进 catch-all 返回 500 无 bookingId 并回滚（cancel_booking + release_flight_seat，不退款）；read-list 的 404 与 seat-after 的 seatCapacity=4 都是同一错误的连锁后果。已写 judge/reconcile_classes.json（含每条的单体行号证据与给 annotator 的 fix，另指出错误来源是 judge/spec_issues.json 的 J4-1 rule 文本），无 needs_ruling / case_error / mask_gap，未新增 mask_rules.json；上一轮的 register-read-back-by-admin 顺序差异已进 resolved_by_rulings。check_reconcile_classes = PASS。",
+  "notes": "交接要点：(1) annotator 需修 4 处事实项（POST /bookings#business_rules[15]、#responses[6]、#responses[7] 的 when、#request.body[1] 的 note），并把同源错误落到 judge/spec_issues.json 的 J4-1，否则 J4 下一轮还会按同一条规则出题；(2) 事实修正后 J1 回炉：create-list 改 500，read-list 这一步读不回（500 不返回 bookingId，单体也无列表端点，可在 judge/uncovered.json 说明或撤下该步），seat-after 的 seatCapacity 改 4；标量臂（create-float/read-float）本轮无差异，保持不动；(3) 本轮只写 judge/reconcile_classes.json 与 storage/stage_reports/J3.json，未碰用例、事实库、mask_rules。"
+}

@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r1-2-2",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T16:48:07+0800",
+  "summary": "以 m2s-spec-annotator 身份在 spec-j3-r1 完成一轮发言（seq 7）：核对 R-ROOM-spec-j3-r1-1-1-a1-1 与 R-ROOM-spec-j3-r1-1-2-a1-1 与事实库的一致性，结论是事实库无需回炉、analysis_report.json 与 gap_inventory.json 均保持原样；给出 1 条缺口清单漏项（POST /auth/login 的 scan 顺序经 items[0] 外部可观察，GAP-18 的 endpoints 未列）、1 处长度基线口径收紧、1 条检测能力补充，并撤回上轮『把裁定编号写进事实库』的提议。工作报告已写入 storage/stage_reports/ROOM-spec-j3-r1-2-2.json。",
+  "notes": "本轮为讨论室发言，未做任何实现或事实库写入。留给后续任务的两个具体事项：(1) GAP-18（open）决策时不要把『元素顺序无业务含义』推广到全单体——data/storage.py:315-322 get_user_by_email 的 items[0] 让 POST /auth/login 的 scan 顺序成为可观察行为（事实库 POST /auth/login#business_rules[1]，class=contract），要么补 GAP-18 的 endpoints 并区分语义，要么另开一条 g2:order_and_consistency:duplicate_email_items0；补写 gap_inventory 需要单独的 G2 轮次任务。(2) 建议不开『给 GET /auth/users#business_rules[2] 加裁定编号』的回炉任务，我已在房间里撤回该提议；若 architect 仍要，我可以在那个任务里只加 note、不动 rule 正文与索引、class 保持 contract，并跑 check_provenance 到 PASS。(3) 长度基线请下游按『该步表内容在一页 scan 里可见的部分』读，非契约常数 2。另核过 loyalty scan（storage.py:287-296，累加，顺序无关）与启动用 scan(Limit=1)（storage.py:61，不进入响应），无其他漏项。"
+}

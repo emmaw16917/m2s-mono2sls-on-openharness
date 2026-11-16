@@ -1,0 +1,9 @@
+{
+  "task": "D1",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T02:48:30+0800",
+  "summary": "写了 12 条增量测试（orders-create 生产侧 3 条、update-bestsellers 消费侧 9 条）+ 7 个故障场景到 verification/delta/，全部围绕 GAP-2（唯一的 test=delta 缺口）与规则手册的幂等必须规则：消息真的进队列且函数自己不写榜单、发送失败仍 200、books 原样传递不预合并；重复投递只加一次、标记已存在时跳过、同批两条改同一本书累加正确、同 bookId 合并等于逐本 ADD、缺 orderId/解析失败的消息跳过且不写标记、150 本书超容量拆批每本只计一次、部分提交后重投只补剩下的、TransactionConflict 先有界重试、重试耗尽上报 batchItemFailures。run_validate(dry_run=true, assets=verification/delta) 第 1 轮即 PASS。",
+  "notes": "期望一律来自 GAP-2 的 decision 与 DECISIONS.md D-3/D-19/D-20（expected_from=decision:GAP-2，source 另标 rule:consumers must be idempotent under redelivery），没有参照实现代码或单体源码（两者对本任务关闭）。contract 2 的约束都守住了：不用 sdk_calls，nth≠all 的故障规则全部用 match.item 钉在具体条目上。\n\n两处需要下游知道的事（写在 storage/stage_reports/D1.json 的 assumptions / measurement_limits）：\n1) D1-A1：delta-bestsellers-partial-commit-redelivery 的夹具标记键按「首批序号 0」（update-bestsellers#ord-split-2#0）布置——D-3 只写了 pk='...#<批次序号>'，序号起点取自 D-3 指定的 Pattern A 参考实现。若实现用 1 起始，该用例会以「第 1 批被重复计入」失败，属于键名假设，改夹具即可，断言不动。\n2) D1-A2：blueprint 的 sqs_queues.message_body 写 books:[{bookId,quantity}]，而 orders-create.notes 写「books 原样传递」（会带 price）；生产侧用例用子集断言，两种读法都成立，建议 architect 顺手统一措辞。\n3) 测量限制：orderId 必须与响应/订单条目同值、以及新建榜单条目「只含 bookId/salesCount」，现有 expect 原语表达不了，已记入 expect.trace 与报告，留给静态复核。\n\n未重复裁判：其余 21 条缺口是 judge/none，未出题；dry_run 报的 functions_without_cases 是这些 judge 覆盖的 API 函数，属预期。环境提示：消费者用例依赖 TransactWriteItems，V3 需要落在 DynamoDB Local（本机 Docker 可用），dynalite 降级会把它们判成 measurement_tool。"
+}

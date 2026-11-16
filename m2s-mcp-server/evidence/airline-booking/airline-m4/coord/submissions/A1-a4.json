@@ -1,0 +1,9 @@
+{
+  "task": "A1",
+  "attempt": 4,
+  "role": "m2s-architect",
+  "status": "done",
+  "time": "2026-11-13T22:10:15+0800",
+  "summary": "修好 gate(blueprint) 唯一的 B0 级失败并同步蓝图：事实库升到 v6 后新增的 trace_arm `POST /bookings/<booking_id>/cancel#responses[6]`（第三次读落空 → 400 'Invalid booking ID: <id>'）并入 SI-1（class=implementation-trace）作废——bookings-get/bookings-confirm/bookings-cancel 每请求只读一次条目，四条『第 n 次读落空』的臂全部作废，允许的结果集合仍是 404 'Booking not found' / 403 / 200，并写明它对三条按第 n 次读注入的故障场景的后果；另按 v6 新事实把 SI-11 的 targets 补 `GET /auth/users#business_rules[8]`（导入期种子账号臂），新增 SI-19 钉死 POST /bookings 的两条 TypeError 臂在目标上的复现方式（不可哈希 chargeId 必须在写 PaymentTable 前显式判可哈希、抛同文 TypeError → catch-all 500 + 回滚 + 不含 bookingId；非对象 JSON 请求体让覆写 customerId 的赋值落在业务 try 之外 → 500 {'error','type':'TypeError'}、四表零读写）。DECISIONS.md 同步 D-14 的计数与裁定范围、D-18 表第 9 行、新增 D-19/D-20/D-21 与一处索引漂移勘误。gate(blueprint)=PASS、check_adapter_map=PASS、check_gap_inventory(require_decided)=PASS（22/22）；未新增 rulings 裁定（预先放宽会连正常运行一起放过，理由与处理口径写在 D-20），judge/、output/ 与流水线工具未改动。",
+  "notes": "给下游三点：(1) bookings-create 的实现要按 SI-19 复现两条 TypeError 臂的**文本**，不能让 boto3 的 ParamValidationError 顶替 unhashable type 那句；judge/reconcile.json 现有 5 条差异就是这条臂，J1 按新事实重写 predicted 后会比较它。(2) SI-1 作废第二条读之后，wb-booking-handler-read-fails-after-authz / wb-booking-confirm-read-fails-after-authz / wb-booking-cancel-read-fails-in-service 这三条注入场景在目标上与单体的故障基准必然不同（命中不到、或落到别的步骤）；裁判取裁定按『用例#步骤』且不区分正常/故障运行，所以我没有预先落裁定——V2 报差异时按 DECISIONS.md D-20 的口径补一条尽量窄的 implementation-trace 裁定，或由验证线撤掉这三条场景；实现线不得为了让注入命中而补做冗余读。(3) SI-8 的 rationale 里 `GET /auth/users#business_rules[7]` 是 v5 的索引（v6 后播种那条在 [8]，[7] 是缺 email → KeyError → 500，contract），结论不变，勘误写在 D-21；本次没有为一句 rationale 重写整份 metadata。self-check 循环只用了一次修正（改 metadata 后 gate 即 PASS）。"
+}

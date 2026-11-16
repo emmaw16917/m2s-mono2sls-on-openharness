@@ -1,0 +1,9 @@
+{
+  "task": "I1-shared",
+  "attempt": 1,
+  "role": "m2s-code-developer",
+  "status": "done",
+  "time": "2026-11-13T09:28:59+0800",
+  "summary": "共享层写了一次：output/layers/shared/nodejs/shared.js（Node 层根 = layers/shared/nodejs/，运行时 /opt/nodejs/shared.js，CommonJS，只 require 内置 querystring，无第三方依赖所以不生成 package.json）。落地 D-9 全局中间件头（response()/errorResponse() 给每个 200/400/404/413/500 都带 Access-Control-Allow-Origin: * 与 Access-Control-Allow-Credentials: true + content-type，并把 global_middleware[0] 的六个头名全部显式写出供 GM1 扫；预检-only 四头绝不进真实响应）、D-11/D-30 错误包络 fromException()（err.status||500 + {error, stack}）、D-12/D-31 请求体解析 parseBody()（json/urlencoded/不匹配→{}/语法错误 400/>102400 字节 413，大小检查只作用于这两种 content-type）、D-10/D-5 身份只读 claims.sub（customerId/claims/claimList；shared_code 里那条 authMiddleware 按 blueprint.dropped_functions 判为 Replaced by Cognito Authorizer，不 port 校验，旁路按 D-37 不复刻）、GAP-11 的 Express 多值 query queryValue()。接口清单与包任务要注意的两处细节（search-books 的局部变量必须叫 query；路由级响应不带 stack）记在 DECISIONS.md 末尾的实现附记。run_gate(phase=\"code\", functions_json=\"[]\")（等价调度器对本任务的 gate_code_pkg）第 1 次 PASS；不带 scope 的 gate(code) 只剩 12 条 C1『无 handler 目录』，全部属于还没跑的包任务，本任务写入范围不含 output/lambdas。各臂行为已用 node 直接驱动对照规格逐条核过（含 102400/102401 边界与三种 JSON 语法错误文案）。judge/ 与裁判资产未改动。",
+  "notes": "1) run_judge_self_test 在本阶段跑不了：返回 functions_with_code=[]，共享任务不产出 handler 目录，裁判自测要等 I1-bestsellers-books-cart-orders-search 写完 12 个函数。2) S3 需要把层写成 ContentUri: layers/shared/nodejs/ + Metadata.BuildMethod: nodejs22.x（m2s-sam-kb 口径，C13 两种自洽方案之一）；层内没有 package.json，若 sam build 对该 BuildMethod 强制要求 manifest，届时由 S3/V 阶段决定补一个不含 dependencies 的 package.json（补空 dependencies 会被 C10 判错）。3) 一个非阻塞偏差记在报告 issues：urlencoded 解析用内置 querystring，带括号的表单体（books[0][bookId]）不会像单体的 qs 那样建嵌套对象——规格里所有表单字段都是平坦的，外部效果一致；若要支持嵌套需显式声明 qs 依赖。4) 包任务请读 DECISIONS.md 末尾『实现附记（I1-shared）』：handler 一律 const shared = require('/opt/nodejs/shared')，响应只走 shared.response/errorResponse/fromException，别自己拼 headers，也别把 stack 加到路由级 400/404/200 上。"
+}

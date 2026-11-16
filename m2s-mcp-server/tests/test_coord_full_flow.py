@@ -345,3 +345,64 @@ def test_c2_failure_goes_to_a_person(tmp_path: Path, monkeypatch):
     assert d.run() == EXIT_HUMAN
 
     assert d.board.status("C2") == "needs_human"
+
+
+# --- v3 M4/W4.2: the v2-split template with fake workers ---------------------
+
+V2S = load_template("v2-split")
+
+
+def _split_report() -> dict:
+    eps = []
+    for group in ("alpha", "beta", "gamma"):
+        for i in range(4):
+            eps.append({
+                "method": "GET", "path": f"/{group}/thing{i}",
+                "handler_location": {"file": "app/server.js", "start_line": 1, "end_line": 5},
+                "auth": {"classification": "none", "middleware": []},
+                "request": {"path_params": [], "query": [], "body": [], "headers": []},
+                "data_access": [],
+            })
+    return {"entry_points": eps}
+
+
+@slow
+def test_v2_split_expands_f2_and_i1(tmp_path: Path):
+    """W4.2: F2 runs per package (plus the shared consolidator) and I1 expands by
+    A1's impl_packages; I2a waits for the domains and the shared layer."""
+    actions = {name: ok_action(name) for name in ACTIONS if name != "run_monolith"}
+    actions["run_monolith"] = fake_j2(tmp_path / "ws")
+
+    def f1(spec) -> CheckResult:
+        storage = tmp_path / "ws" / "storage"
+        storage.mkdir(parents=True, exist_ok=True)
+        (storage / "analysis_report.json").write_text(json.dumps(_split_report()), encoding="utf-8")
+        (storage / "symbol_table.json").write_text("[]", encoding="utf-8")
+        return CheckResult("analyze_project", True, "fake analyze")
+
+    actions["analyze_project"] = f1
+    script = {"A1": [{"write": {"storage/work_packages.json": {
+        "version": 1, "packages": [{"id": "alpha"}, {"id": "beta"}, {"id": "gamma"}],
+        "impl_packages": {"alpha": {"functions": ["alpha-fn"], "dir": "alpha"},
+                          "beta": {"functions": ["beta-fn"], "dir": "beta"},
+                          "gamma": {"functions": ["gamma-fn"], "dir": "gamma"}},
+    }, "storage/stage_reports/A1.json": {"ok": True}}, "submit": "done"}]}
+
+    d = make_dispatcher(tmp_path, script, template=V2S, actions=actions)
+    d.checks["check_provenance_pkg"] = lambda ws, spec: CheckResult("check_provenance_pkg", True, "fake")
+    d.checks["check_provenance"] = lambda ws: CheckResult("check_provenance", True, "fake")
+    d.checks["gate_code_pkg"] = lambda ws, spec: CheckResult("gate_code_pkg", True, "fake")
+
+    assert d.run() == EXIT_DONE, [(t, i["status"]) for t, i in d.board.tasks().items() if i["status"] != "closed"]
+
+    tasks = d.board.tasks()
+    assert sorted(t for t in tasks if t.startswith("F2-")) == ["F2-alpha", "F2-beta", "F2-gamma", "F2-shared"]
+    assert sorted(t for t in tasks if t.startswith("I1-")) == ["I1-alpha", "I1-beta", "I1-gamma", "I1-shared"]
+
+    order = [e.get("task") for e in d.events.all() if e["type"] in ("spawn", "action_start")]
+    for child in ("I1-alpha", "I1-beta", "I1-gamma", "I1-shared"):
+        assert order.index(child) < order.index("I2a"), child
+    # A1 fills impl_packages from the blueprint's domains; the instruction lives
+    # in the role doc, which the launcher passes as the system prompt.
+    role_doc = (Path(__file__).resolve().parent.parent / "agents" / "m2s-architect.md").read_text(encoding="utf-8")
+    assert "impl_packages" in role_doc and "领域目录" in role_doc

@@ -1,0 +1,42 @@
+{
+  "id": "R-A1-a3-2",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 3,
+  "time": "2026-11-13T02:18:39+0800",
+  "question": "GET /api/books 与 GET /api/search 的列表顺序：事实库说顺序就是 scan/索引返回顺序、没有规定排序键，迁移后的实现是否必须复现单体的返回次序？（R-3，把 R-1 的通用规则落到具体步骤）",
+  "conclusion": "只在这些步骤上放宽「顺序」：事实库对 GET /api/books（Scan 全表臂与 category-index Query 臂）和 GET /api/search 的 hits 没有规定任何排序键（顺序 = 存储返回顺序），所以迁移后不要求复现单体 DynamoDB 的返回次序；等价性比较把这些列表按多重集比。不放宽内容：状态码、条目数/total、每个条目的属性集合与取值、hits 每项只有一个 _source 包装、大小写不敏感子串匹配、共享可见性以及 D-9 的响应头全部保持契约。同一条规则不适用于：GET /api/bestsellers（salesCount 降序 + 前 20 是排序键规定的顺序，保持严格）、GET /api/cart 与 GET /api/orders（顺序由排序键 bookId / orderId 决定，保持严格）、订单条目里 books 数组（原样快照，保持严格）。",
+  "basis": "事实库：GET /api/books#responses[1]（category 臂「结果为 data.Items 原样数组，顺序即索引返回顺序」）与 #business_rules[2]、GET /api/books#responses[0]（全表臂「res.json(data.Items)，不排序、不投影、不翻页」）、GET /api/books#business_rules[2]、GET /api/search#responses[1] 与 #business_rules[3]（无排序）。代码：routes/books.js:26-47（Query 与 Scan 两臂都没有 sort 调用）、routes/search.js:31-44（scan + filter，保序 push）。反面例子（顺序是契约、本条不覆盖）：GET /api/bestsellers#business_rules[1]（salesCount 降序取前 20）、GET /api/cart / GET /api/orders 由主键 (customerId, bookId/orderId) 的排序键决定次序。已存在的同类裁定：R-ROOM-spec-j3-r1-1-1-a1-1（decided），它把通用规则写在结论里、relaxation 只登记在三个 search 步骤上；本条把同一规则落到 Books/search 其余步骤。",
+  "category": "contract",
+  "raised_by": "A1",
+  "options": [
+    "A. implementation-trace 作废顺序这一臂（被否：与 R-1 同一理由，会把残余的内容差异也一起判成 ruled）",
+    "B. contract + relaxation=order，只不比顺序（采用：与已 decided 的 R-ROOM-spec-j3-r1-1-1-a1-1 的结论第 2 点一致，只是把登记范围补全）",
+    "C. 要求目标复现单体 Scan/索引返回顺序（被否：事实库没有规定顺序，等于给目标加一条无法稳定实现的要求）"
+  ],
+  "relaxation": "order",
+  "affects": {
+    "cases": [
+      "books-list-all-200#all",
+      "books-list-by-category-200#fiction",
+      "books-list-by-category-200#programming",
+      "books-list-by-category-200#unknown",
+      "books-list-by-category-200#empty-value",
+      "books-shared-between-users-200#u1",
+      "books-shared-between-users-200#u2",
+      "search-hits-200#name",
+      "search-case-insensitive-200#mixed-name",
+      "search-case-insensitive-200#mixed-target",
+      "search-no-match-and-absent-fields-200#no-hit",
+      "search-no-match-and-absent-fields-200#id-not-searched",
+      "search-no-match-and-absent-fields-200#price-not-searched",
+      "search-no-match-and-absent-fields-200#substring-space"
+    ],
+    "layers": [
+      "R"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

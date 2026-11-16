@@ -1,0 +1,9 @@
+{
+  "task": "I2a",
+  "attempt": 2,
+  "role": "m2s-sam-engineer",
+  "status": "done",
+  "time": "2026-11-13T12:16:54+0800",
+  "summary": "output/template.part1.yaml 完成（第 2 次尝试：逐条对照 blueprint/analysis_report 复核后内容无需改动）：Globals/Parameters + REST Api(BookstoreApi，REGIONAL、Cors 三字段、Cognito DefaultAuthorizer、七类 GatewayResponses 头)、ApiLogGroup、CognitoUserPool+Client（PasswordPolicy 五项全写）、五张 DynamoDB 表（BooksTable 带 category-index GSI；IdempotencyTable 带 TTL expiresAt）、BestsellerUpdateQueue+DLQ、SharedLayer，末尾以全文唯一一次 '# --- END METADATA ---' 结束；无 Function 资源（属 S3b）。第 1 次尝试的失败只是没调用 submit_task。",
+  "notes": "本次复核（只读、未改流水线工具）：gates.load_template 解析成功；临时目录里 m2s_merge + cfn-lint 1.51.0 rc=0；check_gm_template / check_api_type_template / check_c14 / check_c13 / check_c9 全部返回 []。另核对 judge/oracle_expected.json 与 judge/fault_baseline_monolith.json：单体在 401 与全部故障应答上只有三个头（ACAO/ACAC/content-type），与模板 UNAUTHORIZED/MISSING_AUTHENTICATION_TOKEN 三项一致。\n\n给 S3b/S3c 的三点：①SharedLayer 在 part1，每个函数要加 Layers: [!Ref SharedLayer]，不得重复声明同名 LayerVersion；②逻辑名已写进 SHARED_RESOURCES_METADATA（BookstoreApi / CognitoUserPool / 五张表 / 队列 / SharedLayer），Api 事件写 RestApiId: !Ref BookstoreApi，本应用没有 auth=none 端点所以不需要 Authorizer: NONE；③Globals.Function 故意没有 Handler（blueprint 的 handler.handler 是占位值），part2 需按 output/lambdas/ 磁盘真实文件名与导出名逐个写 Handler，CodeUri 用相对 output/ 且以 / 结尾（如 lambdas/bookstore/xxx/）。\n\n一条遗留口径差（已记在 storage/DECISIONS.md 的 I2a 附记，suspected_module=A1）：GM2 要求 global_middleware[0] 的全部六个头名出现在 DEFAULT_4XX/DEFAULT_5XX，而 blueprint.api_gateway.gateway_responses.headers 只列三项、D-9 第 3 条禁止函数真实响应多带另外四项。模板按 GM2 字面写全六项（GatewayResponses 只影响网关自答，不影响函数返回的业务响应），gate(final) 才不会因 GM2 ERROR 判 FAIL；若要收紧成三项，需要的是一条对 GM2 的裁定。"
+}

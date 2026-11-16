@@ -185,6 +185,15 @@ def test_unit_identities_and_fault_rules_through_the_map(tmp_path):
     sub = vars_["u1.id"]
     assert auth["u1"] == {"header": {"Authorization": "Bearer m2s-token-u1"}, "claims": {"sub": sub, "email": "u1@x.io"}}
     assert bindings["<id:u1>"] == sub and vars_["u1.token"] == "m2s-token-u1" and seeds == []
+    # v3 M4/W4.8: the monolith's own id literal (masks.json value) is used on
+    # both sides; otherwise the target's fresh uuid5 makes owner guards answer 403.
+    vars2, auth2, bindings2, _ = judge._unit_identities(AMAP, identities, ["u1"], "case-1", {"u1": "cust-u1"})
+    assert vars2["u1.id"] == "cust-u1" and bindings2["<id:u1>"] == "cust-u1"
+    assert auth2["u1"]["claims"]["sub"] == "cust-u1"
+    with_user_id = {"u1": {"monolith": {"steps": [{"method": "POST", "path": "/api/register",
+                                                   "body": {"email": "u1@x.io", "userId": "cust-u1"},
+                                                   "save": {"id": "body.id"}}]}}}
+    assert judge._unit_identities(AMAP, with_user_id, ["u1"], "case-1")[0]["u1.id"] == "cust-u1"
     (tmp_path / "output").mkdir()
     (tmp_path / "output" / "template.yaml").write_text(TEMPLATE_YAML, encoding="utf-8")
     amap = {**AMAP, "tables": [{"monolith": "Items", "target": "ItemsTable", "fields": {"pk": {"from": "id"}}}, *AMAP["tables"][1:]]}

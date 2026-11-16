@@ -1,0 +1,312 @@
+{
+ "stage": "O (S5, 优化线 / v2 pipeline)",
+ "app": "bookstore",
+ "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\bookstore-m4",
+ "baseline_ref": "B0 (a9dea7f); 代理指标与判决的对比基线是 HEAD（B0 + 本轮已提交的基准）",
+ "confidence": "normal",
+ "environment": {
+  "docker": true,
+  "runtime_used_for_checks": "rie (public.ecr.aws/lambda/nodejs:22-x86_64, backend ddblocal)",
+  "latency_ms": [
+   10
+  ],
+  "proxy_metrics_mode": "local Node (m2s-mcp-server/verify-tools/perf-harness.js) —— 见 issues：用到 /opt/nodejs/shared 层的 API 函数在本地 Node 下无法加载",
+  "prices": {
+   "source": "m2s-mcp-server/perf-rules/prices.json",
+   "lambda_gb_second_arm64": 1.33334e-05,
+   "dynamodb_write_request_unit": 6.25e-07,
+   "dynamodb_read_request_unit": 1.25e-07,
+   "sqs_request": 4e-07,
+   "lambda_request": 2e-07
+  },
+  "data_volume_assumptions": {
+   "batch-10-disjoint-books": "一批 10 条 SQS 消息（模板 BatchSize=10），每条 3 本书、3 个不同 bookId，10 条消息的书目两两不同（共 30 个条目）；BestsellersTable 预置这 30 条，IdempotencyTable 空。",
+   "batch-10-hot-book": "一批 10 条消息，每条 3 本书且都含同一本 book-hot，另 2 本两两不同（共 21 个条目）；orderId 各不相同，唯一的重叠条目是 book-hot。R4 守卫基准。",
+   "order-10-books": "一次下单 10 本书（购物车里正好这 10 本 + 1 本不买的），OrdersTable 已有 5 条历史订单。",
+   "scan-200-books": "BooksTable 200 本书，不带 category（Scan 整表）。",
+   "scan-200-bestsellers": "BestsellersTable 200 条（只有 bookId + salesCount），响应取前 20 个 bookId。"
+  }
+ },
+ "baseline": {
+  "update-bestsellers": {
+   "batch-10-disjoint-books": {
+    "calls": 10,
+    "depth": 10,
+    "network_ms_cal": 178.8,
+    "warm_cpu_ms": 4.863,
+    "warm_cpu_p90_ms": 9.283,
+    "conflicts": 0,
+    "rru": 0,
+    "wru": 80,
+    "sqs_requests": 0,
+    "max_rss_mb": 113,
+    "cost_usd": {
+     "units_usd": 5e-05,
+     "lambda_request_usd": 2e-07
+    }
+   },
+   "batch-10-hot-book": {
+    "calls": 10,
+    "depth": 10,
+    "network_ms_cal": 178.8,
+    "warm_cpu_ms": 5.664,
+    "warm_cpu_p90_ms": 10.053,
+    "conflicts": 0,
+    "rru": 0,
+    "wru": 80,
+    "sqs_requests": 0,
+    "max_rss_mb": 114,
+    "cost_usd": {
+     "units_usd": 5e-05,
+     "lambda_request_usd": 2e-07
+    }
+   }
+  },
+  "orders-create": {
+   "order-10-books": {
+    "valid": false,
+    "invalid_reason": "handler threw Runtime.ImportModuleError: Cannot find module '/opt/nodejs/shared'（本地 Node 跑 built handler，层路径只在 RIE 里存在）",
+    "structural_depth_reads": 0,
+    "structural_sequential_round_trips": 3,
+    "note": "PutItem(订单) → Promise.all(10 个 DeleteItem) → SendMessage(榜单更新)。三次串行往返；DeleteItem 已经是并行的（PH-1 / business_rules[4]）。RIE 判决可用，代理指标不可用。"
+   }
+  },
+  "bestsellers-list": {
+   "scan-200-bestsellers": {
+    "valid": false,
+    "invalid_reason": "Runtime.ImportModuleError: Cannot find module '/opt/nodejs/shared'",
+    "note": "1 次 Scan，深度 1，无并行空间。"
+   }
+  },
+  "books-list": {
+   "scan-200-books": {
+    "valid": false,
+    "invalid_reason": "Runtime.ImportModuleError: Cannot find module '/opt/nodejs/shared'",
+    "note": "1 次 Scan 或 Query，深度 1，无并行空间。"
+   }
+  }
+ },
+ "changes": [
+  {
+   "id": "C1",
+   "request": "REQ-1",
+   "source": "rule:R4",
+   "functions": [
+    "update-bestsellers"
+   ],
+   "based_on": [],
+   "verdict": "kept",
+   "fix_attempts": 0,
+   "review": {
+    "blocked": "coverage",
+    "cases": [],
+    "uncovered": [
+     {
+      "file": "output/lambdas/bookstore/update-bestsellers/handler.js",
+      "line": 302,
+      "code": "return;",
+      "why": "R4 把 handler.js:224 的 `for (const record of records)` 改成每条消息一个 handleRecord（循环体原地不动，只把 `continue` 改成 `return`）。第 302 行是消息里 books 为空时的那条 `return;`（单体 utils/bestsellers.js:41-43 的空列表 no-op，blueprint:lambda_functions[update-bestsellers].notes 写明）。没有任何裁判用例或增量测试让消费者收到一条 `books: []` 的消息：生产者 orders-create 在 books 为空时先返回 400（POST /api/orders#business_rules[0]），根本不会发出消息，所以这个分支从 HTTP 侧不可达，只能由一条直接喂 SQS 事件的增量测试覆盖。"
+     }
+    ],
+    "what_would_unblock": "一条 verification/delta/events/update-bestsellers 用例：一批里混一条 `{orderId:\"ord-x\", books:[]}` 的消息，期望 batch_item_failures=[] 且两张表原封不动（不加条目、不写幂等标记）。其余 65 行改动行都已由现有用例执行。",
+    "evidence": {
+     "gate_final": "PASS",
+     "run_judge_functions": "PASS ({\"cases\":{\"migration-change\":2,\"pass\":10},\"fault_runs\":{\"pass\":6}}, mode rie, failures_total 0)",
+     "run_validate_delta_functions": "PASS (total 9, passed 9, failed 0, cases_with_conflicts [])",
+     "run_equivalence_delta_functions": "EQUIVALENT (baseline B0 a9dea7f, runs 14, differences [], infra_errors {}, unstable_in_baseline [], 无新增 TransactionConflict)",
+     "run_coverage_changed_lines": {
+      "changed_executable_lines": 66,
+      "covered": 65,
+      "uncovered_count": 1,
+      "all_covered": false,
+      "sources": {
+       "judge_cases": 12
+      }
+     },
+     "details": "verification/coverage/update-bestsellers.json"
+    },
+    "patch": "perf/patches/REQ-1.patch",
+    "outcome": "kept",
+    "human_acceptance": "accepted by a person: the single uncovered line is the books:[] no-op defensive return, unreachable from HTTP; all other checks PASS"
+   },
+   "evidence": {
+    "proxies": {
+     "batch-10-disjoint-books": {
+      "depth": "10 → 1",
+      "calls": "10 → 10 (=)",
+      "network_ms_cal": "178.8ms → 17.88ms",
+      "warm_cpu_ms_median": "4.863 → 2.607",
+      "conflicts": "0 → 0",
+      "wru": "80 → 80 (=)"
+     },
+     "batch-10-hot-book": {
+      "depth": "10 → 10 (=)",
+      "calls": "10 → 10 (=)",
+      "network_ms_cal": "178.8ms → 178.8ms (=)",
+      "warm_cpu_ms_median": "5.664 → 5.129",
+      "conflicts": "0 → 0 (=)",
+      "note": "守卫基准：每条消息都含 book-hot，分波次后退化成 10 个单消息波次，与串行基线一致"
+     }
+    },
+    "key_assumptions": [
+     "波次键 = IdempotencyTable 的 marker pk（含分块序号）+ 每个 Update 的 BestsellersTable Key {bookId}，与 handler 用的同一个 mergeQuantities/transactionChunks 构造器算出，因此不会与实际请求漂移；幂等标记条目已含在键里，同一 orderId 的重复投递自动排到不同波次",
+     "同一波内条目两两不同；每个条目上消息的顺序仍是批内顺序（delta-bestsellers-two-messages-same-book 与 -conflict-on-hot-book 的结果不变）",
+     "batchItemFailures 最后按批内顺序排回，单条消息的失败粒度不变"
+    ],
+    "simulation_limitation": "结论只在并发不受限的条件下成立（PERF_OPTIMIZATION_DESIGN.md §2.1 第 2 项：模拟模型不给并发数设上限）。真实 DynamoDB 下同一批 10 条互不重叠的事务并发提交还会互相排队/受吞吐限制，实际收益小于 depth 10→1 的上界；热点条目场景（守卫基准）没有收益也没有退化。",
+    "rie": "未运行：改动在 §3 第 4 项（改动行覆盖）就被 blocked_by_coverage 拦下，按角色说明不进入判决阶段（补丁已存 perf/patches/REQ-1.patch，复核补上用例后在重新判决模式跑）",
+    "equivalence": "EQUIVALENT",
+    "regression": {
+     "run_judge": "PASS (54 pass + 14 migration-change + 18 dropped; faults 22 pass) -> verification/verdict_judge.json",
+     "run_validate_delta": "PASS (12/12) -> verification/verdict_delta.json",
+     "code_state": "回滚后 output/ 与 B0 一致"
+    },
+    "coverage_of_changed_lines": {
+     "changed_executable_lines": 66,
+     "covered": 65,
+     "all_covered": false
+    }
+   },
+   "commit": null
+  }
+ ],
+ "pending_human": [],
+ "advisories": [
+  {
+   "id": "ADV-1",
+   "request": "REQ-2",
+   "diagnosis": "orders-create 的三次串行往返里，SendMessage(畅销榜更新) 只依赖 orderId 与请求体 books，前两步的结果都用不上；把它提到购物车清理之前或与 DeleteItem 重叠，可以省一次往返（基线结构深度 3 → 2）。",
+   "why_not_v1": "§6.2：原代码遇到失败就停止，被提前的操作里有写操作或发消息（执行的操作集合会变）不允许。单体 routes/orders.js:87 是在购物车清理全部成功之后才更新榜单，规格 POST /api/orders#business_rules[5] 把“删除失败 → 500 且订单不回滚”定成契约；提前发消息会让删除失败的请求多发一条消息，消费者随之真的累加销量 —— 这是新造的行为。",
+   "evidence": {
+    "structure": "PutItem → Promise.all(DeleteItem × n) → SendMessage（handler.js:93-123）",
+    "depth": "3 次串行往返（DeleteItem 已并行）",
+    "measured": "本地代理指标不可用（层路径），数字取自代码结构"
+   }
+  },
+  {
+   "id": "ADV-2",
+   "diagnosis": "update-bestsellers 内部对同一条消息的分块（>99 本合并后条目）是串行的：handler.js:209-217 `for (const items of chunks) { const outcome = await applyChunk(items); if (outcome === 'failed') return 'failed'; }`。大单（数百本书）时深度 = 分块数。",
+   "why_not_v1": "R1 不适用：失败即停止（后面的分块不再提交），而被提前的操作是写事务，执行集合会变；并行化后“前一块失败、后一块已提交”的部分提交状态是 v0 没有的。R4 也不适用：R4 只管消息之间的波次，一条消息内部的分块必须保持顺序，否则同一 orderId 的 marker 语义（D-3 的按批重投）会变。",
+   "evidence": {
+    "structure": "delta-bestsellers-many-books-split-batches / -partial-commit-redelivery 就是这条串行路径的用例",
+    "depth": "150 本 → 2 次串行 TransactWriteItems"
+   }
+  },
+  {
+   "id": "ADV-3",
+   "diagnosis": "三个只读端点（books-list 无 category、search-books、bestsellers-list）都是整表 Scan：数据量增长时成本与延迟随表大小线性增长，search-books 还在函数内过滤整表结果。",
+   "why_not_v1": "改成 Query（GSI）或物化视图属于数据模型改动，§6.2 只能申请、不能自改；给 Scan 加 ProjectionExpression 在 BestsellersTable 上没有可省的属性（条目只有 bookId+salesCount），在 BooksTable 上会改变响应体里返回的属性（contract）。",
+   "evidence": {
+    "structure": "handler.js 里各 1 次 Scan，串行深度已经是 1，并行化没有空间",
+    "measured": "本地代理指标不可用（层路径），未量到 Scan 的 RRU 曲线"
+   }
+  },
+  {
+   "id": "ADV-4",
+   "diagnosis": "购物车清理（orders-create 的 n 次 DeleteItem）与消费者的多条写，都可以考虑 BatchWriteItem / 跨消息按 key 聚合。",
+   "why_not_v1": "§6.2 明令禁止：多次 Put/Delete 合并成 BatchWriteItem、把 UpdateItem 合并成批量写、跨消息按 key 聚合写入都会把失败粒度从单条变粗；消费者侧还会破坏 Pattern A 的“标记与效果同一笔事务提交”的幂等方式（D-3）。",
+   "evidence": {
+    "structure": "orders-create:97-108（n 个 DeleteCommand 已并行）；update-bestsellers:110-138（TransactWriteItems）"
+   }
+  }
+ ],
+ "rule_scan": {
+  "R1": {
+   "hits": 0,
+   "locations": [],
+   "not_applicable": [
+    "output/lambdas/bookstore/update-bestsellers/handler.js:209-217 —— 一条消息内的分块循环：失败即 return（停止处理后面的分块），且被提前的操作是写事务，§6.2 不允许（见 ADV-2）",
+    "output/lambdas/bookstore/orders-create/handler.js:97-108 —— 购物车清理已经是 books.map(...) + Promise.all，没有可并行的串行 await"
+   ]
+  },
+  "R2": {
+   "hits": 0,
+   "locations": [],
+   "not_applicable": [
+    "每个 handler 只调用一次 shared.parseBody(event)；update-bestsellers 对每条消息只 JSON.parse 一次"
+   ]
+  },
+  "R3": {
+   "hits": 0,
+   "locations": [],
+   "not_applicable": [
+    "12 个 package.json 里声明的 @aws-sdk/client-dynamodb、@aws-sdk/lib-dynamodb、@aws-sdk/client-sqs 都在对应 handler.js 里被 require；没有声明未用的依赖（crypto 是 Node 内置，未声明）"
+   ]
+  },
+  "R4": {
+   "hits": 1,
+   "locations": [
+    "output/lambdas/bookstore/update-bestsellers/handler.js:224-258"
+   ],
+   "not_applicable": []
+  },
+  "R1b": {
+   "hits": 0,
+   "locations": [],
+   "not_applicable": [
+    "没有任何函数存在两段串行读：11 个 HTTP handler 每次调用最多 1 次读（Get/Query/Scan）；orders-create 不读；update-bestsellers 只写（TransactWriteItems），没有可读的结果被挡在 error_propagation 守卫后面"
+   ]
+  },
+  "R5": {
+   "hits": 0,
+   "locations": [],
+   "not_applicable": [
+    "output/template.yaml 的 Globals.Function 已经有 Architectures: [arm64]（part1 第 38 行），运行时 nodejs22.x，没有 x86-only 编译模块 —— 架构这一项 B0 就已经是 Graviton，没有可做的改动"
+   ]
+  },
+  "R6": {
+   "hits": 0,
+   "locations": [],
+   "not_applicable": [
+    "run_gate(phase=\"blueprint\") PASS，没有 AT1 WARNING：blueprint.api_gateway.rest_features = [gateway_responses, cognito_user_pools_authorizer]，用到了 REST 独有功能（app-wide CORS 的 Access-Control-Allow-Credentials 必须由 GatewayResponses 带在网关自己应答的 401/4xx 上），不换 HTTP API"
+   ]
+  },
+  "R8": {
+   "hits": 0,
+   "locations": [],
+   "not_applicable": [
+    "blueprint 没有 accepted 的 bounded_staleness SI（storage/blueprint.json 无 spec_issues/bounded_staleness 条目，storage/rulings.json、storage/analysis_report.json 里也搜不到）→ 任何表的 TTL 缓存都不允许，只能写 advisory"
+   ]
+  }
+ },
+ "issues": [
+  "run_proxy_metrics 的本地 Node 模式跑不了任何 require('/opt/nodejs/shared') 的函数：built handler 在宿主机文件系统里找不到 CommonJS 层（层只在 RIE 容器里挂到 /opt/nodejs）。受影响的是本轮为基线分析写的 3 个 API 基准（orders-create/order-10-books、bestsellers-list/scan-200-bestsellers、books-list/scan-200-books），它们在 run_proxy_metrics 里 valid=false；裁判、run_validate、run_equivalence、run_coverage 都走 RIE，不受影响。没有为此去改任何工具，也没有改动这些已提交的基准。",
+  "C1 的 blocked_by_coverage 不是行为问题：judge / validate(delta) / equivalence 全通过，只有 1 行防御性 return 没有测试执行到。需要验证线补一条直接喂 SQS 事件的增量用例（见 C1.review.what_would_unblock）。"
+ ],
+ "uncovered_paths": [
+  "update-bestsellers handler.js:245-249（消息 books 为空 → no-op）：从 HTTP 侧不可达，现有用例集不覆盖，因而挡住了 R4 改动的改动行覆盖。",
+  "本地基线数据只覆盖 SQS 消费者（2 个基准）；4 个只读端点与 orders-create 只有代码结构结论，没有测到代理指标。"
+ ],
+ "summary": {
+  "kept": 0,
+  "kept_inconclusive": 0,
+  "reverted": 0,
+  "pending_human": 0,
+  "blocked_by_test": 0,
+  "blocked_by_coverage": 1,
+  "advisories": 4,
+  "delivered_code": "output/ 与 B0 一致（本轮没有保留任何改动）"
+ },
+ "regression": {
+  "run_judge": {
+   "status": "PASS",
+   "cases": {
+    "pass": 54,
+    "migration-change": 14,
+    "dropped": 18
+   },
+   "fault_runs": {
+    "pass": 22,
+    "dropped": 6
+   },
+   "verdict": "verification/verdict_judge.json"
+  },
+  "run_validate_delta": {
+   "status": "PASS",
+   "total": 12,
+   "passed": 12,
+   "failed": 0,
+   "verdict": "verification/verdict_delta.json"
+  }
+ }
+}

@@ -1,0 +1,32 @@
+{
+  "id": "R-ROOM-spec-j3-r1-1-1-a1-1",
+  "decider": "m2s-architect",
+  "task": "ROOM-spec-j3-r1-1-1",
+  "attempt": 1,
+  "time": "2026-11-13T01:35:11+0800",
+  "question": "规格对账差异 search-case-insensitive-200/upper-q/body.subset 与 search-hits-200/author/body.subset（以及同一用例当前只是碰巧按夹具顺序通过的 category 那一步）：事实库只规定命中集合与 total，没有规定 hits 的先后次序——迁移后的实现是否必须复现单体 DynamoDB scan 的返回顺序？请把这条写成一条关于\"列表顺序\"的一般裁定，不要只对 /api/search 生效。",
+  "conclusion": "列表顺序的通用规则（本条只把 relaxation 施加在下面 affected_cases 列出的步骤上）：\n1) 事实库为某个列表响应规定了显式排序键的，顺序属于契约，迁移后必须复现该排序键决定的次序——例如 GET /api/bestsellers#business_rules[1] 规定按 salesCount 降序（缺失按 0）取前 20，本裁定不放宽它，畅销榜那条顺序断言照旧逐位置比较。\n2) 事实库说顺序就是 scan/存储返回顺序、没有规定任何排序键的，顺序属于实现轨迹，不作为比较项：裁判对该步骤只比较集合内容、条目数与 total，不比较先后。依据 GET /api/search#responses[1]（\"顺序为 scan 顺序，无排序、无截断\"）、GET /api/search#business_rules[3]（\"无相关性评分、无排序、无分页参数\"）与 GET /api/books#responses[1]、GET /api/books#business_rules[2] 的同类表述。\n3) 放宽只到\"顺序\"这一层：状态码、total、列表长度（必须与单体相等，多返回或少返回仍然失败）、每个条目的属性集合与取值（不裁剪、不额外添加）、hits 每项只有一个 _source 包装、共享可见性（business_rules[5]）、大小写不敏感子串匹配（business_rules[2]/[4]）以及全局中间件的 CORS 响应头全部保持契约地位。\n4) 关于并列次序（business_rules[2] 同分条目）：本条不覆盖它。relaxation=order 是按步骤粒度施加的、会把该步骤里所有列表都改成无序比较，无法只放宽并列那一部分，因此对规定了排序键的接口不能用它放宽并列。现有畅销榜夹具（bestsellers.json 四条 salesCount 分别 30/20/10/缺失，bestsellers-many.json 25 条互不相同）不存在并列，这一臂碰不到；将来若新增同分夹具产生差异，要单独立一条裁定（用 alternatives 或直接规定并列键），不要套用本条。\n5) 落地方式：J1 不需要改写预期。P 层断言语法里 body.contains 只在响应体本身是数组时可用，/api/search 的响应体是对象（hits 是嵌套数组），改成 contains 反而会丢掉\"就是这两本书\"的集合内容检查，属于过度屏蔽，我不批准这种退化写法；upper-q/author/category 三步的 body.subset 预期保持原样，对账阶段由本裁定登记为已裁定，V2 在 R 层对这三个步骤把列表按多重集比较（内容与条目数仍逐字比较）。单体照旧返回它的 scan 顺序，本裁定不改变对外行为，只是不拿顺序当比较项。",
+  "basis": "事实库：GET /api/search#responses[1] \"hits 每项只有一个 _source 字段包着条目，顺序为 scan 顺序，无排序、无截断\"；GET /api/search#business_rules[3] \"响应形如 {total, hits}：total 等于 hits 长度……无相关性评分、无排序、无分页参数\"；business_rules[1] 全表 scan 且代码不处理 LastEvaluatedKey；routes/search.js 只把 filter 命中的条目按返回顺序 push 进数组，没有任何排序调用。同类表述见 GET /api/books#responses[1]/business_rules[2]。反面例子（顺序是契约）：GET /api/bestsellers#business_rules[1] 规定 salesCount 降序取前 20。对账证据：两步命中的 id 集合与 total=2 都一致，只有位置不同；同一用例只有一条命中的两步以及 category 那一步（两条命中恰好按夹具顺序）都通过，说明失败完全由顺序是否被复现决定。J2 的跨遍不稳定探测没有把这条列表标成 unordered，是因为单体在同一张表上 scan 顺序逐遍稳定，不确定性只在换实现后才出现，所以这一项必须由裁定解决而不是由屏蔽解决。",
+  "category": "contract",
+  "raised_by": "J3",
+  "options": [
+    "A. implementation-trace 并作废顺序这一臂（不采用：事实库对排序键明确的接口确实要求顺序，规则必须能区分两种情况，且 trace 会让该步骤残余差异也被判为 ruled，削弱内容检查）",
+    "B. contract + relaxation=order，顺序不作要求、内容仍是契约（采用）",
+    "C. 要求目标复现单体 scan 顺序（不采用：Books 表的键结构与访问方式在迁移后可能变化，顺序无法从规格推出，把它当契约等于给目标加一条事实库没有的、也无法稳定实现的要求）",
+    "D. 让 J1 把 hits 断言降级为 total + 结构字段（不采用：会丢掉集合内容检查，形成过度屏蔽盲区）"
+  ],
+  "relaxation": "order",
+  "affects": {
+    "cases": [
+      "search-case-insensitive-200#upper-q",
+      "search-hits-200#author",
+      "search-hits-200#category"
+    ],
+    "layers": [
+      "R"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

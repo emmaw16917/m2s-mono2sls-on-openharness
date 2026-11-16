@@ -1,0 +1,9 @@
+{
+  "task": "G2",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T15:18:39+0800",
+  "summary": "核对 gap_scan 的 10 条机械信号（全部成立，GAP-3/4/5/7/8/10 六条补了 note 说明边界与关联），并读单体代码补了 12 条信号认不出的缺口 GAP-11..GAP-22：全局异常处理器（ValueError→400、其余→500，所以「不存在」类响应不是 404）、JWT 密钥未设环境变量时每进程随机、鉴权判定每次回 Users 表读当前记录而非令牌 claims、导入时播种航班与默认用户、存储层把 DynamoDB 异常吞成 None/[]/0、同请求 put 后 get 的强一致假设、列表顺序即 Scan 顺序、POST /bookings 补偿失败仅 print、cancel 失败仍返回 CANCELLED、Stripe 真实/模拟模式切换、datetime.now 与 utcnow 混用。gap_inventory.json 现 22 条，未改事实库、未写 decision，check_gap_inventory 第一次即 PASS。",
+  "notes": "新增条目全部 source=\"G2\"、status=\"open\"，evidence 的 file/line/symbol 均已逐行核对。重叠提示：GAP-16（异常被吞成空结果）与 GAP-3（Scan 不翻页）对同一批 GET 端点的可观察后果相同，建议 architect 一并裁定；GAP-12/13 是 GAP-10 的具体展开。未找到 fire_and_forget 与按配置注册的路由类缺口（runtime_signals.background 为空与此一致，全仓无本地文件读写，bookingdata.json 未被代码使用）。报告见 storage/stage_reports/G2.json。"
+}

@@ -1,0 +1,31 @@
+{
+  "id": "R-ROOM-spec-j3-r2-1-1-a1-1",
+  "decider": "m2s-architect",
+  "task": "ROOM-spec-j3-r2-1-1",
+  "attempt": 1,
+  "time": "2026-11-13T17:01:18+0800",
+  "question": "规格对账差异 register-read-back-by-admin/list/body.subset（J3 第 2 轮）：GET /auth/users 的 users 数组元素顺序按什么机制放宽——是否要求验证线改写用例、是否写成挂在事实条目上的通用规则、affected_cases 用裸用例 id 还是 case#step？（承接 R-ROOM-spec-j3-r1-1-1-a1-1 与 R-ROOM-spec-j3-r1-1-2-a1-1，判定内容不变，本条只定执行口径）",
+  "conclusion": "判定内容不变（顺序不是契约，其余全是契约），三条执行口径如下：\n\n(1) **由裁判在 R 层做无序多重集比较，验证线不重写用例**。不需要新增断言词、不允许把 body.subset 降级成 has_fields:[\"users\"]。机制：run_judge 里命中 relaxation=order 的裁定会把该步骤单体记录中出现的每一个数组路径标为 unordered，比较器在这些路径上要求「等长 + 一对一配对（含重数）+ 每个元素字段逐值比较」，只有先后不参与判定；配不上时退回逐位置报告差异。因此本放宽仍能抓住少一个用户（截断）、字段名/取值不同、脱敏泄漏（password_hash/created_at 出现）、status≠200。predicted 保持 J1 现有写法。\n\n(2) **不接受写成挂在 GET /auth/users#business_rules[2] 上的通用规则**。放宽在机制上只能由裁定的 affects.cases 逐个 case#step 施加（裁判按用例+步骤解析裁定，事实条目编号不参与匹配）；R-A1-a2-4 已把 R-A1-a2-3 多出的 customer-bookings-status-filter、search-route-match 两个裸用例 id 作废。本裁定的正文可作为**原则**被将来引用：顺序由存储 scan 的键分布决定且代码无排序步骤的列表，元素次序不作契约。但 J4 若在别的列表步骤补出多元素次序断言，须按新事实另开一条裁定并点名那个 case#step，不预先泛化——预先泛化等于在没人复核的情况下削弱将来的断言，违反「放宽只放到必要的程度」。\n\n(3) **affected_cases 维持 register-read-back-by-admin#list，不改裸用例 id**。对账与「差异是否已被裁定覆盖」的检查会去掉 # 之后部分按用例 id 匹配，因此带步骤照样认得上本差异；而裁判侧带步骤可把放宽只收在 list 一步，不扩到 register 步骤。验证线建议的 affected_cases=[register-read-back-by-admin] 不采纳。\n\n配套结论：GET /auth/users#business_rules[2] 不是 fact_error，保持原文，不改事实库、不按单体 scan 原序重写 predicted；目标侧也不得为了对上字面次序加 sorted()（GAP-18 口径，见 R-A1-a2-3 的实现线约束）。收尾动作：本差异已由在案裁定覆盖，J3 重跑 reconcile_spec 后即从 differences 移入 resolved_by_rulings 并带裁定编号（现有 judge/reconcile.json 生成于裁定之前，属陈旧文件），reconcile_classes.json 无需为它保留 needs_ruling 条目，用例/fixtures/identities 一律不动；本条与承接的两条 deviates_from_monolith=false，不触发人工确认。",
+  "basis": "事实库：GET /auth/users#business_rules[2]（class=contract，明写「条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺」）；GET /auth/users#responses[2] 只承诺 users 每项脱敏为 {sub,email,groups}；GET /auth/users#business_rules[3] 的单页截断仍是契约（放宽条数即失效，故保留等长要求）。\n单体代码：data/storage.py:352-356 get_all_users 只有 self.users_table.scan() 取 Items；services/auth.py:139-150 脱敏推导式保持原序、无 sorted()。\n差异本身：predicted 与 actual 两个元素的 {sub,email,groups} 三键值完全一致，仅先后相反（judge/reconcile.json 的 register-read-back-by-admin/list/body.subset）。\n工具行为（只读核实，未改工具）：run_judge 侧 relaxation=order 的施加粒度与多重集比较语义（judge.py `_rulings_in_force`、`judge_unit`、`unify` 的 unordered 分支：先要求 len(actual)==len(template)，再一对一配对、字段逐值比较，配不上则逐位置报差异）；对账与覆盖检查按去掉 # 之后的用例 id 匹配（judge.py `reconcile`/`_rulings_by_case`，dispatcher 的 rulings_cover）。\n在案裁定：R-ROOM-spec-j3-r1-1-1-a1-1（顺序不放宽内容、status/条数/脱敏仍逐字比）、R-ROOM-spec-j3-r1-1-2-a1-1（case#step 的收窄写法与该步骤内所有数组路径的生效粒度）、R-A1-a2-3（GAP-18 目标不新增排序）、R-A1-a2-4（多出的裸用例 id 作废、本类差异须另开裁定）。",
+  "category": "contract",
+  "raised_by": "J3",
+  "options": [
+    "改写用例以适配断言词汇（has_fields 或只留 1 个元素）——否决：丢掉 read_back 要验的内容，等长要求下单元素必然不匹配，属丢断言换通过",
+    "把放宽写成挂在事实条目 GET /auth/users#business_rules[2] 上的通用规则、覆盖所有列表端点——否决：裁定只能按 case#step 机械施加，泛化会在无复核的情况下削弱其它端点的断言（与 R-A1-a2-4 一致）",
+    "affected_cases 用裸用例 id register-read-back-by-admin——否决：会把放宽扩到该用例的 register 步骤，比必要范围更宽；覆盖检查按用例 id 匹配，带步骤不影响认账",
+    "判 fact_error、改事实库并按单体 scan 原序重写 predicted——否决：等于把存储布局与主键分布写进契约，迁移后 GSI/主键布局本就会变，且与 business_rules[2] 的明文矛盾",
+    "加屏蔽规则（mask_gap）——否决：屏蔽只处理逐遍变化的值，此处两遍值相同仅次序不同，屏蔽会掩盖真实差异"
+  ],
+  "relaxation": "order",
+  "affects": {
+    "cases": [
+      "register-read-back-by-admin#list"
+    ],
+    "layers": [
+      "R"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

@@ -1,0 +1,9 @@
+{
+  "task": "G2",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T00:28:19+0800",
+  "summary": "核对 G1 的 10 条机械信号（全部认对，无纠正；对 GAP-1/2/3/6 补了精确化 note），并新增 12 条信号看不到的缺口 GAP-11..GAP-22：统一错误处理中间件（err.status||500 + 默认带 stack，以及 req.body undefined 导致 500 而非 400 那条臂）、body-parser 默认 100kb 上限与解析期抛错、没有 catch-all/404、bestsellers 把 Scan 故障吞成 200 []、三处 Query 也不翻页、注册 check-then-put 竞态、六个读端点全是默认最终一致读、下单响应先于畅销榜写入、AUTH_DEV_MODE 下 x-customer-id 可断言任意身份、无状态 JWT 的有效期/密钥来源/无法吊销、require 时 dotenv+config 冻结+app.listen、模块作用域 DynamoDB 客户端跨请求复用连接。check_gap_inventory PASS（22 条全 open，未写任何 decision，事实库未改动）。",
+  "notes": "process_state 与 time 类没有新增：grep 全仓库无模块级可变变量/内存缓存/session、无 setInterval（Date.now() 三处已被 GAP-7/8 覆盖）。三条 gaps 的 endpoints 为空（GAP-13/21/22），因为行为发生在事实库端点之外，不是漏填。遗留不确定：GAP-12 里 body-parser 的确切 err.status（413 vs 400）未实测，按两种可能描述。另在报告 issues 里列了死代码（optionalAuthMiddleware 从未挂载，故本单体没有可选登录端点）与三处错误 import（books/cart/orders.js 的 authMiddleware、auth.js 的 dynamoDb），均无外部效果，未写成缺口。"
+}

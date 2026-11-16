@@ -1,0 +1,9 @@
+{
+  "task": "J4",
+  "attempt": 3,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T22:36:49+0800",
+  "summary": "按 J5C 转来的唯一 gap 变异体 negate:app.py:224 补了 1 个白盒用例 wb-booking-catchall-refunds-collected-charge：同进程先用 chargeId 'pi_shared_catchall' 收款成功（201 + GET /payments 基线 captured），再发一个缺 outboundFlightId 的建单请求落进 catch-all 500，然后 GET /payments/<charge_id> 读回——单体 payment_result 恒为 None 故不退款（保持 'captured'），取反后的变异体会 refund_payment(data['chargeId'])（services/payment.py:276-277）把它改成 'refunded'，差别落在 read_back 步骤上；另附 GET /bookings 与 GET /flights 两步排除别的失败解释。同时登记 spec_issue J4-5（事实库 POST /bookings#business_rules[11] 只写“按标记尝试退款”，没写两条可达成因都在 payment_result 赋值前抛错、因此 catch-all 从不退款，且退款按请求体 chargeId 定位、可能退掉与本请求无关的先前收款）。check_judge_assets PASS（errors/warnings 全空，用例 54→55、read_back 30→31、POST /bookings 用例 9→10），未改动任何已有用例、故障场景、夹具、identities 与实现线文件。",
+  "notes": "只写了三个文件：judge/cases/post-bookings/wb-booking-catchall-refunds-collected-charge.json（新增）、judge/spec_issues.json（追加 J4-5，J4-1..4 未动）、storage/stage_reports/J4.json（attempt 3，前两轮内容原样保留）。没有调 run_monolith（oracle/masks 是 J2 产出，不在本任务写入范围），因此变异体是否真被抓住请以调度器重跑 J5 为准。补充说明：app.py:226-229 那几行在任何可达路径下都执行不到（Step 4 的 except Exception 全包），所以这个变异体只能靠“该退款不发生”的外在后果来抓，这一点写进了 J4-5 与报告的 rework_round3。报告 questions 里留了一条给 architect：catch-all 多退一笔与本请求无关的同 chargeId 收款，迁移后要算 contract 还是 implementation-trace。"
+}

@@ -1,0 +1,9 @@
+{
+  "task": "I1-identity",
+  "attempt": 1,
+  "role": "m2s-code-developer",
+  "status": "done",
+  "time": "2026-11-13T23:27:45+0800",
+  "summary": "identity 包按规格是零 handler 的实现任务：包内 4 个 /auth/* 端点在 blueprint.dropped_functions 全部 replaced_by=Cognito（SI-8 migration-change），impl_packages.identity.functions=[]，14 个函数都属另一个包；因此未生成任何 handler/依赖文件、未创建 output/lambdas 或 output/layers/shared、judge/ 未动。gate(phase=code, package=identity) PASS（1 次通过），run_judge_self_test 因整体尚无代码而无可跑用例（advisory）。",
+  "notes": "报告：storage/stage_reports/I1-identity.json（status=success，含 5 条规格对照证据与 4 条非阻塞 issues）。\n\n需要下游知道的三件事：\n1) /auth/* 的 4 个裁判用例（post-auth-register / post-auth-login / get-auth-me / get-auth-users）在目标上不提供，依据 SI-8 + storage/adapter_map.json.dropped_endpoints（replaced_by=cognito，理由里已写『裁判不在目标上运行这些步骤』）；若某处把它们算作待覆盖的函数级行为，应按裁定判『目标不提供』，不要回炉本任务补 handler——补出来反而违反 api_gateway.unmatched_paths（网关 404）。\n2) Cognito 用户池/组/口令策略（gate C14 要求与 blueprint.cognito.password_policy 逐字一致）/HTTP API JWT 授权器与 Auth: {Authorizer: NONE} 的 7 个路由，全部是 S3（sam-engineer）的活，不在代码侧。\n3) SI-14 的全局响应头助手与 SI-10 的 require_admin / require_owner_or_admin / require_booking_owner 判定应落在共用 layer（DECISIONS.md 第 133 行：共用 layer 是单独的任务，不列进 impl_packages）。本次派发限定我只能写 storage/stage_reports/I1-identity.json，所以没有创建 output/layers/shared/；请把它派给独立任务或与 bookings 包的实现任务一起落地，否则那 14 个 handler 会重复实现响应头与鉴权判定。\n\n另：F2-identity 提的『用户表 GetItem 读失败→401』同因修正，在目标侧已被 SI-9 作废（401 由网关应答、请求不到达函数），写 bookings 包 handler 时按 SI-9/SI-10 取 claims.sub + 查 UserGroupsTable.groups 即可，不要搬单体的令牌校验与三句 401 文案。"
+}

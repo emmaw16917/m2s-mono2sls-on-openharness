@@ -1,0 +1,9 @@
+{
+  "task": "F2-identity",
+  "attempt": 2,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T01:27:38+0800",
+  "summary": "修正模式（attempt 2）：J3 的两条 fact_error 根因确认为事实库漏了 bookstore/server.js:34 的 bodyParser.urlencoded({extended:true})——它写成 \"Content-Type 不是 JSON 就不解析请求体、req.body 为 {} → 400\"，而单体的 form 表单请求体照常解析，所以 /api/auth/register 对 email=form@example.com&name=form 的 urlencoded 提交返回 201 'User registered successfully'。已用 annotate_entry_point 改写 6 个字段值：register#request（headers[content-type] 的 required 与 note）、register#responses（[0] 的触发条件、[4] 的成功可达性、[6] 的错误归因）、login#request、login#responses（[0]/[5]）、refresh#request、refresh#responses（[0]/[5]），共 8 处出处新增 server.js:34；脚本项与无关事实（body 字段类型、data_access、business_rules、其余响应臂）逐字保留。改写后事实：只有 Content-Type 既不匹配 json 也不匹配 urlencoded（或无请求体）时才得到 400 'Email and password are required'，urlencoded 提交得到 201。",
+  "notes": "check_provenance 第 1 次运行即 PASS（790 条出处、incomplete 为空），unknown_items 剩 4 条（register#body.name 类型等，代码无法证明，已在报告说明）。三点交接：(1) J3 的 cart-add-non-json-content-type-400 差异不在本任务范围；核对后 POST /api/cart#request/responses 已是正确的双解析器说法，未改动。(2) J3 建议的全局请求解析条目无法由 annotate_global_middleware 新增（它只能给已有 global_middleware 项写响应头），已写入报告 issues 交 architect/P0。(3) J1 需按新事实把 auth-endpoints-bad-json-400/reg-form-encoding 的预期改为 201 + register#responses[4] 形状。工作报告：storage/stage_reports/F2-identity.json。"
+}

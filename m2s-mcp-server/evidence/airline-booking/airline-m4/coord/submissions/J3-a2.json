@@ -1,0 +1,9 @@
+{
+  "task": "J3",
+  "attempt": 2,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T16:12:28+0800",
+  "summary": "本轮 reconcile.json 只剩 1 条差异，已分类为 needs_ruling 并写入 judge/reconcile_classes.json（上一轮的文件在本次运行中缺失，故 recheck 报 not classified，已按当前差异清单重建）。差异是 register-read-back-by-admin/list/body.subset：users 数组元素集合与 predicted 完全一致，只有先后次序不同；事实库 GET /auth/users#business_rules[2] 明写顺序不属于对外承诺，单体 data/storage.py:352-356 只有 scan、services/auth.py:139-150 无排序，用例也已按规则标 layer=\"R\"。归为 needs_ruling 而非 case_error，因为裁判用例格式无法表达嵌在 {\"users\":[...]} 里的无序集合（subset 对数组逐位匹配、contains 只作用于响应体本身是数组），降级为 has_fields 等于为实现放宽断言。建议 architect 落 category=contract / relaxation=order / layers=[R] / deviates_from_monolith=false、affected_cases=[register-read-back-by-admin] 的放宽裁定，裁定后本差异进入 resolved_by_rulings。无 mask_gap，未新增 judge/mask_rules.json；check_reconcile_classes = PASS。",
+  "notes": "未消化差异只有 1 条，卡在等 architect 的 order 放宽裁定；上一轮的 fact_error（release 400 文案）与 2 条 case_error（POST /bookings 的 step='Reserve Flight'）本轮已不再出现在 reconcile.json，说明已被事实库修正与 J1 回炉消化。若裁定拒绝放宽顺序，则本条应改判 fact_error（事实库 business_rules[2] 与之矛盾）并由 J1 按 scan 实际顺序更新 predicted。相关讨论见 spec 室 spec-j3-r1（上一轮 m2s-verifier 发言）。本轮只写 judge/reconcile_classes.json 与 storage/stage_reports/J3.json。"
+}

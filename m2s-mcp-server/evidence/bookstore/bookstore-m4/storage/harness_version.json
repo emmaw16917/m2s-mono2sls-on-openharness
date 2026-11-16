@@ -1,0 +1,250 @@
+{
+  "started_with": {
+    "type": "harness",
+    "time": "2026-11-12T23:24:36+0800",
+    "m2s": {
+      "commit": "8900e0d2c641aa1e7f19ea4ca67ba65ea6e5ad98",
+      "branch": "feat/v3-m3",
+      "dirty": []
+    },
+    "openharness": {
+      "commit": "07404fad4b4912cdf26a2e3abbcb14030942bb88",
+      "branch": "feat/cli-settings-flags",
+      "dirty": []
+    },
+    "tools": {
+      "br": {
+        "version": "0.7.6",
+        "installed": true
+      },
+      "agent_mail": {
+        "version": "0.3.39",
+        "installed": true
+      }
+    },
+    "models": {
+      "model": "qwen3.8-flash",
+      "active_profile": "qwen",
+      "provider": "dashscope",
+      "base_url": "https://ws-zpqs2kv79br02kev.us-east-1.maas.aliyuncs.com/compatible-mode/v1"
+    },
+    "agents": {
+      "m2s-architect": {
+        "file": "m2s-architect.md",
+        "sha256": "bd8293127084466128c66ac51834f3a379edc0c650130650bd7b9e4d7a81b708",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      },
+      "m2s-code-developer": {
+        "file": "m2s-code-developer.md",
+        "sha256": "c3717ecf8c8a680b4dee896e50b813ddfbd0071d96eae4bb1c7aa817ad47a542",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      },
+      "m2s-perf-optimizer": {
+        "file": "m2s-perf-optimizer.md",
+        "sha256": "6073f384890bfbbd6459974f9ff77aee9daa8cc17f2d1ae79b16e2a9aae240a4",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      },
+      "m2s-sam-engineer": {
+        "file": "m2s-sam-engineer.md",
+        "sha256": "f799c6a9f9053dd9ac11140d15adbd2f77b5b5cfbe6d506a264c75288d953377",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      },
+      "m2s-spec-annotator": {
+        "file": "m2s-spec-annotator.md",
+        "sha256": "4b00a52a92984a934556d8b389548f2f212a0ae358b4cac95ccc2151c1c29355",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      },
+      "m2s-validator": {
+        "file": "m2s-validator.md",
+        "sha256": "c845613dba46b2aa71d7558a06c50ea0930f5565c09f474cd2a0947ca95a7ea4",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      },
+      "m2s-verifier": {
+        "file": "m2s-verifier.md",
+        "sha256": "6d7eb23e339c55c0a4918b092f48a7962a664c435f720bea675c000fab9b6270",
+        "model": "inherit",
+        "effective_model": "qwen3.8-flash"
+      }
+    },
+    "prompts": {
+      "project_skills_sha256": "06feeb4964fe7f9529efea466182e457a2a29b0c3940002a781e3b825a072fe9",
+      "user_skills_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "python": {
+      "coord": "C:\\Users\\36029\\miniconda3\\envs\\mono2esls\\python.exe",
+      "version": "3.11.16"
+    }
+  },
+  "resumed_with": [
+    {
+      "type": "harness",
+      "time": "2026-11-13T01:02:30+0800",
+      "m2s": {
+        "commit": "63ab894a72f325e5c242c5933185ac3aa4bf0697",
+        "branch": "feat/v3-m3",
+        "dirty": []
+      },
+      "openharness": {
+        "commit": "07404fad4b4912cdf26a2e3abbcb14030942bb88",
+        "branch": "feat/cli-settings-flags",
+        "dirty": []
+      },
+      "tools": {
+        "br": {
+          "version": "0.7.6",
+          "installed": true
+        },
+        "agent_mail": {
+          "version": "0.3.39",
+          "installed": true
+        }
+      },
+      "models": {
+        "model": "qwen3.8-flash",
+        "active_profile": "qwen",
+        "provider": "dashscope",
+        "base_url": "https://ws-zpqs2kv79br02kev.us-east-1.maas.aliyuncs.com/compatible-mode/v1"
+      },
+      "agents": {
+        "m2s-architect": {
+          "file": "m2s-architect.md",
+          "sha256": "bd8293127084466128c66ac51834f3a379edc0c650130650bd7b9e4d7a81b708",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        },
+        "m2s-code-developer": {
+          "file": "m2s-code-developer.md",
+          "sha256": "c3717ecf8c8a680b4dee896e50b813ddfbd0071d96eae4bb1c7aa817ad47a542",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        },
+        "m2s-perf-optimizer": {
+          "file": "m2s-perf-optimizer.md",
+          "sha256": "6073f384890bfbbd6459974f9ff77aee9daa8cc17f2d1ae79b16e2a9aae240a4",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        },
+        "m2s-sam-engineer": {
+          "file": "m2s-sam-engineer.md",
+          "sha256": "f799c6a9f9053dd9ac11140d15adbd2f77b5b5cfbe6d506a264c75288d953377",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        },
+        "m2s-spec-annotator": {
+          "file": "m2s-spec-annotator.md",
+          "sha256": "4b00a52a92984a934556d8b389548f2f212a0ae358b4cac95ccc2151c1c29355",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        },
+        "m2s-validator": {
+          "file": "m2s-validator.md",
+          "sha256": "c845613dba46b2aa71d7558a06c50ea0930f5565c09f474cd2a0947ca95a7ea4",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        },
+        "m2s-verifier": {
+          "file": "m2s-verifier.md",
+          "sha256": "6d7eb23e339c55c0a4918b092f48a7962a664c435f720bea675c000fab9b6270",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        }
+      },
+      "prompts": {
+        "project_skills_sha256": "06feeb4964fe7f9529efea466182e457a2a29b0c3940002a781e3b825a072fe9",
+        "user_skills_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "python": {
+        "coord": "C:\\Users\\36029\\miniconda3\\envs\\mono2esls\\python.exe",
+        "version": "3.11.16"
+      }
+    },
+    {
+      "type": "harness",
+      "time": "2026-11-13T08:37:10+0800",
+      "m2s": {
+        "commit": "f286ec32fa392e6b02a4a399f3b2e551310a87d5",
+        "branch": "feat/v3-m3",
+        "dirty": []
+      },
+      "openharness": {
+        "commit": "07404fad4b4912cdf26a2e3abbcb14030942bb88",
+        "branch": "feat/cli-settings-flags",
+        "dirty": []
+      },
+      "tools": {
+        "br": {
+          "version": "0.7.6",
+          "installed": true
+        },
+        "agent_mail": {
+          "version": "0.3.39",
+          "installed": true
+        }
+      },
+      "models": {
+        "model": "qwen3.8-flash",
+        "active_profile": "qwen",
+        "provider": "dashscope",
+        "base_url": "https://ws-zpqs2kv79br02kev.us-east-1.maas.aliyuncs.com/compatible-mode/v1"
+      },
+      "agents": {
+        "m2s-architect": {
+          "file": "m2s-architect.md",
+          "sha256": "bd8293127084466128c66ac51834f3a379edc0c650130650bd7b9e4d7a81b708",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        },
+        "m2s-code-developer": {
+          "file": "m2s-code-developer.md",
+          "sha256": "c3717ecf8c8a680b4dee896e50b813ddfbd0071d96eae4bb1c7aa817ad47a542",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        },
+        "m2s-perf-optimizer": {
+          "file": "m2s-perf-optimizer.md",
+          "sha256": "6073f384890bfbbd6459974f9ff77aee9daa8cc17f2d1ae79b16e2a9aae240a4",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        },
+        "m2s-sam-engineer": {
+          "file": "m2s-sam-engineer.md",
+          "sha256": "f799c6a9f9053dd9ac11140d15adbd2f77b5b5cfbe6d506a264c75288d953377",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        },
+        "m2s-spec-annotator": {
+          "file": "m2s-spec-annotator.md",
+          "sha256": "4b00a52a92984a934556d8b389548f2f212a0ae358b4cac95ccc2151c1c29355",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        },
+        "m2s-validator": {
+          "file": "m2s-validator.md",
+          "sha256": "c845613dba46b2aa71d7558a06c50ea0930f5565c09f474cd2a0947ca95a7ea4",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        },
+        "m2s-verifier": {
+          "file": "m2s-verifier.md",
+          "sha256": "6d7eb23e339c55c0a4918b092f48a7962a664c435f720bea675c000fab9b6270",
+          "model": "inherit",
+          "effective_model": "qwen3.8-flash"
+        }
+      },
+      "prompts": {
+        "project_skills_sha256": "06feeb4964fe7f9529efea466182e457a2a29b0c3940002a781e3b825a072fe9",
+        "user_skills_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "python": {
+        "coord": "C:\\Users\\36029\\miniconda3\\envs\\mono2esls\\python.exe",
+        "version": "3.11.16"
+      }
+    }
+  ]
+}

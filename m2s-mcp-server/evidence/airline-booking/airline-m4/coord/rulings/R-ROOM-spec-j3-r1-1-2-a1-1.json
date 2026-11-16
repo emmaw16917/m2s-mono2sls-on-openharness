@@ -1,0 +1,25 @@
+{
+  "id": "R-ROOM-spec-j3-r1-1-2-a1-1",
+  "decider": "m2s-architect",
+  "task": "ROOM-spec-j3-r1-1-2",
+  "attempt": 1,
+  "time": "2026-11-13T16:42:49+0800",
+  "question": "规格对账差异 register-read-back-by-admin/list/body.subset 的执行收尾（承接 R-ROOM-spec-j3-r1-1-1-a1-1）：(1) 裁定的 affected_cases 该写 case#step 还是裸用例 id，对账与裁判能否认上；(2) relaxation=\"order\" 在该步骤实际覆盖哪些数组，R-…-a1-1 边界里\"元素内部 groups 次序仍严格比较\"这句是否成立？",
+  "conclusion": "两条都是执行口径，不改变 R-ROOM-spec-j3-r1-1-1-a1-1 的判定内容。\n\n(1) affected_cases 保留 \"register-read-back-by-admin#list\"，**不改成裸用例 id**。裁判（run_judge）读裁定时按 `#` 分区成用例与步骤：带步骤的条目只把放宽施加到那个步骤，裸用例条目会把放宽施加到该用例的**全部步骤及其中的每一条差异**。本差异只发生在 list 步骤，因此带步骤是更窄、更符合\"放宽只放到必要的程度\"的写法；改成裸 id 会把 register 步骤也一并放宽，属于放宽过度。对账（reconcile_spec）匹配时把 `#` 之后的部分去掉、只按用例 id 比对，且调度器对\"差异是否已被裁定覆盖\"的检查同样去掉 `#` 之后部分；所以下一轮对账会把这条差异从 differences 移到 resolved_by_rulings 并带上本裁定编号，裁判侧也会按步骤生效。结论：**用例、fixtures、identities、reconcile_classes 都不需要为这条差异改动，predicted 保持原样**，不需要新增任何表达方式，也不需要改比较工具。附带一条口径：对账侧的\"已解决\"是**用例粒度**的（`#list` 在对账里不起限定作用），所以将来这个用例若在别的步骤出现**与顺序无关**的新差异，也会先被记进 resolved_by_rulings——那不是本裁定在为其背书，J3 应当按本裁定的结论正文（只覆盖 list 步骤 users 数组的元素次序）复核，而不是把 resolved 当作\"无罪\"。\n\n(2) 更正 R-ROOM-spec-j3-r1-1-1-a1-1 边界里的一句表述：order 放宽在这个步骤的生效粒度是\"**该步骤单体记录里出现的每一个数组路径**按多重集比较\"，不是只有 users 外层数组。因此在 list 步骤里，users 外层数组**以及各元素内部的 groups 数组**都会按无序多重集判定，先前写的\"groups 数组的次序仍严格比较\"与工具实际行为不符，以本条为准。对判定能力的影响已核对：这一步 predicted 的两个 groups 分别是 [\"Admin\"] 与 []，元素数为 1 或 0，次序本来不参与判定，本差异也不会因为这条更正而被放过；等长/重数、字段名与取值、脱敏（password_hash、created_at 不得出现）、status=200、read_back 语义仍逐字比较。边界不变：其它步骤、其它端点（含 GET /flights/search、GET /customers/<customer_id>/bookings）的列表次序仍按现有口径严格比较；GAP-18（列表顺序的全局口径）与 GAP-15（导入期播种）由各自的缺口决定任务正式裁定，本裁定不预设其结论，也不被它们反向援引。",
+  "basis": "裁判/对账工具对裁定范围的既有规定（只读核实，未改工具）：judge.py `_rulings_in_force`（run_judge 侧，docstring 明写\"An entry 'case#step' reaches only that step (_steps); a bare 'case' reaches the whole case, and every difference in it, so name steps where that matters\"，按 partition(\"#\") 生成 _steps，judge_unit 再用 `name in r[\"_steps\"]` 决定该步骤是否套用 order 放宽）；judge.py `judge_unit` 里 `if order: unordered_paths |= _all_list_paths(该步骤的单体记录)` + `unify` 对 unordered 路径按多重集匹配，说明生效粒度是\"该步骤内所有数组路径\"；judge.py `_rulings_by_case`（reconcile 侧）用 `str(c).split(\"#\")[0]` 作键，即对账按裸用例 id 匹配；coord/dispatcher.py `_ruling_task_check` 的 covered 集合同样 `c.split(\"#\")[0]`。事实库依据不变：GET /auth/users#business_rules[2]（class=contract，\"返回全部用户…不排序、不分页…顺序不属于对外承诺\"）、#responses[2] 与 #business_rules[4]（只承诺每项脱敏为 {sub,email,groups} 与空表 200+[]）。单体代码依据不变：data/storage.py:352-356 仅 scan 取 Items、services/auth.py:140-150 脱敏推导式无 sorted()。用例侧：judge/cases/post-auth-register/register-read-back-by-admin.json 的 layer=\"R\"，步骤名为 register 与 list（list 带 read_back=true），predicted.list.body.subset.users 的 2 个元素与 actual 仅次序相反。",
+  "category": "contract",
+  "raised_by": "J3",
+  "options": [],
+  "relaxation": "order",
+  "affects": {
+    "cases": [
+      "register-read-back-by-admin#list"
+    ],
+    "layers": [
+      "R"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

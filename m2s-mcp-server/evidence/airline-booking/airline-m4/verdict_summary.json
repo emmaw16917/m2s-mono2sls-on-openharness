@@ -1,0 +1,46 @@
+{
+ "judge": {
+  "status": "PASS",
+  "summary": {
+   "cases": {
+    "dropped": 14,
+    "migration-change": 7,
+    "pass": 34
+   },
+   "fault_runs": {
+    "dropped": 4,
+    "migration-change": 4,
+    "pass": 21,
+    "ruled": 2
+   }
+  },
+  "meta": {
+   "judge_version": 1,
+   "judge_frozen_at": "2026-11-13T15:12:54Z",
+   "code": {
+    "code": "working tree",
+    "head": "49e68bb",
+    "uncommitted_output_changes": []
+   },
+   "mode": "rie",
+   "backend": "ddblocal",
+   "adapter_map_sha": "c140187e26525ba6980154efe0cd834b3c16a367280aba980674d3e08c7df917",
+   "generated_at": "2026-11-16T11:58:15Z",
+   "seconds": 964.6,
+   "run_dir": "D:\\tmp\\m2sv\\airline-m4\\judge\\20261116-194210-judge"
+  }
+ },
+ "delta": {
+  "status": "PASS",
+  "total": 16,
+  "passed": 16,
+  "mode": "rie",
+  "backend": "ddblocal",
+  "code_state": {
+   "code": "working tree",
+   "head": "49e68bb",
+   "uncommitted_output_changes": []
+  },
+  "timestamp": "2026-11-16T19:59:05"
+ }
+}

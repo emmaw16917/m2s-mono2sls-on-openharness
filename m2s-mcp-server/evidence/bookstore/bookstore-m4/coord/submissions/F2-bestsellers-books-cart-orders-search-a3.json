@@ -1,0 +1,9 @@
+{
+  "task": "F2-bestsellers-books-cart-orders-search",
+  "attempt": 3,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T04:08:04+0800",
+  "summary": "按 J4 的 3 条 spec_issues 核实并修正事实库：11 次 annotate_entry_point 全部被接受，check_provenance() PASS（errors=0、incomplete=0、checked_sources=857），未改动任何无关事实与既有响应臂/规则的索引。J4-1（POST /api/orders）：business_rules[6] 改为『quantity 只有是 JS 数字时才计入销量』（缺失/字符串/布尔/null 时 ADD 的加数不是 number、UpdateItem 被拒），并新增一条 error_handling 规则写明失败被 bestsellers.js 的 try/catch 静默吞掉后的外部结果（订单仍 200、购物车照删、books 原样入库，而该 bookId 的 salesCount 不变、条目不存在时也不新建，故不出现在 GET /api/bestsellers），同时把 books[].quantity 的字段说明改成同一口径（已用工作区安装的 aws-sdk 换算核实：undefined → ExpressionAttributeValues 变 {}，'25' → {S:'25'}）。J4-2（GET /api/search）：responses[2] 的 500 臂 when 补成三种触发并写明与查询词是否命中无关，business_rules[2] 补『真值而类型不对不算假值、照样走 toLowerCase』，新增 error_handling 规则钉住『一条坏数据让整次搜索 500，而同一份数据 GET /api/books、GET /api/books/:id 仍 200』。J4-3（413）：为本包内 4 个带请求体的端点（POST/PUT/DELETE /api/cart、POST /api/orders）各新增一个 413 响应臂 + 一条 validation 规则（上限 102400 字节 = body-parser 默认 limit '100kb'，server.js:33-34 未传 limit；该判断在 authMiddleware 与 handler 之前，所以缺凭证/无效凭证的超大请求同样 413 而非 401，且不进入 handler、不发生任何 DynamoDB 访问），并把原 400 entity.parse.failed 臂描述里那句顺带的 413 改为指向新臂。",
+  "notes": "需要 architect 裁定的两点（已写进报告 issues，事实库只记录单体现状）：1) GET /api/search 遇到非字符串的 name/author/category 是照抄『整次搜索 500』还是跳过坏字段——两个方向的外部结果不同，不是实现轨迹差异；2) POST /api/orders 的 quantity 非数字（销量记不上 vs 拒 400 vs 记 0）；3) 413 更像 migration-change/spec-gap：目标端 API Gateway 上限 10MB，同一请求不会 413，J4 本轮也没为它写用例。\n\n越界提示：J4-3 的 413 同样适用于 identity 工作包的 POST /api/auth/register、/login、/refresh（解析中间件在 server.js:38 挂载之前）。那三个端点不在本任务范围，我没有写入，请调度器把这条转给 F2-identity，否则该 spec issue 只算修了一半。\n\n工程说明：新增的响应臂与规则一律追加在数组末尾，既有 responses[i]/business_rules[i] 的索引全部保持不变，已在 judge/cases 里引用的 fact_refs（含 POST /api/orders#business_rules[6]、GET /api/search#responses[2]、POST /api/cart#responses[3]）不会失效。重发字段前我用脚本把工作区实际内容与预期值逐字段 diff（11/11 一致），确认除 J4 点到的事实外没有其他改动。"
+}

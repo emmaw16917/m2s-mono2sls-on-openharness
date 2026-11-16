@@ -1,0 +1,56 @@
+C:\Users\36029\miniconda3\envs\mono2sls\Lib\site-packages\pydantic_settings\sources\utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(
+[11/13/26 03:17:03] INFO     Processing request of type           server.py:733
+                             ListToolsRequest                                  
+                    INFO     Processing request of type           server.py:733
+                             ListResourcesRequest                              
+[11/13/26 03:17:09] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 03:19:58] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 03:21:30] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 03:21:31] INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     Negotiated protocol         streamable_http.py:193
+                             version: 2024-11-05                               
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 202 Accepted"                           
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     Negotiated protocol         streamable_http.py:193
+                             version: 2024-11-05                               
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 202 Accepted"                           
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     Negotiated protocol         streamable_http.py:193
+                             version: 2024-11-05                               
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 202 Accepted"                           
+[11/13/26 03:21:32] INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+[11/13/26 03:22:20] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   

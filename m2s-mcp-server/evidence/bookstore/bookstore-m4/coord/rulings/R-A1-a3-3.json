@@ -1,0 +1,43 @@
+{
+  "id": "R-A1-a3-3",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 3,
+  "time": "2026-11-13T02:18:58+0800",
+  "question": "四个认证端点与 Bookstore-Users 表被 Cognito 取代，单体在这些端点上的对外契约（响应体、状态码、bcrypt 500、email-index 判重）不再由目标提供，怎么认定？（R-4）",
+  "conclusion": "目标不提供 POST /api/auth/register、POST /api/auth/login、POST /api/auth/refresh、GET /api/auth/me 这四个 HTTP 端点，也不建对应资源；客户端改用 Cognito SDK（Sign UP / signIn / getToken / fetchUserAttributes）。连带结果：①Bookstore-Users 表不迁（凭据、登录邮箱、token 一律不进 DynamoDB；name/email 用 Cognito 标准属性，createdAt/updatedAt 由 User Pool 维护）；②单体这些端点的响应契约（register 201 的 {message,user{userId,email,name},accessToken,refreshToken}、400 的 email 格式/密码长度文案、409 'User with this email already exists'、login 401 'Invalid email or password'、bcrypt 对非字符串密码的 500 'Illegal arguments: number, string'、refresh 401/400、me 200 的用户条目）都不再由目标 API 应答，也不要求复刻；③用户 id 在目标侧是 Cognito Sub，业务表 CartTable/OrdersTable 的 customerId 用它（adapter_map identities.claims.sub=${id}，user_id 默认 ${id}）；④密码策略因 Cognito 必须要求四类字符至少一类而加了 require_numbers（单体只判 length<6），这是规则手册默认做法带来的收紧，不是我的选择，且裁判夹具的 Passw0rd! 两种策略下都合法。这些用例的步骤只在单体侧运行（identities 准备 + 契约记录），裁判按 adapter_map.dropped_endpoints 不在目标上运行它们。",
+  "basis": "规格：POST /api/auth/register#responses[*]、POST /api/auth/login#responses[*]、POST /api/auth/refresh#responses[*]、GET /api/auth/me#responses[*]（含 judge/uncovered.json 里说明「任何 HTTP 请求都走不到」的几臂）；源码 routes/auth.js:20-101/113-…、utils/jwt.js:17-24,33-42,49-58、utils/password.js:15、middleware/auth.js:31-52；dynamodb_info.table_schemas 的 Bookstore-Users（pk userId + email-index）。规则手册：m2s-basic-serverless-kb Rule 3「Delete User Authentication Table」、Rule「Auth endpoints are DELETED — clients call Cognito API directly」、m2s-architect 硬规则「不要凭训练知识脑补跨 Lambda 调用关系」。落地物：blueprint dropped_functions 的 4 条 type=endpoint + utils/jwt.js/utils/password.js/authMiddleware/optionalAuthMiddleware（type=code）+ Bookstore-Users（type=table），以及 adapter_map.dropped_endpoints 的同一批（裁判据此不在目标上运行这些步骤）。",
+  "category": "migration-change",
+  "raised_by": "A1",
+  "options": [
+    "A. 把这四个端点迁成 Lambda（被否：规则手册「认证基建化，删除而非迁移」，且 register/login 必然要把密码与 token 放进函数和 DynamoDB，违反硬规则）",
+    "B. 删除端点 + Cognito 接管，Bookstore-Users 整表不迁（采用）",
+    "C. 删除端点但保留 Users 表存 name/email（被否：处理方式 ③——只有标准属性时不建 UserProfiles）"
+  ],
+  "relaxation": null,
+  "affects": {
+    "cases": [
+      "register-success-201",
+      "register-validation-400",
+      "register-duplicate-email-409",
+      "register-non-string-password-500",
+      "auth-endpoints-bad-json-400",
+      "login-success-200",
+      "login-invalid-credentials-401",
+      "login-missing-fields-400",
+      "login-non-string-password-500",
+      "refresh-success-200",
+      "refresh-invalid-token-401",
+      "refresh-missing-token-400",
+      "me-success-200",
+      "me-only-own-record",
+      "me-unauthenticated-401"
+    ],
+    "layers": [
+      "P"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

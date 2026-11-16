@@ -412,7 +412,22 @@ v2 流水线里有一个裁判：`judge/` 下的用例按**单体的表结构**�
 - `category: "new"` 的条目（新类别候选）：一样要决定；运行报告会把它们列给人看；
 - 决定和 blueprint 要一致：决定说"用 SQS"，blueprint 里就要有这个队列。
 
-## 迁移带来的对外变化：写成裁定（v2，A1 的第四项产出）
+## 工作包与领域目录 `storage/work_packages.json`（v2-split，A1 的第五项产出）
+
+工作区里如果有 `storage/work_packages.json`（v2-split 在 F1 之后生成，`impl_packages` 是 `null`），**你要把 `impl_packages` 填上**：包 → 函数、目录。D1/I1 按它展开成按领域的子任务，后面的包级检查也读它。
+
+- 形状：
+  ```json
+  "impl_packages": {
+    "identity": {"functions": ["identity-login", "identity-logout"], "dir": "identity"},
+    "bookings-flights": {"functions": ["bookings-flights-query", "bookings-bookflights"], "dir": "bookings_flights"}
+  }
+  ```
+- 函数名用蓝图 `lambda_functions[].name`；一个函数按它的 `entry_points` 落在哪个工作包（`packages[].endpoints` 的交集）就归哪个包。共享层的代码不列进来（共享层是单独的任务）。
+- `dir` 是该领域在 `output/lambdas/<应用>/` 下的目录名，小写、下划线；与包 id 一致时也可以省略。
+- 只改 `impl_packages` 这个键，其他内容原样保留；用 `read_file` 读、`write_file` 写回（它在你的写入范围里）。`gate(blueprint)` 的 CG 检查会核对它覆盖了蓝图里的全部函数。
+
+
 
 裁判拿目标的输出和单体的实际输出比较。迁移本身就会改变的地方，不写裁定就会判失败，所以要在设计时提前写。写完蓝图和适配映射之后，读 `judge/cases/`，逐类找：
 

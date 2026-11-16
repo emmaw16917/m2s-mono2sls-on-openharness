@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r2-3-2",
+  "attempt": 2,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T19:50:39+0800",
+  "summary": "在 spec 讨论室 spec-j3-r2 以 m2s-verifier 身份发言一轮（seq 8）：接受裁定 R-ROOM-spec-j3-r2-1-1-a1-1 与 R-ROOM-spec-j3-r2-1-2-a1-1，验证线维持零改动。本轮增量三件：(1) 按 architect §3 纠正本线分诊口径——次序放宽不在对账层生效，重跑后差异仍在待裁定一侧属\"裁定覆盖没认上\"（按流程/工具问题上报并附裁定编号），只有目标侧同一 case#step 仍按逐位置比较报失败才算测量工具问题；(2) 把判据 C 做成可重算锚点：该用例期望规范化 JSON 的 SHA-1=1f4cb1ac517e0918db7483ecad4b714653b95edb、整文件 SHA-1 前缀 d978fd99b1452087，用例时间戳 15:28:44 早于单体记录与两条裁定，实测 layer=R、read_back 只挂 list、list 期望仍为 200 + body.subset 两完整元素，即期望未被按单体 scan 字面次序重写；(3) 补一条外在证据：掩码本用例 unordered=[] 且 <id:admin> 绑在响应下标 1、同趟表转储同一符号在下标 0 → 响应体次序由存储/呈现布局决定，支持\"次序不属契约\"。另接受裸用例 id 的防外溢硬约束并认领为本线操作约束，备案 R-ROOM-spec-j3-r2-1-2-a1-1 顶层 relaxation 字段为空而正文写 order（对关闭无影响，如需补齐应由 architect 用 record_ruling 重录）。唯一待办仍是 J3 重跑对账，验收=判据 A+B+C。",
+  "notes": "未改工作区任何测试资产：git status 限定裁判资产与本线测试资产目录为空；只写了本任务工作报告 storage/stage_reports/ROOM-spec-j3-r2-3-2.json（含判据 A/B/C 与哈希锚点，供 J3 重跑后复核）。实测现状：对账结果文件仍是 16:09:08 的陈旧文件（待裁定 1 条=本差异、已覆盖 0 条），分类文件现存 1 条 needs_ruling 键，与该文件自洽；分类条目无需人工撤（对账动作整份清除）。预期内现象：register-read-back-by-admin 两步全落在 dropped_endpoints（POST /auth/register、GET /auth/users），执行阶段整案判 dropped、不比响应体，故本次次序放宽在目标侧实际作用面为零。本室验证侧无待办、无遗留请求，同意结室。上一尝试的 60 分钟超时是本线只读核对耗时，非规格或实现问题。"
+}

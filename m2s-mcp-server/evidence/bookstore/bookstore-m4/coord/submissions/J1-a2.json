@@ -1,0 +1,9 @@
+{
+  "task": "J1",
+  "attempt": 2,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T01:44:54+0800",
+  "summary": "按 J3 对账的 5 条 case_error 修正了 2 个用例的预期：auth-endpoints-bad-json-400 的 urlencoded 注册步骤改为 201（按 facts v5 的 POST /api/auth/register#responses[4] + #business_rules[6]，易变的 userId/token 只断言 has_fields+types）；cart-add-non-json-content-type-400 的 form 步骤改为 200 + 'Item added to cart successfully'，read 步骤改为长度 1 且条目 quantity/price 是字符串 '2'/'10'。并按 J3 的盲区提醒把 text/plain 步骤拆成新用例 cart-add-text-plain-400-no-write（400 + 购物车仍为空），让 #business_rules[2] 后半句仍然可检验。两条 needs_ruling（GET /api/search 的 scan 顺序）未动，等 architect 的 order 裁定。裁判用例 74 个 / 233 步，check_judge_assets = PASS（无 errors、无 warnings）。",
+  "notes": "请求（steps 的 method/path/body/form/headers）除 text 步搬迁外未改动，没有放宽任何事实库明确要求的断言；依据全部写在 storage/stage_reports/J1.json 的 cases_changed / cases_added / asset_fixes。改动仅限 judge/cases/** 与该报告。下一轮 run_monolith 重跑后，这 5 处差异应当消失；若 form/reg-form-encoding 仍与单体不一致，需要回头复核 facts v5 的 content-type 条目而不是再用例侧修改。"
+}

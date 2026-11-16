@@ -1,0 +1,9 @@
+{
+  "task": "J3",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T00:54:16+0800",
+  "summary": "7 条对账差异全部归类完成（fact_error 5、needs_ruling 2、case_error 0、mask_gap 0），check_reconcile_classes 报 PASS。5 条 fact_error 同源：事实库把请求体解析写成\"content-type 不是 JSON 就不解析、req.body 为 {}\"，而单体 server.js:34 还挂了 bodyParser.urlencoded({extended:true})，表单编码的 register 实际 201、POST /api/cart 实际 200（quantity/price 存成字符串），read 回非空只是连带结果；需 annotator 修正 register/login/refresh 的 content-type 与 400 事实、补 POST /api/cart#request 的解析事实，再由 J1 更新这两个用例的 predicted（请求不动）。2 条 needs_ruling 是 /api/search 的 hits 顺序：事实库明说\"顺序为 scan 顺序、无排序\"，用例按夹具顺序断言了位置，需 architect 裁定是否放宽顺序（建议 relaxation: order），放宽后改为顺序无关断言。没有 mask_gap，故未创建 judge/mask_rules.json。",
+  "notes": "需要退回的两件事已写进 storage/stage_reports/J3.json 的 routing/root_causes：(1) annotator 修正事实库的 7 个位置（列在 root_causes[0].sites_to_fix，含全局请求解析条目建议）；(2) architect 出一条关于列表顺序的裁定——storage/rulings.json 目前还不存在，这条顺序问题尚无裁定覆盖。上次 recheck 报的 7 条 not classified 就是全部差异（当时 reconcile_classes.json 还没落盘），本次已补齐。只写了 judge/reconcile_classes.json 和 storage/stage_reports/J3.json 两个文件。"
+}

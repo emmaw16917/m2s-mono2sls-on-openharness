@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r1-2-1",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T16:30:35+0800",
+  "summary": "在 spec-j3-r1 以 m2s-spec-annotator 身份发言（seq=3）：核对该差异引用的 5 个 fact_ref，全部与单体源码一致（app.py:447-452、services/auth.py:141-150、data/storage.py:352-356；全仓无 sorted()/.sort()），因此 register-read-back-by-admin#list 的次序差异不是 fact_error，事实库不回炉，采纳裁定 R-ROOM-spec-j3-r1-1-1-a1-1（contract + relaxation=order，R 层多重集比较，predicted 保持原样）。",
+  "notes": "补充两点给 architect/下游：1) 裁定里\"users 仍须恰含 2 个元素\"建议改述为\"元素数=夹具注入的用户集合，缺一不可、不多不少\"，因为事实库只承诺\"返回全部用户\"（GET /auth/users#business_rules[2]），且单体导入期会 _init_default_users 播种（services/auth.py:247 / #business_rules[7] / GAP-15），长度断言可能因与次序无关的原因失败；2) GAP-18 是全局事实、本裁定只覆盖 1 个步骤，两者范围不可互相援引，其它列表端点将来出现多元素下标断言需另开裁定。本轮未修改任何工作区文件（analysis_report.json 保持原样），工作报告见 storage/stage_reports/ROOM-spec-j3-r1-2-1.json（issues 里含上述建议与\"如需在 #business_rules[2] 加裁定编号 note，请开单独回炉任务\"）。"
+}

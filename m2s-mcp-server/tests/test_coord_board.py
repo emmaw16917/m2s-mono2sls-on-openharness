@@ -69,3 +69,11 @@ def test_needs_human_exits_need_a_comment(board: TaskBoard):
     assert board.status("S1") == "open"
     with pytest.raises(BrError):
         board.set_status("S1", "closed")  # terminal states only through close
+
+
+def test_a_long_dynamic_task_id_is_allowed(board: TaskBoard):
+    """v3 M4: br rejects labels over 50 characters, and a merged work package
+    can make "kind:F2-<package>" longer than that; the label is truncated."""
+    long_id = "F2-bookings-customers-flights-loyalty-payments"
+    board.add_task({"id": long_id, "runner": "agent", "role": "m2s-spec-annotator"})
+    assert long_id in board.tasks()

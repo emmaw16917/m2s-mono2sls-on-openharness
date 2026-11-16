@@ -1,0 +1,30 @@
+C:\Users\36029\miniconda3\envs\mono2sls\Lib\site-packages\pydantic_settings\sources\utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(
+[11/13/26 04:08:55] INFO     Processing request of type           server.py:733
+                             ListToolsRequest                                  
+                    INFO     Processing request of type           server.py:733
+                             ListResourcesRequest                              
+[11/13/26 04:09:49] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 04:10:03] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+                    INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 04:10:22] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 04:12:20] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 04:12:27] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+                    INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 04:15:10] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 04:23:52] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 04:25:14] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 04:29:22] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 04:29:43] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   

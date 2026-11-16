@@ -1,0 +1,37 @@
+{
+  "id": "R-ROOM-spec-j3-r1-1-2-a1-1",
+  "decider": "m2s-architect",
+  "task": "ROOM-spec-j3-r1-1-2",
+  "attempt": 1,
+  "time": "2026-11-13T02:04:53+0800",
+  "question": "列表顺序裁定 R-ROOM-spec-j3-r1-1-1-a1-1 的适用范围与措辞修正（spec-j3-r1 室 seq 3 的 B/C/D、seq 4/5 的 ①②③ 与三.3）：栏 1 的判定条件该写成\"有具名排序键\"还是\"应用层显式排序\"；affected_cases 要不要覆盖 GET /api/search 两个用例里其余的位置敏感步骤；relaxation 是否作用于条目内部的请求体快照数组；J3 的\"已裁定\"记账粒度会不会静默吞掉同用例的内容差异。",
+  "conclusion": "本条只收窄/补写 R-ROOM-spec-j3-r1-1-1-a1-1，不推翻它：那条的规则结构（顺序按\"有没有排序要求\"分栏、放宽只到顺序这一层、并列与翻页不在范围内）保持原样，改动在下面四处。\n\n1) 栏 1 的判定条件收窄为\"应用层按业务字段显式排序\"，不是\"响应顺序由某个具名排序键决定\"。现况满足这一条的只有 GET /api/bestsellers#business_rules[1]（routes/bestsellers.js:24-27 对 scan 结果 `.sort((a,b)=>(b.salesCount||0)-(a.salesCount||0))` 再 slice(0,20)）：该步骤继续逐位置比较，本裁定不放宽它。\n\n2) 新增明确规则：\"表/索引的键序不等于排序契约\"。顺序无论来自 scan 首页还是来自表/索引键序，都不作为比较项。依据三处：GET /api/cart#responses[0]（Bookstore-Cart 排序键是 bookId，routes/cart.js:19-28 只按 customerId 等值 Query、不重排）；GET /api/orders#business_rules[2]（顺序由排序键 orderId 升序决定，同一条自己写明 orderId 是随机 uuid、列表顺序不代表下单时间；routes/orders.js:20-29；POST /api/orders#business_rules[1] 写明 orderId 每条由 uuidv4() 现生成——\"复现该排序键决定的次序\"是任何实现都做不到、单体跨遍也做不到的要求）；GET /api/books#responses[0] 带 category 那一臂（routes/books.js:25-35 走只有 HASH 键 category 的 category-index，scripts/init-db.js:82-85 与 dynamodb_info 里该索引 sort_key 为 null，属无排序键一类）。两条推论：(a) J1 对 cart/books/orders 的列表步骤用 length + 无序 contains/not_contains 就是预期形态，事后任何人不得以本裁定为由要求补位置断言；(b) 本裁定不构成对目标表/索引键结构的任何承诺，键结构由 blueprint 与适配映射决定（GAP-15、GAP-17 已说明这些读取路径迁移后本来可能变）。\n\n3) affected_cases 扩到 GET /api/search 两个用例的全部列表步骤：六个步骤条目（search-case-insensitive-200 的 upper-q/mixed-name/mixed-target，search-hits-200 的 author/name/category）加两条不带步骤名的用例条目。机制依据：裁判按 \"case#step\" 精确到步骤、裸 \"case\" 覆盖该用例所有步骤，两种同时给出时取裸用例，因此以后往这两个用例新增的 /api/search 列表步骤自动继承本条，不需要第三轮对账。并进单元素步骤不削弱任何断言：无序比较仍要求条目数相等、每个条目键集合完全相同、取值逐字相等，配对不上就退回逐条报告差异；单元素列表的配对与按下标比较结果相同。\n\n4) 放宽只作用于由结果集顺序决定的**最外层列表**：条目内部由请求体原样存下的数组仍逐位置比较——那个次序是调用方给的、不是存储给的（POST /api/orders#business_rules[1] \"books 是请求体里数组的原样快照\"、business_rules[11] 任何元素结构都被原样存入并原样在订单列表里返回）。诚实说明现状：relaxation 今天按步骤施加，会把该步骤模板里每一个列表路径都标成无序，引擎做不到只挑最外层，所以这条限定以范围纪律落地——本裁定只点名 /api/search 的两个用例，其响应形状固定为 {total, hits:[{_source: 条目对象}]}（routes/search.js:41-46、GET /api/search#responses[1]），hits 元素内部没有数组，本条覆盖的步骤里不存在内层快照数组，今天零损失。纪律与兜底：含内层快照数组的步骤（下单读回类，例如 order-then-read-all#read、order-duplicate-book-id#orders、order-books-elements-not-validated#read）**不得**引用本条放宽；将来那里真出现顺序差异时，要么另立一条裁定并要求引擎支持按路径声明 relaxation（工具功能请求，交人处理，我不改工具），要么由 J1 登记为\"过度放宽造成的盲区\"并写明原因——我批准后者，它与\"不要把 search 那几步登记成盲区\"不矛盾：那里集合内容仍在比较，这里内容确实不再被比较。\n\n5) 重申不被本条改变的东西（防止被引用成别的口径）：状态码、total、列表长度、条目属性集合与取值、hits 每项只包一个 _source、共享可见性（GET /api/search#business_rules[5]）、大小写不敏感子串匹配（business_rules[2]/[4]）、CORS 响应头全是契约；category 定为 contract 而非 implementation-trace 正是为了只摘顺序、不摘内容。并列次序仍不在本条范围（relaxation 按步骤生效，套到畅销榜会把 salesCount 降序这条真契约一起放掉）；第一页截断/翻页完整性（GAP-3/4/5/15；GET /api/search#business_rules[1]、GET /api/books#business_rules[1]、GET /api/bestsellers#business_rules[0]）是独立问题，不得由本条覆盖。\n\n6) 回答 m2s-verifier 三.3（对账粒度）：他问的第一条不成立、第二条成立。J3 的\"已裁定\"判定确实剥掉步骤名、按用例记账，所以同用例其他步骤的差异也会被折进 resolved_by_rulings（现状 differences=0、resolved_by_rulings=2 条且都是顺序类）；但比较与判算是按步骤的，且 contract + relaxation=order 下任何内容差异仍然判 fail。据此要求：J1 每轮把 resolved_by_rulings 逐条按步骤复核，凡不属于\"只有顺序不同\"的都单独报出来——这是记账纪律，不需要新裁定。另据代码确认：对象体内嵌套数组的无序比较是生效的（标记从 steps.<name> 起递归整个模板，命中的就是 body.hits 这一层），所以\"V2 仅因顺序判失败即说明机制未生效\"这条预期成立时才算机制问题。\n\n7) 批准两条规格轮补写（m2s-spec-annotator 的 B 后半与 D），措辞按此走：GET /api/books#responses[0] 补写顺序语义时用\"只按 category-index 键序返回第一页、无应用层排序，顺序不作为比较项\"；GET /api/bestsellers#business_rules[2] 改写为\"单体对同一表内容可复现（V8 稳定排序，package.json:38-39 engines node>=14），但对迁移后的实现不构成约束\"。",
+  "basis": "事实库：GET /api/search#responses[1]（\"hits 每项只有一个 _source 字段包着条目，顺序为 scan 顺序，无排序、无截断\"）、GET /api/search#business_rules[1]（全表 scan、不处理 LastEvaluatedKey）、business_rules[3]（\"无相关性评分、无排序、无分页参数\"）、business_rules[2]/[4]（大小写不敏感子串匹配）、business_rules[5]（共享可见性）；GET /api/books#responses[0]（category 臂未写顺序）/#responses[1]/#business_rules[2]（不排序、不截断）；GET /api/cart#responses[0]、GET /api/orders#responses[0]/#business_rules[1][2][3]；POST /api/orders#business_rules[1][11]（books 原样快照）；GET /api/bestsellers#business_rules[0][1][2]。单体源码：routes/search.js:26-30（scan 无 FilterExpression/无 Limit）、:33-39（filter 保序）、:41-46（total=results.length，hits=map 出 {_source}，无排序调用）、routes/books.js:23-35 与 :38-42、scripts/init-db.js:80-88（category-index 只有 HASH 键）、routes/cart.js:19-28、routes/orders.js:20-29 与 :60-66（books: books 原样写入）、routes/bestsellers.js:22-27、package.json:38-39。数据面：dynamodb_info.table_schemas（Books 无排序键、Cart 排序键 bookId、Orders 排序键 orderId）、judge/fixtures 的 books.json（book-001/002 同作者、book-101/102 同分类）与 bestsellers.json（salesCount 30/20/10/缺失，无并列）。裁判机制（只读代码核实，非推测）：judge.py `_rulings_in_force` 对 \"case#step\" 只作用该步骤、裸 case 覆盖整用例；`_rulings_by_case` 剥掉步骤名按用例记账；relaxation=order 时 `_all_list_paths` 把该步骤模板内所有列表路径标为无序；`unify` 在无序路径仍要求条目数相等、键集合相同、取值逐字相等，配对失败退回逐条报告，且 order 不参与判 ruled（只有 migration-change/alternatives/trace 会降级），故内容差异仍为 fail。对账现状：judge/reconcile.json differences=0、resolved_by_rulings=search-case-insensitive-200/upper-q 与 search-hits-200/author 两条。缺口面：GAP-3/4/5/15（不翻页，完整性）、GAP-6（并列名次由首页 scan 顺序决定，note 已写明 V8 稳定排序）、GAP-17（无 ConsistentRead）。",
+  "category": "contract",
+  "raised_by": "J3",
+  "options": [
+    "A. 维持 R-ROOM-spec-j3-r1-1-1-a1-1 原文不动（不采用：栏 1 字面把 cart/orders 的纯键序读成契约，等于用一条顺序裁定承诺目标表键结构，而 orders 的 orderId 每条随机生成、单体跨遍都不可复现；affected_cases 少列 3 步，夹具一变就产生同形差异再开一轮）",
+    "B. 栏 1 改成\"应用层按业务字段显式排序\"+ 新增\"键序不等于排序契约\"，affected_cases 扩到两个 search 用例全部列表步骤，并加\"只作用于最外层结果集列表\"的范围限定（采用）",
+    "C. 给 relaxation 加按路径声明的机制（不采用为本条的前提：引擎今天按步骤施加，改工具不属于我的范围；用范围纪律 + 兜底登记盲区落地）",
+    "D. 把下单读回类步骤一并纳入本条以\"防将来\"（不采用：那些步骤的内层 books 是请求体原样快照，纳入会摘掉一条真契约）"
+  ],
+  "relaxation": "order",
+  "affects": {
+    "cases": [
+      "search-case-insensitive-200#upper-q",
+      "search-case-insensitive-200#mixed-name",
+      "search-case-insensitive-200#mixed-target",
+      "search-hits-200#author",
+      "search-hits-200#name",
+      "search-hits-200#category",
+      "search-case-insensitive-200",
+      "search-hits-200"
+    ],
+    "layers": [
+      "R"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

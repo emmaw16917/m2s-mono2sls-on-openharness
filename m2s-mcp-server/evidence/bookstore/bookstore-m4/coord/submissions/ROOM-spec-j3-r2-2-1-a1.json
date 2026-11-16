@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r2-2-1",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T02:45:07+0800",
+  "summary": "在 spec-j3-r2 室以 m2s-spec-annotator 身份发言（seq 3）：同意关闭本室，两条 search 列表顺序差异已被既有两条 order 裁定覆盖、经 R-...2-1-1 确认，不需要新裁定。本轮独立读源码核实裁定前提（routes/ 目录 grep .sort(/.slice( 只命中 bestsellers.js:25-26；search.js:26-46 scan→filter→map 无重排），并从 J2 录到的单体实际响应还原出一条全局 scan 序 [002,999,101,102,001]，证明两条差异是单一根因、不存在按查询重排的隐藏分支。",
+  "notes": "给下一轮/调度器的三点：1) 规格欠账——R-ROOM-spec-j3-r1-1-2-a1-1 第 7 点批准过两处事实库补写至今未落地：GET /api/books#responses[0]（category-index 臂）缺顺序语义；GET /api/bestsellers#business_rules[2] 的“同分条目次序不保证稳定”不准确（V8 稳定排序 + engines node>=14，单体对同一表内容可复现，但对迁移后实现不构成约束，连着 GAP-6/SI-10）。另自报 search#business_rules[4] 末尾“不做其化的正规化”是残句。建议排一次规格标注轮处理。2) 约束：这三处都必须“原地改文字”或“在 business_rules 末尾追加”，不得重排既有下标——本室主题、reconcile.json 与两条裁定的 basis 全按 #business_rules[3]/#responses[1] 这类下标引用事实。3) 我在发言里提出一条解读纪律：search#business_rules[3]、books#business_rules[2] 是 class=contract 而“无排序”从句写在里面，contract 只覆盖被肯定陈述的部分，否定陈述（无排序／不处理 LastEvaluatedKey）是栏 2 的依据、不构成次序契约；若要让这点可机械判定，可在两端点 business_rules 末尾追加一条 class=implementation-trace 的肯定式条目，是否做请裁定（我倾向下一轮顺手做，不为此单开一轮）。本轮 room 模式未改动 analysis_report.json，只写 storage/stage_reports/ROOM-spec-j3-r2-2-1.json。"
+}

@@ -1,0 +1,31 @@
+{
+  "id": "R-ROOM-spec-j3-r2-1-1-a1-1",
+  "decider": "m2s-architect",
+  "task": "ROOM-spec-j3-r2-1-1",
+  "attempt": 1,
+  "time": "2026-11-13T02:36:08+0800",
+  "question": "规格对账第二轮（本室）两条差异 search-case-insensitive-200/upper-q/body.subset 与 search-hits-200/author/body.subset 还需要新的列表顺序裁定吗？另外，既有两条 order 裁定的 affected_cases 含裸用例条目，在按用例记账的粒度下怎么保证不静默吞掉同用例的内容级差异？",
+  "conclusion": "本条只做确认与补写记账口径，不新增、不扩大任何放宽。\n1) 不需要新裁定：两条差异已由 R-ROOM-spec-j3-r1-1-1-a1-1（列表顺序通用规则）与 R-ROOM-spec-j3-r1-1-2-a1-1（收窄与扩围）覆盖，两条均 status=decided、deviates_from_monolith=false、category=contract、relaxation=order、layers=[R]，affected_cases 同时点名 search-case-insensitive-200#upper-q 与 search-hits-200#author（以及另 4 个列表步骤和两条裸用例条目）。本室可按\"已裁定、无需第三轮对账\"关闭。\n2) 纠正验证线的一条不变量：differences 与 resolved_by_rulings 是互斥两桶（对账按用例是否被裁定分派），当前 differences=0 是机制的构造结果而不是信号，比较两桶条目数没有意义。有效的 tripwire 只有两条：(a) 每个 resolved 条目引用的裁定仍在效且 relaxation=order；(b) 该条目明细属于\"仅顺序不同\"——total 相等、列表长度相等、每个条目键集合与取值逐字相等、{_source} 包装结构相同。\n3) 把\"逐条按步骤复核\"从纪律升格为强制口径：裁定记账按用例剥掉步骤名，所以这两个 search 用例将来出现的**内容级**差异同样会落到 resolved_by_rulings，对账阶段的 differences 看不见它。因此 J3 每轮必须逐条读 resolved_by_rulings 的明细，凡 (2b) 不成立的，一律按未裁定差异处理：单独升级上报、必要时开新一轮对账，不得以\"已裁定\"关闭。第二道防线是 V2：只有 order 类裁定的步骤在剩余不匹配非空时判 fail（order 不参与判 ruled），内容差异最终一定会失败。\n4) 机制确认（只读代码核实，非推测）：relaxation=order 时该步骤模板从 steps.<name> 起递归标记全部列表路径，命中的就是 body.hits 这一层，嵌套数组的无序比较生效，条目内容与条目数仍逐字比较——命中集合内容**不登记为残余盲区**；裸用例条目与 \"case#step\" 同时存在时裸用例优先且与书写顺序无关，故这两个用例以后新增的 /api/search 列表步骤自动继承既有裁定，不需要再走对账。\n5) 适用范围不外推（确认验证线第三条）：不得援引本条或既有 order 裁定去放宽 (a) GET /api/bestsellers（应用层按 salesCount 降序并 slice(0,20)，继续逐位置比较）；(b) 条目内部由请求体原样存下的快照数组（下单读回类步骤）；(c) 同分并列名次（GAP-6 / SI-10）；(d) 第一页截断与翻页完整性（GAP-3/4/5/15 / SI-11）。其它接口若新增无排序键的列表步骤并出现顺序差异，要另走一轮对账与裁定，不在本条扩面（宁可少写）。\n6) 落地请求：本室两条差异的分类由 needs_ruling 更新为\"已由 R-ROOM-spec-j3-r1-1-1-a1-1 与 R-ROOM-spec-j3-r1-1-2-a1-1 裁定\"；既有两条裁定文字我不提修改意见。",
+  "basis": "事实库：GET /api/search#responses[1]\"hits 每项只有一个 _source 字段包着条目，顺序为 scan 顺序，无排序、无截断\"；#business_rules[3]\"无相关性评分、无排序、无分页参数……条目属性不裁剪也不额外添加\"；#business_rules[1] 全表 scan 且不处理 LastEvaluatedKey；#business_rules[2]/[4] 大小写不敏感子串匹配；#business_rules[5] 共享可见性。反面例子：GET /api/bestsellers#business_rules[1] 规定 salesCount 降序取前 20。裁定账：rulings.json 现有 6 条，其中 ...1-1 与 ...1-2 为 order/contract/decided 且共同点名本室两个步骤与两个裸用例条目，另有 R-A1-a3-2/4 点名 GET /api/books 与 search-no-match 的列表步骤。对账账：differences=0、resolved_by_rulings=2（正是本室两条），每条引用 R-ROOM-spec-j3-r1-1-1-a1-1 且 status=decided，明细为 total 均 2、命中 id 集合均 {book-001, book-002}、条目键集合与取值逐字相同，仅先后不同。机制（只读代码）：`_rulings_in_force` 对 \"case#step\" 只作用该步骤、裸 case 令该用例全部步骤生效且优先级与书写顺序无关；relaxation=order 时用 `_all_list_paths` 从 steps.<name> 递归标记该步骤模板内所有列表路径；对账用 `_rulings_by_case` 剥掉步骤名按用例分派到 resolved_by_rulings；步骤判定时 `order` 类裁定在 mismatches 为空才 pass，剩余不匹配走 fail 分支（只有 alternatives/implementation-trace 才降级为 ruled）。跨遍稳定性：run_monolith 三遍取值一致、未符号化，故不属于 mask_gap。",
+  "category": "contract",
+  "raised_by": "J3",
+  "options": [
+    "A. 维持既有两条裁定不动、直接关闭本室（不采用为全部：确认结论采用，但验证线提的'两桶条目数不一致就上报'这条不变量必须纠正，且裸用例条目造成的对账盲区必须补一条强制复核口径）",
+    "B. 再写一条新的列表顺序裁定（不采用：规则已在效且已点名本室两个步骤，重写只会产生三条同义裁定，增加口径漂移风险）",
+    "C. 让 J1 把这三步预期改写为 length + 无序 contains（不采用：响应体是对象、hits 是嵌套数组，退化写法会丢掉'就是这两本书'的集合检查，...1-1 第 5 点已否掉）",
+    "D. 把 order 放宽预先生效到其它无排序键接口/以后新增的步骤（不采用：cart/orders/books 的步骤与形态已分别点名，bestsellers、内层快照数组、并列名次、翻页完整性各自独立裁定；预先扩面会盖住真缺陷）"
+  ],
+  "relaxation": "order",
+  "affects": {
+    "cases": [
+      "search-case-insensitive-200#upper-q",
+      "search-hits-200#author"
+    ],
+    "layers": [
+      "R"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}
