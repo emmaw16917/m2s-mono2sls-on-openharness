@@ -634,10 +634,10 @@ def _expected_from_errors(ws: Path, where: str, case: dict[str, Any], gaps_by_id
     return []
 
 
-def delta_errors(ws: Path, cases: list[dict[str, Any]]) -> list[str]:
+def delta_errors(ws: Path, cases: list[dict[str, Any]], require_all_gaps: bool = True) -> list[str]:
     """The checks of delta tests beyond the v1 case format: every case says which gap or
     rule it tests and where its expectation comes from, and every gap decided with
-    test: "delta" has a case."""
+    test: "delta" has a case (unless require_all_gaps is False: one domain's share)."""
     import gaps
 
     inventory = gaps.load(ws) or {}
@@ -663,9 +663,10 @@ def delta_errors(ws: Path, cases: list[dict[str, Any]]) -> list[str]:
                 if s not in by_id:
                     errs.append(f"{where}: source {s} is not in storage/gap_inventory.json")
         errs += _expected_from_errors(ws, where, case, by_id, oracle, ruling_ids)
-    for g in gaps.delta_gaps(ws):
-        if g.get("id") not in cited:
-            errs.append(f"{g.get('id')} is decided with test: delta, and no delta test cites it as its source")
+    if require_all_gaps:
+        for g in gaps.delta_gaps(ws):
+            if g.get("id") not in cited:
+                errs.append(f"{g.get('id')} is decided with test: delta, and no delta test cites it as its source")
     return errs
 
 
@@ -730,8 +731,10 @@ def _check_expect(model: Model, where: str, exp: Any, trigger: str | None, with_
                 errs.append(f"{where}: expect.headers.absent must be a list of header names")
     if "body" in exp:
         b = exp["body"]
-        if not isinstance(b, dict) or not b or set(b) - {"equals", "subset", "contains", "not_contains", "has_fields", "types", "length"}:
-            errs.append(f"{where}: expect.body must use equals/subset/contains/not_contains/has_fields/types/length")
+        if not isinstance(b, dict) or not b or set(b) - {"equals", "subset", "contains", "not_contains", "has_fields", "types", "length", "raw_equals"}:
+            errs.append(f"{where}: expect.body must use equals/subset/contains/not_contains/has_fields/types/length/raw_equals")
+        elif "raw_equals" in b and not isinstance(b["raw_equals"], str):
+            errs.append(f"{where}: expect.body.raw_equals must be a string compared character for character")
     if "error" in exp and not isinstance(exp["error"], dict):
         errs.append(f"{where}: expect.error must be an object ({{}} or {{type}})")
     if "batch_item_failures" in exp and not isinstance(exp["batch_item_failures"], list):
@@ -1296,6 +1299,14 @@ def judge(model: Model, case: dict[str, Any], raw: dict[str, Any]) -> list[str]:
                 mism.append(f"header {name}: expected absent, got {got[name.lower()]}")
     if "body" in exp:
         body, spec = _parse_body(result), exp["body"]
+        if "raw_equals" in spec:
+            # A text body compared character for character: json.loads would
+            # fold 10000.0 / 1e4 / trailing whitespace / a JSON-quoted string
+            # into the same value, which is exactly what a text contract must
+            # not do (an SI-26 style ruling: the characters are the contract).
+            got_raw = result.get("body") if isinstance(result, dict) else None
+            if got_raw != spec["raw_equals"]:
+                mism.append(f"body: expected raw {spec['raw_equals']!r} character for character, got {got_raw!r}")
         if "equals" in spec and body != spec["equals"]:
             mism.append(f"body: expected equals {json.dumps(spec['equals'])[:300]}, got {json.dumps(body)[:300]}")
         if "subset" in spec and not _subset(spec["subset"], body):
@@ -1584,14 +1595,17 @@ def _code_state(ws: Path, ref: str | None) -> dict[str, Any]:
 @_rie_locked
 def run_validate(workspace: str, functions: list[str] | None = None, cases: list[str] | None = None,
                  dry_run: bool = False, mode: str = "auto", ref: str | None = None,
-                 assets: str | None = None) -> dict[str, Any]:
+                 assets: str | None = None, partial: bool = False) -> dict[str, Any]:
     """ref: run the working tree's test assets against the code of this git
     ref of the workspace repo (e.g. "v0" after the tests were revised)
     instead of the working tree's code.
 
     assets: a directory of test assets other than verification/, namely
     verification/delta (v2 D1, V3): the cases also need source and expected_from,
-    and a full run writes verification/verdict_delta.json."""
+    and a full run writes verification/verdict_delta.json.
+
+    partial: one domain's share (v3 M4/W4.2): do not require every delta gap to
+    be cited yet -- the other domains write their cases in parallel."""
     ws = Path(workspace)
     model = Model(ws, need_template=not dry_run)
     all_cases = load_cases(ws, assets)
@@ -1606,7 +1620,7 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
     for f in faults:
         schema_errors += check_fault(model, f, set(ids), with_template=not dry_run)
     if assets:
-        schema_errors += delta_errors(ws, all_cases)
+        schema_errors += delta_errors(ws, all_cases, require_all_gaps=not partial)
     # GM3: headers the monolith adds to every response (app-wide middleware,
     # analysis_report.global_middleware) must be asserted on every API function.
     # Not on delta tests: they cover the gaps, and the judge covers the responses.

@@ -235,6 +235,18 @@ def test_v2_split_template_loads():
     assert f2.split == "package" and f2.split_shared and f2.extra.get("shared_after_children")
     i1 = template.get("I1")
     assert i1.split == "domain" and i1.split_shared and "I1:shared" in template.get("I2a").deps
+    # W4.2: G2 by package, then G2M composes the inventory
+    g2 = template.get("G2")
+    assert g2.split == "package" and g2.split_shared and g2.extra.get("shared_after_children")
+    assert "G2:shared" in template.get("G2M").deps and "G2:*" in template.get("G2M").deps
+    assert list(template.get("A1").deps) == ["G2M", "J1:*", "J1:shared"]
+    # W4.2: J1 writes cases per package, then a shared consolidator; D1 by domain
+    j1 = template.get("J1")
+    assert j1.split == "package" and j1.split_shared and "F2DONE" in j1.expand_after
+    assert "J1:*" in template.get("J2").deps and "J1:shared" in template.get("J2").deps
+    d1 = template.get("D1")
+    assert d1.split == "domain" and "verification/delta/events/{fn}/**" in d1.scope
+    assert "D1:*" in template.get("I1").deps
 
 
 def test_domain_split_falls_back_to_the_blueprint(tmp_path):

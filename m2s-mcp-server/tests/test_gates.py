@@ -1303,3 +1303,33 @@ def test_c7b_still_requires_override_with_default_authorizer(tmp_path):
     _write_blueprint_only(tmp_path, _public_endpoint_blueprint("none"))
     findings = gates.check_c7b(tmp_path, _c7b_template_with_api(default_authorizer=True))
     assert [f["check_id"] for f in findings] == ["C7b"]
+
+
+def test_cg_impl_packages_covers_every_function_once(tmp_path):
+    """v3 M3 open issue, fixed in M4: S1/A1 fills impl_packages; when it is
+    filled, the blueprint gate verifies the mapping is complete and unique."""
+    _write_good_workspace(tmp_path)
+    plan = {"version": 1, "packages": [{"id": "todo"}], "impl_packages": {
+        "todo": {"functions": ["todo-list-items", "todo-create-item"], "dir": "todo"}}}
+    (tmp_path / "storage" / "work_packages.json").write_text(json.dumps(plan), encoding="utf-8")
+    assert gates.check_impl_packages(tmp_path) == []
+
+    plan["impl_packages"]["todo"]["functions"] = ["todo-list-items"]
+    (tmp_path / "storage" / "work_packages.json").write_text(json.dumps(plan), encoding="utf-8")
+    errs = gates.check_impl_packages(tmp_path)
+    assert len(errs) == 1 and "todo-create-item" in errs[0]["description"]
+
+    plan["impl_packages"] = {"todo": ["todo-list-items", "todo-create-item", "ghost-fn"]}
+    (tmp_path / "storage" / "work_packages.json").write_text(json.dumps(plan), encoding="utf-8")
+    errs = gates.check_impl_packages(tmp_path)
+    assert any("ghost-fn" in e["description"] for e in errs)
+
+    plan["impl_packages"] = {"todo": ["todo-list-items"], "other": ["todo-list-items", "todo-create-item"]}
+    (tmp_path / "storage" / "work_packages.json").write_text(json.dumps(plan), encoding="utf-8")
+    errs = gates.check_impl_packages(tmp_path)
+    assert any("listed in" in e["description"] for e in errs)
+
+    # null stays legal: the expansion computes a mapping from the blueprint
+    plan["impl_packages"] = None
+    (tmp_path / "storage" / "work_packages.json").write_text(json.dumps(plan), encoding="utf-8")
+    assert gates.check_impl_packages(tmp_path) == []

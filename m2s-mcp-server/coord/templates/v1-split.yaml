@@ -35,7 +35,10 @@ tasks:
     role: m2s-architect
     line: impl
     deps: ["S0:*"]
-    scope: [storage/blueprint.json, storage/DECISIONS.md, storage/stage_reports/S1.json]
+    # work_packages.json: S1 fills impl_packages from the blueprint (v3 M3
+    # open issue, fixed in M4) so run_gate(package=...) and S5's package
+    # checks no longer need an explicit functions_json.
+    scope: [storage/blueprint.json, storage/DECISIONS.md, storage/work_packages.json, storage/stage_reports/S1.json]
     check: [blueprint_keys, gate_blueprint]
     max_turns: 250
     timeout_min: 150
