@@ -1,0 +1,407 @@
+"""coord.dispatcher with scripted fake workers (no LLM): the v1 flow and its rules."""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+
+import pytest
+
+# Each scenario drives a real br board (~0.3 s per call), ~5 minutes in total.
+pytestmark = pytest.mark.skipif(not os.environ.get("M2S_RUN_SLOW"), reason="slow; set M2S_RUN_SLOW=1")
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
+from coord_fakes import FakeGuard, fail_report, make_dispatcher, ok_report  # noqa: E402
+
+from coord.dispatcher import EXIT_DONE, EXIT_HUMAN, EXIT_STOPPED, main  # noqa: E402
+from coord.template import load_template  # noqa: E402
+
+MINI = load_template(path=Path(__file__).resolve().parent / "fixtures" / "coord_mini.yaml")
+
+AGENT_TASKS = ["S0", "S1", "V1", "S2", "S3a", "S3b", "S3c", "S4", "V2", "S5"]
+
+
+def _spawns(d, task: str) -> int:
+    return d.events.count("spawn", task)
+
+
+def _prompt(d, task: str, attempt: int) -> str:
+    return (d.coord / "run" / f"{task}-a{attempt}" / "prompt.md").read_text(encoding="utf-8")
+
+
+def test_happy_path_runs_every_task_once(tmp_path: Path):
+    d = make_dispatcher(tmp_path, {})
+
+    assert d.run() == EXIT_DONE
+
+    statuses = {t: i["status"] for t, i in d.board.tasks().items()}
+    assert set(statuses.values()) == {"closed"}
+    for task in AGENT_TASKS:
+        assert _spawns(d, task) == 1, task
+    order = [e["task"] for e in d.events.all() if e["type"] == "spawn"]
+    assert order == AGENT_TASKS
+    report = (d.coord / "report.md").read_text(encoding="utf-8")
+    assert "**done**" in report
+    assert "STAGE_ID: S2" in _prompt(d, "S2", 1)
+
+
+def test_failed_check_feeds_the_next_attempt(tmp_path: Path):
+    d = make_dispatcher(tmp_path, {"S2": [fail_report("S2"), ok_report("S2")]}, template=MINI)
+
+    assert d.run() == EXIT_DONE
+
+    assert _spawns(d, "S2") == 2
+    second = _prompt(d, "S2", 2)
+    assert "fake gate_code failed for S2" in second
+    assert "上一次的工作报告全文" in second
+    assert "第 2 次尝试" in second
+
+
+def test_missing_submission_counts_as_a_failed_attempt(tmp_path: Path):
+    d = make_dispatcher(tmp_path, {"S1": [{"write": {"storage/stage_reports/S1.json": {"ok": True}}, "submit": None},
+                                          ok_report("S1")]}, template=MINI)
+
+    assert d.run() == EXIT_DONE
+
+    assert _spawns(d, "S1") == 2
+    assert "没有调用 submit_task" in _prompt(d, "S1", 2)
+
+
+def test_out_of_scope_writes_are_reverted(tmp_path: Path):
+    blueprint = {"write": {"storage/blueprint.json": {"by": "S1"}, "storage/stage_reports/S1.json": {"ok": True}},
+                 "submit": "done"}
+    trespass = {"write": {"storage/blueprint.json": {"by": "S2"}, "storage/stage_reports/S2.json": {"ok": True}},
+                "submit": "done"}
+    d = make_dispatcher(tmp_path, {"S1": [blueprint], "S2": [trespass, ok_report("S2")]}, template=MINI)
+
+    assert d.run() == EXIT_DONE
+
+    assert json.loads((d.ws / "storage" / "blueprint.json").read_text(encoding="utf-8")) == {"by": "S1"}
+    assert _spawns(d, "S2") == 2
+    assert "storage/blueprint.json" in _prompt(d, "S2", 2)
+
+
+def test_crashes_do_not_use_up_attempts(tmp_path: Path):
+    crash = {"submit": None, "exit": 3}
+    d = make_dispatcher(tmp_path, {"S1": [crash, crash, ok_report("S1")]}, template=MINI)
+
+    assert d.run() == EXIT_DONE
+
+    assert _spawns(d, "S1") == 3
+    assert d.events.attempts("S1") == 1
+
+
+def test_exhausted_attempts_go_to_a_person_and_resume(tmp_path: Path):
+    d = make_dispatcher(tmp_path, {"S2": [fail_report("S2")] * 3 + [ok_report("S2")]}, template=MINI)
+
+    assert d.run() == EXIT_HUMAN
+    assert d.board.status("S2") == "needs_human"
+    assert _spawns(d, "S2") == 3
+
+    assert main(["resolve", "--ws", str(d.ws), "--task", "S2", "--reopen", "--comment", "try again",
+                 "--feedback", "part1 must end with the marker"]) == EXIT_DONE
+    resumed = make_dispatcher(tmp_path, {"S2": [ok_report("S2")]}, template=MINI)
+    assert resumed.run() == EXIT_DONE
+    assert "part1 must end with the marker" in _prompt(resumed, "S2", 4)
+
+
+def test_exception_handler_can_grant_a_retry(tmp_path: Path):
+    script = {"S2": [fail_report("S2")] * 3 + [ok_report("S2")],
+              "handler": [{"action": "retry", "feedback": "handler says: export the handler function"}]}
+    d = make_dispatcher(tmp_path, script, handler=True, template=MINI)
+
+    assert d.run() == EXIT_DONE
+
+    assert _spawns(d, "S2") == 4
+    assert "handler says: export the handler function" in _prompt(d, "S2", 4)
+    journal = (d.coord / "journal.md").read_text(encoding="utf-8")
+    assert "retry" in journal and "S2" in journal
+
+
+def test_v1_spec_issues_go_back_to_the_architect(tmp_path: Path):
+    issue = {"id": "SI-1", "status": "open", "severity": "non_blocking", "where": "POST /orders", "problem": "ordering"}
+    v1_open = {"write": {"verification/test_plan.json": {"spec_issues": [issue]},
+                         "storage/stage_reports/V1.json": {"ok": True}}, "submit": "done"}
+    v1_done = {"write": {"verification/test_plan.json": {"spec_issues": [{**issue, "status": "resolved"}]},
+                         "storage/stage_reports/V1.json": {"ok": True}}, "submit": "done"}
+    s1_first = {"write": {"storage/blueprint.json": {"metadata": {}}, "storage/stage_reports/S1.json": {"ok": True}},
+                "submit": "done"}
+    s1_rules = {"write": {"storage/blueprint.json": {"metadata": {"spec_resolutions": [{"issue_id": "SI-1"}]}},
+                          "storage/stage_reports/S1.json": {"ok": True}}, "submit": "done"}
+    d = make_dispatcher(tmp_path, {"S1": [s1_first, s1_rules], "V1": [v1_open, v1_done]})
+
+    assert d.run() == EXIT_DONE
+
+    assert _spawns(d, "S1") == 2 and _spawns(d, "V1") == 2
+    assert "SI-1" in _prompt(d, "S1", 2)
+    assert "V1 回炉" in _prompt(d, "V1", 2)
+    order = [e["task"] for e in d.events.all() if e["type"] == "spawn"]
+    assert order[:5] == ["S0", "S1", "V1", "S1", "V1"]
+
+
+def test_v2_routing_reworks_code_and_rechecks_the_rest(tmp_path: Path):
+    routing = [{"to": "code", "function": "orders-create", "spec_refs": ["POST /api/orders#business_rules[5]"],
+                "expected_per_spec": "only ordered books leave the cart", "observed": "the whole cart is emptied",
+                "evidence_cases": ["orders-create-happy-two-books"]}]
+    v2_fail = {"write": {"storage/stage_reports/V2.json": {"ok": False, "routing": routing}}, "submit": "blocked",
+               "reason": "verdict FAIL"}
+    d = make_dispatcher(tmp_path, {"V2": [v2_fail, ok_report("V2")]})
+
+    assert d.run() == EXIT_DONE
+
+    assert _spawns(d, "S2") == 2 and _spawns(d, "V2") == 2
+    for task in ("S3a", "S3b", "S3c", "S4"):
+        assert _spawns(d, task) == 1, f"{task} should be rechecked, not redone"
+    s2 = _prompt(d, "S2", 2)
+    assert "only ordered books leave the cart" in s2
+    assert "orders-create-happy-two-books" not in s2  # test evidence never reaches the implementation line
+
+
+def test_worker_can_send_rework_upstream(tmp_path: Path):
+    blocked = {"write": {"storage/stage_reports/S3c.json": {"ok": False}}, "submit": "blocked",
+               "reason": "C3 fails because handler.js exports nothing", "suspected": "S2"}
+    d = make_dispatcher(tmp_path, {"S3c": [blocked, ok_report("S3c")]})
+
+    assert d.run() == EXIT_DONE
+
+    assert _spawns(d, "S2") == 2 and _spawns(d, "S3c") == 2
+    assert _spawns(d, "S3a") == 1 and _spawns(d, "S3b") == 1
+    assert "handler.js exports nothing" in _prompt(d, "S2", 2)
+
+
+def test_tool_edits_are_escalated(tmp_path: Path):
+    guard = FakeGuard()
+    d = make_dispatcher(tmp_path, {}, guard=guard, template=MINI)
+    original = d._evaluate
+
+    def evaluate(spec, *args, **kwargs):
+        if spec.id == "S1":
+            guard.next = {"repo_new": [], "repo_changed": ["m2s-mcp-server/gates.py"], "agents": []}
+        return original(spec, *args, **kwargs)
+
+    d._evaluate = evaluate
+    assert d.run() == EXIT_HUMAN
+    assert d.board.status("S1") == "needs_human"
+
+
+def test_timeout_kills_the_worker(tmp_path: Path):
+    d = make_dispatcher(tmp_path, {"S4": [{"sleep": 30, "submit": None}, ok_report("S4")]}, template=MINI, timeouts={"S4": 0.02})
+
+    assert d.run() == EXIT_DONE
+
+    exits = d.events.of_task("S4", "worker_exit")
+    assert exits[0]["timed_out"] is True
+    assert "时间上限" in _prompt(d, "S4", 2)
+
+
+def test_dispatcher_restart_adopts_a_running_worker(tmp_path: Path):
+    script = {"S1": [{"sleep": 3, **ok_report("S1")}]}
+    d = make_dispatcher(tmp_path, script, template=MINI)
+    while "S1" not in d.running:
+        d.run(max_cycles=1)
+    pid = d.running["S1"].pid
+
+    restarted = make_dispatcher(tmp_path, script, template=MINI)
+    assert restarted.run() == EXIT_DONE
+    assert restarted.events.last("S1", "adopt")["pid"] == pid
+    assert _spawns(restarted, "S1") == 1
+
+
+def test_dispatcher_restart_after_worker_finished(tmp_path: Path):
+    d = make_dispatcher(tmp_path, {}, template=MINI)
+    while "S1" not in d.running:
+        d.run(max_cycles=1)
+    d.running["S1"].proc.wait(30)  # the worker submits while the dispatcher is "dead"
+
+    restarted = make_dispatcher(tmp_path, {}, template=MINI)
+    assert restarted.run() == EXIT_DONE
+    assert _spawns(restarted, "S1") == 1
+
+
+def test_stop_after_runs_the_upstream_slice_then_resumes(tmp_path: Path):
+    d = make_dispatcher(tmp_path, {}, template=MINI, stop_after="S1")
+    assert d.run() == EXIT_STOPPED
+    statuses = {t: i["status"] for t, i in d.board.tasks().items()}
+    assert statuses == {"P0": "closed", "S1": "closed", "S2": "open", "S4": "open"}
+    assert "stopped" in (d.coord / "report.md").read_text(encoding="utf-8")
+
+    resumed = make_dispatcher(tmp_path, {}, template=MINI)
+    assert resumed.run() == EXIT_DONE
+    assert [e["task"] for e in resumed.events.all() if e["type"] == "spawn"] == ["S1", "S2", "S4"]
+
+
+
+def test_workspace_keeps_the_harness_record(tmp_path: Path):
+    """storage/harness_version.json (v2 N0.1): written at the start, rebuilt when a worker
+    changes it (not blamed on the worker), extended when a later segment resumes with
+    a different harness."""
+    forged = {"write": {"storage/harness_version.json": {"forged": True},
+                        "storage/stage_reports/S1.json": {"ok": True}}, "submit": "done"}
+    d = make_dispatcher(tmp_path, {"S1": [forged]}, template=MINI, stop_after="S1")
+    d.stamp = lambda: {"type": "harness", "time": "t1", "m2s": {"commit": "a"}}
+    assert d.run() == EXIT_STOPPED
+
+    record_path = d.ws / "storage" / "harness_version.json"
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    assert record == {"started_with": {"type": "harness", "time": "t1", "m2s": {"commit": "a"}}, "resumed_with": []}
+    assert _spawns(d, "S1") == 1  # the forged write did not fail S1
+    assert d.events.of_task("S1", "dispatcher_file_rewritten")
+
+    resumed = make_dispatcher(tmp_path, {}, template=MINI)
+    resumed.stamp = lambda: {"type": "harness", "time": "t2", "m2s": {"commit": "b"}}
+    assert resumed.run() == EXIT_DONE
+    record = json.loads(record_path.read_text(encoding="utf-8"))
+    assert record["started_with"]["m2s"]["commit"] == "a"
+    assert [s["m2s"]["commit"] for s in record["resumed_with"]] == ["b"]
+
+
+RULING = {"question": "GET /api/books order", "conclusion": "any order", "category": "contract",
+          "basis": "Scan without sort", "relaxation": "order", "affected_tasks": ["S2"]}
+
+
+def _rulings_file(d) -> dict:
+    return json.loads((d.ws / "storage" / "rulings.json").read_text(encoding="utf-8"))
+
+
+def test_rulings_of_a_failed_attempt_are_dropped(tmp_path: Path):
+    """v2 N0.2: only the attempt that passes its checks puts rulings on record; the tasks
+    a ruling names get it as feedback."""
+    first = {**fail_report("S1"), "rulings": [{**RULING, "conclusion": "draft"}]}
+    second = {**ok_report("S1"), "rulings": [RULING]}
+    d = make_dispatcher(tmp_path, {"S1": [first, second],
+                                   "S2": [{**ok_report("S2"), "rulings": [RULING]}]}, template=MINI)
+
+    assert d.run() == EXIT_DONE
+
+    data = _rulings_file(d)
+    assert [r["id"] for r in data["rulings"]] == ["R-S1-a2-1"]  # S2 (code-developer) may not record
+    assert data["rulings"][0]["affects"]["layers"] == ["R"]
+    assert "新的裁定 R-S1-a2-1" in _prompt(d, "S2", 1)
+    report = (d.coord / "report.md").read_text(encoding="utf-8")
+    assert "## 裁定" in report and "R-S1-a2-1" in report
+
+
+def test_a_ruling_that_departs_from_the_monolith_waits_for_a_person(tmp_path: Path, monkeypatch):
+    """V2-20: the gate holds S2; the person confirms it and adds a ruling of their own,
+    which sends the closed S1 to a recheck."""
+    import coord.dispatcher as dispatcher_module
+    original = dispatcher_module.load_template
+    monkeypatch.setattr(dispatcher_module, "load_template",
+                        lambda name="v1", path=None: MINI if name == "mini" else original(name, path))
+    deviation = {**RULING, "deviates_from_monolith": True, "conclusion": "page through the scan"}
+    d = make_dispatcher(tmp_path, {"S1": [{**ok_report("S1"), "rulings": [deviation]}]}, template=MINI)
+
+    assert d.run() == EXIT_HUMAN
+    assert d.board.status("HUMAN_R-S1-a1-1") == "needs_human" and _spawns(d, "S2") == 0
+    assert _rulings_file(d)["rulings"][0]["status"] == "proposed"
+
+    mine = tmp_path / "mine.json"
+    mine.write_text(json.dumps({"question": "token lifetime", "conclusion": "7 days", "category": "spec-gap",
+                                "basis": "config.js", "affects": {"tasks": ["S1"]}}), encoding="utf-8")
+    ws = str(d.ws)
+    assert main(["resolve", "--ws", ws, "--task", "S2", "--reject", "--comment", "x"]) != EXIT_DONE  # not needs_human
+    assert main(["resolve", "--ws", ws, "--task", "HUMAN_R-S1-a1-1", "--reopen", "--comment", "x"]) != EXIT_DONE
+    assert main(["resolve", "--ws", ws, "--task", "HUMAN_R-S1-a1-1", "--accept", "--comment", "fix the defect",
+                 "--ruling-file", str(mine)]) == EXIT_DONE
+
+    status = {r["id"]: r["status"] for r in _rulings_file(d)["rulings"]}
+    assert status == {"R-S1-a1-1": "confirmed", "R-human-2": "decided"}  # R-human-1 is the confirmation
+    assert any(e.get("cause") == "stale" and e.get("by") == "R-human-2" for e in d.events.of_task("S1", "round_start"))
+
+    resumed = make_dispatcher(tmp_path, {}, template=MINI)
+    assert resumed.run() == EXIT_DONE
+    assert _spawns(resumed, "S1") == 1  # recheck passed, no new worker
+    assert "R-S1-a1-1" in _prompt(resumed, "S2", 1)
+    assert "确认裁定 R-S1-a1-1" in (d.coord / "journal.md").read_text(encoding="utf-8")
+
+NET_FAIL = {"submit": None, "stream": [
+    {"type": "status", "message": "Request failed; retrying in 60.0s (attempt 9 of 9): Connection error."},
+    {"type": "error", "message": "Network error: Connection error.. Check your internet connection and try again.",
+     "recoverable": True}]}
+
+
+def test_api_failures_wait_and_do_not_use_attempts(tmp_path: Path, monkeypatch):
+    import coord.dispatcher as dispatcher_module
+    monkeypatch.setattr(dispatcher_module, "INFRA_BACKOFF_S", (1, 2))
+    d = make_dispatcher(tmp_path, {"S1": [NET_FAIL, NET_FAIL, NET_FAIL, ok_report("S1")]}, template=MINI)
+
+    assert d.run() == EXIT_DONE  # three API failures would exhaust max_attempts=3 if they counted
+
+    exits = d.events.of_task("S1", "worker_exit")
+    assert [bool(e.get("infra")) for e in exits] == [True, True, True, False]
+    spawns = d.events.of_task("S1", "spawn")
+    assert spawns[1]["started"] - exits[0]["retry_after"] >= -0.1  # waited out the backoff
+    assert spawns[3]["started"] - exits[2]["retry_after"] >= -0.1
+    assert "Network error" in exits[0]["api_error"]
+
+
+def test_api_failures_go_to_a_person_after_the_limit(tmp_path: Path, monkeypatch):
+    import coord.dispatcher as dispatcher_module
+    monkeypatch.setattr(dispatcher_module, "INFRA_BACKOFF_S", (0,))
+    monkeypatch.setattr(dispatcher_module, "MAX_INFRA_FAILURES", 2)
+    d = make_dispatcher(tmp_path, {"S1": [NET_FAIL]}, template=MINI)
+
+    assert d.run() == EXIT_HUMAN
+    assert d.board.status("S1") == "needs_human"
+    assert "模型 API" in d.events.last("S1", "escalate")["reason"]
+
+
+def test_worker_killed_while_dispatcher_down_is_a_crash(tmp_path: Path):
+    script = {"S1": [{"sleep": 60, **ok_report("S1")}, ok_report("S1")]}
+    d = make_dispatcher(tmp_path, script, template=MINI)
+    while "S1" not in d.running:
+        d.run(max_cycles=1)
+    d.running["S1"].kill()  # dispatcher and worker die together (e.g. the session that started them ends)
+    d.running["S1"].proc.wait(30)
+
+    restarted = make_dispatcher(tmp_path, script, template=MINI)
+    assert restarted.run() == EXIT_DONE
+    first = restarted.events.of_task("S1", "worker_exit")[0]
+    assert first["crashed"] is True and not first.get("infra")
+    assert _spawns(restarted, "S1") == 2
+
+
+def test_person_sends_a_closed_task_back_after_a_new_check(tmp_path: Path):
+    """bookstore-v3a: the phase review after v0 found a gap no check covered. The person
+    accepts the review, adds a check, and sends S3c back with --recheck: S3c's recheck
+    fails, a worker fixes it, V2 reruns, v0 is tagged again and the review runs again."""
+    tags: list[str] = []
+
+    def tag_v0(spec):
+        from coord.checks import CheckResult
+        tags.append("v0")
+        return CheckResult("tag_v0", True, f"fake tag {len(tags)}")
+
+    script = {"handler": [{"action": "escalate", "rationale": "token validity missing"},
+                          {"action": "escalate", "rationale": "asked again"}]}
+    d = make_dispatcher(tmp_path, script, handler=True, phase_review=True, actions={"tag_v0": tag_v0})
+    assert d.run() == EXIT_HUMAN
+    assert d.board.status("HUMAN_TAG_V0") == "needs_human" and d.board.status("S5") == "open"
+
+    assert main(["resolve", "--ws", str(d.ws), "--task", "HUMAN_TAG_V0", "--accept", "--comment", "go on",
+                 "--open-issue", "SI-22: JSON scalar bodies"]) == EXIT_DONE
+    assert main(["rework", "--ws", str(d.ws), "--task", "S5", "--comment", "x"]) != EXIT_DONE  # only closed tasks
+    # the new check: S3c's gate now fails on the work it did
+    (d.ws / "storage" / "stage_reports" / "S3c.json").write_text(json.dumps({"ok": False}), encoding="utf-8")
+    assert main(["rework", "--ws", str(d.ws), "--task", "S3c", "--recheck", "--comment", "C14 added"]) == EXIT_DONE
+    assert d.board.status("S3c") == "open" and d.board.status("TAG_V0") == "open"
+
+    resumed = make_dispatcher(tmp_path, script, handler=True, phase_review=True, actions={"tag_v0": tag_v0})
+    assert resumed.run() == EXIT_HUMAN
+
+    assert _spawns(resumed, "S3c") == 2
+    assert "fake gate_template failed for S3c" in _prompt(resumed, "S3c", 2)
+    assert _spawns(resumed, "S4") == 1  # on_stale: recheck
+    assert _spawns(resumed, "V2") == 2 and len(tags) == 2  # V2 reran; the stale TAG_V0 ran its action again
+    assert resumed.events.count("case_open") == 2
+    assert resumed.board.status("HUMAN_TAG_V0") == "needs_human" and resumed.board.status("S5") == "open"
+    journal = (resumed.coord / "journal.md").read_text(encoding="utf-8")
+    assert "人的决定（任务 HUMAN_TAG_V0" in journal and "SI-22" in journal and "退回（recheck）" in journal
+    report = (resumed.coord / "report.md").read_text(encoding="utf-8")
+    assert "## 人的决定" in report and "## 人决定暂不处理的未决问题" in report and "SI-22" in report
+    case2 = sorted((resumed.coord / "cases").glob("C*review.md"))[-1].read_text(encoding="utf-8")
+    assert "SI-22" in case2  # the second review sees what the person left open

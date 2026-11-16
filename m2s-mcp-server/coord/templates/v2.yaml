@@ -1,0 +1,246 @@
+# The whole v2 pipeline under the v3 dispatcher (PIPELINE_V2_PLAN.md appendix A, N5.1):
+# the fact base, the judge line and the design line run side by side and meet before I1.
+#
+#   F1 -> F2 -> G1 -> G2 ---------------------> A1 -> D1 -> I1 -> I2a -> I2b -> I2c -> I3
+#          \-> J1 -> J2 -> RC -> J3 -> J4 -> J5 -> J5C -> J6 ---/                       |
+#                                                  V1 -> V2 -> V3 -> B0 -> O -> C1 -> C2
+#
+# A workspace may start from an earlier run's fact base and frozen judge (copied, with the
+# same facts_sha): F1 keeps the report, F2, J1, J3, J4 and J5C pass their rechecks, and J2,
+# RC and J5 do not run a settled judge again. The judge line then costs no worker.
+#
+# M0 of appendix A is the dispatcher's own setup (harness stamp, tools guard), not a task.
+# Field meanings: see v1.yaml and v2-judge.yaml. deny_read "verification/**" keeps the delta
+# tests from the implementation line; judge/ stays visible to it (§4.13).
+name: v2
+max_attempts: 3
+max_rework_rounds: 2
+max_spec_issue_rounds: 2
+max_reconcile_rounds: 2
+max_strength_rounds: 2
+tasks:
+  - id: F1
+    runner: dispatcher
+    action: analyze_project
+    scope: [storage/analysis_report.json, storage/symbol_table.json]
+    check: [analysis_report]
+
+  - id: F2
+    role: m2s-spec-annotator
+    start: recheck
+    deps: [F1]
+    scope: [storage/analysis_report.json, storage/stage_reports/F2.json]
+    check: [check_provenance]
+    max_turns: 250
+    timeout_min: 150
+
+  - id: G1
+    runner: dispatcher
+    action: gap_scan
+    deps: [F2]
+    scope: [storage/gap_inventory.json]
+    check: [gap_inventory]
+
+  - id: G2
+    role: m2s-spec-annotator
+    mode: G2
+    deps: [G1]
+    deny_read: ["output/**", "verification/**"]
+    scope: [storage/gap_inventory.json, storage/stage_reports/G2.json]
+    check: [gap_inventory]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: J1
+    role: m2s-verifier
+    mode: J1
+    start: recheck
+    deps: [F2]
+    deny_read: [monolith, judge_outputs]
+    scope: [judge/cases/**, judge/fixtures/**, judge/faults/**, judge/identities.json, judge/run_config.json,
+            judge/uncovered.json, storage/stage_reports/J1.json]
+    check: [judge_assets]
+    max_turns: 300
+    timeout_min: 180
+
+  - id: J2
+    runner: dispatcher
+    action: run_monolith
+    deps: [J1]
+    scope: [judge/oracle_expected.json, judge/fault_baseline_monolith.json, judge/masks.json,
+            judge/monolith_calls.json, judge/coverage_monolith/**]
+
+  - id: RC
+    runner: dispatcher
+    action: reconcile_spec
+    deps: [J2]
+    scope: [judge/reconcile.json, judge/reconcile_classes.json]
+
+  - id: J3
+    role: m2s-verifier
+    mode: J3
+    start: recheck
+    deps: [RC]
+    scope: [judge/reconcile_classes.json, judge/mask_rules.json, storage/stage_reports/J3.json]
+    check: [reconcile_classified]
+    max_turns: 200
+    timeout_min: 120
+
+  - id: J4
+    role: m2s-verifier
+    mode: J4
+    start: recheck
+    deps: [J3]
+    on_stale: recheck
+    scope: [judge/cases/**, judge/fixtures/**, judge/faults/**, judge/spec_issues.json, storage/stage_reports/J4.json]
+    check: [judge_assets, j4_report]
+    max_turns: 250
+    timeout_min: 150
+
+  - id: J5
+    runner: dispatcher
+    action: run_mutants
+    deps: [J4]
+    scope: [judge/judge_validation.json]
+
+  - id: J5C
+    role: m2s-verifier
+    mode: J5
+    start: recheck
+    deps: [J5]
+    scope: [judge/mutant_classes.json, storage/stage_reports/J5C.json]
+    check: [mutant_classes]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: J6
+    runner: dispatcher
+    action: freeze_judge
+    deps: [J5C]
+    scope: [judge/judge_manifest.json, judge/reconcile.json, judge/reconcile_classes.json]
+
+  - id: A1
+    role: m2s-architect
+    line: impl
+    deps: [G2, J1]
+    deny_read: ["output/**", "verification/**"]
+    scope: [storage/blueprint.json, storage/DECISIONS.md, storage/adapter_map.json, storage/gap_inventory.json,
+            storage/stage_reports/A1.json]
+    check: [blueprint_keys, gate_blueprint, judge_unchanged]
+    max_turns: 300
+    timeout_min: 180
+
+  - id: D1
+    role: m2s-verifier
+    mode: D1
+    line: verify
+    deps: [A1, J2]
+    deny_read: [monolith, "output/**"]
+    scope: ["verification/delta/**", storage/stage_reports/D1.json]
+    check: [delta_assets, judge_unchanged]
+    max_turns: 200
+    timeout_min: 120
+
+  - id: I1
+    role: m2s-code-developer
+    line: impl
+    deps: [A1, D1, J6]
+    deny_read: ["verification/**"]
+    scope: ["output/lambdas/**", "output/layers/**", storage/DECISIONS.md, storage/stage_reports/I1.json]
+    check: [gate_code, judge_unchanged]
+    max_turns: 300
+    timeout_min: 180
+
+  - id: I2a
+    role: m2s-sam-engineer
+    line: impl
+    deps: [I1]
+    deny_read: ["verification/**"]
+    on_stale: recheck
+    scope: [output/template.part1.yaml, storage/DECISIONS.md, storage/stage_reports/I2a.json]
+    check: [template_part1]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: I2b
+    role: m2s-sam-engineer
+    line: impl
+    deps: [I2a]
+    deny_read: ["verification/**"]
+    on_stale: recheck
+    scope: [output/template.part2.yaml, storage/DECISIONS.md, storage/stage_reports/I2b.json]
+    check: [template_part2]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: I2c
+    role: m2s-sam-engineer
+    line: impl
+    deps: [I2b]
+    deny_read: ["verification/**"]
+    on_stale: recheck
+    scope: [output/template.yaml, output/template.part1.yaml, output/template.part2.yaml,
+            storage/DECISIONS.md, storage/stage_reports/I2c.json]
+    check: [gate_template]
+    max_turns: 200
+    timeout_min: 120
+
+  - id: I3
+    role: m2s-validator
+    line: impl
+    deps: [I2c]
+    deny_read: ["verification/**"]
+    on_stale: recheck
+    scope: [output/consistency_report.json, storage/stage_reports/I3.json]
+    check: [gate_final, consistency_pass]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: V1
+    runner: dispatcher
+    action: check_adapter
+    deps: [I3, J6]
+    scope: [verification/check_adapter.json]
+
+  - id: V2
+    runner: dispatcher
+    action: run_judge
+    deps: [V1]
+    scope: [verification/verdict_judge.json]
+
+  - id: V3
+    role: m2s-verifier
+    mode: V3
+    line: verify
+    deps: [V2]
+    on_stale: rerun
+    scope: [verification/verdict_delta.json, "verification/results/**", "verification/coverage/**",
+            verification/fault_baseline_B0.json, storage/stage_reports/V3.json]
+    check: [verdict_delta, judge_unchanged]
+    max_turns: 150
+    timeout_min: 120
+
+  - id: B0
+    runner: dispatcher
+    action: tag_b0
+    deps: [V3]
+
+  - id: O
+    role: m2s-perf-optimizer
+    deps: [B0]
+    scope: ["output/**", "perf/**", "verification/results/**", "verification/coverage/**", "verification/verdict_*.json",
+            "verification/fault_baseline_*.json", storage/stage_reports/O.json]
+    check: [s5_report, judge_unchanged]
+    max_turns: 400
+    timeout_min: 300
+
+  - id: C1
+    runner: dispatcher
+    action: final_v2
+    deps: [O]
+    scope: ["output/**", "verification/**"]
+
+  - id: C2
+    runner: dispatcher
+    action: archive_run
+    deps: [C1]

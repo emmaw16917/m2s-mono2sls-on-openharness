@@ -1,0 +1,69 @@
+# The v2 judge line with J4/J5 for dispatcher tests (PIPELINE_V2_PLAN.md §4.10, N3.2):
+# F2 -> J1 -> J2 -> RC -> J3 -> J4 white-box -> J5 run_mutants -> J5C classify -> J6.
+# J4's check has its own name here so the fake checks can tell it from J1's.
+name: judge-strength-mini
+max_attempts: 3
+max_rework_rounds: 2
+max_reconcile_rounds: 2
+max_strength_rounds: 2
+tasks:
+  - id: F2
+    role: m2s-spec-annotator
+    start: recheck
+    scope: [storage/analysis_report.json, storage/stage_reports/F2.json]
+    check: [check_provenance]
+
+  - id: J1
+    role: m2s-verifier
+    mode: J1
+    deps: [F2]
+    scope: [judge/**, storage/stage_reports/J1.json]
+    check: [judge_assets]
+
+  - id: J2
+    runner: dispatcher
+    action: run_monolith
+    deps: [J1]
+    scope: [judge/**]
+
+  - id: RC
+    runner: dispatcher
+    action: reconcile_spec
+    deps: [J2]
+    scope: [judge/reconcile.json, judge/reconcile_classes.json]
+
+  - id: J3
+    role: m2s-verifier
+    mode: J3
+    start: recheck
+    deps: [RC]
+    scope: [judge/reconcile_classes.json, storage/stage_reports/J3.json]
+    check: [reconcile_classified]
+
+  - id: J4
+    role: m2s-verifier
+    mode: J4
+    deps: [J3]
+    on_stale: recheck
+    scope: [judge/cases/**, judge/spec_issues.json, storage/stage_reports/J4.json]
+    check: [j4_assets]
+
+  - id: J5
+    runner: dispatcher
+    action: run_mutants
+    deps: [J4]
+    scope: [judge/judge_validation.json]
+
+  - id: J5C
+    role: m2s-verifier
+    mode: J5
+    start: recheck
+    deps: [J5]
+    scope: [judge/mutant_classes.json, storage/stage_reports/J5C.json]
+    check: [mutant_classes]
+
+  - id: J6
+    runner: dispatcher
+    action: freeze_judge
+    deps: [J5C]
+    scope: [judge/judge_manifest.json]

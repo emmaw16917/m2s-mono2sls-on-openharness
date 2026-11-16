@@ -1,0 +1,71 @@
+# The gap line and the target's verification for dispatcher tests (PIPELINE_V2_PLAN.md
+# §4.11-4.13, N4): G1 -> G2 -> A1 -> D1 -> I1 -> I2 -> V1 -> V2 -> V3 -> B0.
+name: gaps-mini
+max_attempts: 2
+max_rework_rounds: 2
+tasks:
+  - id: G1
+    runner: dispatcher
+    action: gap_scan
+    scope: [storage/gap_inventory.json]
+
+  - id: G2
+    role: m2s-spec-annotator
+    mode: G2
+    deps: [G1]
+    scope: [storage/gap_inventory.json, storage/stage_reports/G2.json]
+    check: [gap_inventory]
+
+  - id: A1
+    role: m2s-architect
+    mode: gaps
+    deps: [G2]
+    scope: [storage/gap_inventory.json, storage/DECISIONS.md, storage/stage_reports/A1.json]
+    check: [gate_blueprint]
+
+  - id: D1
+    role: m2s-verifier
+    mode: D1
+    line: verify
+    deps: [A1]
+    deny_read: [monolith, "output/**"]
+    scope: ["verification/delta/**", storage/stage_reports/D1.json]
+    check: [delta_assets]
+
+  - id: I1
+    role: m2s-code-developer
+    line: impl
+    deps: [D1]
+    scope: ["output/lambdas/**", storage/stage_reports/I1.json]
+    check: [gate_code]
+
+  - id: I2
+    role: m2s-sam-engineer
+    line: impl
+    deps: [I1]
+    scope: [output/template.yaml, storage/stage_reports/I2.json]
+    check: [gate_template]
+
+  - id: V1
+    runner: dispatcher
+    action: check_adapter
+    deps: [I2]
+
+  - id: V2
+    runner: dispatcher
+    action: run_judge
+    deps: [V1]
+
+  - id: V3
+    role: m2s-verifier
+    mode: V3
+    line: verify
+    deps: [V2]
+    on_stale: rerun
+    scope: [verification/verdict_delta.json, storage/stage_reports/V3.json]
+    check: [verdict_delta]
+
+  - id: B0
+    runner: dispatcher
+    action: tag_b0
+    deps: [V3]

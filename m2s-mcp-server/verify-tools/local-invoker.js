@@ -7,6 +7,22 @@
 const path = require('path');
 const readline = require('readline');
 const [dir, handlerSpec] = process.argv.slice(2);
+// Lambda extracts layers under /opt; here each layer is a directory of its own.
+const layers = JSON.parse(process.env.M2S_LAYERS || '[]');
+if (layers.length) {
+  const Module = require('module');
+  const resolve = Module._resolveFilename;
+  Module._resolveFilename = function (request, ...rest) {
+    if (typeof request === 'string' && request.startsWith('/opt/')) {
+      for (const d of layers) {
+        try { return resolve.call(this, path.join(d, request.slice('/opt/'.length)), ...rest); } catch (e) { /* the next layer */ }
+      }
+    }
+    return resolve.call(this, request, ...rest);
+  };
+  process.env.NODE_PATH = [...layers.map((d) => path.join(d, 'nodejs', 'node_modules')), process.env.NODE_PATH || ''].filter(Boolean).join(path.delimiter);
+  Module._initPaths();
+}
 const dot = handlerSpec.lastIndexOf('.');
 const modPath = path.join(dir, handlerSpec.slice(0, dot));
 const exportName = handlerSpec.slice(dot + 1);

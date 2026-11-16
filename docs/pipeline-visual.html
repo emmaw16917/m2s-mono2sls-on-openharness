@@ -1,0 +1,963 @@
+<title>M2S v3 流水线全景</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500;600&display=swap">
+<style>
+  /* Design plan — drafting-paper control-room: cool paper + ink, one hue per line,
+     Space Grotesk for titles, Inter for running text, JetBrains Mono for task ids. */
+  :root {
+    --paper: #f2f5f8;
+    --panel: #ffffff;
+    --panel-2: #e9eef4;
+    --ink: #14202c;
+    --muted: #5b6b7d;
+    --faint: #8796a6;
+    --rule: #d3dce6;
+    --rule-strong: #b6c3d1;
+    --facts: #0f766e;
+    --judge: #a16207;
+    --impl: #5b21b6;
+    --verify: #1d4ed8;
+    --final: #9f1239;
+    --human: #b91c1c;
+    --grid: rgba(20, 32, 44, .045);
+    --shadow: 0 1px 2px rgba(20, 32, 44, .05), 0 10px 24px -18px rgba(20, 32, 44, .35);
+    --sans: "Inter", -apple-system, "Segoe UI", system-ui, "PingFang SC", "Microsoft YaHei", sans-serif;
+    --display: "Space Grotesk", "Inter", -apple-system, "Segoe UI", "PingFang SC", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #0b1219;
+      --panel: #111b26;
+      --panel-2: #16222f;
+      --ink: #e7eef6;
+      --muted: #9fb0c2;
+      --faint: #73869a;
+      --rule: #233241;
+      --rule-strong: #34485c;
+      --facts: #2dd4bf;
+      --judge: #fbbf24;
+      --impl: #a78bfa;
+      --verify: #60a5fa;
+      --final: #fb7185;
+      --human: #f87171;
+      --grid: rgba(231, 238, 246, .035);
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 12px 28px -18px rgba(0, 0, 0, .8);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #0b1219;
+    --panel: #111b26;
+    --panel-2: #16222f;
+    --ink: #e7eef6;
+    --muted: #9fb0c2;
+    --faint: #73869a;
+    --rule: #233241;
+    --rule-strong: #34485c;
+    --facts: #2dd4bf;
+    --judge: #fbbf24;
+    --impl: #a78bfa;
+    --verify: #60a5fa;
+    --final: #fb7185;
+    --human: #f87171;
+    --grid: rgba(231, 238, 246, .035);
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 12px 28px -18px rgba(0, 0, 0, .8);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding-left: max(18px, env(safe-area-inset-left, 0px));
+    padding-right: max(18px, env(safe-area-inset-right, 0px));
+    background-color: var(--paper);
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 28px 28px;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1120px; margin: 0 auto; }
+  header.hero { padding-block: 56px 30px; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .eyebrow::before { content: ""; width: 26px; height: 2px; background: var(--facts); }
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(34px, 5.2vw, 58px);
+    line-height: 1.08;
+    letter-spacing: -.025em;
+    margin: 14px 0 14px;
+    text-wrap: balance;
+    font-weight: 600;
+  }
+  .lede { max-width: 66ch; color: var(--muted); font-size: 16.5px; margin: 0 0 22px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    border: 1px solid var(--rule);
+    background: var(--panel);
+    border-radius: 999px;
+    padding: 5px 11px;
+    font-size: 12px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .chip b { color: var(--ink); font-weight: 600; }
+  .chip code { font-family: var(--mono); font-size: 11.5px; color: var(--ink); }
+  .section { padding-block: 38px; border-top: 1px solid var(--rule); }
+  .sec-head { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+  .sec-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--faint);
+  }
+  h2 {
+    font-family: var(--display);
+    font-size: clamp(22px, 2.6vw, 28px);
+    letter-spacing: -.015em;
+    margin: 0;
+    font-weight: 600;
+  }
+  .sec-intro { max-width: 72ch; color: var(--muted); margin: 2px 0 0; }
+  .fig {
+    border: 1px solid var(--rule);
+    background: var(--panel);
+    border-radius: 14px;
+    padding: 16px;
+    box-shadow: var(--shadow);
+    overflow-x: auto;
+  }
+  .fig svg { display: block; height: auto; }
+  .fig-main svg { width: 100%; min-width: 940px; }
+  .fig-map svg { width: 100%; min-width: 860px; }
+  .fig-seq svg { width: 100%; min-width: 640px; }
+  figcaption {
+    margin-top: 12px;
+    color: var(--muted);
+    font-size: 12.5px;
+    max-width: 78ch;
+  }
+  .fig-grid { display: grid; gap: 18px; grid-template-columns: 1fr; }
+  @media (min-width: 880px) { .fig-grid { grid-template-columns: 1fr 1fr; } }
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px 22px;
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .lg-box { width: 14px; height: 10px; border: 1px solid var(--rule-strong); background: var(--panel-2); border-radius: 2px; }
+  .lg-agent { width: 11px; height: 11px; border: 1.5px solid var(--muted); border-radius: 50%; }
+  .lg-disp { width: 10px; height: 10px; background: var(--muted); border-radius: 2px; }
+  .lg-dash { width: 20px; border-top: 1.5px dashed var(--faint); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .t-wrap { overflow-x: auto; border: 1px solid var(--rule); border-radius: 14px; background: var(--panel); box-shadow: var(--shadow); }
+  table th, table td { text-align: left; padding: 10px 12px; vertical-align: top; border-bottom: 1px solid var(--rule); }
+  table th {
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 500;
+    background: var(--panel-2);
+  }
+  table tr:last-child td { border-bottom: 0; }
+  .group td {
+    background: var(--panel-2);
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: .05em;
+    color: var(--muted);
+    padding: 7px 12px;
+  }
+  .id { font-family: var(--mono); font-weight: 600; font-size: 12.5px; white-space: nowrap; }
+  .who { font-size: 12px; color: var(--muted); white-space: nowrap; }
+  .who .k { display: inline-block; border: 1px solid var(--rule-strong); border-radius: 999px; padding: 1px 7px; font-size: 10.5px; }
+  .who .ka { border-color: color-mix(in srgb, var(--impl) 45%, var(--rule)); color: var(--impl); }
+  .who .kd { border-color: color-mix(in srgb, var(--facts) 45%, var(--rule)); color: var(--facts); }
+  .who .kj { border-color: color-mix(in srgb, var(--judge) 45%, var(--rule)); color: var(--judge); }
+  td.out { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  td.out b { font-family: var(--sans); font-weight: 600; color: var(--ink); font-size: 12px; }
+  .cards { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  @media (min-width: 760px) { .cards { grid-template-columns: 1fr 1fr; } }
+  .card {
+    border: 1px solid var(--rule);
+    background: var(--panel);
+    border-radius: 12px;
+    padding: 15px 16px;
+    box-shadow: var(--shadow);
+  }
+  .card h3 {
+    margin: 0 0 4px;
+    font-family: var(--display);
+    font-size: 16px;
+    letter-spacing: -.01em;
+    font-weight: 600;
+  }
+  .card .kicker { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; color: var(--faint); text-transform: uppercase; }
+  .card p { margin: 6px 0 0; color: var(--muted); font-size: 13.5px; }
+  .card p code, .note code { font-family: var(--mono); font-size: 12px; color: var(--ink); background: var(--panel-2); border: 1px solid var(--rule); border-radius: 4px; padding: 0 4px; }
+  .note {
+    margin-top: 14px;
+    font-size: 12.5px;
+    color: var(--muted);
+    border-left: 2px solid var(--rule-strong);
+    padding-left: 12px;
+  }
+  .status-grid { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  @media (min-width: 760px) { .status-grid { grid-template-columns: 1fr 1fr; } }
+  .status-grid .card.done { border-left: 3px solid var(--facts); }
+  .status-grid .card.next { border-left: 3px solid var(--judge); }
+  footer { padding-block: 28px 46px; border-top: 1px solid var(--rule); color: var(--faint); font-size: 12px; }
+  footer code { font-family: var(--mono); }
+  /* SVG */
+  .dg text { font-family: var(--sans); }
+  .dg .box { fill: var(--panel-2); stroke: var(--rule-strong); stroke-width: 1; }
+  .dg .box-a { fill: var(--panel); }
+  .dg .col-label { font-size: 11px; letter-spacing: .06em; fill: var(--muted); }
+  .dg .id { font-family: var(--mono); font-size: 13px; font-weight: 600; fill: var(--ink); }
+  .dg .sub { font-size: 10.5px; fill: var(--muted); }
+  .dg .badge { font-size: 8.5px; fill: var(--faint); }
+  .dg .badge-facts { font-size: 8.5px; fill: var(--facts); }
+  .dg .badge-judge { font-size: 8.5px; fill: var(--judge); }
+  .dg .badge-impl { font-size: 8.5px; fill: var(--impl); }
+  .dg .badge-verify { font-size: 8.5px; fill: var(--verify); }
+  .dg .edge { stroke: var(--rule-strong); stroke-width: 1.5; fill: none; }
+  .dg .edge-cross { stroke: var(--faint); stroke-width: 1.3; stroke-dasharray: 5 4; fill: none; }
+  .dg .elabel { font-size: 10px; fill: var(--muted); paint-order: stroke; stroke: var(--panel); stroke-width: 3px; stroke-linejoin: round; }
+  .dg .marker { fill: var(--rule-strong); }
+  .dg .marker-faint { fill: var(--faint); }
+  .dg .bar-facts { fill: var(--facts); }
+  .dg .bar-judge { fill: var(--judge); }
+  .dg .bar-impl { fill: var(--impl); }
+  .dg .bar-verify { fill: var(--verify); }
+  .dg .bar-final { fill: var(--final); }
+  .dg .dot-disp { fill: var(--muted); }
+  .dg .dot-agent { fill: none; stroke: var(--muted); stroke-width: 1.3; }
+  .dg .diamond { fill: var(--panel); stroke: var(--judge); stroke-width: 1.3; }
+  .dg .seq-life { stroke: var(--rule-strong); stroke-width: 1; stroke-dasharray: 4 4; }
+  .dg .seq-head { font-family: var(--display); font-size: 12.5px; font-weight: 600; fill: var(--ink); }
+  .dg .seq-arrow { stroke: var(--ink); stroke-width: 1.4; fill: none; }
+  .dg .seq-arrow-d { stroke: var(--faint); stroke-width: 1.3; stroke-dasharray: 5 4; fill: none; }
+  .dg .seq-note { fill: var(--panel-2); stroke: var(--rule-strong); stroke-width: 1; }
+  .dg .note-text { font-size: 10.5px; fill: var(--muted); }
+  .dg .box-title { font-family: var(--display); font-size: 13px; font-weight: 600; fill: var(--ink); }
+  .dg .box-sub { font-size: 10px; fill: var(--muted); }
+  .dg .box-sub2 { font-size: 9.5px; fill: var(--faint); }
+  .dg .human { fill: var(--human); }
+</style>
+
+<div class="wrap">
+  <header class="hero">
+    <div class="eyebrow">M2S · v3 dispatcher · after M4</div>
+    <h1>一条单体从这里变成可交付的 Serverless 服务。</h1>
+    <p class="lede">这是 v3 调度器下 <code style="font-family:var(--mono);font-size:.92em">v2-split</code> 模板的完整形态：事实库、裁判、设计与实现、验证与收尾四条线并行推进，在 I1 之前汇合。调度器是确定性的 Python，agent 只是被它按任务派发的 <code style="font-family:var(--mono);font-size:.92em">oh -p</code> 进程；它们之间不直接对话，所有交流都落在文件、任务板、公告板、讨论室和裁定上。</p>
+    <div class="chips">
+      <span class="chip">模板 <code>v2-split</code></span>
+      <span class="chip">并发 <b>3 workers</b></span>
+      <span class="chip">模型 <code>qwen3.8-flash</code></span>
+      <span class="chip">拆分 <b>按包</b> ×3 族 · <b>按领域</b> ×2 族</span>
+      <span class="chip">M4 验收 <b>bookstore-m4 · airline-m4</b> 已到 C2</span>
+    </div>
+  </header>
+
+  <section class="section">
+    <div class="sec-head">
+      <div class="sec-label">01 · pipeline</div>
+      <h2>四条线，和一个汇合点</h2>
+      <p class="sec-intro">列内箭头是依赖顺序，虚线是跨线交接。事实库线和裁判线共享左边两列；设计/实现线等缺口清单与裁判冻结，验证/收尾线等打包产物。</p>
+    </div>
+    <figure class="fig fig-main">
+      <svg class="dg" viewBox="0 0 1040 1050" role="img" aria-label="v2-split 流水线：事实库线与裁判线并行，设计实现线在 A1 汇合，验证收尾线在 V1 汇合">
+        <defs>
+          <marker id="m-ink" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="marker"/>
+          </marker>
+          <marker id="m-faint" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="marker-faint"/>
+          </marker>
+        </defs>
+
+        <!-- column labels -->
+        <rect x="40" y="38" width="10" height="3" class="bar-facts"/>
+        <text x="58" y="46" class="col-label">事实库线</text>
+        <rect x="270" y="38" width="10" height="3" class="bar-judge"/>
+        <text x="288" y="46" class="col-label">裁判线</text>
+        <rect x="540" y="38" width="10" height="3" class="bar-impl"/>
+        <text x="558" y="46" class="col-label">设计 / 实现线</text>
+        <rect x="810" y="38" width="10" height="3" class="bar-verify"/>
+        <text x="828" y="46" class="col-label">验证 / 收尾线</text>
+
+        <!-- edges: facts column -->
+        <path class="edge" d="M135,126 V142" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M135,200 V216" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M135,274 V290" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M135,348 V364" marker-end="url(#m-ink)"/>
+
+        <!-- edges: judge column -->
+        <path class="edge" d="M365,200 V216" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M365,274 V290" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M365,348 V364" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M365,422 V438" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M365,496 V512" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M365,570 V586" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M365,644 V660" marker-end="url(#m-ink)"/>
+
+        <!-- edges: impl column -->
+        <path class="edge" d="M635,422 V438" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M635,496 V512" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M635,570 V586" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M635,644 V660" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M635,718 V734" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M635,792 V808" marker-end="url(#m-ink)"/>
+
+        <!-- edges: verify column -->
+        <path class="edge" d="M905,570 V586" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,644 V660" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,718 V734" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,792 V808" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,866 V882" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,940 V956" marker-end="url(#m-ink)"/>
+
+        <!-- cross-line handoffs -->
+        <path class="edge-cross" d="M230,172 H240" />
+        <path class="edge-cross" d="M260,172 H268" marker-end="url(#m-faint)"/>
+        <text x="250" y="160" class="elabel" text-anchor="middle">F2DONE</text>
+        <path class="edge-cross" d="M230,394 H538" marker-end="url(#m-faint)"/>
+        <text x="384" y="386" class="elabel" text-anchor="middle">缺口清单与决定</text>
+        <path class="edge-cross" d="M460,246 H500 V468 H538" marker-end="url(#m-faint)"/>
+        <text x="506" y="352" class="elabel">单体记录</text>
+        <path class="edge-cross" d="M460,690 H515 V542 H538" marker-end="url(#m-faint)"/>
+        <text x="521" y="616" class="elabel">冻结裁判</text>
+        <path class="edge-cross" d="M730,838 H770 V542 H808" marker-end="url(#m-faint)"/>
+        <text x="776" y="700" class="elabel">打包产物</text>
+
+        <!-- facts boxes -->
+        <g>
+          <rect x="40" y="70" width="190" height="56" rx="8" class="box"/>
+          <rect x="40" y="70" width="4" height="56" rx="2" class="bar-facts"/>
+          <rect x="210" y="79" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="54" y="92" class="id">F1</text>
+          <text x="54" y="108" class="sub">静态分析单体</text>
+          <text x="220" y="118" class="badge" text-anchor="end">analysis_report</text>
+        </g>
+        <g>
+          <rect x="40" y="144" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="40" y="144" width="4" height="56" rx="2" class="bar-facts"/>
+          <circle cx="213" cy="159" r="3.5" class="dot-agent"/>
+          <text x="54" y="166" class="id">F2</text>
+          <text x="54" y="182" class="sub">标注事实库 · 按包+shared</text>
+          <text x="220" y="192" class="badge-facts" text-anchor="end">×N + shared</text>
+        </g>
+        <g>
+          <rect x="40" y="218" width="190" height="56" rx="8" class="box"/>
+          <rect x="40" y="218" width="4" height="56" rx="2" class="bar-facts"/>
+          <rect x="210" y="227" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="54" y="240" class="id">G1</text>
+          <text x="54" y="256" class="sub">扫机械缺口信号</text>
+          <text x="220" y="266" class="badge" text-anchor="end">gap_inventory</text>
+        </g>
+        <g>
+          <rect x="40" y="292" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="40" y="292" width="4" height="56" rx="2" class="bar-facts"/>
+          <circle cx="213" cy="307" r="3.5" class="dot-agent"/>
+          <text x="54" y="314" class="id">G2</text>
+          <text x="54" y="330" class="sub">补缺口 · 按包+shared</text>
+          <text x="220" y="340" class="badge-facts" text-anchor="end">×N + shared</text>
+        </g>
+        <g>
+          <rect x="40" y="366" width="190" height="56" rx="8" class="box"/>
+          <rect x="40" y="366" width="4" height="56" rx="2" class="bar-facts"/>
+          <rect x="210" y="375" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="54" y="388" class="id">G2M</text>
+          <text x="54" y="404" class="sub">合并缺口清单</text>
+          <text x="220" y="414" class="badge" text-anchor="end">gap_merge</text>
+        </g>
+        <!-- F2DONE diamond on the F2 -> J1 edge -->
+        <path class="diamond" d="M250,166 L256,172 L250,178 L244,172 Z"/>
+
+        <!-- judge boxes -->
+        <g>
+          <rect x="270" y="144" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="270" y="144" width="4" height="56" rx="2" class="bar-judge"/>
+          <circle cx="443" cy="159" r="3.5" class="dot-agent"/>
+          <text x="284" y="166" class="id">J1</text>
+          <text x="284" y="182" class="sub">写裁判用例 · 按包+shared</text>
+          <text x="450" y="192" class="badge-judge" text-anchor="end">×N + shared</text>
+        </g>
+        <g>
+          <rect x="270" y="218" width="190" height="56" rx="8" class="box"/>
+          <rect x="270" y="218" width="4" height="56" rx="2" class="bar-judge"/>
+          <rect x="440" y="227" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="284" y="240" class="id">J2</text>
+          <text x="284" y="256" class="sub">单体跑全套用例</text>
+          <text x="450" y="266" class="badge" text-anchor="end">锁 docker-rie</text>
+        </g>
+        <g>
+          <rect x="270" y="292" width="190" height="56" rx="8" class="box"/>
+          <rect x="270" y="292" width="4" height="56" rx="2" class="bar-judge"/>
+          <rect x="440" y="301" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="284" y="314" class="id">RC</text>
+          <text x="284" y="330" class="sub">预测 vs 单体实际</text>
+          <text x="450" y="340" class="badge" text-anchor="end">reconcile</text>
+        </g>
+        <g>
+          <rect x="270" y="366" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="270" y="366" width="4" height="56" rx="2" class="bar-judge"/>
+          <circle cx="443" cy="381" r="3.5" class="dot-agent"/>
+          <text x="284" y="388" class="id">J3</text>
+          <text x="284" y="404" class="sub">差异分类 · 争议开规格室</text>
+          <text x="450" y="414" class="badge" text-anchor="end">reconcile_classified</text>
+        </g>
+        <g>
+          <rect x="270" y="440" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="270" y="440" width="4" height="56" rx="2" class="bar-judge"/>
+          <circle cx="443" cy="455" r="3.5" class="dot-agent"/>
+          <text x="284" y="462" class="id">J4</text>
+          <text x="284" y="478" class="sub">白盒补测</text>
+          <text x="450" y="488" class="badge" text-anchor="end">j4_report</text>
+        </g>
+        <g>
+          <rect x="270" y="514" width="190" height="56" rx="8" class="box"/>
+          <rect x="270" y="514" width="4" height="56" rx="2" class="bar-judge"/>
+          <rect x="440" y="523" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="284" y="536" class="id">J5</text>
+          <text x="284" y="552" class="sub">变异体检验裁判强度</text>
+          <text x="450" y="562" class="badge" text-anchor="end">run_mutants</text>
+        </g>
+        <g>
+          <rect x="270" y="588" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="270" y="588" width="4" height="56" rx="2" class="bar-judge"/>
+          <circle cx="443" cy="603" r="3.5" class="dot-agent"/>
+          <text x="284" y="610" class="id">J5C</text>
+          <text x="284" y="626" class="sub">未杀变异体分类</text>
+          <text x="450" y="636" class="badge" text-anchor="end">mutant_classes</text>
+        </g>
+        <g>
+          <rect x="270" y="662" width="190" height="56" rx="8" class="box"/>
+          <rect x="270" y="662" width="4" height="56" rx="2" class="bar-judge"/>
+          <rect x="440" y="671" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="284" y="684" class="id">J6</text>
+          <text x="284" y="700" class="sub">冻结裁判（manifest）</text>
+          <text x="450" y="710" class="badge" text-anchor="end">freeze_judge</text>
+        </g>
+
+        <!-- impl boxes -->
+        <g>
+          <rect x="540" y="366" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="540" y="366" width="4" height="56" rx="2" class="bar-impl"/>
+          <circle cx="713" cy="381" r="3.5" class="dot-agent"/>
+          <text x="554" y="388" class="id">A1</text>
+          <text x="554" y="404" class="sub">蓝图 + 决定 + 适配映射</text>
+          <text x="720" y="414" class="badge" text-anchor="end">impl_packages</text>
+        </g>
+        <g>
+          <rect x="540" y="440" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="540" y="440" width="4" height="56" rx="2" class="bar-impl"/>
+          <circle cx="713" cy="455" r="3.5" class="dot-agent"/>
+          <text x="554" y="462" class="id">D1</text>
+          <text x="554" y="478" class="sub">增量测试 · 按领域</text>
+          <text x="720" y="488" class="badge-impl" text-anchor="end">×N</text>
+        </g>
+        <g>
+          <rect x="540" y="514" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="540" y="514" width="4" height="56" rx="2" class="bar-impl"/>
+          <circle cx="713" cy="529" r="3.5" class="dot-agent"/>
+          <text x="554" y="536" class="id">I1</text>
+          <text x="554" y="552" class="sub">写 Lambda · 按领域+shared</text>
+          <text x="720" y="562" class="badge-impl" text-anchor="end">×N + shared</text>
+        </g>
+        <g>
+          <rect x="540" y="588" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="540" y="588" width="4" height="56" rx="2" class="bar-impl"/>
+          <circle cx="713" cy="603" r="3.5" class="dot-agent"/>
+          <text x="554" y="610" class="id">I2a</text>
+          <text x="554" y="626" class="sub">SAM 模板 part1</text>
+          <text x="720" y="636" class="badge" text-anchor="end">template_part1</text>
+        </g>
+        <g>
+          <rect x="540" y="662" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="540" y="662" width="4" height="56" rx="2" class="bar-impl"/>
+          <circle cx="713" cy="677" r="3.5" class="dot-agent"/>
+          <text x="554" y="684" class="id">I2b</text>
+          <text x="554" y="700" class="sub">SAM 模板 part2</text>
+          <text x="720" y="710" class="badge" text-anchor="end">template_part2</text>
+        </g>
+        <g>
+          <rect x="540" y="736" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="540" y="736" width="4" height="56" rx="2" class="bar-impl"/>
+          <circle cx="713" cy="751" r="3.5" class="dot-agent"/>
+          <text x="554" y="758" class="id">I2c</text>
+          <text x="554" y="774" class="sub">模板合并</text>
+          <text x="720" y="784" class="badge" text-anchor="end">gate_template</text>
+        </g>
+        <g>
+          <rect x="540" y="810" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="540" y="810" width="4" height="56" rx="2" class="bar-impl"/>
+          <circle cx="713" cy="825" r="3.5" class="dot-agent"/>
+          <text x="554" y="832" class="id">I3</text>
+          <text x="554" y="848" class="sub">三方一致性 + 语义复核</text>
+          <text x="720" y="858" class="badge" text-anchor="end">consistency</text>
+        </g>
+
+        <!-- verify boxes -->
+        <g>
+          <rect x="810" y="514" width="190" height="56" rx="8" class="box"/>
+          <rect x="810" y="514" width="4" height="56" rx="2" class="bar-verify"/>
+          <rect x="980" y="523" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="824" y="536" class="id">V1</text>
+          <text x="824" y="552" class="sub">适配层校验</text>
+          <text x="990" y="562" class="badge" text-anchor="end">check_adapter</text>
+        </g>
+        <g>
+          <rect x="810" y="588" width="190" height="56" rx="8" class="box"/>
+          <rect x="810" y="588" width="4" height="56" rx="2" class="bar-verify"/>
+          <rect x="980" y="597" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="824" y="610" class="id">V2</text>
+          <text x="824" y="626" class="sub">目标上跑冻结裁判</text>
+          <text x="990" y="636" class="badge" text-anchor="end">run_judge</text>
+        </g>
+        <g>
+          <rect x="810" y="662" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="810" y="662" width="4" height="56" rx="2" class="bar-verify"/>
+          <circle cx="983" cy="677" r="3.5" class="dot-agent"/>
+          <text x="824" y="684" class="id">V3</text>
+          <text x="824" y="700" class="sub">跑增量测试并分诊</text>
+          <text x="990" y="710" class="badge" text-anchor="end">verdict_delta</text>
+        </g>
+        <g>
+          <rect x="810" y="736" width="190" height="56" rx="8" class="box"/>
+          <rect x="810" y="736" width="4" height="56" rx="2" class="bar-verify"/>
+          <rect x="980" y="745" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="824" y="758" class="id">B0</text>
+          <text x="824" y="774" class="sub">打 B0 + 阶段复查</text>
+          <text x="990" y="784" class="badge" text-anchor="end">tag_b0</text>
+        </g>
+        <g>
+          <rect x="810" y="810" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="810" y="810" width="4" height="56" rx="2" class="bar-final"/>
+          <circle cx="983" cy="825" r="3.5" class="dot-agent"/>
+          <text x="824" y="832" class="id">O</text>
+          <text x="824" y="848" class="sub">性能优化 · 逐改动</text>
+          <text x="990" y="858" class="badge" text-anchor="end">AWS 实测默认关</text>
+        </g>
+        <g>
+          <rect x="810" y="884" width="190" height="56" rx="8" class="box"/>
+          <rect x="810" y="884" width="4" height="56" rx="2" class="bar-final"/>
+          <rect x="980" y="893" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="824" y="906" class="id">C1</text>
+          <text x="824" y="922" class="sub">终局检查（gate+裁判+delta）</text>
+          <text x="990" y="932" class="badge" text-anchor="end">final_report</text>
+        </g>
+        <g>
+          <rect x="810" y="958" width="190" height="56" rx="8" class="box"/>
+          <rect x="810" y="958" width="4" height="56" rx="2" class="bar-final"/>
+          <rect x="980" y="967" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="824" y="980" class="id">C2</text>
+          <text x="824" y="996" class="sub">归档运行</text>
+          <text x="990" y="1006" class="badge" text-anchor="end">evidence/</text>
+        </g>
+      </svg>
+      <figcaption>读法：左起第 1 列是事实库线，第 2 列是裁判线，第 3 列是设计/实现线，第 4 列是验证/收尾线。<span style="font-family:var(--mono)">F2DONE</span> 是“F2 全部子任务关闭”的静态屏障，J1 在它之后展开。跨列的灰色虚线是真正约束下游的交接：缺口清单进入 A1，单体记录进入 D1，冻结裁判进入 I1，打包产物进入 V1。</figcaption>
+      <div class="legend">
+        <span><i class="lg-disp"></i>调度器动作（确定性 Python）</span>
+        <span><i class="lg-agent"></i>agent 任务（<span style="font-family:var(--mono)">oh -p</span> worker）</span>
+        <span><i class="lg-dash"></i>跨线交接</span>
+        <span><span style="font-family:var(--mono);color:var(--impl)">×N</span>&nbsp;按包/领域拆分的族</span>
+        <span>锁 = 机器级资源锁</span>
+      </div>
+    </figure>
+  </section>
+
+  <section class="section">
+    <div class="sec-head">
+      <div class="sec-label">02 · dispatch</div>
+      <h2>“派 agent”到底派了什么</h2>
+      <p class="sec-intro">调度器本身不调用模型：它是一个确定性循环，从任务板挑出依赖已关闭、scope 不冲突、锁拿得到的任务，再为每个任务启动一个非交互的 OpenHarness 进程。worker 的全部输入是 prompt、权限覆盖和 MCP；全部输出是它 scope 内的文件加一次 <code>submit_task</code>。</p>
+    </div>
+
+    <figure class="fig fig-map">
+      <svg class="dg" viewBox="0 0 1180 760" role="img" aria-label="调度器与各通信通道：任务板、worker、文件、检查、公告板与讨论室、异常处理者、裁定与人门">
+        <defs>
+          <marker id="m2-ink" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="marker"/>
+          </marker>
+          <marker id="m2-faint" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L8,4 L0,8 z" class="marker-faint"/>
+          </marker>
+        </defs>
+
+        <!-- edges -->
+        <path class="edge" d="M150,300 V158" marker-start="url(#m2-ink)" marker-end="url(#m2-ink)"/>
+        <text x="160" y="232" class="elabel">依赖 · 状态 · 门 · 就绪</text>
+        <path class="edge" d="M300,350 H360 V170 H428" marker-end="url(#m2-ink)"/>
+        <text x="394" y="148" class="elabel" text-anchor="middle">spawn oh -p</text>
+        <text x="394" y="162" class="elabel" text-anchor="middle">角色+任务+scope</text>
+        <path class="edge-cross" d="M430,210 H410 V352 H302" marker-end="url(#m2-faint)"/>
+        <text x="418" y="286" class="elabel">submit_task</text>
+        <text x="418" y="300" class="elabel">report_blocked</text>
+        <path class="edge" d="M605,230 V318" marker-end="url(#m2-ink)"/>
+        <text x="614" y="278" class="elabel">只写 scope 内文件</text>
+        <path class="edge" d="M430,385 H370 V560 H302" marker-end="url(#m2-ink)"/>
+        <text x="376" y="472" class="elabel">检查读产物</text>
+        <path class="edge" d="M180,520 V422" marker-end="url(#m2-ink)"/>
+        <text x="188" y="472" class="elabel">PASS / FAIL</text>
+        <path class="edge" d="M300,320 H340 V50 H1010 V68" marker-end="url(#m2-ink)"/>
+        <text x="675" y="42" class="elabel" text-anchor="middle">开 case（证据文件）+ spawn 处理者</text>
+        <path class="edge-cross" d="M1010,190 V250 H320 V362 H302" marker-end="url(#m2-faint)"/>
+        <text x="675" y="242" class="elabel" text-anchor="middle">handler_decide：retry / reroute / escalate / ok</text>
+        <path class="edge" d="M430,220 H400 V600 H428" marker-end="url(#m2-ink)"/>
+        <text x="406" y="404" class="elabel">公告</text>
+        <text x="406" y="418" class="elabel">房间回合</text>
+        <path class="edge" d="M780,560 H830 V400 H878" marker-end="url(#m2-ink)"/>
+        <text x="836" y="520" class="elabel">record_ruling</text>
+        <path class="edge" d="M1010,430 V466 H320 V410 H302" marker-end="url(#m2-ink)"/>
+        <text x="640" y="458" class="elabel" text-anchor="middle">apply：下游 stale / rework</text>
+        <path class="edge" d="M860,254 L878,298" marker-end="url(#m2-ink)"/>
+
+        <!-- boxes -->
+        <g>
+          <rect x="60" y="70" width="240" height="86" rx="10" class="box"/>
+          <text x="78" y="94" class="box-title">任务板 br</text>
+          <text x="78" y="114" class="box-sub">任务 · 依赖边 · 状态 · 门</text>
+          <text x="78" y="132" class="box-sub2">唯一不来自模型的状态源</text>
+        </g>
+        <g>
+          <rect x="60" y="300" width="240" height="120" rx="10" class="box-a"/>
+          <rect x="60" y="300" width="4" height="120" rx="2" class="bar-facts"/>
+          <text x="78" y="326" class="box-title">调度器</text>
+          <text x="78" y="346" class="box-sub">collect → start ready → checks</text>
+          <text x="78" y="364" class="box-sub2">事件日志 append-only；重启后 replay</text>
+          <text x="78" y="382" class="box-sub2">ToolGuard 还原被改的工具文件</text>
+          <text x="78" y="400" class="box-sub2">影子 git：每次尝试一个快照</text>
+        </g>
+        <g>
+          <rect x="60" y="520" width="240" height="90" rx="10" class="box"/>
+          <text x="78" y="544" class="box-title">检查（Python）</text>
+          <text x="78" y="564" class="box-sub">write_scope · tools_unchanged</text>
+          <text x="78" y="582" class="box-sub">judge_unchanged · 任务自己的 check</text>
+        </g>
+        <g>
+          <rect x="430" y="110" width="350" height="120" rx="10" class="box-a"/>
+          <rect x="430" y="110" width="4" height="120" rx="2" class="bar-impl"/>
+          <text x="448" y="134" class="box-title">worker 池（≤ 3）</text>
+          <text x="448" y="154" class="box-sub">每个任务一个 oh -p 进程 · qwen3.8-flash</text>
+          <text x="448" y="172" class="box-sub2">prompt = 角色文档 + 任务规格 + scope + 上轮反馈</text>
+          <text x="448" y="190" class="box-sub2">settings = 权限覆盖（deny_read / 可写路径）</text>
+          <text x="448" y="208" class="box-sub2">MCP = m2s-server（检查/裁判/测量）+ agent_mail</text>
+        </g>
+        <g>
+          <rect x="430" y="320" width="350" height="130" rx="10" class="box-a"/>
+          <rect x="430" y="320" width="4" height="130" rx="2" class="bar-judge"/>
+          <text x="448" y="344" class="box-title">workspace 文件</text>
+          <text x="448" y="364" class="box-sub">storage/ · judge/ · output/ · verification/</text>
+          <text x="448" y="382" class="box-sub2">scope 是唯一写权限；两个任务 scope 重叠就串行</text>
+          <text x="448" y="400" class="box-sub2">产物即接口：下游读上游写下的文件</text>
+          <text x="448" y="424" class="box-sub2">报告/裁定/公告在 coord/ 下各自成文件</text>
+        </g>
+        <g>
+          <rect x="430" y="540" width="350" height="120" rx="10" class="box-a"/>
+          <rect x="430" y="540" width="4" height="120" rx="2" class="bar-verify"/>
+          <text x="448" y="564" class="box-title">agent_mail</text>
+          <text x="448" y="584" class="box-sub">公告板 + 讨论室（spec / triage）</text>
+          <text x="448" y="602" class="box-sub2">artifact：事实库版本 / 产物就绪</text>
+          <text x="448" y="620" class="box-sub2">spec-issue：起一个规格讨论室</text>
+          <text x="448" y="638" class="box-sub2">每个房间回合也是一个 worker 任务</text>
+        </g>
+        <g>
+          <rect x="880" y="70" width="260" height="120" rx="10" class="box-a"/>
+          <rect x="880" y="70" width="4" height="120" rx="2" class="bar-final"/>
+          <text x="898" y="94" class="box-title">异常处理者</text>
+          <text x="898" y="114" class="box-sub">triage / review case</text>
+          <text x="898" y="132" class="box-sub2">case 文件带证据链，worker 只读</text>
+          <text x="898" y="150" class="box-sub2">决定：retry / reroute / escalate / ok</text>
+          <text x="898" y="168" class="box-sub2">B0 阶段复查也走它</text>
+        </g>
+        <g>
+          <rect x="880" y="250" width="260" height="180" rx="10" class="box-a"/>
+          <rect x="880" y="250" width="4" height="180" rx="2" class="bar-verify"/>
+          <text x="898" y="274" class="box-title">裁定 + 人门</text>
+          <text x="898" y="294" class="box-sub">storage/rulings.json</text>
+          <text x="898" y="312" class="box-sub2">contract / implementation-trace</text>
+          <text x="898" y="330" class="box-sub2">migration-change / spec-gap</text>
+          <text x="898" y="348" class="box-sub2">deviates_from_monolith → 人确认</text>
+          <text x="898" y="366" class="box-sub2">HUMAN_*：resolve --accept / --reject</text>
+          <text x="898" y="384" class="box-sub2">--reopen / --rework 让人重做</text>
+          <text x="898" y="404" class="box-sub2">人：判断迁移偏离与工具改动</text>
+        </g>
+        <g>
+          <rect x="880" y="470" width="260" height="80" rx="10" class="box"/>
+          <text x="898" y="494" class="box-title">资源锁</text>
+          <text x="898" y="514" class="box-sub">workers ×3 · docker-rie（J2/验证）</text>
+          <text x="898" y="532" class="box-sub">aws-load-client（measure_aws，默认关）</text>
+        </g>
+        <g>
+          <rect x="880" y="590" width="260" height="90" rx="10" class="box"/>
+          <text x="898" y="614" class="box-title">事件日志 + 影子 git</text>
+          <text x="898" y="634" class="box-sub">coord/events.jsonl：唯一事实</text>
+          <text x="898" y="652" class="box-sub">中断后按事件重放，worker 被收养</text>
+          <text x="898" y="670" class="box-sub2">每尝试一份快照，可回滚</text>
+        </g>
+        <!-- human glyph -->
+        <g>
+          <circle cx="850" cy="240" r="7" class="human"/>
+          <path class="human" d="M838,262 q12,-12 24,0 z"/>
+          <text x="850" y="276" class="elabel" text-anchor="middle">人</text>
+        </g>
+      </svg>
+      <figcaption>读法：实线是调度器的控制动作，虚线是 worker / 处理者返回的结果。agent 之间没有直接消息通道；它们通过文件、公告板和讨论室（由 m2s-server 以工具形式提供）交换信息，调度器只认任务板与检查结果。</figcaption>
+    </figure>
+
+    <div class="fig-grid" style="margin-top:18px">
+      <figure class="fig fig-seq">
+        <svg class="dg" viewBox="0 0 980 400" role="img" aria-label="一个任务的生命周期：派发、写文件、提交、检查、通过或重试">
+          <defs>
+            <marker id="m3-ink" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L8,4 L0,8 z" class="marker"/>
+            </marker>
+            <marker id="m3-faint" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L8,4 L0,8 z" class="marker-faint"/>
+            </marker>
+          </defs>
+          <text x="90" y="28" class="seq-head" text-anchor="middle">调度器</text>
+          <text x="330" y="28" class="seq-head" text-anchor="middle">worker（oh -p）</text>
+          <text x="570" y="28" class="seq-head" text-anchor="middle">文件 / 工具</text>
+          <text x="810" y="28" class="seq-head" text-anchor="middle">检查（Python）</text>
+          <path class="seq-life" d="M90,44 V370"/>
+          <path class="seq-life" d="M330,44 V370"/>
+          <path class="seq-life" d="M570,44 V370"/>
+          <path class="seq-life" d="M810,44 V370"/>
+          <path class="seq-arrow" d="M90,90 H326" marker-end="url(#m3-ink)"/>
+          <text x="209" y="80" class="elabel" text-anchor="middle">spawn（角色 + 任务 + scope）</text>
+          <path class="seq-arrow" d="M330,130 H566" marker-end="url(#m3-ink)"/>
+          <text x="449" y="120" class="elabel" text-anchor="middle">读输入 / 写 scope</text>
+          <path class="seq-arrow-d" d="M330,170 H94" marker-end="url(#m3-faint)"/>
+          <text x="209" y="160" class="elabel" text-anchor="middle">submit_task（工作报告）</text>
+          <path class="seq-arrow" d="M90,210 H806" marker-end="url(#m3-ink)"/>
+          <text x="449" y="200" class="elabel" text-anchor="middle">跑任务检查</text>
+          <path class="seq-arrow-d" d="M810,250 H574" marker-end="url(#m3-faint)"/>
+          <text x="689" y="240" class="elabel" text-anchor="middle">读产物</text>
+          <path class="seq-arrow-d" d="M810,290 H94" marker-end="url(#m3-faint)"/>
+          <text x="449" y="280" class="elabel" text-anchor="middle">PASS / FAIL + relay</text>
+          <path class="seq-arrow-d" d="M90,330 H326" marker-end="url(#m3-faint)"/>
+          <text x="209" y="320" class="elabel" text-anchor="middle">FAIL：feedback + retry（≤3）</text>
+          <text x="94" y="358" class="note-text">PASS → 关闭任务 → 解锁依赖它的下游</text>
+        </svg>
+        <figcaption>一次尝试的完整回合。检查不是模型评审：write_scope、工具未变、裁判未变和任务自己的 check 都是确定性 Python；FAIL 的 relay 文本作为下一轮 prompt 的反馈。</figcaption>
+      </figure>
+
+      <figure class="fig fig-seq">
+        <svg class="dg" viewBox="0 0 980 400" role="img" aria-label="规格讨论室的一轮：J3 提出差异、architect 给裁定、annotator 修事实、J3 回应、调度器应用裁定">
+          <defs>
+            <marker id="m4-ink" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L8,4 L0,8 z" class="marker"/>
+            </marker>
+            <marker id="m4-faint" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+              <path d="M0,0 L8,4 L0,8 z" class="marker-faint"/>
+            </marker>
+          </defs>
+          <text x="70" y="26" class="seq-head" text-anchor="middle">J3（verifier）</text>
+          <text x="280" y="26" class="seq-head" text-anchor="middle">讨论室</text>
+          <text x="490" y="26" class="seq-head" text-anchor="middle">architect</text>
+          <text x="700" y="26" class="seq-head" text-anchor="middle">annotator</text>
+          <text x="880" y="26" class="seq-head" text-anchor="middle">调度器</text>
+          <path class="seq-life" d="M70,42 V375"/>
+          <path class="seq-life" d="M280,42 V375"/>
+          <path class="seq-life" d="M490,42 V375"/>
+          <path class="seq-life" d="M700,42 V375"/>
+          <path class="seq-life" d="M880,42 V375"/>
+          <path class="seq-arrow" d="M70,82 H276" marker-end="url(#m4-ink)"/>
+          <text x="173" y="72" class="elabel" text-anchor="middle">raise_spec_issue（差异）</text>
+          <path class="seq-arrow" d="M280,118 H486" marker-end="url(#m4-ink)"/>
+          <text x="383" y="108" class="elabel" text-anchor="middle">轮次：architect 给结论</text>
+          <path class="seq-arrow-d" d="M490,154 H284" marker-end="url(#m4-faint)"/>
+          <text x="387" y="144" class="elabel" text-anchor="middle">record_ruling（入册）</text>
+          <path class="seq-arrow" d="M280,190 H696" marker-end="url(#m4-ink)"/>
+          <text x="488" y="180" class="elabel" text-anchor="middle">事实错误 → 修事实库</text>
+          <path class="seq-arrow-d" d="M700,226 H284" marker-end="url(#m4-faint)"/>
+          <text x="492" y="216" class="elabel" text-anchor="middle">修正 + 出处</text>
+          <path class="seq-arrow-d" d="M280,262 H74" marker-end="url(#m4-faint)"/>
+          <text x="177" y="252" class="elabel" text-anchor="middle">回到提出方：回应</text>
+          <path class="seq-arrow" d="M280,300 H876" marker-end="url(#m4-ink)"/>
+          <text x="578" y="290" class="elabel" text-anchor="middle">conclude：裁定生效</text>
+          <path class="seq-arrow-d" d="M880,338 H74" marker-end="url(#m4-faint)"/>
+          <text x="477" y="328" class="elabel" text-anchor="middle">下游 stale / 回炉重跑</text>
+        </svg>
+        <figcaption>J3 判为“需要裁定”的差异不进个人对话：调度器开一个规格讨论室，每个回合是一个 <span style="font-family:var(--mono)">ROOM-*</span> worker 任务；结论由 architect 用 <span style="font-family:var(--mono)">record_ruling</span> 写入，调度器据此把下游设为 stale 或回炉。</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="sec-head">
+      <div class="sec-label">03 · channels</div>
+      <h2>它们怎么交流</h2>
+      <p class="sec-intro">没有 agent 之间的自由聊天。每一条交流都有确定的载体、方向和落盘位置。</p>
+    </div>
+    <div class="cards">
+      <div class="card">
+        <div class="kicker">files · 主通道</div>
+        <h3>工作区文件与 scope</h3>
+        <p>所有产物都落在 <code>storage/</code>、<code>judge/</code>、<code>output/</code>、<code>verification/</code>。每个任务只写自己的 scope，两个任务的 scope 前缀重叠就串行；下游读上游写下的文件，检查也只读文件。产物即接口。</p>
+      </div>
+      <div class="card">
+        <div class="kicker">board · 控制面</div>
+        <h3>任务板 <code>br</code></h3>
+        <p>任务、依赖边、状态、门都在这里。只有调度器读写任务板；worker 看不到它，也不需要它。谁阻塞谁、谁先跑，全由板上的依赖边决定。</p>
+      </div>
+      <div class="card">
+        <div class="kicker">worker → dispatcher</div>
+        <h3><code>submit_task</code> / <code>report_blocked</code></h3>
+        <p>worker 结束前调 <code>submit_task</code> 交工作报告；做不下去就 <code>report_blocked</code>，写明原因、证据和可疑模块。没有提交的进程退出按崩溃处理，不计入正常尝试。</p>
+      </div>
+      <div class="card">
+        <div class="kicker">mail · 公告</div>
+        <h3>公告板 notices</h3>
+        <p>调度器和 m2s-server 往 agent_mail 发 <code>artifact</code>（事实库升版本、产物就绪）和 <code>spec-issue</code>；所有角色都能读。事实库版本变化会让过期任务失效重跑。</p>
+      </div>
+      <div class="card">
+        <div class="kicker">mail · 讨论室</div>
+        <h3>规格室 / 分诊室</h3>
+        <p>J3 的争议差异、阻塞级 spec_issues 会开一个房间。每个回合是一个 <code>ROOM-*</code> worker 任务，按 proposer → architect →（事实时）annotator → proposer 的顺序发言；结论写裁定，调度器把被阻塞的任务放行。</p>
+      </div>
+      <div class="card">
+        <div class="kicker">rulings</div>
+        <h3><code>record_ruling</code></h3>
+        <p>architect 或异常处理者把“事实库答不了的问题”写成裁定：<code>contract</code> / <code>implementation-trace</code> / <code>migration-change</code> / <code>spec-gap</code>。带 <code>deviates_from_monolith</code> 的裁定要人确认才生效；裁定的粒度是 <code>case#step</code>。</p>
+      </div>
+      <div class="card">
+        <div class="kicker">handler</div>
+        <h3>异常处理者 case</h3>
+        <p>任务用尽尝试、裁判/增量/适配检查失败、B0 阶段复查，都会由调度器写一份 case 文件（含证据链）并派一个处理者 worker。它的决定只有四种：<code>retry</code>、<code>reroute</code>、<code>escalate</code>（交人）、<code>ok</code>（复查通过）。</p>
+      </div>
+      <div class="card">
+        <div class="kicker">human</div>
+        <h3>人门 <code>HUMAN_*</code></h3>
+        <p>迁移偏离、修单体缺陷、工具改动、覆盖缺口等最终由人决定。人通过 <code>resolve --accept / --reject / --reopen / --rework</code> 作答，决定写进事件日志和报告；调度器据此继续、重做或退回。</p>
+      </div>
+      <div class="card">
+        <div class="kicker">state</div>
+        <h3>事件日志 + 影子 git</h3>
+        <p><code>coord/events.jsonl</code> 是状态的唯一来源：每次派发、退出、检查、裁定、决定都追加一条。中断后按事件重放恢复，已启动的 worker 被“收养”；每次尝试另有影子 git 快照，可回滚。</p>
+      </div>
+      <div class="card">
+        <div class="kicker">locks</div>
+        <h3>机器级资源锁</h3>
+        <p><code>workers</code> 槽限制并发数；<code>docker-rie</code> 让 J2 与所有 RIE 验证串行；<code>aws-load-client</code> 保证同一个时间只有一个 AWS 负载在跑。拿不到锁的任务只是在板上等。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="sec-head">
+      <div class="sec-label">04 · steps</div>
+      <h2>每一步做什么</h2>
+      <p class="sec-intro">按线分组。“谁执行”里的“调度器”是确定性 Python 动作，“agent”是 <code>oh -p</code> worker；<code>×N</code> 表示按工作包/领域拆成多个子任务，最后一个 shared 子任务收口。</p>
+    </div>
+    <div class="t-wrap">
+      <table>
+        <thead>
+          <tr><th style="width:70px">步骤</th><th style="width:150px">谁执行</th><th>做什么</th><th style="width:250px">产出 / 检查</th></tr>
+        </thead>
+        <tbody>
+          <tr class="group"><td colspan="4">事实库线</td></tr>
+          <tr><td class="id">F1</td><td class="who"><span class="k kd">调度器</span></td><td>静态分析单体：入口点、请求/响应、数据访问、运行时信号。</td><td class="out"><b>analysis_report.json</b> · symbol_table.json<br>check: analysis_report</td></tr>
+          <tr><td class="id">F2</td><td class="who"><span class="k ka">agent</span> ×N+shared</td><td>标注事实库：逐端点写 request、responses、business_rules、auth、data_access 与出处；shared 用完整 provenance 汇总校验。</td><td class="out"><b>analysis_report.json</b> · stage_reports/F2-*<br>check: check_provenance_pkg / check_provenance</td></tr>
+          <tr><td class="id">G1</td><td class="who"><span class="k kd">调度器</span></td><td>从事实库的机械信号扫缺口：多写、进程状态、即发即忘、时间、全局中间件、单体缺陷。</td><td class="out"><b>gap_inventory.json</b><br>check: gap_inventory</td></tr>
+          <tr><td class="id">G2</td><td class="who"><span class="k ka">agent</span> ×N+shared</td><td>核对机械信号并补它看不见的缺口；每个包写自己的 <code>storage/gaps/&lt;包&gt;.json</code>，shared 收无端点或跨包的条目。</td><td class="out"><b>storage/gaps/*.json</b><br>check: gap_package</td></tr>
+          <tr><td class="id">G2M</td><td class="who"><span class="k kd">调度器</span></td><td>把各包缺口文件合并回清单：既有条目按 key 保留 id 与决定，新条目按包顺序分配 <code>GAP-n</code>。</td><td class="out"><b>gap_inventory.json</b><br>check: gap_inventory</td></tr>
+
+          <tr class="group"><td colspan="4">裁判线</td></tr>
+          <tr><td class="id">J1</td><td class="who"><span class="k ka">agent</span> ×N+shared</td><td>只看事实库写裁判用例，覆盖每个响应、业务规则与写后读回；用例写在 <code>judge/cases/&lt;包&gt;/</code>。shared 写 fixtures、identities、faults、uncovered，并跑整份资产检查。</td><td class="out"><b>judge/cases/**</b> · fixtures · identities · faults<br>check: judge_cases_pkg / judge_assets</td></tr>
+          <tr><td class="id">J2</td><td class="who"><span class="k kd">调度器</span> <span class="k">锁 docker-rie</span></td><td>在单体上跑全部用例与故障场景，记录期望输出、掩码、调用记录和按用例覆盖率。</td><td class="out"><b>oracle_expected.json</b> · fault_baseline_monolith.json · masks.json · coverage_monolith</td></tr>
+          <tr><td class="id">RC</td><td class="who"><span class="k kd">调度器</span></td><td>对账：用例里的 predicted 与单体实际输出逐项比较，列出差异。</td><td class="out"><b>judge/reconcile.json</b> · reconcile_classes.json</td></tr>
+          <tr><td class="id">J3</td><td class="who"><span class="k ka">agent</span></td><td>给每条差异分类：事实错误退回 F2，用例错误退回 J1，需要裁定就开规格讨论室。</td><td class="out"><b>reconcile_classes.json</b><br>check: reconcile_classified</td></tr>
+          <tr><td class="id">J4</td><td class="who"><span class="k ka">agent</span></td><td>白盒补测：读源码找事实库与用例都没覆盖的臂，补用例、故障场景和 spec_issues。</td><td class="out"><b>judge/cases/**</b> · faults · spec_issues<br>check: judge_assets + j4_report</td></tr>
+          <tr><td class="id">J5</td><td class="who"><span class="k kd">调度器</span></td><td>用单体的变异体检验裁判强度：每个变异体都该被冻结前的用例抓住。</td><td class="out"><b>judge/judge_validation.json</b></td></tr>
+          <tr><td class="id">J5C</td><td class="who"><span class="k ka">agent</span></td><td>把没被抓住的变异体逐条分类：等价变异（equivalent）还是裁判缺口（gap）。</td><td class="out"><b>mutant_classes.json</b><br>check: mutant_classes</td></tr>
+          <tr><td class="id">J6</td><td class="who"><span class="k kd">调度器</span></td><td>冻结裁判：写出 manifest 与逐文件哈希。此后 <code>judge/</code> 谁都不能改。</td><td class="out"><b>judge/judge_manifest.json</b><br>check: judge_unchanged（之后所有任务）</td></tr>
+
+          <tr class="group"><td colspan="4">设计 / 实现线</td></tr>
+          <tr><td class="id">A1</td><td class="who"><span class="k ka">agent</span></td><td>设计：蓝图（函数、表、队列、认证、网关）、DECISIONS、适配映射；逐条决定缺口，并填 <code>impl_packages</code> 让 D1/I1 按领域展开。</td><td class="out"><b>blueprint.json</b> · DECISIONS.md · adapter_map.json<br>check: gate_blueprint + judge_unchanged</td></tr>
+          <tr><td class="id">D1</td><td class="who"><span class="k ka">agent</span> ×N</td><td>写增量测试：裁判看不到的行为（幂等、消息、部分失败、事务）。每个领域写自己的事件目录与 <code>delta-&lt;领域&gt;-*</code> 故障场景。</td><td class="out"><b>verification/delta/**</b><br>check: delta_assets_domain</td></tr>
+          <tr><td class="id">I1</td><td class="who"><span class="k ka">agent</span> ×N+shared</td><td>写 Lambda 代码：每个领域只写自己函数的目录，shared 写共享层；实现必须过包级 gate 且不动冻结裁判。</td><td class="out"><b>output/lambdas/&lt;app&gt;/&lt;fn&gt;/**</b> · layers<br>check: gate_code_pkg + judge_unchanged</td></tr>
+          <tr><td class="id">I2a/b/c</td><td class="who"><span class="k ka">agent</span> ×3</td><td>分三段写 SAM 模板：part1、part2、合并；模板不合法就不能进一致性检查。</td><td class="out"><b>output/template.yaml</b><br>check: template_part1/2 + gate_template</td></tr>
+          <tr><td class="id">I3</td><td class="who"><span class="k ka">agent</span></td><td>三方一致性交叉检查（蓝图为纲、模板与代码对齐），并对 suspect 项做语义复核。</td><td class="out"><b>consistency_report.json</b><br>check: gate_final + consistency_pass</td></tr>
+
+          <tr class="group"><td colspan="4">验证 / 收尾线</td></tr>
+          <tr><td class="id">V1</td><td class="who"><span class="k kd">调度器</span></td><td>用裁判夹具经 adapter_map 翻译后校验目标的读语义：目标与单体回答同一批请求。</td><td class="out"><b>verification/check_adapter.json</b></td></tr>
+          <tr><td class="id">V2</td><td class="who"><span class="k kd">调度器</span></td><td>在目标上跑冻结裁判（RIE + judge-run），逐 case、逐步、逐表比较。</td><td class="out"><b>verification/verdict_judge.json</b></td></tr>
+          <tr><td class="id">V3</td><td class="who"><span class="k ka">agent</span></td><td>跑增量测试并分诊失败：代码错、测试错、还是不该判；产出 delta 判决与 B0 故障基线。</td><td class="out"><b>verdict_delta.json</b> · fault_baseline_B0.json<br>check: verdict_delta + judge_unchanged</td></tr>
+          <tr><td class="id">B0</td><td class="who"><span class="k kd">调度器</span></td><td>打 B0 标签（代码、裁判、资产）；异常处理者做一次阶段复查，确认可以进入优化。</td><td class="out"><b>tag B0</b> · 阶段复查 case</td></tr>
+          <tr><td class="id">O</td><td class="who"><span class="k ka">agent</span></td><td>逐改动优化：代理指标初筛 → RIE 判决 → kept / reverted；只有 <code>M2S_AWS=1</code> 且人确认费用时才做 AWS 实测。</td><td class="out"><b>perf_report.json</b> · perf/verdicts/**<br>check: s5_report + judge_unchanged</td></tr>
+          <tr><td class="id">C1</td><td class="who"><span class="k kd">调度器</span></td><td>终局检查：gate(final) + 全量裁判 + 全量增量测试；写最终报告。</td><td class="out"><b>output/final_report.md</b><br>check: final</td></tr>
+          <tr><td class="id">C2</td><td class="who"><span class="k kd">调度器</span></td><td>把运行归档为证据包（含 coord/ 与判决摘要），之后才允许拆工作区。</td><td class="out"><b>evidence/&lt;app&gt;/&lt;run&gt;/</b><br>check: archive_run</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="sec-head">
+      <div class="sec-label">05 · split</div>
+      <h2>两种并行粒度</h2>
+      <p class="sec-intro">拆分只改变“谁写哪块”，不改变每步的检查。子任务都是普通 agent 任务，只是 scope 更窄、函数列表更小；shared 子任务在所有子任务之后收口。</p>
+    </div>
+    <div class="t-wrap">
+      <table>
+        <thead>
+          <tr><th style="width:70px">族</th><th style="width:110px">维度</th><th>子任务写什么</th><th style="width:120px">并行？</th><th style="width:120px">收口</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="id">F2</td><td>按工作包</td><td>各自包的事实库报告；所有子任务写同一个 <code>storage/analysis_report.json</code>。</td><td>串行（scope 冲突）</td><td><code>F2-shared</code> 汇总校验</td></tr>
+          <tr><td class="id">G2</td><td>按工作包</td><td><code>storage/gaps/&lt;包&gt;.json</code>，互不重叠。</td><td>并行</td><td><code>G2M</code> 合并</td></tr>
+          <tr><td class="id">J1</td><td>按工作包</td><td><code>judge/cases/&lt;包&gt;/</code>，每个包只写自己的用例文件。</td><td>并行</td><td><code>J1-shared</code> 写 fixtures/identities/faults + 整份检查</td></tr>
+          <tr><td class="id">D1</td><td>按领域</td><td><code>verification/delta/events/&lt;fn&gt;/</code> 与 <code>delta-&lt;领域&gt;-*</code> 故障场景。</td><td>并行</td><td>V3 全量跑</td></tr>
+          <tr><td class="id">I1</td><td>按领域</td><td><code>output/lambdas/&lt;app&gt;/&lt;fn&gt;/</code>，每函数目录一个领域。</td><td>并行</td><td><code>I1-shared</code> 共享层</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note">并行的上限是三件事的交集：3 个 worker 槽、scope 不重叠、资源锁可用。F2 的子任务虽然按包拆开，但事实库是单文件，实际仍串行；真正并行的是 G2、J1、D1 和 I1。裁判冻结之后，任何拆分都不允许碰 <code>judge/</code>。</div>
+  </section>
+
+  <section class="section">
+    <div class="sec-head">
+      <div class="sec-label">06 · state</div>
+      <h2>现在走到哪</h2>
+    </div>
+    <div class="status-grid">
+      <div class="card done">
+        <div class="kicker">done · 2026-11-16</div>
+        <h3>M4 已验收</h3>
+        <p><code>bookstore-m4</code> 与 <code>airline-m4</code> 都跑到 C2，<code>dispatcher exit 0</code>，证据归档在 <code>evidence/bookstore/bookstore-m4</code> 与 <code>evidence/airline-booking/airline-m4</code>。airline-m4 终局裁判：cases 34 pass / 7 migration-change / 14 dropped，fault runs 21 pass / 4 mc / 4 dropped / 2 ruled；delta 16/16；<code>gate(final)</code> PASS。</p>
+      </div>
+      <div class="card next">
+        <div class="kicker">next</div>
+        <h3>两件事等人</h3>
+        <p><b>W4.7 真实 AWS 实测</b>：工具已就绪，默认关闭，运行前需要确认费用。<b>M5 对抗评审室</b>：触发条件已满足——同一 harness 下有两个应用归档，且 OpenHarness 刚升级（print 流带 usage）；M5 本身是评审流程，不是改 harness。</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    按 <code>coord/templates/v2-split.yaml</code>、<code>coord/dispatcher.py</code> 与 2026-11-16 的 M4 归档绘制。每个框的下排小字是任务的完成检查或关键产出。
+  </footer>
+</div>

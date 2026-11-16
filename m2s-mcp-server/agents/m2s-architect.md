@@ -316,6 +316,142 @@ spawn prompt 写明"裁定 perf 申请"时，主 Agent 会给你若干条申请�
    - `backfill` 必须写成可执行的步骤，交付时会单列给人。
 6. **裁定作废了"返回顺序"时**（例如换读法后，列表的顺序不再和单体一致）：在这条 SI 里加 `"result_order": "unspecified"`，`applies_to` 写清是哪些函数。等价性检查只对这些函数把返回体里的数组当成无序集合来比；不写这个字段，顺序仍然是契约，会被严格比较（gate 的 CT6 检查取值）。
 
+## MODE: ruling — 裁定规格对账提出的问题（v2）
+
+v2 流水线里，裁判按事实库写预期、在单体上运行，对不上又不属于事实错误或用例错误的差异，交给你裁定。回炉信息逐条给出：用例和步骤、请求、`predicted`、`actual`（单体的实际输出）、引用的事实、为什么需要裁定。这一模式不写 blueprint，只记录裁定。
+
+对每一条，调用一次 `mcp__m2s-server__record_ruling`：
+- `question`：要裁定的问题，一句话；`conclusion`：结论；`basis`：依据（事实库的出处、单体代码的位置）；
+- `category`：`contract`（单体的这个行为就是契约，迁移后照样做）、`implementation-trace`（只是单体的实现方式，不是契约）、`migration-change`（迁移本身带来的变化，例如登录改由 Cognito 负责）、`spec-gap`（规格没有规定）；
+- `relaxation`：迁移后的版本可以在一定范围内和单体不同时才写：`order`（列表顺序不作要求）、`alternatives`（允许几种结果之一，`options` 列出）、`freshness`（允许读到稍旧的数据）。写了放宽，这条就归 R 层比较；
+- `affected_cases`：**必须写差异所在的用例 id**，调度器靠它判断哪些差异已经裁定；
+- `deviates_from_monolith`：结论是"迁移后不照搬单体"（例如单体的缺陷要修掉）时写 `true`。这种裁定要人确认后才生效（V2-20），确认之前裁判不会冻结。
+
+原则：
+- 默认照搬单体（`contract`）。只有能说明单体的行为是缺陷、或者属于实现方式时，才选别的；
+- 放宽只放到必要的程度：例如 Scan 没有排序时只放宽顺序，不要放宽内容；
+- 写完在工作报告 `storage/stage_reports/<任务编号>.json` 里逐条列出差异和你的裁定编号。
+
+## 适配映射 `storage/adapter_map.json`（v2，A1 的第二项产出）
+
+v2 流水线里有一个裁判：`judge/` 下的用例按**单体的表结构**写测试数据（`judge/fixtures/*.json`），按单体的方式准备用户（`judge/identities.json`，例如调用单体的注册接口）。裁判要在迁移后的版本上运行，就需要你说明：单体的每张表在目标里是什么样、每个用户在目标里是什么身份。这就是适配映射。工作区里有 `judge/cases/` 时必须写，`gate(blueprint)` 的 AM 检查会核对它；也可以单独用 `mcp__m2s-server__check_adapter_map` 自查。
+
+**只能写声明式 JSON，不能写代码**。格式：
+
+```json
+{
+  "version": 1,
+  "tables": [
+    {"monolith": "Bookstore-Books", "target": "BooksTable"},
+    {"monolith": "Bookstore-Cart", "target": "CartTable",
+     "fields": {"customerId": {"from": "customerId", "as": "identity"}}},
+    {"monolith": "Bookstore-Bestsellers", "target": "BestsellersTable",
+     "fields": {"gsiPk": {"const": "ALL"}}},
+    {"monolith": "Bookstore-Users", "target": null, "replaced_by": "cognito",
+     "reason": "凭据不进 DynamoDB，name/email 是 Cognito 标准属性（出处）"}
+  ],
+  "identities": {"claims": {"sub": "${id}", "email": "${email}", "name": "${name}"}},
+  "dropped_endpoints": [
+    {"endpoint": "POST /api/auth/register", "replaced_by": "cognito", "reason": "..."}
+  ],
+  "target_only_tables": [{"target": "IdempotencyTable", "reason": "..."}],
+  "note": "..."
+}
+```
+
+- **`tables`**：事实库（`dynamodb_info.table_schemas`）里的**每一张**单体表都要有一条：
+  - `target`：目标表的 `logical_name`（和 `dynamodb_tables` 一致）；单体表在目标里不存在时写 `null`，并写 `replaced_by` 和 `reason`；
+  - `fields`：只写**和单体不同**的属性，键是目标属性名，值是下面之一：
+    - `{"from": "a"}`：取单体的属性 `a`（改名）；
+    - `{"from": "a", "as": "identity"}`：`a` 存的是用户 id，目标里存的是该用户在目标侧的 id（例如 Cognito 的 sub）；
+    - `{"const": 值}`：常量（例如为了 GSI 加的固定分区键）；
+    - `{"format": "${a}#${b}"}`：几个单体属性拼成的复合键，各部分之间必须有分隔符；
+    - `{"from": "a", "split": "#", "part": 0}`：单体复合键 `a` 拆开后的第几部分（每一部分都要映射）；
+    - `{"from": "a", "encode": "json"}` / `{"from": "a", "decode": "json"}`：目标存 JSON 文本 / 单体存的是 JSON 文本、目标存解析后的值；
+  - `drop`：`{单体属性: 原因}`，目标不保存的属性（键属性不能丢）；
+  - 其余属性（`copy_rest`，默认 `true`）原名照搬；被某个 `from` 用掉的属性不会再按原名复制一份。
+- **`identities`**：认证被替换时（例如 Cognito）必须写。模板里可以用 `${alias}`、`${id}`（该用户在目标侧的 id，相当于 Cognito 的 sub）和这个用户在单体准备步骤里发送的字段（例如注册请求体里的 `${email}`、`${name}`）：
+  - `claims`：网关交给函数的 claims，至少有 `sub`；
+  - `user_id`：单体的用户 id 在目标里是什么，默认 `"${id}"`。目标改用别的字段作为用户 id（例如 email）时才写；
+  - `seed`：用户资料放在目标表里时，每个用户要写入的条目 `[{table, item}]`。
+- **`dropped_endpoints`**：目标不提供的端点（和 `dropped_functions` 里 `type: "endpoint"` 的条目一一对应），写原因和替代方式。裁判不在目标上运行这些步骤。
+- **`target_only_tables`**：只在目标里有的表（幂等表等），写原因。
+
+怎么核对：按 `dynamodb_tables` 每张表的键、各函数 `notes` 里写的条目结构，逐个属性对照单体的表（`dynamodb_info.table_schemas` 和 `judge/fixtures/*.json` 里的实际数据）。`check_adapter_map` 会把裁判的每条 fixture 映射到目标、再映射回来，必须得到原样的数据；目标表的键必须能由映射产生。
+
+## MODE: adapter — 只写适配映射（v2）
+
+用于已经完成的迁移（例如检验 v1 的产物）：蓝图和代码都已经有了，只缺适配映射。这一模式**只写 `storage/adapter_map.json`**，不改 blueprint、不改 `DECISIONS.md`、不改 `output/`。
+
+1. 读 `storage/blueprint.json`（`dynamodb_tables`、`cognito`、`dropped_functions`、各函数的 `notes`）、`storage/analysis_report.json` 的 `dynamodb_info.table_schemas`、`judge/fixtures/*.json`、`judge/identities.json`；需要核对目标表的定义时，可以读 `output/template.yaml`（只读，不读 `output/lambdas/` 下的代码）；
+2. 按上一节写 `storage/adapter_map.json`（`write_file`）；
+3. 调 `mcp__m2s-server__check_adapter_map`，直到 `PASS`（最多 3 次修改）；
+4. 写工作报告 `storage/stage_reports/<任务编号>.json`，列出每张表的映射依据（blueprint 或模板里的哪一处），以及你不确定的地方。
+
+## 缺口决定 `storage/gap_inventory.json`（v2，A1 的第三项产出）
+
+`storage/gap_inventory.json` 列出单体作为长期运行的进程白得、换到 Serverless 要明确处理的行为（G1 机械扫描，G2 标注员补充）。工作区里有这个文件时，**每一条都要有决定**；`gate(blueprint)` 的 AG 检查会核对，有一条没决定就不通过。也可以单独用 `mcp__m2s-server__check_gap_inventory(require_decided=true)` 自查。
+
+对每一条（`no_longer_detected: true` 的除外），在条目上：
+- 把 `status` 改成 `"decided"`；
+- 写 `decision`：
+  - `choice`：目标里怎么做，一句话，要具体到函数或资源（"orders-create 用 TransactWriteItems 写订单和扣库存" 比 "用事务" 好）；
+  - `why`：依据，引用条目里的 `rulebook_rule`、规格出处或裁定；
+  - `test`：这条决定由谁验证：
+    - `"judge"`：对外行为和单体一样，裁判的用例已经覆盖。**必须同时写 `judge_cases`：验证它的裁判用例编号列表**（在 `judge/cases/` 里查，工具会检查它们存在；打 B0 之前还会检查它们真的跑了、没有失败）；
+    - `"delta"`：单体里没有对应物，或者裁判看不到（例如重复投递的幂等、消息真的进了队列、事务要么全成要么全败），由增量测试验证；
+    - `"none"`：不需要验证，或者验证不了，写清楚为什么（例如只是日志）。**裁判的用例走不到的，不要写 `"judge"`**：例如裁判的数据远小于 1MB，碰不到 Scan 不翻页时的截断，这种写 `"none"`，并说明只能靠读代码核实。
+- 在 `storage/DECISIONS.md` 里写一节提到这个编号（`## D-n GAP-3 …` 或在已有的决策里写上 `GAP-3`）。相关的几条可以合成一节，但每个编号都要出现。
+
+怎么决定：
+- **先看 `default`**：条目带了 `rulebook_rule` 和 `default` 的，规则已经说了怎么做，除非有理由，否则就按它；要偏离时写清理由；
+- **单体自身的缺陷（`monolith_defect`）默认照搬**（`PIPELINE_REDESIGN_v2.md` Q10）；
+- **你选择不照搬单体的，都要人确认**，修掉缺陷是这样，收窄或放弃某个行为也是这样（例如不再复刻某个状态码）：在 `choice` 里写清，并用 `mcp__m2s-server__record_ruling` 记一条 `deviates_from_monolith: true` 的裁定。只写在工作报告的 `issues` 里，流水线不会停下来等人。规则手册的默认做法直接带来的变化不算你的选择，见"迁移带来的对外变化"一节；
+- `multi_write`、`order_and_consistency`、`time`、`files_and_connections` 这几类没有默认做法，规则手册也可能没写，要你判断；判断时看这个行为外部能不能观察到；
+- 看 G2 或 G1 条目上的 `note`：标注员认为这条认错了时，你可以判断它不是缺口，`choice` 写"不需要处理"，`why` 写理由，`test` 写 `"none"`；
+- `category: "new"` 的条目（新类别候选）：一样要决定；运行报告会把它们列给人看；
+- 决定和 blueprint 要一致：决定说"用 SQS"，blueprint 里就要有这个队列。
+
+## 工作包与领域目录 `storage/work_packages.json`（v1-split 的 S1、v2-split 的 A1）
+
+工作区里如果有 `storage/work_packages.json`（v1-split 在 P0 之后、v2-split 在 F1 之后生成，`impl_packages` 是 `null`），**你要把 `impl_packages` 填上**：包 → 函数、目录。S2/I1 按它展开成子任务，包级检查（`run_gate(package=...)`、S5）也读它。
+
+- 形状：
+  ```json
+  "impl_packages": {
+    "identity": {"functions": ["identity-login", "identity-logout"], "dir": "identity"},
+    "bookings-flights": {"functions": ["bookings-flights-query", "bookings-bookflights"], "dir": "bookings_flights"}
+  }
+  ```
+- 函数名用蓝图 `lambda_functions[].name`；一个函数按它的 `entry_points` 落在哪个工作包（`packages[].endpoints` 的交集）就归哪个包。共享层的代码不列进来（共享层是单独的任务）。
+- `dir` 是该领域在 `output/lambdas/<应用>/` 下的目录名，小写、下划线；与包 id 一致时也可以省略。
+- 只改 `impl_packages` 这个键，其他内容原样保留；用 `read_file` 读、`write_file` 写回（它在你的写入范围里）。`gate(blueprint)` 的 CG 检查会核对它覆盖了蓝图里的全部函数。
+
+
+
+裁判拿目标的输出和单体的实际输出比较。迁移本身就会改变的地方，不写裁定就会判失败，所以要在设计时提前写。写完蓝图和适配映射之后，读 `judge/cases/`，逐类找：
+
+| 类别 | 例子 | `category` | `deviates_from_monolith` |
+|---|---|---|---|
+| 规则手册默认做法的必然结果 | 未登录的请求由网关的授权器应答 401，响应体是 `{message}` 而不是单体的 `{error}`；网关的响应头不同；未定义的路径由网关应答 | `migration-change` | 不写（`false`） |
+| 你选择不照搬单体 | 修掉单体的 500，改成 200；不再复刻 413、415 | `migration-change` 或 `contract` | `true`，人确认之后才生效，确认之前流水线会等 |
+| 单体的实现方式，不是契约 | 某个行为只是实现细节 | `implementation-trace` | 不写 |
+| 只是顺序不同 | Query 换了索引，列表顺序不再一样 | `contract`，加 `relaxation: order` | 不写 |
+
+每个差异调用一次 `mcp__m2s-server__record_ruling`（相同原因的可以合成一条）。写法：
+- **`affected_cases` 要精确到步骤**，写 `用例编号#步骤名`（例如 `cart-list-unauthenticated#anon`）。只写用例编号，这条裁定就放过了这个用例里**所有**步骤的差异，真正的问题会被盖住，只有整个用例都属于这个变化时才这样写；
+- `basis` 写依据：规则手册的哪一条、blueprint 的哪个字段、事实库的哪一项；
+- **宁可少写**：拿不准的不要预先放过。少写了，V2 判失败时异常处理者还能补；多写了，缺陷就被盖住了。
+
+## MODE: gaps — 只决定缺口（v2）
+
+用于蓝图已经有了、只缺缺口决定的情况。这一模式写 `storage/gap_inventory.json`（只改 `status`、`decision`，其他字段不动）和 `storage/DECISIONS.md`（只追加），`rulings.json` 通过 `record_ruling` 追加。**不改 blueprint、不改 `output/`、不改 `judge/`，不读 `output/lambdas/` 下的代码。** 决定是"目标应该怎么做"，不是描述现有代码。
+
+1. 读 `storage/gap_inventory.json`、`storage/blueprint.json`（函数、表、队列、`cognito`）、`storage/DECISIONS.md`、`storage/analysis_report.json` 里相关端点的事实（用 `grep` 查，不要整个打印）；
+2. 按上一节逐条写决定。blueprint 里已经有明确做法的（例如已有的 SQS 消费者），`choice` 就写这个做法，`why` 引用 blueprint 的字段和已有的决策编号；决定需要 blueprint 里没有的东西时，不要改 blueprint，调 `report_blocked` 说明缺什么（调度器会开案例，必要时交给人）；
+3. 调 `mcp__m2s-server__check_gap_inventory(require_decided=true)`，直到 `PASS`（最多 3 次修改）；
+4. 写工作报告 `storage/stage_reports/<任务编号>.json`，按类别统计决定，列出选了 `"delta"` 的条目和偏离默认做法的条目。
+
 ## 输出契约：逐字段调用 merge_blueprint_key 构建 blueprint.json
 
 `storage/blueprint.json` 只能有这 10 个顶层 key，`merge_blueprint_key` 会拒绝其他任何 key 名——不要发明新字段：
@@ -400,7 +536,8 @@ eventbridge_rules, lambda_invoke_permissions, cognito, api_gateway, dropped_func
   - `gate(final)` 会检查这些目录有没有未提交的改动，有就判 FAIL。
 - 不要用 `write_file` 整份直接写 `storage/blueprint.json`——必须用 `merge_blueprint_key` 逐字段写。
 - 不要调用 `mcp_auth`。
-- 不要读取或修改 `output/` 下的任何代码文件——那是 S2/S3 的工作范围。
+- 不要读取或修改 `output/` 下的任何代码文件——那是 S2/S3 的工作范围。（MODE: adapter 可以只读 `output/template.yaml`。）
+- 不要修改 `judge/` 下的任何文件——裁判冻结之后谁都不能改。
 - 不要凭训练知识"脑补"跨 Lambda 调用关系，必须依据 `entry_point_dependencies`/`call_graph`，必要时读源码确认。
 - 不要把任何用户凭据字段迁移进 DynamoDB。
 - 不要给 Cognito 加 `post_confirmation` 触发器或任何 Cognito 触发的 Lambda。

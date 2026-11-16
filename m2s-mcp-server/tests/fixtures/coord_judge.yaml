@@ -1,0 +1,46 @@
+# The v2 judge line for dispatcher tests (PIPELINE_V2_PLAN.md §4.5, N1.5):
+# F2 -> J1 -> J2 run_monolith -> RC reconcile_spec -> J3 classify -> J6 freeze.
+name: judge-mini
+max_attempts: 3
+max_rework_rounds: 2
+max_reconcile_rounds: 2
+tasks:
+  - id: F2
+    role: m2s-spec-annotator
+    start: recheck
+    scope: [storage/analysis_report.json, storage/stage_reports/F2.json]
+    check: [check_provenance]
+
+  - id: J1
+    role: m2s-verifier
+    mode: J1
+    deps: [F2]
+    deny_read: [monolith, judge_outputs]
+    scope: [judge/**, storage/stage_reports/J1.json]
+    check: [judge_assets]
+
+  - id: J2
+    runner: dispatcher
+    action: run_monolith
+    deps: [J1]
+    scope: [judge/**]
+
+  - id: RC
+    runner: dispatcher
+    action: reconcile_spec
+    deps: [J2]
+    scope: [judge/reconcile.json, judge/reconcile_classes.json]
+
+  - id: J3
+    role: m2s-verifier
+    mode: J3
+    start: recheck
+    deps: [RC]
+    scope: [judge/reconcile_classes.json, judge/mask_rules.json, storage/stage_reports/J3.json]
+    check: [reconcile_classified]
+
+  - id: J6
+    runner: dispatcher
+    action: freeze_judge
+    deps: [J3]
+    scope: [judge/judge_manifest.json]

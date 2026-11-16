@@ -29,6 +29,7 @@ from preprocessor.static_analyzer import run_static_analysis  # noqa: E402
 import spec_extract
 import global_middleware  # noqa: E402
 import data_store  # noqa: E402
+import runtime_signals  # noqa: E402
 
 
 def analyze(monolith_root: str, workspace: str) -> dict[str, Any]:
@@ -46,15 +47,19 @@ def analyze(monolith_root: str, workspace: str) -> dict[str, Any]:
     storage_dir.mkdir(parents=True, exist_ok=True)
 
     report = run_static_analysis(monolith_path)
-    spec_summary = spec_extract.enrich_report(report, monolith_path)
-    # app-wide middleware that changes every response (CORS, security headers,
-    # header hooks): outside every route, so route-level extraction misses it
-    report["global_middleware"] = global_middleware.detect(monolith_path)
     # a non-DynamoDB data store (MongoDB): its access patterns, which S1 must
-    # map onto DynamoDB tables (gate DM1/DM2)
+    # map onto DynamoDB tables (gate DM1/DM2). Detected before the spec fields
+    # so each endpoint's data_access also shows the patterns it reaches (v3 M2).
     store = data_store.detect(monolith_path)
     if store:
         report["source_data_store"] = store
+    spec_summary = spec_extract.enrich_report(report, monolith_path, source_data_store=store)
+    # app-wide middleware that changes every response (CORS, security headers,
+    # header hooks): outside every route, so route-level extraction misses it
+    report["global_middleware"] = global_middleware.detect(monolith_path)
+    # what a long-running process gets for free (process state, time, files, ...):
+    # the signals of the gap scan (v2 G1)
+    report["runtime_signals"] = runtime_signals.scan(monolith_path)
 
     # Mirror static_analyzer.main(): pop symbol_table, write it separately.
     # Nested under storage/ to match M2S's own storage/-output/ convention,

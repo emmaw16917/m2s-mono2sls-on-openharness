@@ -84,11 +84,9 @@ Outputs:
 **你不手写模板的原始内容**（那是 S3a/S3b 已经写好的 `template.part1.yaml`/`template.part2.yaml`），但你负责把它们组装成最终的 `template.yaml`、跑通验证、并且自己把发现的问题改掉——这是这次调整后新加的职责，你不能只做组装+校验就交差。
 
 1. 确认 `<WS>/output/template.part1.yaml` 和 `template.part2.yaml` 都存在（`glob`/`read_file` 检查一下）；缺了任何一个说明 S3a/S3b 没做完，直接 `STAGE_BLOCKED`，不要自己临时补写内容。
-2. 用 Bash 跑合并命令（把 `MERGE`/`WS` 换成 spawn prompt 里给出的实际绝对路径——`MERGE` 是
-   仓库里 `m2s-mcp-server/m2s_merge.py` 的绝对路径，`m2s_merge.py` 只用标准库，直接用当前
-   环境的 `python`/`python.exe` 跑，不需要指定某个特定环境的解释器）：
+2. 用 Bash 跑合并命令（把 `WS` 换成 spawn prompt 里给的绝对路径）：
    ```
-   python "MERGE" template "WS"
+   "C:\Users\36029\miniconda3\envs\mono2sls\python.exe" "D:\Emma\MyLab\Mono2SLs\m2s-mcp-server\m2s_merge.py" template "WS"
    ```
    这一步是纯文本拼接 `template.part1.yaml` + `template.part2.yaml`，产出 `output/template.yaml`——不涉及你自己编造内容，放心跑。
 3. **自查循环**：

@@ -116,12 +116,77 @@ model: inherit
 - 检查整体：`mcp__m2s-server__check_provenance()`。
 - **不要调用 `mcp_auth`**：`m2s-server` 是本地进程，不需要认证。
 
+## 共享代码（`storage/work_packages.json` 的 `shared_code`）
+
+工作区里如果有 `storage/work_packages.json`（M2 起由调度器在 P0 之后生成），它的 `shared_code` 列出了被两个以上工作包共用的函数（会话检查中间件、数据访问层等）。这类代码**只标注一次**，不要在每个端点上各写一遍：
+
+- `F2:shared` 任务：对 `shared_code` 里的每个条目读源码，用 `annotate_shared_entry(entry_json)` 写一条 `analysis_report.shared_rules` 记录：
+  ```json
+  {"id": "shared/auth-middleware", "file": "bookstore/middleware/auth.js",
+   "function": "authMiddleware", "rule": "...", "kind": "authorization",
+   "source": [{"file": "...", "line": 17, "symbol": "authMiddleware"}],
+   "origin": "llm", "used_by": ["/api/cart", "/api/orders"]}
+  ```
+  `id` 用 `shared/<小写-slug>`，`used_by` 照抄 `shared_code` 里的 `used_by`。
+- 其他标注员：在端点的 `business_rules` 里引用它，不要重复写规则正文：
+  ```json
+  {"rule": "ref: shared/auth-middleware", "source": [{"file": "...", "line": ..., "symbol": "authMiddleware"}], "origin": "llm"}
+  ```
+  引用项不需要 `kind`（从共享条目继承）；`source` 仍然要写这个端点上能看到该中间件的依据。`check_provenance` 会检查每个 `ref:` 都指向存在的共享条目。
+
 ## 输入契约
 
 - `<WS>/storage/analysis_report.json`（P0 产出，含脚本提取的规格字段）
 - `<WS>/storage/symbol_table.json`（函数级行号，需要时用）
 - `<MONOLITH>` 下的单体源码（只读）
 - 回炉场景：spawn prompt 里会附带上一次的工作报告和 `check_provenance` 报告全文，先读懂上次哪里没过。
+
+## 修正模式（v2：规格对账发现事实错误）
+
+v2 流水线里，裁判用例先按事实库写预期，再在单体上运行；两者对不上、并且判定"单体就是这样、事实库写错了"的，会交回给你修正（回炉信息来自 J3）。每条差异给出：用例和步骤、请求、`predicted`（按事实库推出的预期）、`actual`（单体的实际输出）、引用的事实（`fact_refs`）、分类的理由。
+
+1. 逐条到单体代码里核实：`actual` 是怎么产生的？事实库里哪一项写错了或者漏了（`responses` 的某一臂、`when`、`body`、`business_rules`、`request` 字段的类型）？
+2. 用 `annotate_entry_point` 改那一项（照常要有出处）。**只改差异点到的事实**，其他事实不要动；
+3. 你核实下来认为事实库没错、是单体的运行结果不对劲（例如请求本身写错了），不要硬改事实库：在工作报告的 `issues` 里写清楚是哪条差异、为什么；
+4. 照常 `check_provenance()` 自查到 `PASS`，工作报告的 `fixes` 列出每条差异改了哪一项。
+
+## MODE: G2 — 补充缺口清单（v2）
+
+`storage/gap_inventory.json` 是"单体作为一个长期运行的进程白得的东西，换到 Serverless 就要明确处理"的清单。调度器的 `gap_scan` 已经按事实库的机械信号写好了（`source: "G1"`）。你只做两件事：**核对机械信号有没有认错**，**补上信号认不出来的缺口**。这一模式不改事实库。
+
+要补的是这些类型（代码能证明才写）：
+
+| 类别 `category` | 机械信号认不出的例子 |
+|---|---|
+| `multi_write` | 写操作分散在几个函数里，事实库的 `data_access` 只记到一部分；失败时前面的写已经生效 |
+| `process_state` | 闭包里的计数器或限流状态、挂在 `app` 对象上的数据、请求之间共享的对象 |
+| `fire_and_forget` | 回调或 Promise 链上的副作用，失败不影响响应 |
+| `order_and_consistency` | 依赖 Scan 返回顺序、依赖"刚写完就能读到"（强一致读被默认读替换时会变） |
+| `time` | 依赖进程时区、依赖进程启动时间、过期判断 |
+| `global_middleware` | P0 漏掉的全局行为：统一错误处理（把异常变成某种响应）、404 处理器、body 解析的上限 |
+| `auth_semantics` | 令牌过期时间、刷新、谁可以看谁的数据这类不在路由上的规则 |
+| `files_and_connections` | 连接池、启动时一次性的初始化、读本地文件 |
+| `monolith_defect` | 单体自身的缺陷：竞态（先读后写没有条件）、错误被吞掉、分页不完整 |
+| `new` | 不属于以上任何一类：写 `candidate_name`（新类别的名字），人会看 |
+
+规则：
+- 新增的条目用 `write_file` 追加到 `gaps` 列表，保留所有已有条目。格式：`{"id": "GAP-<下一个编号>", "key": "g2:<类别>:<简短标识>", "category": ..., "summary": "一句话", "evidence": [{"file", "line", "symbol"}], "endpoints": ["POST /api/orders"], "source": "G2", "status": "open"}`。`rulebook_rule`、`default` 不知道就不写；
+- `evidence` 和其他标注一样会被机械检查：文件带应用名前缀，`symbol` 必须在那一行上下 2 行内逐字出现。`endpoints` 必须和事实库里的写法一致（`方法 路径`）；
+- G1 的条目你认为认错了（例如这个排序根本不影响响应）：不要删除，也不要改 `evidence`，在条目上写 `note` 说明理由，architect 会看；
+- **只写单体现在是什么样，不写迁移后怎么办**。`decision` 是 architect 的事，你不写，`status` 保持 `open`；
+- 不属于"换到 Serverless 就会变"的行为不是缺口。普通的校验规则、普通的业务逻辑已经在事实库里，不要重复。
+
+写完调 `mcp__m2s-server__check_gap_inventory()`，直到 `PASS`（最多 3 次修改）。工作报告写 `storage/stage_reports/<任务编号>.json`，字段照常，`summary` 写明核对了几条、补了几条、每条补的依据。
+
+### 按包拆分时（`v2-split` 模板）
+
+`v2-split` 把 G2 拆成按工作包的子任务，**子任务不写 `storage/gap_inventory.json`**：
+
+- `G2-<包>`：只处理「`endpoints` 全部属于这个包」的缺口。读 `storage/gap_inventory.json`，把属于本包的既有条目（连同你补的新条目）写进 `storage/gaps/<包>.json`，形状 `{"gaps": [...]}`。**本包拥有的既有条目一条都不能漏**（判据：条目 endpoints 非空且全部在本包端点里）。新条目可以不带 `id`（合并任务分配 `GAP-<n>`），但 `key`、`category`、`summary`、`evidence`、`endpoints` 必须齐，`status` 保持 `open`。不要调用 `check_gap_inventory()`，也不要改 `storage/gap_inventory.json`。
+- `G2-shared`：接收没有 `endpoints`、或端点跨包的缺口，写 `storage/gaps/shared.json`；不重复各包已经拥有的条目。
+- `G2M`（调度器任务）：把所有 `storage/gaps/*.json` 合并回 `storage/gap_inventory.json`——既有条目按 `key` 保留原 id、原决定，新条目按包顺序分配 `GAP-<n>`，然后由 `gap_inventory` 检查收口。
+
+子任务的自查：`storage/gaps/<包>.json` 的每个条目都能通过和事实库一致的端点/证据检查；自己的工作报告照常写 `storage/stage_reports/G2-<包>.json`。
 
 ## 自查循环（标注完之后，不要跳过）
 

@@ -158,6 +158,21 @@ Resources:
       KeySchema:
         - AttributeName: userId
           KeyType: HASH
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          TemporaryPasswordValidityDays: 7
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      UserPoolId: !Ref UserPool
 """
 
 GOOD_HANDLER_JS = """\
@@ -882,6 +897,101 @@ def test_run_gate_final_rejects_unfinished_or_failed_report(tmp_path, status):
     assert any(f["check_id"] == "REPORT" and status in f["description"] for f in result["mechanical_failures"])
 
 
+# ---------------------------------------------------------------------------
+# C14 - Cognito settings of blueprint.cognito are in the template
+# ---------------------------------------------------------------------------
+
+
+def _c14(tmp_path, cognito_patch=None, pool_props=None, client_props=None):
+    _write_good_workspace(tmp_path)
+    blueprint = json.loads(json.dumps(GOOD_BLUEPRINT))
+    blueprint["cognito"].update(cognito_patch or {})
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(blueprint), encoding="utf-8")
+    template = gates.load_template(tmp_path / "output" / "template.yaml")
+    if pool_props is not None:
+        template["Resources"]["UserPool"]["Properties"] = pool_props
+    if client_props is not None:
+        template["Resources"]["UserPoolClient"]["Properties"] = {"UserPoolId": "x", **client_props}
+    return gates.check_c14(tmp_path, template)
+
+
+def test_c14_good_workspace_passes(tmp_path):
+    assert _c14(tmp_path) == []
+
+
+def test_c14_refresh_token_left_at_cognito_default(tmp_path):
+    """bookstore-v3a: blueprint 1h / 1h / 7d, template without token settings."""
+    tokens = {"id_token_validity": "1h", "access_token_validity": "1h", "refresh_token_validity": "7d"}
+    found = _c14(tmp_path, {"token_validity": tokens})
+    assert [f["check_id"] for f in found] == ["C14"]  # 1h matches Cognito's default; 7d does not (30 days)
+    assert found[0]["severity"] == "ERROR"
+    assert "RefreshTokenValidity: 7" in found[0]["description"] and "RefreshToken: days" in found[0]["description"]
+    (tmp_path / "storage" / "blueprint.json").write_text(json.dumps(
+        {**GOOD_BLUEPRINT, "cognito": {**GOOD_BLUEPRINT["cognito"], "token_validity": tokens}}), encoding="utf-8")
+    assert gates.run_gate("template", str(tmp_path))["status"] == "FAIL"  # one C14 error is enough
+
+
+@pytest.mark.parametrize("client", [
+    {"RefreshTokenValidity": 7, "TokenValidityUnits": {"RefreshToken": "days"}},
+    {"RefreshTokenValidity": 7},  # CloudFormation's default unit for refresh tokens is days
+    {"RefreshTokenValidity": 168, "TokenValidityUnits": {"RefreshToken": "hours"}},
+])
+def test_c14_refresh_token_set(tmp_path, client):
+    assert _c14(tmp_path, {"token_validity": {"refresh_token_validity": "7d"}}, client_props=client) == []
+
+
+def test_c14_access_token_unit_matters(tmp_path):
+    found = _c14(tmp_path, {"token_validity": {"access_token_validity": "1h"}},
+                 client_props={"AccessTokenValidity": 1, "TokenValidityUnits": {"AccessToken": "days"}})
+    assert len(found) == 1 and "AccessTokenValidity: 1 with TokenValidityUnits.AccessToken: hours" in found[0]["description"]
+
+
+def test_c14_unreadable_duration_and_intrinsic_value_only_warn(tmp_path):
+    found = _c14(tmp_path / "a", {"token_validity": {"refresh_token_validity": "a week"}})
+    assert [f["severity"] for f in found] == ["WARNING"]
+    found = _c14(tmp_path / "b", {"token_validity": {"refresh_token_validity": "7d"}},
+                 client_props={"RefreshTokenValidity": {"Ref": "RefreshDays"}})
+    assert [f["severity"] for f in found] == ["WARNING"]
+
+
+def test_c14_password_policy_mismatch_and_omission(tmp_path):
+    policy = {"MinimumLength": 8, "RequireLowercase": True, "RequireUppercase": True, "RequireNumbers": True,
+              "RequireSymbols": True}
+    found = _c14(tmp_path, pool_props={"Policies": {"PasswordPolicy": policy}})
+    descriptions = " | ".join(f["description"] for f in found)
+    assert len(found) == 2, descriptions  # RequireSymbols differs; TemporaryPasswordValidityDays is missing
+    assert "require_symbols" in descriptions and "no TemporaryPasswordValidityDays" in descriptions
+
+
+def test_c14_no_password_policy_means_cognito_defaults(tmp_path):
+    found = _c14(tmp_path / "a", pool_props={})
+    assert len(found) == 1 and "RequireSymbols = True" in found[0]["description"]  # default policy requires symbols
+    assert _c14(tmp_path / "b", {"password_policy": {"min_length": 8}}, pool_props={}) == []
+
+
+def test_c14_zero_temporary_password_days_may_be_left_out(tmp_path):
+    """CloudFormation only accepts 1-365 days; 0 means the app has no temporary passwords."""
+    policy = {"min_length": 6, "require_uppercase": False, "require_lowercase": False, "require_numbers": False,
+              "require_symbols": False, "temporary_password_validity_days": 0}
+    pool = {"Policies": {"PasswordPolicy": {"MinimumLength": 6, "RequireUppercase": False, "RequireLowercase": False,
+                                            "RequireNumbers": False, "RequireSymbols": False}}}
+    assert _c14(tmp_path, {"password_policy": policy}, pool_props=pool) == []
+
+
+def test_c14_username_attribute_and_missing_pool(tmp_path):
+    found = _c14(tmp_path, {"username_attribute": "email"})
+    assert len(found) == 1 and "UsernameAttributes" in found[0]["description"]
+    _write_good_workspace(tmp_path / "nopool")
+    template = gates.load_template(tmp_path / "nopool" / "output" / "template.yaml")
+    del template["Resources"]["UserPool"], template["Resources"]["UserPoolClient"]
+    assert [f["severity"] for f in gates.check_c14(tmp_path / "nopool", template)] == ["ERROR"]
+
+
+def test_c14_cognito_disabled_is_not_checked(tmp_path):
+    assert _c14(tmp_path, {"enabled": False}, pool_props={}) == []
+
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))
 
@@ -1128,7 +1238,8 @@ def test_at2_template_matches_api_type(tmp_path):
 
 
 def test_at2_http_with_gateway_auth_needs_jwt_authorizer(tmp_path):
-    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "none"}, auth="required")
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "none"},
+                cognito=True, auth="required")
     t = _at_template("http")
     assert _sev(gates.check_api_type_template(ws, t)) == [("AT2", "ERROR")]
     t["Resources"]["A"]["Properties"]["Auth"] = {"DefaultAuthorizer": "J", "Authorizers": {"J": {"JwtConfiguration": {"issuer": "i", "audience": ["a"]}}}}
@@ -1164,3 +1275,61 @@ def test_ph1_perf_hints(tmp_path):
     assert gates.check_contract(_ct_ws(tmp_path, hints=ok)) == []
     bad = [{"kind": "memo", "source": "somewhere", "applies_to": ["x"]}, "str"]
     assert [f["check_id"] for f in gates.check_contract(_ct_ws(tmp_path, hints=bad))] == ["PH1"] * 4
+
+
+def test_at2_cognito_disabled_allows_in_function_auth(tmp_path):
+    ws = _at_ws(tmp_path, {"api_type": "http", "clients": "internet", "api_type_reason": "none"},
+                cognito=False, auth="required")
+    assert gates.check_api_type_template(ws, _at_template("http")) == []
+
+
+def _c7b_template_with_api(default_authorizer: bool) -> dict:
+    api_props = {"StageName": "Prod"}
+    if default_authorizer:
+        api_props["Auth"] = {"DefaultAuthorizer": "J", "Authorizers": {"J": {"JwtConfiguration": {"issuer": "i", "audience": ["a"]}}}}
+    return {"Resources": {
+        "Api": {"Type": "AWS::Serverless::HttpApi", "Properties": api_props},
+        "PublicFunction": {"Type": "AWS::Serverless::Function", "Properties": {"Events": {
+            "E": {"Type": "HttpApi", "Properties": {"ApiId": "Api", "Path": "/public", "Method": "GET"}}}}},
+    }}
+
+
+def test_c7b_skipped_without_default_authorizer(tmp_path):
+    _write_blueprint_only(tmp_path, _public_endpoint_blueprint("none"))
+    assert gates.check_c7b(tmp_path, _c7b_template_with_api(default_authorizer=False)) == []
+
+
+def test_c7b_still_requires_override_with_default_authorizer(tmp_path):
+    _write_blueprint_only(tmp_path, _public_endpoint_blueprint("none"))
+    findings = gates.check_c7b(tmp_path, _c7b_template_with_api(default_authorizer=True))
+    assert [f["check_id"] for f in findings] == ["C7b"]
+
+
+def test_cg_impl_packages_covers_every_function_once(tmp_path):
+    """v3 M3 open issue, fixed in M4: S1/A1 fills impl_packages; when it is
+    filled, the blueprint gate verifies the mapping is complete and unique."""
+    _write_good_workspace(tmp_path)
+    plan = {"version": 1, "packages": [{"id": "todo"}], "impl_packages": {
+        "todo": {"functions": ["todo-list-items", "todo-create-item"], "dir": "todo"}}}
+    (tmp_path / "storage" / "work_packages.json").write_text(json.dumps(plan), encoding="utf-8")
+    assert gates.check_impl_packages(tmp_path) == []
+
+    plan["impl_packages"]["todo"]["functions"] = ["todo-list-items"]
+    (tmp_path / "storage" / "work_packages.json").write_text(json.dumps(plan), encoding="utf-8")
+    errs = gates.check_impl_packages(tmp_path)
+    assert len(errs) == 1 and "todo-create-item" in errs[0]["description"]
+
+    plan["impl_packages"] = {"todo": ["todo-list-items", "todo-create-item", "ghost-fn"]}
+    (tmp_path / "storage" / "work_packages.json").write_text(json.dumps(plan), encoding="utf-8")
+    errs = gates.check_impl_packages(tmp_path)
+    assert any("ghost-fn" in e["description"] for e in errs)
+
+    plan["impl_packages"] = {"todo": ["todo-list-items"], "other": ["todo-list-items", "todo-create-item"]}
+    (tmp_path / "storage" / "work_packages.json").write_text(json.dumps(plan), encoding="utf-8")
+    errs = gates.check_impl_packages(tmp_path)
+    assert any("listed in" in e["description"] for e in errs)
+
+    # null stays legal: the expansion computes a mapping from the blueprint
+    plan["impl_packages"] = None
+    (tmp_path / "storage" / "work_packages.json").write_text(json.dumps(plan), encoding="utf-8")
+    assert gates.check_impl_packages(tmp_path) == []

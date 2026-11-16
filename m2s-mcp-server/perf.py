@@ -19,6 +19,7 @@ candidate is the working tree. Both go through `sam build`.
 
 from __future__ import annotations
 
+import functools
 import json
 import re
 import shutil
@@ -30,7 +31,16 @@ from pathlib import Path
 from typing import Any
 
 import verify
+from coord import locks as coord_locks
 from verify import VerifyError, Model, _run, _env, _git, export_ref, sam_build, TMP_ROOT, VERIFY_TOOLS, PY_RIE_IMAGE, PY312_DIR
+
+
+def _rie_locked(fn):
+    @functools.wraps(fn)
+    def wrapper(workspace, *args, **kwargs):
+        with coord_locks.hold_count("docker-rie", owner="run_rie_verdict"):
+            return fn(workspace, *args, **kwargs)
+    return wrapper
 
 REPO_PERF = Path(__file__).resolve().parent / "perf-rules"
 LEDGER = REPO_PERF / "ledger.json"
@@ -639,6 +649,7 @@ def run_config_verdict(workspace: str, baseline: str = "HEAD") -> dict[str, Any]
     return result
 
 
+@_rie_locked
 def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", latencies: list[int] | None = None,
                     guard_benchmarks: list[str] | None = None) -> dict[str, Any]:
     """Judge the working tree against <baseline> on one benchmark (§3.2).

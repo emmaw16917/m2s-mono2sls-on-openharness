@@ -1,0 +1,296 @@
+# The whole v2 pipeline under the v3 dispatcher (PIPELINE_V2_PLAN.md appendix A, N5.1):
+# the fact base, the judge line and the design line run side by side and meet before I1.
+# v3 M4/W4.2 splits F2, G2, J1 (by work package), D1 and I1 (by the blueprint's
+# domains); F2DONE is the static point "after every F2 child", G2M merges the
+# per-package gap files back into storage/gap_inventory.json.
+#
+#   F1 -> F2 -> F2DONE -> G1 -> G2 -> G2M ----> A1 -> D1 -> I1 -> I2a -> I2b -> I2c -> I3
+#                              \-> J1 -> J2 -> RC -> J3 -> J4 -> J5 -> J5C -> J6 ---/    |
+#                                                  V1 -> V2 -> V3 -> B0 -> O -> C1 -> C2
+#
+# A workspace may start from an earlier run's fact base and frozen judge (copied, with the
+# same facts_sha): F1 keeps the report, F2, J1, J3, J4 and J5C pass their rechecks, and J2,
+# RC and J5 do not run a settled judge again. The judge line then costs no worker.
+#
+# M0 of appendix A is the dispatcher's own setup (harness stamp, tools guard), not a task.
+# Field meanings: see v1.yaml and v2-judge.yaml. deny_read "verification/**" keeps the delta
+# tests from the implementation line; judge/ stays visible to it (§4.13).
+name: v2-split
+max_attempts: 3
+max_rework_rounds: 2
+max_spec_issue_rounds: 2
+max_reconcile_rounds: 2
+max_strength_rounds: 2
+tasks:
+  - id: F1
+    runner: dispatcher
+    action: analyze_project
+    scope: [storage/analysis_report.json, storage/symbol_table.json]
+    check: [analysis_report]
+
+  - id: F2
+    role: m2s-spec-annotator
+    start: recheck
+    split: package
+    split_shared: true
+    shared_after_children: true
+    expand_after: [F1]
+    deps: [F1]
+    scope: [storage/analysis_report.json, "storage/stage_reports/F2-{pkg}.json"]
+    shared_scope: [storage/analysis_report.json, storage/stage_reports/F2-shared.json]
+    check: [check_provenance_pkg]
+    shared_check: [check_provenance]
+    max_turns: 250
+    timeout_min: 150
+
+  - id: F2DONE
+    # A static point "after every F2 child". J1 expands after it: a family
+    # whose trigger is another family's expansion child cannot be named as a
+    # startup dependency, so the trigger is spelled as this barrier.
+    runner: dispatcher
+    action: barrier
+    deps: ["F2:*", "F2:shared"]
+
+  - id: G1
+    runner: dispatcher
+    action: gap_scan
+    deps: ["F2:*", "F2:shared"]
+    scope: [storage/gap_inventory.json]
+    check: [gap_inventory]
+
+  - id: G2
+    role: m2s-spec-annotator
+    mode: G2
+    # W4.2: each package writes its own share (storage/gaps/<pkg>.json); the
+    # shared child takes the gaps no package owns; G2M composes the inventory.
+    split: package
+    split_shared: true
+    shared_after_children: true
+    expand_after: [G1]
+    deps: [G1]
+    deny_read: ["output/**", "verification/**"]
+    scope: ["storage/gaps/{pkg}.json", "storage/stage_reports/G2-{pkg}.json"]
+    shared_scope: [storage/gaps/shared.json, storage/stage_reports/G2-shared.json]
+    check: [gap_package]
+    shared_check: [gap_package]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: G2M
+    runner: dispatcher
+    action: gap_merge
+    deps: ["G2:*", "G2:shared"]
+    scope: [storage/gap_inventory.json]
+    check: [gap_inventory]
+
+  - id: J1
+    role: m2s-verifier
+    mode: J1
+    start: recheck
+    # W4.2: one case writer per package (judge/cases/<pkg>/), then a shared
+    # task writes identities/fixtures/faults and runs the whole-asset check.
+    split: package
+    split_shared: true
+    shared_after_children: true
+    expand_after: [F2DONE]
+    deps: ["F2:*", "F2:shared"]
+    deny_read: [monolith, judge_outputs]
+    scope: ["judge/cases/{pkg}/**", "storage/stage_reports/J1-{pkg}.json"]
+    shared_scope: [judge/cases/**, judge/fixtures/**, judge/faults/**, judge/identities.json, judge/run_config.json,
+                   judge/uncovered.json, judge/spec_issues.json, storage/stage_reports/J1-shared.json]
+    check: [judge_cases_pkg]
+    shared_check: [judge_assets]
+    max_turns: 300
+    timeout_min: 180
+
+  - id: J2
+    runner: dispatcher
+    action: run_monolith
+    deps: ["J1:*", "J1:shared"]
+    scope: [judge/oracle_expected.json, judge/fault_baseline_monolith.json, judge/masks.json,
+            judge/monolith_calls.json, judge/coverage_monolith/**]
+
+  - id: RC
+    runner: dispatcher
+    action: reconcile_spec
+    deps: [J2]
+    scope: [judge/reconcile.json, judge/reconcile_classes.json]
+
+  - id: J3
+    role: m2s-verifier
+    mode: J3
+    start: recheck
+    deps: [RC]
+    scope: [judge/reconcile_classes.json, judge/mask_rules.json, storage/stage_reports/J3.json]
+    check: [reconcile_classified]
+    max_turns: 200
+    timeout_min: 120
+
+  - id: J4
+    role: m2s-verifier
+    mode: J4
+    start: recheck
+    deps: [J3]
+    on_stale: recheck
+    scope: [judge/cases/**, judge/fixtures/**, judge/faults/**, judge/spec_issues.json, storage/stage_reports/J4.json]
+    check: [judge_assets, j4_report]
+    max_turns: 250
+    timeout_min: 150
+
+  - id: J5
+    runner: dispatcher
+    action: run_mutants
+    deps: [J4]
+    scope: [judge/judge_validation.json]
+
+  - id: J5C
+    role: m2s-verifier
+    mode: J5
+    start: recheck
+    deps: [J5]
+    scope: [judge/mutant_classes.json, storage/stage_reports/J5C.json]
+    check: [mutant_classes]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: J6
+    runner: dispatcher
+    action: freeze_judge
+    deps: [J5C]
+    scope: [judge/judge_manifest.json, judge/reconcile.json, judge/reconcile_classes.json]
+
+  - id: A1
+    role: m2s-architect
+    line: impl
+    deps: [G2M, "J1:*", "J1:shared"]
+    deny_read: ["output/**", "verification/**"]
+    scope: [storage/blueprint.json, storage/DECISIONS.md, storage/adapter_map.json, storage/gap_inventory.json,
+            storage/work_packages.json, storage/stage_reports/A1.json]
+    check: [blueprint_keys, gate_blueprint, judge_unchanged]
+    max_turns: 300
+    timeout_min: 180
+
+  - id: D1
+    role: m2s-verifier
+    mode: D1
+    line: verify
+    # W4.2: one delta-test writer per domain (A1's impl_packages), each in its
+    # own event dirs; fault scenarios are named delta-<pkg>-*.json so the
+    # domains never share a file.
+    split: domain
+    expand_after: [A1]
+    deps: [A1, J2]
+    deny_read: [monolith, "output/**"]
+    scope: ["verification/delta/events/{fn}/**", "verification/delta/faults/delta-{pkg}-*.json",
+            "storage/stage_reports/D1-{pkg}.json"]
+    check: [delta_assets_domain, judge_unchanged]
+    max_turns: 200
+    timeout_min: 120
+
+  - id: I1
+    role: m2s-code-developer
+    line: impl
+    split: domain
+    split_shared: true
+    expand_after: [A1]
+    deps: [A1, "D1:*", J6]
+    deny_read: ["verification/**"]
+    scope: ["output/lambdas/{app}/{fn}/**", "storage/stage_reports/I1-{pkg}.json"]
+    shared_scope: [output/layers/**, storage/DECISIONS.md, storage/stage_reports/I1-shared.json]
+    check: [gate_code_pkg, judge_unchanged]
+    max_turns: 300
+    timeout_min: 180
+
+  - id: I2a
+    role: m2s-sam-engineer
+    line: impl
+    deps: ["I1:*", "I1:shared"]
+    deny_read: ["verification/**"]
+    on_stale: recheck
+    scope: [output/template.part1.yaml, storage/DECISIONS.md, storage/stage_reports/I2a.json]
+    check: [template_part1]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: I2b
+    role: m2s-sam-engineer
+    line: impl
+    deps: [I2a]
+    deny_read: ["verification/**"]
+    on_stale: recheck
+    scope: [output/template.part2.yaml, storage/DECISIONS.md, storage/stage_reports/I2b.json]
+    check: [template_part2]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: I2c
+    role: m2s-sam-engineer
+    line: impl
+    deps: [I2b]
+    deny_read: ["verification/**"]
+    on_stale: recheck
+    scope: [output/template.yaml, output/template.part1.yaml, output/template.part2.yaml,
+            storage/DECISIONS.md, storage/stage_reports/I2c.json]
+    check: [gate_template]
+    max_turns: 200
+    timeout_min: 120
+
+  - id: I3
+    role: m2s-validator
+    line: impl
+    deps: [I2c]
+    deny_read: ["verification/**"]
+    on_stale: recheck
+    scope: [output/consistency_report.json, storage/stage_reports/I3.json]
+    check: [gate_final, consistency_pass]
+    max_turns: 150
+    timeout_min: 90
+
+  - id: V1
+    runner: dispatcher
+    action: check_adapter
+    deps: [I3, J6]
+    scope: [verification/check_adapter.json]
+
+  - id: V2
+    runner: dispatcher
+    action: run_judge
+    deps: [V1]
+    scope: [verification/verdict_judge.json]
+
+  - id: V3
+    role: m2s-verifier
+    mode: V3
+    line: verify
+    deps: [V2]
+    on_stale: rerun
+    scope: [verification/verdict_delta.json, "verification/results/**", "verification/coverage/**",
+            verification/fault_baseline_B0.json, storage/stage_reports/V3.json]
+    check: [verdict_delta, judge_unchanged]
+    max_turns: 150
+    timeout_min: 120
+
+  - id: B0
+    runner: dispatcher
+    action: tag_b0
+    deps: [V3]
+
+  - id: O
+    role: m2s-perf-optimizer
+    deps: [B0]
+    scope: ["output/**", "perf/**", "verification/results/**", "verification/coverage/**", "verification/verdict_*.json",
+            "verification/fault_baseline_*.json", storage/stage_reports/O.json]
+    check: [s5_report, judge_unchanged]
+    max_turns: 400
+    timeout_min: 300
+
+  - id: C1
+    runner: dispatcher
+    action: final_v2
+    deps: [O]
+    scope: ["output/**", "verification/**"]
+
+  - id: C2
+    runner: dispatcher
+    action: archive_run
+    deps: [C1]

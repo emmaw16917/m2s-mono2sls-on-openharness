@@ -23,6 +23,7 @@ packaging problems (Runtime.ImportModuleError) show up here too.
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import json
 import os
@@ -35,6 +36,21 @@ from pathlib import Path
 from typing import Any
 
 import gates
+from coord import locks as coord_locks
+
+
+def _rie_locked(fn):
+    """Full runs need the machine-wide docker-rie slot (§4.11). Dry runs and
+    local mode do not start containers, so they do not take it."""
+    @functools.wraps(fn)
+    def wrapper(workspace, *args, **kwargs):
+        dry = kwargs.get("dry_run", args[2] if len(args) > 2 else False)
+        mode = kwargs.get("mode", args[3] if len(args) > 3 else "auto")
+        if dry or mode == "local":
+            return fn(workspace, *args, **kwargs)
+        with coord_locks.hold_count("docker-rie", owner="run_validate"):
+            return fn(workspace, *args, **kwargs)
+    return wrapper
 
 HERE = Path(__file__).resolve().parent
 VERIFY_TOOLS = HERE / "verify-tools"
@@ -212,7 +228,15 @@ class Model:
                                       "http_api": ev["Type"] == "HttpApi"})
                 elif ev.get("Type") == "SQS":
                     fn["sqs"].append(str(ep.get("Queue", "")).split(".")[0])
+                    # how the event source mapping delivers (run_judge's SQS delivery)
+                    fn.setdefault("sqs_events", []).append({
+                        "queue": fn["sqs"][-1], "batch_size": int(ep.get("BatchSize") or 10),
+                        "report_failures": "ReportBatchItemFailures" in (ep.get("FunctionResponseTypes") or [])})
             self.functions[name] = fn
+        # maxReceiveCount of each queue's redrive policy (None: no DLQ)
+        self.queue_max_receive = {
+            lid: (((r.get("Properties") or {}).get("RedrivePolicy") or {}).get("maxReceiveCount"))
+            for lid, r in res.items() if isinstance(r, dict) and r.get("Type") == "AWS::SQS::Queue"}
         self._index_gateway_responses(res)
         self.http_api_cors_any = any(
             "*" in ((((r.get("Properties") or {}).get("CorsConfiguration") or {}) if isinstance((r.get("Properties") or {}).get("CorsConfiguration"), dict) else {}).get("AllowOrigins") or [])
@@ -301,6 +325,135 @@ class Model:
         raise VerifyError(f"unknown {what} {alias!r}; known: {ids}")
 
 
+class BlueprintModel(Model):
+    """I1's self test (v2 N5.2, design Q6): what the runners need, from the blueprint, before
+    a template exists. Only functions that already have code under output/lambdas are served;
+    their code goes to a scratch directory with its dependencies, the shape sam build leaves."""
+
+    def __init__(self, ws: Path):
+        super().__init__(Path(ws), need_template=False)
+        self.params: dict[str, Any] = {}
+        self.layers = {}
+        self.gateway_responses = {}
+        self.http_api_cors_any = False
+        for t in self.blueprint.get("dynamodb_tables") or []:
+            if isinstance(t, dict) and t.get("logical_name"):
+                self.tables[t["logical_name"]] = {"name": t["logical_name"], "create": self._table(t)}
+        self.queue_max_receive = {}
+        for q in self.blueprint.get("sqs_queues") or []:
+            if not isinstance(q, dict) or not q.get("logical_name"):
+                continue
+            self.queues.add(q["logical_name"])
+            self.queue_max_receive[q["logical_name"]] = q.get("max_receive_count")
+            if q.get("dlq_logical_name"):
+                self.queues.add(q["dlq_logical_name"])
+                self.queue_max_receive[q["dlq_logical_name"]] = None
+        http_api = str((self.blueprint.get("api_gateway") or {}).get("api_type") or "").lower() == "http"
+        code = {name: d for name in self.bp_functions if (d := self._code_dir(name))}
+        self.build_dir = self._build(code)
+        layer = ["SharedLayer"] if (self.build_dir / "SharedLayer").is_dir() else []
+        for name, source in code.items():
+            bp = self.bp_functions[name]
+            env = bp.get("environment_variables") or {}
+            fn = {"name": name, "logical": name, "handler": self._handler(bp, source), "code_uri": source.relative_to(self.ws / "output").as_posix(),
+                  "runtime": str(bp.get("runtime") or ""), "layers": layer, "memory": bp.get("memory_size") or 512, "architecture": "x86_64",
+                  "env": {k: self._resolve(v) for k, v in env.items()}, "api": [], "sqs": []}
+            for ep in bp.get("entry_points") or []:
+                method, _, path = str(ep).partition(" ")
+                if path:
+                    fn["api"].append({"path": path, "method": method.upper(), "authorized": bp.get("auth") == "required", "http_api": http_api})
+            if bp.get("sqs_source"):
+                cfg = bp.get("trigger_config") or {}
+                fn["sqs"].append(bp["sqs_source"])
+                fn["sqs_events"] = [{"queue": bp["sqs_source"], "batch_size": int(cfg.get("batch_size") or 10),
+                                     "report_failures": bool(cfg.get("report_batch_item_failures"))}]
+            self.functions[name] = fn
+
+    @staticmethod
+    def _table(t: dict[str, Any]) -> dict[str, Any]:
+        attrs: dict[str, str] = {}
+
+        def keys(spec: dict[str, Any]) -> list[dict[str, str]]:
+            out = []
+            for field, kind in (("partition_key", "HASH"), ("sort_key", "RANGE")):
+                k = spec.get(field)
+                if isinstance(k, dict) and k.get("name"):
+                    attrs[k["name"]] = str(k.get("type") or "S")
+                    out.append({"AttributeName": k["name"], "KeyType": kind})
+            return out
+
+        create: dict[str, Any] = {"TableName": t["logical_name"], "BillingMode": "PAY_PER_REQUEST", "KeySchema": keys(t)}
+        gsis = []
+        for g in t.get("gsi") or t.get("gsis") or []:
+            if isinstance(g, dict) and (g.get("index_name") or g.get("name")):
+                projection = g.get("projection")
+                kind = projection if isinstance(projection, str) else (projection or {}).get("ProjectionType") if isinstance(projection, dict) else None
+                gsis.append({"IndexName": g.get("index_name") or g.get("name"), "KeySchema": keys(g),
+                             "Projection": {"ProjectionType": "ALL" if kind not in ("KEYS_ONLY", "ALL") else kind}})
+        if gsis:
+            create["GlobalSecondaryIndexes"] = gsis
+        create["AttributeDefinitions"] = [{"AttributeName": n, "AttributeType": a} for n, a in attrs.items()]
+        return create
+
+    def _code_dir(self, name: str) -> Path | None:
+        root = self.ws / "output" / "lambdas"
+        for d in [root / name, *(root.glob(f"*/{name}") if root.is_dir() else [])]:
+            if d.is_dir() and any(d.glob("*.js")) or d.is_dir() and any(d.glob("*.py")):
+                return d
+        return None
+
+    @staticmethod
+    def _handler(bp: dict[str, Any], source: Path) -> str:
+        """The blueprint's handler is the architect's placeholder; the file decides."""
+        spec = str(bp.get("handler") or "")
+        module = spec.rsplit(".", 1)[0] if "." in spec else ""
+        if module and ((source / f"{module}.js").is_file() or (source / f"{module}.py").is_file()):
+            return spec
+        if (source / "handler.py").is_file():
+            return "handler.lambda_handler"
+        return ("handler" if (source / "handler.js").is_file() else "index") + ".handler"
+
+    def _build(self, code: dict[str, Path]) -> Path:
+        h = hashlib.sha256()
+        layers = self.ws / "output" / "layers" / "shared"
+        sources = [*code.values(), *([layers] if layers.is_dir() else [])]
+        for d in sources:
+            for p in sorted(q for q in d.rglob("*") if q.is_file() and "node_modules" not in q.parts and "__pycache__" not in q.parts):
+                h.update(str(p.relative_to(self.ws)).encode())
+                h.update(p.read_bytes())
+        root = TMP_ROOT / re.sub(r"[^A-Za-z0-9_-]", "_", self.ws.name) / "selftest" / h.hexdigest()[:12]
+        if (root / "BUILD_OK").exists():
+            return root
+        if root.exists():
+            shutil.rmtree(root)
+        root.mkdir(parents=True)
+        ignore = shutil.ignore_patterns("node_modules", "__pycache__")
+        for name, d in code.items():
+            shutil.copytree(d, root / name, ignore=ignore)
+            self._install(root / name)
+        if layers.is_dir():
+            node = layers / "nodejs"
+            target = root / "SharedLayer" / ("nodejs" if node.is_dir() else "python")
+            shutil.copytree(node if node.is_dir() else layers, target, ignore=ignore)
+            self._install(target)
+        (root / "BUILD_OK").write_text("ok", encoding="utf-8")
+        return root
+
+    @staticmethod
+    def _install(d: Path) -> None:
+        if (d / "package.json").is_file():
+            npm = shutil.which("npm", path=_env()["PATH"]) or "npm"
+            p = _run([npm, "install", "--omit=dev", "--no-audit", "--no-fund"], cwd=str(d), capture_output=True, text=True,
+                     encoding="utf-8", errors="replace", env=_env(), timeout=600, shell=sys.platform == "win32")
+            if p.returncode != 0:
+                raise VerifyError(f"npm install failed in {d.name} (a packaging problem): {(p.stdout + p.stderr)[-1500:]}")
+        if (d / "requirements.txt").is_file():
+            p = _run([sys.executable, "-m", "pip", "install", "-q", "-r", "requirements.txt", "--target", "."], cwd=str(d), capture_output=True,
+                     text=True, encoding="utf-8", errors="replace", env=_env(), timeout=600)
+            if p.returncode != 0:
+                raise VerifyError(f"pip install failed in {d.name} (a packaging problem): {(p.stdout + p.stderr)[-1500:]}")
+
+
 # ---------------------------------------------------------------------------
 # Test assets
 # ---------------------------------------------------------------------------
@@ -309,9 +462,32 @@ def _vdir(ws: Path) -> Path:
     return ws / "verification"
 
 
-def load_cases(ws: Path) -> list[dict[str, Any]]:
+DELTA_ASSETS = "verification/delta"  # v2 D1: delta tests, same format, own directory
+
+
+def _assets_dir(ws: Path, assets: str | None) -> Path:
+    """Where the test assets are: verification/, or a directory under it (v2 D1)."""
+    if not assets:
+        return _vdir(ws)
+    root = (ws / assets).resolve()
+    if _vdir(ws).resolve() not in root.parents:
+        raise VerifyError(f"assets must be a directory under verification/, got {assets!r}")
+    return root
+
+
+def assets_digest(ws: Path, assets: str | None) -> str:
+    """What a verdict was computed on: a later change of the tests makes it stale."""
+    root = _assets_dir(ws, assets)
+    h = hashlib.sha256()
+    for p in sorted(q for d in ("events", "faults") if (root / d).is_dir() for q in (root / d).rglob("*.json")):
+        h.update(p.relative_to(root).as_posix().encode())
+        h.update(p.read_bytes())
+    return h.hexdigest()[:16]
+
+
+def load_cases(ws: Path, assets: str | None = None) -> list[dict[str, Any]]:
     out = []
-    for p in sorted((_vdir(ws) / "events").glob("*/*.json")):
+    for p in sorted((_assets_dir(ws, assets) / "events").glob("*/*.json")):
         try:
             case = _read_json(p)
         except json.JSONDecodeError as exc:
@@ -324,9 +500,9 @@ def load_cases(ws: Path) -> list[dict[str, Any]]:
     return out
 
 
-def load_faults(ws: Path) -> list[dict[str, Any]]:
+def load_faults(ws: Path, assets: str | None = None) -> list[dict[str, Any]]:
     out = []
-    for p in sorted((_vdir(ws) / "faults").glob("*.json")):
+    for p in sorted((_assets_dir(ws, assets) / "faults").glob("*.json")):
         try:
             f = _read_json(p)
         except json.JSONDecodeError as exc:
@@ -369,7 +545,8 @@ def check_case(model: Model, case: dict[str, Any], with_template: bool) -> list[
     if "_load_error" in case:
         return [f"{where}: {case['_load_error']}"]
     errs: list[str] = []
-    allowed = {"id", "function", "kind", "title", "spec_refs", "request", "sqs", "fixtures", "faults", "expect", "note", "repeat", "_file"}
+    allowed = {"id", "function", "kind", "title", "spec_refs", "request", "sqs", "fixtures", "faults", "expect", "note", "repeat",
+               "source", "expected_from", "_file"}
     extra = set(case) - allowed
     if extra:
         errs.append(f"{where}: unknown keys {sorted(extra)} (allowed: {sorted(allowed - {'_file'})})")
@@ -420,6 +597,76 @@ def check_case(model: Model, case: dict[str, Any], with_template: bool) -> list[
     if isinstance(case.get("expect"), dict) and "alternatives" in case["expect"] and not _si_refs(case):
         errs.append(f"{where}: expect.alternatives is only allowed in a case whose spec_refs cite a "
                     "blueprint:metadata.spec_resolutions[SI-x] ruling that allows more than one outcome")
+    return errs
+
+
+_DELTA_SOURCE_RE = re.compile(r"^(GAP-\d+|rule:.+)$")
+_EXPECTED_FROM_RE = re.compile(r"^(monolith|ruling|rulebook|decision):(.+)$")
+
+
+def _as_list(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else [value]
+
+
+def _expected_from_errors(ws: Path, where: str, case: dict[str, Any], gaps_by_id: dict[str, Any],
+                          oracle: dict[str, Any], ruling_ids: set[str]) -> list[str]:
+    """expected_from names where a delta test's expectation comes from (V2-08), and the
+    name must resolve. A status taken from the monolith must be the status it answered."""
+    raw = case.get("expected_from")
+    m = _EXPECTED_FROM_RE.match(raw) if isinstance(raw, str) else None
+    if not m:
+        return [f"{where}: expected_from must be 'monolith:<judge case>/<step>', 'ruling:<id>', 'rulebook:<rule>' or 'decision:GAP-<n>', got {raw!r}"]
+    kind, ref = m.groups()
+    if kind == "decision":
+        return [] if ref in gaps_by_id else [f"{where}: expected_from {raw!r}: no such gap in storage/gap_inventory.json"]
+    if kind == "ruling":
+        return [] if ref in ruling_ids else [f"{where}: expected_from {raw!r}: no such ruling in storage/rulings.json"]
+    if kind == "rulebook":
+        return []
+    judge_case, _, step = ref.partition("/")
+    steps = ((oracle.get("cases") or {}).get(judge_case) or {}).get("steps") or {}
+    if step not in steps:
+        return [f"{where}: expected_from {raw!r}: judge/oracle_expected.json has no case/step like that (case {judge_case!r} has steps {sorted(steps)})"]
+    expect = case.get("expect") if isinstance(case.get("expect"), dict) else {}
+    answered = (steps[step] or {}).get("status")
+    if "status" in expect and answered is not None and expect["status"] != answered:
+        return [f"{where}: expected_from {raw!r}: the monolith answered {answered} there, the case expects {expect['status']}"]
+    return []
+
+
+def delta_errors(ws: Path, cases: list[dict[str, Any]], require_all_gaps: bool = True) -> list[str]:
+    """The checks of delta tests beyond the v1 case format: every case says which gap or
+    rule it tests and where its expectation comes from, and every gap decided with
+    test: "delta" has a case (unless require_all_gaps is False: one domain's share)."""
+    import gaps
+
+    inventory = gaps.load(ws) or {}
+    by_id = {g.get("id"): g for g in inventory.get("gaps") or [] if isinstance(g, dict)}
+    oracle_path = ws / "judge" / "oracle_expected.json"
+    oracle = _read_json(oracle_path) if oracle_path.is_file() else {}
+    rulings_path = ws / "storage" / "rulings.json"
+    rulings = (_read_json(rulings_path) if rulings_path.is_file() else {}).get("rulings") or []
+    ruling_ids = {str(r.get("id")) for r in rulings if isinstance(r, dict)}
+    errs: list[str] = []
+    cited: set[str] = set()
+    for case in cases:
+        if "_load_error" in case:
+            continue
+        where = case.get("_file", case.get("id", "?"))
+        sources = _as_list(case.get("source"))
+        if not case.get("source") or not all(isinstance(s, str) and _DELTA_SOURCE_RE.match(s) for s in sources):
+            errs.append(f"{where}: source must be 'GAP-<n>' or 'rule:<rule>' (or a list of them), got {case.get('source')!r}")
+            continue
+        for s in sources:
+            if s.startswith("GAP-"):
+                cited.add(s)
+                if s not in by_id:
+                    errs.append(f"{where}: source {s} is not in storage/gap_inventory.json")
+        errs += _expected_from_errors(ws, where, case, by_id, oracle, ruling_ids)
+    if require_all_gaps:
+        for g in gaps.delta_gaps(ws):
+            if g.get("id") not in cited:
+                errs.append(f"{g.get('id')} is decided with test: delta, and no delta test cites it as its source")
     return errs
 
 
@@ -484,8 +731,10 @@ def _check_expect(model: Model, where: str, exp: Any, trigger: str | None, with_
                 errs.append(f"{where}: expect.headers.absent must be a list of header names")
     if "body" in exp:
         b = exp["body"]
-        if not isinstance(b, dict) or not b or set(b) - {"equals", "subset", "contains", "not_contains", "has_fields", "types", "length"}:
-            errs.append(f"{where}: expect.body must use equals/subset/contains/not_contains/has_fields/types/length")
+        if not isinstance(b, dict) or not b or set(b) - {"equals", "subset", "contains", "not_contains", "has_fields", "types", "length", "raw_equals"}:
+            errs.append(f"{where}: expect.body must use equals/subset/contains/not_contains/has_fields/types/length/raw_equals")
+        elif "raw_equals" in b and not isinstance(b["raw_equals"], str):
+            errs.append(f"{where}: expect.body.raw_equals must be a string compared character for character")
     if "error" in exp and not isinstance(exp["error"], dict):
         errs.append(f"{where}: expect.error must be an object ({{}} or {{type}})")
     if "batch_item_failures" in exp and not isinstance(exp["batch_item_failures"], list):
@@ -586,6 +835,16 @@ def _path_match(pattern: str, path: str) -> dict[str, str] | None:
     regex = re.sub(r"\\\{(\w+)(?:\\\+)?\\\}|:(\w+)|<(?:\w+:)?(\w+)>", lambda m: f"(?P<{m.group(1) or m.group(2) or m.group(3)}>[^/]+)", re.escape(pattern))
     m = re.fullmatch(regex, path.split("?")[0])
     return m.groupdict() if m else None
+
+
+def find_route(model: Model, method: str, path: str) -> tuple[str, dict[str, Any]] | None:
+    """(function, Api event) serving method + path on the target, as API
+    Gateway picks it: a static route wins over a parameterized one."""
+    hits = [(name, r) for name, fn in model.functions.items() for r in fn["api"]
+            if r["method"] in (method.upper(), "ANY") and _path_match(r["path"], path) is not None]
+    if not hits:
+        return None
+    return min(hits, key=lambda h: (len(re.findall(r"[{<:]", h[1]["path"])), h[1]["method"] == "ANY"))
 
 
 def _claim(v: Any, http_api: bool) -> str:
@@ -702,9 +961,7 @@ def docker_available() -> bool:
 
 def _find_sam() -> str:
     for cand in (os.environ.get("M2S_SAM"), shutil.which("sam"),
-                 # next to the interpreter running the MCP server (same env as cfn-lint)
-                 str(Path(sys.executable).parent / "Scripts" / "sam.exe"),
-                 str(Path(sys.executable).parent / "sam")):
+                 r"C:\Users\36029\miniconda3\envs\mono2esls\Scripts\sam.exe"):
         if cand and Path(cand).exists():
             return cand
     raise VerifyError("sam CLI not found (set M2S_SAM)")
@@ -839,6 +1096,7 @@ def _run_controller(model: Model, build_dir: Path, runs: list[dict[str, Any]], c
     if has_py and coverage and mode == "rie":
         py["py_vendor"] = str(ensure_py_vendor())
     job = {"mode": mode, "coverage": coverage, "out_dir": str(out_dir), "functions": functions, **ddb_backend(), **py,
+           "hold_writes_ms": HOLD_WRITES_MS,
            "tables": [{"name": t["name"], "create": t["create"]} for t in model.tables.values()], "cases": runs}
     job_path = out_dir / "job.json"
     job_path.write_text(json.dumps(job, indent=1), encoding="utf-8")
@@ -963,11 +1221,37 @@ def _response_headers(result: Any) -> dict[str, list[str]]:
     return out
 
 
+# V2P-22: the recording proxy holds these for a moment on target runs, so that one a function
+# did not wait for is still open when the function returns. Real Lambda freezes the environment
+# at that point and the call may never finish; a local container just carries on.
+HOLD_WRITES_MS = 150
+UNFINISHED_OPS = {"PutItem", "UpdateItem", "DeleteItem", "BatchWriteItem", "TransactWriteItems", "SendMessage", "SendMessageBatch"}
+
+
+def unfinished_writes(raw: dict[str, Any]) -> list[dict[str, Any]]:
+    """Writes and messages still unfinished when the function returned. Not under a fault
+    that fired: there, abandoning a sibling call is how Promise.all fails."""
+    if any(raw.get("rules_fired") or []):
+        return []
+    return [{k: c[k] for k in ("op", "table", "queue", "function") if c.get(k)} for c in raw.get("calls") or []
+            if c.get("op") in UNFINISHED_OPS and (c.get("unfinished_at_return") or c.get("after_return"))]
+
+
+def unfinished_text(calls: list[dict[str, Any]]) -> str:
+    shown = ", ".join(f"{c['op']} {c.get('table') or c.get('queue') or ''}".strip() for c in calls[:6])
+    return (f"still unfinished when the function returned: {shown}. Real Lambda freezes the environment at that "
+            "point, so the call may never finish: wait for it before returning")
+
+
 def judge(model: Model, case: dict[str, Any], raw: dict[str, Any]) -> list[str]:
     """Mismatches between one case's expectations and its raw observation."""
     exp = case.get("expect") or {}
     if raw.get("infra_error"):
         return [f"infra error (not a verdict on the code): {raw['infra_error'][:500]}"]
+    unfinished = unfinished_writes(raw)
+    if unfinished:
+        return [unfinished_text(unfinished), *judge(model, case, {**raw, "calls": [
+            {k: v for k, v in c.items() if k not in ("unfinished_at_return", "after_return")} for c in raw.get("calls") or []]})]
     if "alternatives" in exp:
         outs = [judge(model, {**case, "expect": alt}, raw) for alt in exp["alternatives"]]
         if any(not o for o in outs):
@@ -1015,6 +1299,14 @@ def judge(model: Model, case: dict[str, Any], raw: dict[str, Any]) -> list[str]:
                 mism.append(f"header {name}: expected absent, got {got[name.lower()]}")
     if "body" in exp:
         body, spec = _parse_body(result), exp["body"]
+        if "raw_equals" in spec:
+            # A text body compared character for character: json.loads would
+            # fold 10000.0 / 1e4 / trailing whitespace / a JSON-quoted string
+            # into the same value, which is exactly what a text contract must
+            # not do (an SI-26 style ruling: the characters are the contract).
+            got_raw = result.get("body") if isinstance(result, dict) else None
+            if got_raw != spec["raw_equals"]:
+                mism.append(f"body: expected raw {spec['raw_equals']!r} character for character, got {got_raw!r}")
         if "equals" in spec and body != spec["equals"]:
             mism.append(f"body: expected equals {json.dumps(spec['equals'])[:300]}, got {json.dumps(body)[:300]}")
         if "subset" in spec and not _subset(spec["subset"], body):
@@ -1300,27 +1592,39 @@ def _code_state(ws: Path, ref: str | None) -> dict[str, Any]:
             "uncommitted_output_changes": sorted(l[3:] for l in p.stdout.splitlines() if l.strip())}
 
 
+@_rie_locked
 def run_validate(workspace: str, functions: list[str] | None = None, cases: list[str] | None = None,
-                 dry_run: bool = False, mode: str = "auto", ref: str | None = None) -> dict[str, Any]:
+                 dry_run: bool = False, mode: str = "auto", ref: str | None = None,
+                 assets: str | None = None, partial: bool = False) -> dict[str, Any]:
     """ref: run the working tree's test assets against the code of this git
     ref of the workspace repo (e.g. "v0" after the tests were revised)
-    instead of the working tree's code."""
+    instead of the working tree's code.
+
+    assets: a directory of test assets other than verification/, namely
+    verification/delta (v2 D1, V3): the cases also need source and expected_from,
+    and a full run writes verification/verdict_delta.json.
+
+    partial: one domain's share (v3 M4/W4.2): do not require every delta gap to
+    be cited yet -- the other domains write their cases in parallel."""
     ws = Path(workspace)
     model = Model(ws, need_template=not dry_run)
-    all_cases = load_cases(ws)
+    all_cases = load_cases(ws, assets)
     if not all_cases:
-        raise VerifyError("no test cases under verification/events/<function>/*.json")
+        raise VerifyError(f"no test cases under {assets or 'verification'}/events/<function>/*.json")
     ids = [c.get("id") for c in all_cases]
     dupes = sorted({i for i in ids if ids.count(i) > 1})
     schema_errors = [f"duplicate case id {d!r}" for d in dupes]
     for c in all_cases:
         schema_errors += check_case(model, c, with_template=not dry_run)
-    faults = load_faults(ws)
+    faults = load_faults(ws, assets)
     for f in faults:
         schema_errors += check_fault(model, f, set(ids), with_template=not dry_run)
+    if assets:
+        schema_errors += delta_errors(ws, all_cases, require_all_gaps=not partial)
     # GM3: headers the monolith adds to every response (app-wide middleware,
-    # analysis_report.global_middleware) must be asserted on every API function
-    contract_headers = gates._contract_headers(ws)
+    # analysis_report.global_middleware) must be asserted on every API function.
+    # Not on delta tests: they cover the gaps, and the judge covers the responses.
+    contract_headers = gates._contract_headers(ws) if not assets else []
     if contract_headers:
         asserted: dict[str, set[str]] = {}
         for c in all_cases:
@@ -1335,6 +1639,8 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
                 schema_errors.append(f"GM3: no case of {name} asserts app-wide response header(s) {missing} (the monolith adds them "
                                      "to every response via global middleware) -- add expect.headers to at least one case")
     selected = _select(all_cases, functions, cases)
+    if assets and not dry_run and not schema_errors and not selected:
+        return {"status": "PASS", "total": 0, "passed": 0, "failed": 0, "failures": [], "note": f"no delta test for {functions or cases}"}
     if dry_run or schema_errors:
         uncovered_fns = sorted(set(model.bp_functions) - {c.get("function") for c in all_cases})
         return {"status": "PASS" if not schema_errors else "FAIL", "dry_run": True, "schema_errors": schema_errors,
@@ -1376,13 +1682,17 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
                "disclaimer": "；".join(disclaimers), "run_dir": raw["out_dir"], "code_state": _code_state(ws, ref)}
     out = _vdir(ws) / "results"
     out.mkdir(parents=True, exist_ok=True)
-    (out / "validate_latest.json").write_text(json.dumps({**summary, "results": results}, indent=2, ensure_ascii=False), encoding="utf-8")
+    name = Path(assets).name if assets else None
+    (out / (f"validate_{name}_latest.json" if name else "validate_latest.json")).write_text(
+        json.dumps({**summary, "results": results}, indent=2, ensure_ascii=False), encoding="utf-8")
     if not functions and not cases:
-        verdict = {"stage": "A", "status": summary["status"], "mode": mode, "backend": summary["backend"], "total": summary["total"], "passed": summary["passed"],
+        verdict = {"stage": name or "A", "status": summary["status"], "mode": mode, "backend": summary["backend"], "total": summary["total"], "passed": summary["passed"],
                    "failed": [{"id": f["id"], "function": f["function"], "mismatches": f["mismatches"], "triage_hint": f.get("triage_hint")} for f in failed],
-                   "disclaimer": summary["disclaimer"], "code_state": summary["code_state"], "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S")}
-        (_vdir(ws) / "verdict_A.json").write_text(json.dumps(verdict, indent=2, ensure_ascii=False), encoding="utf-8")
-        summary["verdict_path"] = "verification/verdict_A.json"
+                   "disclaimer": summary["disclaimer"], "code_state": summary["code_state"], "timestamp": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                   **({"assets": assets, "assets_digest": assets_digest(ws, assets)} if assets else {})}
+        verdict_name = f"verdict_{name or 'A'}.json"
+        (_vdir(ws) / verdict_name).write_text(json.dumps(verdict, indent=2, ensure_ascii=False), encoding="utf-8")
+        summary["verdict_path"] = f"verification/{verdict_name}"
     return summary
 
 
@@ -1443,6 +1753,31 @@ def _changed_lines(ws: Path, ref: str, model: "Model") -> tuple[dict[str, dict[s
     return out, sorted(set(unmapped))
 
 
+def merge_changed_coverage(sides: list[dict[str, Any]]) -> dict[str, Any]:
+    """_changed_coverage of several test suites over the same changed lines: a line is
+    uncovered only if no suite that loaded its file executed it."""
+    def not_loaded(side: dict[str, Any]) -> set[str]:
+        return {u["file"] for u in side.get("uncovered") or [] if u.get("line") is None}
+
+    loaded = [(s, not_loaded(s)) for s in sides]
+    entries: dict[tuple[str, Any], dict[str, Any]] = {}
+    for side, _ in loaded:
+        for u in side.get("uncovered") or []:
+            entries.setdefault((u["file"], u.get("line")), u)
+    uncovered = []
+    for (file, line), u in entries.items():
+        if line is None:
+            if all(file in missing for _, missing in loaded):
+                uncovered.append(u)
+            continue
+        ran_it = any(file not in missing and not any(x["file"] == file and x.get("line") == line for x in side.get("uncovered") or [])
+                     for side, missing in loaded)
+        if not ran_it:
+            uncovered.append(u)
+    total = max((s.get("changed_executable_lines") or 0) for s in sides)
+    return {"changed_executable_lines": total, "covered": max(0, total - len(uncovered)), "uncovered": uncovered}
+
+
 def _changed_coverage(final_json: Path, logical: str, changed: dict[str, set[int]]) -> dict[str, Any]:
     data = _read_json(final_json)
     covered, uncovered = [], []
@@ -1481,10 +1816,10 @@ def _changed_coverage(final_json: Path, logical: str, changed: dict[str, set[int
 
 
 def run_coverage(workspace: str, functions: list[str] | None = None, mode: str = "auto",
-                 changed_since: str | None = None) -> dict[str, Any]:
+                 changed_since: str | None = None, assets: str | None = None) -> dict[str, Any]:
     ws = Path(workspace)
     model = Model(ws)
-    selected = _select(load_cases(ws), functions, None)
+    selected = _select(load_cases(ws, assets), functions, None)
     errs = [e for c in selected for e in check_case(model, c, with_template=True)]
     if errs:
         return {"status": "FAIL", "schema_errors": errs}
@@ -1646,10 +1981,11 @@ def speculative_extra_reads(before: dict[str, Any], now: dict[str, Any]) -> tupl
 
 
 def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", functions: list[str] | None = None,
-                    runtime: str = "auto", baseline_ref: str | None = "v0",
-                    speculative_reads: list[str] | None = None) -> dict[str, Any]:
+                    runtime: str = "auto", baseline_ref: str | None = "auto",
+                    speculative_reads: list[str] | None = None, assets: str | None = None) -> dict[str, Any]:
     """record: run every fault scenario on the working tree and store the
-    observations as verification/fault_baseline_<label>.json.
+    observations as verification/fault_baseline_<label>.json. assets: the delta
+    tests (v2 V3, label "B0"); they may have cases and no fault scenarios.
 
     diff: H1 check of the working tree against baseline_ref (a git ref of the
     workspace repo, default v0). The baseline version is rebuilt and run
@@ -1670,12 +2006,16 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
         raise VerifyError("mode must be 'record' or 'diff'")
     ws = Path(workspace)
     model = Model(ws)
-    cases = load_cases(ws)
+    if baseline_ref == "auto":  # v2's accepted version is B0, v1's is v0
+        baseline_ref = "B0" if has_own_repo(ws) and _git(ws, "tag", "--list", "B0") else "v0"
+    cases = load_cases(ws, assets)
     by_id = {c["id"]: c for c in cases if "id" in c}
-    faults = [f for f in load_faults(ws) if not functions or f.get("function") in functions]
+    faults = [f for f in load_faults(ws, assets) if not functions or f.get("function") in functions]
     errs = [e for f in faults for e in check_fault(model, f, set(by_id), with_template=True)]
-    if not faults and mode == "record":
+    if not faults and mode == "record" and not assets:
         errs.append("no fault scenarios under verification/faults/*.json")
+    if assets and mode == "diff" and not faults and not any(not functions or c.get("function") in functions for c in cases):
+        return {"status": "NOTHING_TO_COMPARE", "note": f"no delta test or fault scenario for {functions}: the judge is what checks them"}
     if mode == "diff" and not faults and not any(not functions or c.get("function") in functions for c in cases):
         # diff also compares every plain case, so scenarios are not required
         # -- but there must be something to compare.

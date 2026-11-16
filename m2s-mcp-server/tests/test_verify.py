@@ -286,6 +286,28 @@ def test_judge(ws):
     assert verify.judge(m, _case(expect={"batch_item_failures": []}), sqs)
 
 
+def test_raw_equals_compares_the_body_character_by_character(ws):
+    """T-1 (M3 -> M4): a text body is compared as text, not as a parsed number.
+
+    json.loads would make 10000, 10000.0, 1e4 and a JSON-quoted "10000" the
+    same value; an SI-26 style ruling says the characters are the contract.
+    """
+    m = verify.Model(ws)
+    raw = {"result": {"statusCode": 200, "body": "10000"}}
+    assert verify.judge(m, _case(expect={"status": 200, "body": {"raw_equals": "10000"}}), raw) == []
+    for other in ("10000.0", "1e4", "10000\n", '"10000"', " 10000", "10,000"):
+        mism = verify.judge(m, _case(expect={"status": 200, "body": {"raw_equals": other}}), raw)
+        assert mism and "raw" in mism[0]
+    # schema: only a string, and the key is allowed next to the others
+    assert verify._check_expect(m, "x", {"status": 200, "body": {"raw_equals": 10000}}, "api", False)
+    assert verify._check_expect(m, "x", {"status": 200, "body": {"raw_equals": "10000"}}, "api", False) == []
+    # a base64 response never matches a text contract
+    b64 = {"result": {"statusCode": 200, "body": "MTAwMDA=", "isBase64Encoded": True}}
+    assert verify.judge(m, _case(expect={"status": 200, "body": {"raw_equals": "10000"}}), b64)
+    # the parsed-value comparisons are untouched
+    assert verify.judge(m, _case(expect={"status": 200, "body": {"equals": 10000}}), raw) == []
+
+
 def test_observation_normalizes_nondeterminism():
     raw = {"calls": [{"op": "PutItem", "table": "T", "item": {"id": "123e4567-e89b-12d3-a456-426614174000"}}],
            "result": {"statusCode": 200, "body": json.dumps({"orderId": "123e4567-e89b-12d3-a456-426614174000"})},
@@ -430,8 +452,8 @@ def test_filtered_record_merges_into_the_existing_baseline(ws, monkeypatch):
     cases = [{"id": "a1", "function": "books-get"}, {"id": "c1", "function": "consumer"}]
     faults = [{"id": "fa", "function": "books-get", "cases": ["a1"], "rules": []},
               {"id": "fc", "function": "consumer", "cases": ["c1"], "rules": []}]
-    monkeypatch.setattr(verify, "load_cases", lambda ws: cases)
-    monkeypatch.setattr(verify, "load_faults", lambda ws: faults)
+    monkeypatch.setattr(verify, "load_cases", lambda ws, assets=None: cases)
+    monkeypatch.setattr(verify, "load_faults", lambda ws, assets=None: faults)
     monkeypatch.setattr(verify, "check_fault", lambda *a, **k: [])
     monkeypatch.setattr(verify, "sam_build", lambda root: root)
     monkeypatch.setattr(verify, "_mode", lambda r: "local")
@@ -799,3 +821,17 @@ def test_integration_cached_function_isolated_per_case(tmp_path):
                                                     "expect": {"status": 200, "body": {"subset": {"name": name}}}}), encoding="utf-8")
     r = verify.run_validate(str(ws), mode="local")
     assert r["status"] == "PASS", r
+
+
+def test_delta_errors_partial_skips_the_global_gap_coverage(tmp_path):
+    """W4.2: one D1 domain validates its own files; the other domains write
+    theirs in parallel, so "every delta gap is cited" waits for V3."""
+    ws = tmp_path / "ws"
+    (ws / "storage").mkdir(parents=True)
+    (ws / "storage" / "gap_inventory.json").write_text(json.dumps({"version": 1, "gaps": [
+        {"id": "GAP-1", "key": "k", "category": "time", "summary": "s",
+         "evidence": [{"file": "m/a.py", "line": 1, "symbol": "x"}], "endpoints": [],
+         "source": "G1", "status": "decided", "decision": {"choice": "c", "why": "w", "test": "delta"}}]}),
+        encoding="utf-8")
+    assert any("GAP-1" in e for e in verify.delta_errors(ws, []))
+    assert verify.delta_errors(ws, [], require_all_gaps=False) == []

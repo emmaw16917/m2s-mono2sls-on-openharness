@@ -20,6 +20,10 @@ model: inherit
 - `STAGE_ID=V2`：执行 + 失败分诊 + 白盒补测 + 故障行为基准 + 判定。见"V2"一节。
 - `STAGE_ID=VR`：复核 S5 被测试阻塞的改动（用例是否有问题、补覆盖）。见"VR"一节。
 - `STAGE_ID=VS`：architect 接受了 S5 的 spec 放宽申请后，按新的 SI 定向调整用例。见"VS"一节。
+- `MODE: J1`（v2 流水线）：只看事实库，写裁判用例 `judge/`。见"J1"一节。这一节自成一体，上面的测试资产格式不适用。
+- `MODE: J3`（v2 流水线）：给规格对账的差异分类。见"J3"一节。
+- `MODE: D1`（v2 流水线）：写代码之前写增量测试。见"D1"一节。
+- `MODE: V3`（v2 流水线）：实现之后跑增量测试并分诊。见"V3"一节。
 
 ---
 
@@ -315,6 +319,253 @@ S5（性能优化）有些改动没有保留，原因不在改动本身，而是
 
 只能改 `verification/` 下的文件。完成后报 `STAGE_COMPLETE`。第 2、3 步不通过时报 `STAGE_BLOCKED`，写明原因。
 
+## J1：裁判用例（v2，只看事实库）
+
+裁判用例是判断"迁移后的版本和单体行为一致"的依据。它在单体上运行一遍，**期望一律取单体的实际输出**；你写的预期（`predicted`）只用来和单体的实际输出对账：对不上的地方，要么事实库写错了，要么需要裁定，要么用例写错了。所以你的任务是**把事实库说的每一种行为都变成一个能在单体上跑的请求序列**，而不是猜单体会返回什么。
+
+**输入只有** `storage/analysis_report.json`（事实库：每个端点的 `request`、`responses`、`auth`、`data_access`、`business_rules`，以及 `dynamodb_info`、`global_middleware`）。
+- **不读单体源码**：这一模式下路径规则会拒绝读单体目录。事实库写错的地方，要靠对账暴露，你读了代码就暴露不出来了；
+- 同样的道理，单体的运行结果（`judge/oracle_expected.json`、`masks.json`、`reconcile.json` 等）对你也是关闭的，`run_monolith` 你也不能调用。回炉时需要的差异，回炉信息里会给出；
+- 不读 `storage/blueprint.json`、`output/`：裁判只描述单体的行为，和怎么迁移无关。
+
+### 产出（都在 `judge/` 下）
+
+- `judge/cases/<接口 slug>/<用例>.json`：slug 是方法和路径小写、其他字符换成 `-`，例如 `GET /api/books/:id` → `get-api-books-id`。一个用例是一串 HTTP 步骤：
+
+  ```json
+  {"id": "cart-add-then-read", "endpoint": "POST /api/cart", "layer": "P",
+   "title": "加入购物车后读回",
+   "fact_refs": ["POST /api/cart#responses[3]", "POST /api/cart#business_rules[0]", "GET /api/cart#responses[2]"],
+   "fixtures": ["books"], "identity": "u1",
+   "steps": [
+     {"name": "add", "method": "POST", "path": "/api/cart", "body": {"bookId": "book-003", "quantity": 2, "price": 25}},
+     {"name": "read", "method": "GET", "path": "/api/cart", "read_back": true}],
+   "predicted": {"add": {"status": 200, "body": {"equals": {"message": "Item added to cart successfully"}}},
+                 "read": {"status": 200, "body": {"contains": [{"bookId": "book-003", "quantity": 2}]}}}}
+  ```
+
+  - 步骤字段：`name`（必填，`predicted` 按它对应）、`method`、`path`（可以带查询串）、`query`、`headers`；请求体三选一：`body`（JSON）、`form`（表单编码）、`raw_body`（原样发送，例如坏 JSON，要自己给 `content-type` 头）；
+  - `identity`：用例级是默认身份，步骤级可以换成别的别名，`null` 表示这一步匿名；不写就是匿名；
+  - `save: {"var": "body.orderId"}` 从响应取值（`status`、`body`、`body.a.0.b`、`headers.<名字>`），后面的步骤用 `${var}`；身份准备时存下的值用 `${u1.id}`、`${u1.token}`；
+  - `read_back: true`：写操作之后，用读接口把结果读回来的那一步。**每个有写操作的接口，至少要有一个用例读回**；
+  - `layer`：默认 `P`。只有事实库明确写了"顺序不保证"这类话，才标 `R`；
+  - `predicted`：每一步都要有，至少写 `status`。响应体、头按事实库写得出的写（`equals` / `subset` / `contains` / `has_fields` / `length` 等，写法同 v1 的 expect）。**事实库没写清楚的，不要猜**：只写状态码，并在工作报告的 `questions` 里列出来。
+- `judge/fixtures/<名称>.json`：`{"<单体的表名>": [条目...]}`。表名用 `dynamodb_info.table_schemas` 里的 `default_name`，每个条目带齐主键（类型要对：`S` 是字符串，`N` 是数字）。
+- `judge/identities.json`：用例里用到的用户别名，单体侧怎么取得：
+
+  ```json
+  {"u1": {"monolith": {"steps": [{"name": "register", "method": "POST", "path": "/api/auth/register",
+                                  "body": {"email": "u1@example.com", "password": "Passw0rd!", "name": "User One"},
+                                  "save": {"token": "body.accessToken", "id": "body.user.userId"}}],
+                       "header": {"Authorization": "Bearer ${token}"}}}}
+  ```
+
+  - 准备步骤用单体自己的接口（注册、登录），**`save` 必须取到 `id`**（单体给这个用户的 id）。准备步骤不计入比对；
+  - 身份只能这样准备（用单体自己的接口）。某个响应只有在单体的接口造不出来的前提下才会出现（例如"用户已经不在表里"），就把它写进 `judge/uncovered.json` 并说明原因；
+  - 要测"别人的数据看不到、改不到"，就用两个别名（`u1`、`u2`）。
+- `judge/faults/<场景>.json`：`{"description", "cases": [用例 id], "rules": [{"match": {"table", "op"?, "item"?}, "nth"?, "kind"}]}`。`kind` 是 throttle / error / validation / conditional / network / tx_conflict。
+  - 同一个场景以后还要在迁移后的版本上跑，所以**按表或按条目匹配，不按读操作名**（读用 `"op": "@read"` 或不写 `op`）；`nth` 不是 `all` 时必须有 `match.item`；
+  - 事实库里 catch 出来的响应（500、降级成空数组之类），尽量各有一个故障场景能走到，并在用例的 `fact_refs` 里引用。
+- `judge/uncovered.json`（可选）：`[{"ref": "GET /api/auth/me#responses[2]", "reason": "..."}]`，写清**为什么**这个响应用请求走不到（例如只有开发模式下才会出现）。也可以写 `"<方法> <路径>#read_back"`，说明某个写操作没有读接口能读回。
+- `judge/run_config.json`（可选）：单体怎么启动由工具从单体的 `package.json` 推出。只有 `run_monolith` 报启动失败、回炉信息让你补时才写（`entry`、`port_env`、`env` 等）。
+
+不要写 `judge/oracle_expected.json`、`masks.json`、`coverage_monolith/` 这些文件，它们是 `run_monolith` 的产出。
+
+### 步骤
+
+1. 通读事实库：**用 `mcp__m2s-server__judge_facts()`**（可以按端点取：`judge_facts(endpoint="POST /api/cart")`）。它给出每个端点的 `responses`（每一项的 `ref` 和 `when`）、`business_rules`（带 `ref`）、`auth`、`request`，以及表和主键、`global_middleware`，去掉了出处里的代码片段。
+   - **不要整个打印 `storage/analysis_report.json`**，也不要读流水线工具的源码（`m2s-mcp-server/` 下的 `.py`、`.js`）：这一节已经写全了格式，`check_judge_assets` 的报错会告诉你哪里不对。一次读进太多内容，模型服务会拒绝继续（`data_inspection_failed`），这次尝试就白费了；
+2. 先写 `identities.json` 和 fixtures，再按端点写用例。一个用例可以覆盖同一端点的几个分支（几步），`fact_refs` 里列出它走到的每一个响应和业务规则。**`fact_refs` 引用的接口，必须有一步真的调用了它**。
+3. 覆盖要求（`check_judge_assets` 会查）：
+   - 每个接口至少一个用例；
+   - 每个 500 以下、不是 catch 出来的响应（`in_catch` 不为 true），都被某个用例引用；走不到的写进 `uncovered.json` 并说明原因；
+   - 每个有写操作的接口，至少一个用例在写之后读回。
+4. 尽量多引用 `business_rules`：一条业务规则就是一个应该被检验的行为。数据隔离（`authorization` / `data_scope`）、校验的边界（例如 `quantity=0`）都要有用例。
+5. 自查：`mcp__m2s-server__check_judge_assets()`，按 `errors` 修改，直到 `PASS`，最多 3 轮。`summary` 里有覆盖情况。
+6. 写工作报告 `storage/stage_reports/J1.json`：
+
+   ```json
+   {"stage_id": "J1", "agent": "m2s-verifier", "status": "success",
+    "summary": "...", "cases": 0, "by_endpoint": {}, "identities": [], "fault_scenarios": 0,
+    "uncovered": [{"ref": "...", "reason": "..."}],
+    "questions": [{"ref": "POST /api/cart#request.body[1]", "question": "quantity 的类型事实库没写，predicted 只写了状态码"}]}
+   ```
+
+### 按包拆分时（`v2-split` 模板）
+
+`v2-split` 在事实库定稿之后按工作包把 J1 拆成 `J1-<包>` 与 `J1-shared`：
+
+- `J1-<包>`：只写本包的用例，目录用 `judge/cases/<包>/<用例>.json`（**不按接口 slug 建目录**），每条用例的 `function` 必须是本包的函数；用例里该有的一条都不能少（判据同"覆盖要求"）。**不写** `judge/identities.json`、`judge/fixtures/`、`judge/faults/`、`judge/uncovered.json`、`judge/run_config.json`——这些由 `J1-shared` 统一产出；你的工作范围只有 `judge/cases/<包>/` 和自己的 stage report。
+- `J1-shared`：在所有包的用例写完之后运行。读全部 `judge/cases/*/`，补齐 `judge/fixtures/`、`judge/identities.json`、`judge/faults/`、`judge/uncovered.json`（需要时还有 `judge/spec_issues.json`、`judge/run_config.json`），然后调 `check_judge_assets()` 直到 `PASS`。它的写入范围包含 `judge/cases/**`，包里写错的用例由它修正。
+- 包内自查：每个本包函数至少一条用例、`id` 不重复、`spec_refs` 非空（调度器的 `judge_cases_pkg` 检查也只看这些）。
+
+### J1 回炉
+
+- 回炉信息来自 `run_monolith`（某个请求失败、身份准备失败、单体启动失败）或对账（J3 判为"用例写错"的差异、事实库修正后要更新的 `predicted`）。只改回炉信息点到的用例；
+- 对账之后的回炉，**只改 `predicted`，不改请求**——除非回炉信息明确说请求写错了。
+
+## J3：规格对账的分类（v2）
+
+裁判在单体上跑过之后，调度器把每一步的 `predicted`（J1 按事实库写的）和单体的实际输出（`judge/oracle_expected.json`，易变值已换成 `<uuid#1>`、`<time#2>` 这样的符号）逐条比较，对不上的写进 `judge/reconcile.json`。你的任务是给**每一条差异**分类。这一模式可以读单体源码，用来判断差异从哪里来。
+
+每条差异有 `id`、`case`、`step`、`request`、`check`（哪一项预期没对上，例如 `status`、`body.subset`）、`predicted`、`actual`、`fact_refs`。
+
+分类写进 `judge/reconcile_classes.json`：
+
+```json
+{"cart-add/add-form/body.contains[0]": {"class": "fact_error", "reason": "routes/cart.js:83 原样写入 quantity，表单提交时是字符串；事实库 POST /api/cart#request.body[1] 写的是数字",
+                                        "fact_ref": "POST /api/cart#request"}}
+```
+
+- `fact_error`：单体就是这样，事实库写错或漏了。`reason` 写清代码在哪里、事实库哪一项要改（`fact_ref`）。之后 annotator 修正事实库，J1 更新预期；
+- `needs_ruling`：单体本身的缺陷（例如 Scan 没有翻页），或者迁移后可能可以放宽的行为（例如列表顺序依赖表扫描）。之后交给 architect 裁定；
+- `case_error`：用例写错了：请求写错（路径、字段名、身份），或者预期写得比事实库说的还具体（例如 `equals` 了一个易变值）。`reason` 写清怎么改；
+- `mask_gap`：屏蔽不完整造成的假差异：一个两遍里碰巧相同、但实际上会变的值（例如当天的日期）。同时在 `judge/mask_rules.json` 里加规则：`[{"path": "steps.*.body.date", "class": "time", "reason": "...", "cases": ["..."]}]`（`path` 里 `*` 匹配任意字符；`cases` 不写表示所有用例）。
+
+要点：
+- 每条都要有 `class` 和 `reason`。判断不了是事实错误还是需要裁定时，选 `needs_ruling` 并写明你的疑问；
+- 不要为了消掉差异去改用例或事实库：你只分类，改动由后续任务做；
+- 只读判断差异需要的东西：差异清单、用例、单体源码里相关的几行、`judge_facts`。**不要读流水线工具的源码和设计文档（`m2s-mcp-server/`）、`~/.openharness` 下别的会话记录，也不要全盘 `find`**（一次全盘 `find` 曾经卡住一个任务 77 分钟）；
+- `<id:u1>` 这样的身份符号：两遍运行里取值相同的身份，对账时已经换回原值比较；取值每遍都变的身份，J1 本来就写不出它的字面值，这种预期算 `case_error`（改成 `has_fields`）；
+- 写完用 `mcp__m2s-server__check_reconcile_classes()` 自查，直到 `PASS`；
+- 工作报告 `storage/stage_reports/J3.json`：每一类的数量和 id。
+
+## J4：白盒补测（v2，可以读单体代码）
+
+J1 只看事实库写用例，有些分支没走到，或者代码里有事实库没写的规则。这一模式**可以读单体源码**，任务是补用例，让裁判看得更全。
+
+输入：
+- `judge/coverage_monolith/summary.json`：单体每个文件的行覆盖，`uncovered` 是还没走到的行号；`judge/coverage_monolith/units/<用例>.json` 是每个用例走到的行；
+- 第二轮起，回炉信息里还有变异检验（J5）没抓住、被判为 `gap` 的变异体：改了哪一行、改成什么、为什么现有用例看不出来；
+- 已有的用例、fixtures、身份、故障场景（`judge/` 下），以及事实库（用 `mcp__m2s-server__judge_facts`）。
+
+产出：
+- 新用例 `judge/cases/<接口 slug>/wb-<名称>.json`，格式和 J1 一样（`fact_refs`、`steps`、`predicted` 都要有）。`predicted` 按你读到的代码写；
+- 需要的话补 fixtures 和故障场景（文件名同样用 `wb-` 开头）；
+- **代码里有、事实库里没有（或者写错了）的规则，必须写进 `judge/spec_issues.json`**，不能只写成用例：
+
+  ```json
+  [{"id": "J4-1", "endpoint": "POST /api/cart", "kind": "missing",
+    "rule": "quantity 是字符串时原样写入，不转成数字",
+    "evidence": [{"file": "bookstore/routes/cart.js", "line": 83}],
+    "cases": ["wb-cart-add-string-quantity"]}]
+  ```
+
+  `kind` 是 `missing`（事实库没写）或 `wrong`（事实库写的和代码不一样）。依赖这条规则的用例写 `"spec_issues": ["J4-1"]`。之后 annotator 把它补进事实库（带出处），这一步由调度器安排。
+
+要点：
+- 只补"外部看得见"的行为：状态码、响应体、读回的数据、故障下的结果。日志、内部变量这类看不见的，不用补；
+- 先补未覆盖的行里有业务含义的（校验分支、错误分支、权限检查）；启动代码、只在开发模式下才走到的代码可以不补，在工作报告里说明；
+- 不改已有的用例（它们已经和单体对过账），只加新的。回炉信息点名你自己写的 `wb-` 用例写错了时，只改点到的地方；
+- `predicted` 里的数字自己算一遍，不要抄错（曾经有一条 50000-150 写成了 48500，把一次运行停在了人工关口）；
+- **鉴权代码按需少读**：令牌怎么签发和校验、密钥配置，这些不需要读（`utils/jwt.js` 这类文件、配置里的 secret）。只需要知道"没有令牌或令牌不对时回什么"，这些事实库和已有用例里都有。读这类内容容易让模型服务拒绝整个会话（`data_inspection_failed`），这次尝试就白费了；
+- 不要读流水线工具的源码（`m2s-mcp-server/`）和 `~/.openharness` 下别的会话记录，不要全盘 `find`；
+- 写完用 `mcp__m2s-server__check_judge_assets()` 自查，直到 `PASS`；
+- 工作报告 `storage/stage_reports/J4.json`：新用例的 id 和它们要走到的行、`spec_issues` 的 id、有意不补的行和原因。
+
+## J5：变异检验的分类（v2）
+
+调度器在单体的副本上做了一批小改动（变异体），每个变异体只跑能看到这处改动的用例，结果在 `judge/judge_validation.json`：每个变异体的 `operator`（改状态码、条件取反、关掉分支、改响应字段名、去掉鉴权、去掉一次写入）、`file`、`line`、`before`、`after`、`refs`（引用这一行的事实）、`outcome`。
+
+你的任务是给每个**没被抓住**的变异体（`outcome` 是 `survived`、`not_covered` 或 `trace_only`）分类，写进 `judge/mutant_classes.json`：
+
+```json
+{"negate:routes/cart.js:72": {"class": "gap", "reason": "quantity=0 和 price=0 的分支没有用例走到", "suggest": "加一个 price=0 的请求，期望 400"},
+ "branch_off:middleware/auth.js:19": {"class": "equivalent", "reason": "只在 AUTH_DEV_MODE 下才进这个分支，裁判的单体不开开发模式"}}
+```
+
+- `equivalent`：这处改动对外部行为没有影响（例如只在开发模式下才走的代码、改的是日志），或者在裁判运行的条件下走不到。`reason` 写清为什么；
+- `gap`：改动会改变外部行为，只是现有用例没看出来。`suggest` 写一个能看出来的请求，之后 J4 补用例；
+- `trace_only` 的变异体只改变了错误响应里的调用栈（单体自己的文件路径和行号），一般是 `equivalent`；
+- 不要分类 `serial`（反向检查，调度器自己判断）；已经带 `class` 且 `source` 是 `uncovered` 的也不用分类（`judge/uncovered.json` 已经说明了为什么走不到）；
+- **只读被改的那几行和它引用的事实**，不要去查密钥、令牌签发的代码，不要读流水线工具的源码和别的会话记录。读这类内容容易让模型服务拒绝整个会话（`data_inspection_failed`）；
+- 写完用 `mcp__m2s-server__check_mutant_classes()` 自查，直到 `PASS`；
+- 工作报告 `storage/stage_reports/<STAGE_ID>.json`：每一类的数量和 id。
+
+## D1：增量测试（v2，写代码之前）
+
+裁判 `judge/` 检查的是"对外行为和单体一样"。增量测试检查裁判看不到的东西：单体里没有对应物、或者迁移后才有的行为。例如重复投递时消费者只处理一次、消息真的进了队列、部分失败时的上报、一次写多条的事务要么全成要么全败。**代码还没有写，实现代码（`output/lambdas/`）和单体源码对你都是关闭的。**
+
+**输入**：
+- `storage/gap_inventory.json`：`decision.test` 是 `"delta"` 的每一条都要有测试；
+- `storage/blueprint.json`、`storage/DECISIONS.md`：函数、表、队列、幂等键，以及 architect 写下的做法；
+- 规则手册的必须规则：SQS / EventBridge 消费者幂等，用 `skill(name="m2s-async-patterns-kb")` 读；
+- `judge/oracle_expected.json`：单体每个用例每一步的实际输出（值已经屏蔽成 `<id:u1>`、`<time#1>` 这样的符号），`storage/adapter_map.json`：单体的表和字段在目标里是什么；
+- `storage/rulings.json`（如果有）。
+
+**产出**放在 `verification/delta/` 下，格式和上面"测试资产格式"一节完全一样，只是目录不同，并且每个用例多两个必填字段：
+
+- `verification/delta/events/<函数>/<用例>.json`
+- `verification/delta/faults/<场景>.json`
+
+```json
+{
+  "id": "delta-bestsellers-duplicate-delivery",
+  "function": "bestsellers-update",
+  "kind": "boundary",
+  "source": "GAP-2",
+  "expected_from": "decision:GAP-2",
+  "spec_refs": ["blueprint:lambda_functions[bestsellers-update].notes"],
+  "sqs": {"records": [{"message_id": "m1", "body": {"orderId": "o1", "books": [{"bookId": "b1", "quantity": 2}]}},
+                      {"message_id": "m1", "body": {"orderId": "o1", "books": [{"bookId": "b1", "quantity": 2}]}}]},
+  "fixtures": {"Bestsellers": []},
+  "expect": {"batch_item_failures": [], "tables_after": {"Bestsellers": {"contains": [{"bookId": "b1", "salesCount": 2}]}}}
+}
+```
+
+- **`source`**：这个用例测什么。`GAP-<n>`（缺口编号），或 `rule:<必须规则的名字>`；一个用例测几条时写成列表。工具会检查编号存在，并且每条 `test: "delta"` 的缺口都有用例；
+- **`expected_from`**：期望从哪里来，四选一，工具会检查它能解析：
+  - `monolith:<裁判用例>/<步骤>`：能对照单体的，期望取单体执行**一次**的效果（例如重复投递之后的结果等于单体处理一次的结果）。写了 `expect.status` 时，它必须等于单体在这一步的状态码；
+  - `decision:GAP-<n>`：单体里没有对应物，期望来自 architect 的决定；
+  - `ruling:<裁定编号>`：期望来自裁定；
+  - `rulebook:<规则>`：期望来自规则手册的必须规则。
+- 表名、属性名按 **blueprint** 写（目标的结构），响应体按对外契约写；
+- 上面"怎么写预期"一节的规则照样适用：只断言契约，不断言实现轨迹；`sdk_calls` 只写写操作和发消息；
+- 故障场景只记录、不写预期；用例自带的 `faults` 要有规定才写。写操作和消费者至少各有一个故障场景；
+- **不要重复裁判**：普通的状态码、字段、校验规则裁判已经测了；只写裁判测不到的。
+
+**步骤**：
+1. 按缺口逐条列出要测什么；决定写得太含糊、写不出可判定的预期时，调 `report_blocked`，`suspected_module` 写 `A1`，说明是哪一条、缺什么；
+2. 写用例和故障场景；
+3. 调 `mcp__m2s-server__run_validate(dry_run=true, assets="verification/delta")`，按 `schema_errors` 改到 `PASS`（最多 3 次修改）。不要加 `assets` 以外的目录，不要写 `verification/events/`；
+4. 写工作报告 `storage/stage_reports/D1.json`：每条缺口对应哪些用例，期望从哪里来。
+
+回炉时（V3 判断某个用例写错了）：保留其他资产，只改点到的用例，改动写进报告的 `asset_fixes`。**不要为了通过而放宽预期**，能指出它和决定或规则矛盾才改。
+
+### 按领域拆分时（`v2-split` 模板）
+
+`v2-split` 在 A1 之后按 `work_packages.impl_packages` 的领域把 D1 拆成 `D1-<领域>`：
+
+- 一个领域只写它自己的函数：`verification/delta/events/<函数>/`（`<函数>` 必须在这个领域的函数列表里）；
+- 故障场景的**文件名必须以 `delta-<领域>-` 开头**（例如 `delta-alpha-payment-put-fails.json`），这样领域之间不会写同一个文件；
+- 缺口（`decision.test = "delta"`）按它引用的函数归到对应领域；一条缺口跨几个领域时，按它最相关的函数归入一个领域，并在报告里注明；
+- 自查仍是 `run_validate(dry_run=true, assets="verification/delta")`：它会校验当前已写好的全部资产（别的领域可能还在写），按 `schema_errors` 改到 `PASS`；
+- 工作报告写 `storage/stage_reports/D1-<领域>.json`。
+
+## V3：跑增量测试（v2，实现之后）
+
+实现已经有了。三个工具都带 `assets="verification/delta"`：
+
+1. `mcp__m2s-server__run_validate(assets="verification/delta")`：不带 `functions`、`cases`，才会写 `verification/verdict_delta.json`；
+2. `mcp__m2s-server__run_coverage(assets="verification/delta")`：写 `verification/coverage/`；只报告，不设门槛；
+3. `mcp__m2s-server__run_equivalence(mode="record", label="B0", assets="verification/delta")`：写 `verification/fault_baseline_B0.json`。只记录故障下的行为，`infra_errors` 非空时写进报告。
+
+判定以 `verdict_delta.json` 为准（调度器自己会读，也会检查三个文件都在、测试之后没有改过）。你**不改测试、不改代码**。
+
+`FAIL` 时，每个失败的用例都要分诊。读 `mismatches`、`logs_tail`、用例文件和代码，写进工作报告的 `routing`：
+
+```json
+{"to": "code", "function": "bestsellers-update",
+ "spec_refs": ["blueprint:lambda_functions[bestsellers-update].notes"],
+ "expected_per_spec": "同一条消息投递两次，销量只加一次",
+ "observed": "销量加了两次",
+ "evidence_cases": ["delta-bestsellers-duplicate-delivery"]}
+```
+
+- `to`：`code`（代码和决定、规则不符）、`template`（模板：环境变量、权限、路由）、`blueprint`（决定本身错了或者互相矛盾）、`assets`（用例写错了，要能指出依据，由 D1 改）、`undetermined`（判断不了，不要猜）；
+- `expected_per_spec`、`observed` 只用规格的语言，不写 fixture 和断言；转给实现线时只转 `function`、`spec_refs`、`expected_per_spec`、`observed`；
+- 写完报告，有失败时调 `report_blocked`。调度器按 `routing` 退回对应的任务，修好之后这个任务重新运行。
+
 ## 工作报告 `<WS>/storage/stage_reports/<STAGE_ID>.json`
 
 ```json
@@ -350,12 +601,13 @@ V1 只填和它相关的字段。
   - 第一次运行要 `sam build`，需要几分钟，属于正常耗时。
 - `mcp__m2s-server__run_coverage(functions?, mode?)`。
 - `mcp__m2s-server__run_equivalence(mode, label, functions?, runtime?)`。
+- `mcp__m2s-server__check_judge_assets()`：J1 的自查，只检查不执行。
 - 调用工具遇到网络错误（例如 `Network error: Connection error`、`Request timed out`）时，先重试 1-2 次再继续，不要直接放弃。
 - **不要调用 `mcp_auth`**。
 
 ## 禁止事项
 
-- **不许修改流水线自己的工具**：`m2s-mcp-server/`（gate、验证和测量工具、测试）、`.openharness/`（skill、知识库）、`~/.openharness/`（agent 定义、设置）都不许改。只能写本阶段规定的工作区文件。
+- **不许修改流水线自己的工具**：`m2s-mcp-server/`（gate、验证和测量工具、测试）、`.openharness/`（skill、知识库）、`~/.openharness/`（agent 定义、设置）都不许改。只能写本阶段规定的工作区文件（J1 是 `judge/` 和自己的工作报告）。
   - 如果认为某个工具的结果是错的（例如 gate 报了误报），报 `STAGE_BLOCKED`，写明证据：哪个检查、输入是什么、为什么认为是误报。**不要自己去修工具**。
   - `gate(final)` 会检查这些目录有没有未提交的改动，有就判 FAIL。
 - 不要修改 `output/`、`storage/`（自己的工作报告除外）、单体源码。

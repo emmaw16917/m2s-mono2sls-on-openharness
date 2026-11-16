@@ -20,9 +20,18 @@ If you're here to generate a new app's sample (e.g. `coffee`), you want section
 Migrates a monolith app (Express/Flask, under `Mono2Sls-artifacts/mono_benchmark/`) to
 an AWS SAM serverless design — API Gateway, Lambda, DynamoDB, Cognito, SQS as needed —
 entirely offline (no AWS credentials or deployment required to generate and validate
-the code). It's orchestrated as an OpenHarness skill (`m2s-migrate`) that spawns four
-sub-agents (architect → code-developer → sam-engineer → validator) and self-checks at
-every stage against a deterministic MCP tool server (`m2s-mcp-server/`).
+the code). There are two orchestration paths, both driving the same deterministic MCP
+tool server (`m2s-mcp-server/`):
+
+- **the original skill** (`m2s-migrate`): one `oh -p` session that spawns the
+  architect → code-developer → sam-engineer → validator sub-agents in order;
+- **the v3 dispatcher** (`m2s-mcp-server/coord/`): a deterministic Python loop over a
+  task board (`br`). It starts one `oh -p` worker per task, gives each worker a role,
+  a task spec, a file scope, a permission overlay and the MCP tools, then runs the
+  task's checks itself. The v2 modules (fact base, frozen judge, delta tests,
+  adapter check) and the v1 modules both run under it. See
+  `docs/pipeline-visual.html` for the full picture of every step, how workers are
+  dispatched and how they communicate.
 
 `m2s-mcp-server/README.md` is the detailed "how do I run it / where is everything"
 reference this file summarizes.
@@ -48,6 +57,26 @@ reference this file summarizes.
   the monolith to a real AWS account and compare them with JMeter from the same region.
   These need AWS credentials and **create billable resources**; the pipeline itself never
   needs them.
+
+### Update 2026-11: v2/v3 modules and the dispatcher
+
+- **v2 verification modules** — `judge.py` (frozen judge: cases, fixtures, fault
+  scenarios, `run_monolith`, `run_judge`, `check_adapter`), `adapter.py` (the adapter
+  map), `mutants.py` (mutation testing of the judge), `gaps.py` (gap inventory),
+  `runtime_signals.py`. The `m2s-verifier` agent gains the J1/J3/J4/J5/D1/V3 modes;
+  `m2s-spec-annotator` gains the fact-base (F2) and gap (G2) modes.
+- **v3 dispatcher** — `coord/`: a `br` task board, one `oh -p` worker per task, file
+  scopes and machine locks, spec/triage rooms over agent_mail, rulings
+  (`storage/rulings.json`), exception handlers, and an event-sourced resume. Templates
+  `v1-split.yaml` and `v2-split.yaml` split work by work package / blueprint domain
+  (with shared children). Start it with
+  `python -m coord.dispatcher run --ws <workspace> --monolith <app> --template v2-split --max-workers 3`.
+- **M4 acceptance** — `bookstore-m4` and `airline-m4` ran the v2-split pipeline to C2
+  with a frozen judge; the runs are archived under `evidence/` in the internal repo,
+  not in this snapshot.
+- **Visualization** — `docs/pipeline-visual.html`: the four lines, every step's job,
+  how workers are dispatched, and every communication channel (board, files, mail,
+  rooms, rulings, handlers, human gates, locks).
 
 ## Prerequisites
 
@@ -89,7 +118,8 @@ needed yet:
 
 ```bash
 cd m2s-mcp-server
-python -m pytest tests/ -v   # should be 74 passed
+python -m pytest tests/ -q   # the offline suite; some tests are opt-in:
+                            # M2S_RUN_SLOW=1 (full flows), M2S_RUN_LLM_TESTS=1 (real workers)
 ```
 
 ## Wiring up the MCP server
@@ -138,7 +168,7 @@ output lands at `<REPO_ROOT>/Mono2Sls-artifacts/M2S/runs/<app>-oh/`.
 
 **Agent definitions**: OpenHarness only loads agent `.md` files from
 `~/.openharness/agents/` (a fixed user-level path, no project-level equivalent) — copy
-the four files from `m2s-mcp-server/agents/` there.
+the seven files from `m2s-mcp-server/agents/` there.
 
 **Skills**: `.openharness/skills/` in this repo is discovered automatically as long as
 you run OpenHarness with this repo (or a directory under it) as `cwd` — no separate
@@ -170,6 +200,22 @@ thing that counts as "migration succeeded" — one session in this project's own
 produced a fully fabricated success report (invented task IDs, a stack trace citing a
 file that didn't exist) with none of the underlying work actually done. Always check
 the file, not the chat output.
+
+### Or run it under the v3 dispatcher
+
+```bash
+cd m2s-mcp-server
+python -m coord.dispatcher run \
+  --ws <REPO_ROOT>/Mono2Sls-artifacts/M2S/runs/<app>-v2 \
+  --monolith <REPO_ROOT>/Mono2Sls-artifacts/mono_benchmark/<app> \
+  --template v2-split --max-workers 3
+```
+
+It writes `coord/dispatcher.log` and `coord/report.md`, and can resume the same
+workspace after an interruption. `M2S_MAIL=1` (with the `agent_mail` MCP server
+running) enables the notices board and the discussion rooms; the tool prerequisites
+for the dispatcher (`br`, `agent_mail`) are installed by `python -m coord.toolchain
+install` (see `coord/toolchain.py` for the pinned versions and checksums).
 
 ## Contributing a new sample back
 

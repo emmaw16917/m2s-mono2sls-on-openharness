@@ -24,7 +24,7 @@ convention, rooted at $M2S_WORKSPACE instead of the M2S repo root):
 
 Only checks that cross-reference structured data (blueprint.json vs
 template.yaml vs the on-disk directory layout) produce a pass/fail verdict
-here: B0, C1, C2, C3, C7, C7b, C8, C9, C10, C11, C12, C13. C4/C5/C6 are
+here: B0, C1, C2, C3, C7, C7b, C8, C9, C10, C11, C12, C13, C14. C4/C5/C6 are
 "suspects": mechanically extracted data handed to the m2s-validator agent
 for semantic judgment, because they require interpreting arbitrary
 generated code (env var usage, IAM-relevant SDK calls, layer imports)
@@ -514,10 +514,15 @@ def check_api_type_template(workspace: Path, template: dict[str, Any]) -> list[d
             findings.append(_finding("AT2", "ERROR", f"{lid}: event Type {etype} but blueprint api_type is 'rest'.", lid))
     if t == "http":
         try:
-            fns = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8")).get("lambda_functions") or []
+            _bp = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError, AttributeError):
-            fns = []
-        if any(isinstance(f, dict) and f.get("auth") == "required" for f in fns):
+            _bp = {}
+        fns = _bp.get("lambda_functions") or []
+        # A monolith that manages its own session declares cognito.enabled=false
+        # and authorizer "None": there is deliberately no gateway authorizer, so
+        # auth="required" functions must not trigger the JWT-default check.
+        cognito_disabled = (_bp.get("cognito") or {}).get("enabled") is False
+        if not cognito_disabled and any(isinstance(f, dict) and f.get("auth") == "required" for f in fns):
             for lid, r in res.items():
                 if not isinstance(r, dict) or r.get("Type") != "AWS::Serverless::HttpApi":
                     continue
@@ -870,8 +875,12 @@ def _iter_lambda_dirs(lambdas_root: Path) -> list[Path]:
     return dirs
 
 
-def check_c1_code(workspace: Path) -> list[dict[str, Any]]:
-    """C1, "code" direction: blueprint function names <-> handler directory names."""
+def check_c1_code(workspace: Path, functions: list[str] | None = None) -> list[dict[str, Any]]:
+    """C1, "code" direction: blueprint function names <-> handler directory names.
+
+    `functions` scopes the check to a work package (v3 M2/W2.6): both sides are
+    restricted to those names, so a package task sees only its own mismatch.
+    """
     findings: list[dict[str, Any]] = []
     blueprint_path = workspace / "storage" / "blueprint.json"
     lambdas_root = workspace / "output" / "lambdas"
@@ -881,6 +890,10 @@ def check_c1_code(workspace: Path) -> list[dict[str, Any]]:
     blueprint = json.loads(blueprint_path.read_text(encoding="utf-8"))
     expected_names = {fn.get("name") for fn in blueprint.get("lambda_functions", []) if isinstance(fn, dict) and fn.get("name")}
     actual_names = {d.name for d in _iter_lambda_dirs(lambdas_root)}
+    if functions is not None:
+        scope = set(functions)
+        expected_names &= scope
+        actual_names &= scope
 
     for missing in sorted(expected_names - actual_names):
         findings.append(_finding("C1", "ERROR", f"No handler directory found for blueprint function '{missing}'.", missing))
@@ -1115,6 +1128,20 @@ def check_c7b(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]
             blueprint_auth[key] = (fn.get("name", ""), auth)
 
     resources = template.get("Resources", {}) or {}
+    # Without a DefaultAuthorizer, `Auth: Authorizer: NONE` is illegal in SAM
+    # (E0001). An app that deliberately has no gateway authorizer
+    # (cognito.enabled=false, in-function session checks) must not be asked for
+    # the override; C7b only applies to APIs that do have one.
+    has_default = False
+    api_resources = [r for r in resources.values()
+                     if isinstance(r, dict) and r.get("Type") in ("AWS::Serverless::HttpApi", "AWS::Serverless::Api")]
+    for resource in api_resources:
+        auth = (resource.get("Properties", {}) or {}).get("Auth") or {}
+        if isinstance(auth, dict) and auth.get("DefaultAuthorizer"):
+            has_default = True
+            break
+    if api_resources and not has_default:
+        return []
     for logical_name, resource in resources.items():
         if not isinstance(resource, dict) or resource.get("Type") != "AWS::Serverless::Function":
             continue
@@ -1562,10 +1589,155 @@ def check_c13(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]
     return findings
 
 
+# ---------------------------------------------------------------------------
+# C14 - Cognito settings stated in blueprint.cognito are in the template
+# ---------------------------------------------------------------------------
+
+_DURATION_UNITS = {"s": 1, "sec": 1, "second": 1, "seconds": 1, "m": 60, "min": 60, "minute": 60, "minutes": 60,
+                   "h": 3600, "hr": 3600, "hour": 3600, "hours": 3600, "d": 86400, "day": 86400, "days": 86400}
+_CFN_UNITS = {"seconds": 1, "minutes": 60, "hours": 3600, "days": 86400}
+# blueprint key -> (UserPoolClient property, TokenValidityUnits key, CFN default unit, Cognito default in seconds)
+_TOKEN_FIELDS = {
+    "access_token_validity": ("AccessTokenValidity", "AccessToken", "hours", 3600),
+    "id_token_validity": ("IdTokenValidity", "IdToken", "hours", 3600),
+    "refresh_token_validity": ("RefreshTokenValidity", "RefreshToken", "days", 30 * 86400),
+}
+_PASSWORD_FIELDS = {
+    "min_length": "MinimumLength", "minimum_length": "MinimumLength",
+    "require_uppercase": "RequireUppercase", "require_lowercase": "RequireLowercase",
+    "require_numbers": "RequireNumbers", "require_symbols": "RequireSymbols",
+    "temporary_password_validity_days": "TemporaryPasswordValidityDays",
+}
+# Cognito's policy when the template sets no PasswordPolicy at all
+_DEFAULT_PASSWORD_POLICY = {"MinimumLength": 8, "RequireUppercase": True, "RequireLowercase": True,
+                            "RequireNumbers": True, "RequireSymbols": True, "TemporaryPasswordValidityDays": 7}
+
+
+def _seconds(value: Any, default_unit: str) -> int | None:
+    """'7d', '1h', '30 minutes', 3600 (in default_unit) -> seconds; None when unreadable."""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return int(value * _CFN_UNITS[default_unit])
+    m = re.fullmatch(r"\s*(\d+(?:\.\d+)?)\s*([A-Za-z]*)\s*", str(value))
+    if not m:
+        return None
+    unit = m.group(2).lower()
+    factor = _CFN_UNITS[default_unit] if not unit else _DURATION_UNITS.get(unit)
+    return int(float(m.group(1)) * factor) if factor else None
+
+
+def _cfn_duration(seconds: int) -> tuple[int, str]:
+    for unit in ("days", "hours", "minutes"):
+        if seconds % _CFN_UNITS[unit] == 0:
+            return seconds // _CFN_UNITS[unit], unit
+    return seconds, "seconds"
+
+
+def _plain(value: Any) -> bool:
+    return isinstance(value, (bool, int, float, str))
+
+
+def _same(have: Any, want: Any) -> bool:
+    """YAML/JSON literals compared loosely: 'false' == False, '6' == 6 == 6.0."""
+    if isinstance(have, bool) or isinstance(want, bool):
+        return str(have).lower() == str(want).lower()
+    try:
+        return float(have) == float(want)
+    except (TypeError, ValueError):
+        return str(have) == str(want)
+
+
+def check_c14(workspace: Path, template: dict[str, Any]) -> list[dict[str, Any]]:
+    """C14: what blueprint.cognito states about the user pool (token lifetimes,
+    password policy, sign-in attribute) is what the template deploys. No test
+    runs against real Cognito, so a setting left out here only shows up after
+    deployment (bookstore-v3a: refresh token 7d in the blueprint, Cognito's
+    30-day default in the template)."""
+    try:
+        blueprint = json.loads((workspace / "storage" / "blueprint.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []  # B0 / C9 report a missing or broken blueprint
+    cognito = blueprint.get("cognito") if isinstance(blueprint, dict) else None
+    if not isinstance(cognito, dict) or not cognito.get("enabled"):
+        return []
+    resources = template.get("Resources") or {}
+    pools = {n: r for n, r in resources.items() if isinstance(r, dict) and r.get("Type") == "AWS::Cognito::UserPool"}
+    clients = {n: r for n, r in resources.items() if isinstance(r, dict) and r.get("Type") == "AWS::Cognito::UserPoolClient"}
+    if not pools:
+        return [_finding("C14", "ERROR", "blueprint.cognito.enabled is true but the template has no AWS::Cognito::UserPool.", "cognito")]
+    findings: list[dict[str, Any]] = []
+
+    tokens = cognito.get("token_validity") if isinstance(cognito.get("token_validity"), dict) else {}
+    wanted_tokens = {k: tokens[k] for k in _TOKEN_FIELDS if tokens.get(k) not in (None, "")}
+    if wanted_tokens and not clients:
+        findings.append(_finding("C14", "ERROR", "blueprint.cognito.token_validity is set but the template has no "
+                                 "AWS::Cognito::UserPoolClient to carry it.", "cognito.token_validity"))
+    for logical, client in clients.items():
+        props = client.get("Properties") or {}
+        units = props.get("TokenValidityUnits") or {}
+        for key, raw in wanted_tokens.items():
+            prop, unit_key, default_unit, cognito_default = _TOKEN_FIELDS[key]
+            want = _seconds(raw, default_unit)
+            if want is None:
+                findings.append(_finding("C14", "WARNING", f"blueprint.cognito.token_validity.{key} = {raw!r} is not a "
+                                         "duration this check can read (use e.g. '1h', '7d').", f"cognito.token_validity.{key}"))
+                continue
+            unit = units.get(unit_key, default_unit) if isinstance(units, dict) else default_unit
+            value = props.get(prop)
+            if value is None:
+                have, where = cognito_default, f"no {prop} (Cognito default)"
+            elif _plain(value) and _plain(unit) and str(unit) in _CFN_UNITS and _seconds(value, str(unit)) is not None:
+                have, where = _seconds(value, str(unit)), f"{prop}: {value} {unit}"
+            else:
+                findings.append(_finding("C14", "WARNING", f"{logical}.{prop} is not a literal ({value!r}, unit {unit!r}); "
+                                         f"cannot compare it with blueprint.cognito.token_validity.{key} = {raw!r}.", logical))
+                continue
+            if have != want:
+                n, u = _cfn_duration(want)
+                findings.append(_finding(
+                    "C14", "ERROR",
+                    f"{logical}: blueprint.cognito.token_validity.{key} = {raw!r} ({want}s), but the template has {where} "
+                    f"= {have}s. Set {prop}: {n} with TokenValidityUnits.{unit_key}: {u} (CloudFormation takes a number "
+                    f"plus a unit, not the blueprint's string).", logical))
+
+    policy = cognito.get("password_policy") if isinstance(cognito.get("password_policy"), dict) else {}
+    wanted_policy = {_PASSWORD_FIELDS[k]: (k, v) for k, v in policy.items() if k in _PASSWORD_FIELDS and v is not None}
+    for logical, pool in pools.items():
+        props = pool.get("Properties") or {}
+        stated = ((props.get("Policies") or {}).get("PasswordPolicy")) if isinstance(props.get("Policies"), dict) else None
+        for prop, (key, want) in wanted_policy.items():
+            if prop == "TemporaryPasswordValidityDays" and want == 0:
+                continue  # "no temporary passwords"; CloudFormation only accepts 1-365, so leaving it out is right
+            if isinstance(stated, dict):
+                if prop not in stated:
+                    findings.append(_finding("C14", "ERROR", f"{logical}: blueprint.cognito.password_policy.{key} = {want!r}, "
+                                             f"but Policies.PasswordPolicy has no {prop}; set it explicitly.", logical))
+                    continue
+                have = stated[prop]
+            else:
+                have = _DEFAULT_PASSWORD_POLICY[prop]
+            if not _plain(have):
+                continue
+            if not _same(have, want):
+                source = "Policies.PasswordPolicy" if isinstance(stated, dict) else "Cognito's default policy (no PasswordPolicy in the template)"
+                findings.append(_finding("C14", "ERROR", f"{logical}: blueprint.cognito.password_policy.{key} = {want!r}, "
+                                         f"but {source} gives {prop} = {have!r}.", logical))
+
+        username = cognito.get("username_attribute")
+        if username in ("email", "phone_number"):
+            attrs = [str(a) for a in props.get("UsernameAttributes") or []]
+            if username not in attrs:
+                findings.append(_finding("C14", "ERROR", f"{logical}: blueprint.cognito.username_attribute = {username!r}, "
+                                         f"but UsernameAttributes is {attrs or 'not set'}.", logical))
+    return findings
+
+
 # Pipeline tools an agent must never modify during a run (TOOLS check). The
 # rule ledger is written by update_ledger during S5, so it is exempt.
 TOOL_DIRS = ("m2s-mcp-server", ".openharness")
 TOOL_EXEMPT = {"m2s-mcp-server/perf-rules/ledger.json"}
+TOOL_EXEMPT_PREFIXES = ("m2s-mcp-server/evidence/",)  # C2 appends a run's archive there
 
 
 def check_tools_unmodified(repo: Path | None = None, home_agents: Path | None = None) -> list[dict[str, Any]]:
@@ -1587,11 +1759,15 @@ def check_tools_unmodified(repo: Path | None = None, home_agents: Path | None = 
         else:
             for line in p.stdout.splitlines():
                 path = line[3:].strip().strip('"').split(" -> ")[-1]
-                if line.strip() and path not in TOOL_EXEMPT:
+                if line.strip() and path not in TOOL_EXEMPT and not path.startswith(TOOL_EXEMPT_PREFIXES):
                     findings.append(_finding("TOOLS", "ERROR",
                                              f"pipeline tool file changed and not committed: {line[:2].strip()} {path} "
                                              "(agents must not modify the pipeline's tools; report a suspected tool bug instead)", path))
     agents_dir = repo / "m2s-mcp-server" / "agents"
+    # A linked worktree runs its own role docs (coord/workers.py AGENTS_DIR); the deployed
+    # copies belong to the main checkout, so they say nothing about this one.
+    if (repo / ".git").is_file():
+        return findings
     for src in sorted(agents_dir.glob("m2s-*.md")) if agents_dir.is_dir() else []:
         installed = home_agents / src.name
         if installed.exists() and installed.read_bytes() != src.read_bytes():
@@ -1600,8 +1776,124 @@ def check_tools_unmodified(repo: Path | None = None, home_agents: Path | None = 
     return findings
 
 
-def run_gate(phase: str, workspace: str) -> dict[str, Any]:
+def check_judge_frozen(ws: Path) -> list[dict[str, Any]]:
+    """JUDGE (v2 §4.7): once judge/judge_manifest.json exists, every file under
+    judge/ must still have the hash the manifest froze."""
+    import judge
+    changes = judge.judge_changes(ws)
+    if not changes:
+        return []
+    return [_finding("JUDGE", "ERROR", f"frozen judge file {kind}: {path} (the judge may only change with a person's "
+                     "approval and a new version)", path)
+            for kind in ("changed", "added", "removed") for path in changes[kind]]
+
+
+def check_adapter_map(ws: Path) -> list[dict[str, Any]]:
+    """AM (v2 A2, PIPELINE_V2_PLAN.md §4.8): in a workspace with a judge (or an
+    adapter map), storage/adapter_map.json must exist and pass its check: every
+    monolith table mapped or replaced, the judge fixtures' tables covered, target
+    tables and keys from the blueprint, an identity mapping when the blueprint
+    replaces the monolith's authentication. v1 workspaces have neither: no check."""
+    import adapter
+    import judge
+    path = adapter.map_path(ws)
+    if not (judge.judge_dir(ws) / "cases").is_dir() and not path.exists():
+        return []
+    try:
+        res = judge.check_adapter_map(ws)
+    except judge.JudgeError as exc:
+        return [_finding("AM", "ERROR", f"adapter map cannot be checked: {exc}", "storage/adapter_map.json")]
+    return [_finding("AM", "ERROR", e, "storage/adapter_map.json") for e in res["errors"]]
+
+
+def check_gaps(ws: Path) -> list[dict[str, Any]]:
+    """AG (v2 A2, PIPELINE_V2_PLAN.md §4.11): when the workspace has a gap inventory,
+    every gap has a decision and DECISIONS.md mentions it. No inventory: no check."""
+    import gaps
+    if not gaps.inventory_path(ws).exists():
+        return []
+    try:
+        res = gaps.check_inventory(ws, require_decided=True)
+    except gaps.GapError as exc:
+        return [_finding("AG", "ERROR", f"gap inventory cannot be checked: {exc}", "storage/gap_inventory.json")]
+    return [_finding("AG", "ERROR", e, "storage/gap_inventory.json") for e in res["errors"]]
+
+
+def _package_functions(ws: Path, package: str) -> tuple[list[str] | None, str | None]:
+    """impl_packages[package] -> function names, or a finding text (v3 M2/W2.6)."""
+    path = ws / "storage" / "work_packages.json"
+    if not path.exists():
+        return None, "storage/work_packages.json does not exist; cannot scope gate(code) by package"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return None, f"storage/work_packages.json is not JSON: {exc}"
+    impl = data.get("impl_packages") or {}
+    entry = impl.get(package)
+    if not entry:
+        return None, f"work_packages.impl_packages has no package {package!r} (S1 fills it from the blueprint)"
+    if isinstance(entry, dict):
+        functions = entry.get("functions")
+    else:
+        functions = entry
+    if not isinstance(functions, list) or not all(isinstance(f, str) for f in functions):
+        return None, f"impl_packages[{package!r}] must be a list of function names or {{functions: [...]}}"
+    return functions, None
+
+def check_impl_packages(workspace: Path) -> list[dict[str, Any]]:
+    """CG: the architect's impl_packages, when it is filled, must map every
+    blueprint function to exactly one package (v3 M3 open issue -> M4: S1's
+    scope now includes storage/work_packages.json; a null mapping stays legal
+    because the expansion computes one from the blueprint and the packages)."""
+    plan_path = workspace / "storage" / "work_packages.json"
+    blueprint_path = workspace / "storage" / "blueprint.json"
+    if not plan_path.is_file() or not blueprint_path.is_file():
+        return []
+    try:
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        blueprint = json.loads(blueprint_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []  # B0 / the analysis check report the broken file
+    impl = plan.get("impl_packages") if isinstance(plan, dict) else None
+    if not isinstance(impl, dict) or not impl:
+        return []
+    functions = [str(f.get("name")) for f in (blueprint.get("lambda_functions") or [])
+                 if isinstance(f, dict) and f.get("name")]
+    findings: list[dict[str, Any]] = []
+    seen: dict[str, str] = {}
+    for package, entry in impl.items():
+        names = entry.get("functions") if isinstance(entry, dict) else entry
+        if not isinstance(names, list):
+            findings.append(_finding("CG", "ERROR",
+                                     f"impl_packages[{package!r}] must be a list of function names "
+                                     "or {functions: [...]}", str(plan_path)))
+            continue
+        for name in names:
+            name = str(name)
+            if name not in functions:
+                findings.append(_finding("CG", "ERROR",
+                                         f"impl_packages[{package!r}] names {name!r}, which is not a "
+                                         "blueprint lambda function", str(plan_path)))
+            elif name in seen:
+                findings.append(_finding("CG", "ERROR",
+                                         f"function {name!r} is listed in impl_packages[{seen[name]!r}] "
+                                         f"and impl_packages[{package!r}]", str(plan_path)))
+            else:
+                seen[name] = package
+    missing = [f for f in functions if f not in seen]
+    if missing:
+        findings.append(_finding("CG", "ERROR", f"impl_packages does not cover {missing}", str(plan_path)))
+    return findings
+
+
+def run_gate(phase: str, workspace: str, functions: list[str] | None = None,
+             package: str | None = None) -> dict[str, Any]:
     ws = Path(workspace).resolve()
+    extra_findings: list[dict[str, Any]] = []
+    if package and functions is None:
+        functions, error = _package_functions(ws, package)
+        if error:
+            extra_findings.append(_finding("SCOPE", "ERROR", error, "storage/work_packages.json"))
     template_path = ws / "output" / "template.yaml"
     template: dict[str, Any] = {}
     template_error: str | None = None
@@ -1616,7 +1908,8 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
     severe = False
 
     if phase == "blueprint":
-        checks = check_b0(ws) + check_contract(ws) + check_dm(ws) + check_api_type(ws)
+        checks = (check_b0(ws) + check_contract(ws) + check_dm(ws) + check_api_type(ws) + check_adapter_map(ws)
+                  + check_gaps(ws) + check_impl_packages(ws))
         severe = any(f["severity"] == "ERROR" for f in checks)
 
     elif phase == "code":
@@ -1626,13 +1919,14 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
         # S3 ever produces a template, so gate(phase="code") would otherwise
         # never be able to catch a C10 problem at the point it's most
         # useful (before the code-developer's own self-check loop exits).
-        checks = check_c1_code(ws) + check_c10(ws) + check_gm_code(ws)
+        checks = extra_findings + check_c1_code(ws, functions) + check_c10(ws) + check_gm_code(ws)
         if template_error is None and template:
             checks += check_c3(ws, template)
             checks += check_c11(ws, template)
             checks += check_c12(ws, template)
         c1_code_failed = any(f["check_id"] == "C1" for f in checks)
-        severe = c1_code_failed or any(f["check_id"] == "GM1" for f in checks)
+        scope_failed = any(f["check_id"] == "SCOPE" for f in checks)
+        severe = c1_code_failed or scope_failed or any(f["check_id"] == "GM1" for f in checks)
 
     elif phase == "template":
         if template_error is not None:
@@ -1655,6 +1949,7 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c11(ws, template)
                 + check_c12(ws, template)
                 + check_c13(ws, template)
+                + check_c14(ws, template)
                 + check_gm_code(ws)
                 + check_gm_template(ws, template)
                 + check_api_type_template(ws, template)
@@ -1665,7 +1960,10 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 "C6": suspects_c6_layers(ws, template),
             }
             mechanical_errors = sum(1 for f in checks if f["severity"] == "ERROR")
-            severe = mechanical_errors > _MECHANICAL_LIMIT_FOR_SEVERE
+            # A C14 error alone fails the gate: nothing downstream can fix the template
+            # (S4 only reports), and no test runs against real Cognito to notice it.
+            severe = mechanical_errors > _MECHANICAL_LIMIT_FOR_SEVERE or any(
+                f["check_id"] == "C14" and f["severity"] == "ERROR" for f in checks)
 
     elif phase == "final":
         checks = check_b0(ws)
@@ -1685,10 +1983,11 @@ def run_gate(phase: str, workspace: str) -> dict[str, Any]:
                 + check_c11(ws, template)
                 + check_c12(ws, template)
                 + check_c13(ws, template)
+                + check_c14(ws, template)
                 + check_gm_code(ws)
                 + check_gm_template(ws, template)
             )
-        checks += check_tools_unmodified() + check_spec_relaxations(ws) + check_dm(ws)
+        checks += check_tools_unmodified() + check_spec_relaxations(ws) + check_dm(ws) + check_judge_frozen(ws)
         report_path = ws / "output" / "consistency_report.json"
         report = None
         if report_path.exists():

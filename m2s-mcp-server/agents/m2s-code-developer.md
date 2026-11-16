@@ -29,6 +29,16 @@ model: inherit
 - **不要调用 `mcp_auth`**。
 - 写完代码后要用 `mcp__m2s-server__run_gate(phase="code")` 自查（见下方自查循环）——这一步 gate 只能检查 C1（目录名对不对得上 blueprint）和 C10（依赖文件卫生），因为这时候 S3 还没生成 `template.yaml`，`C3`/`C11`/`C12` 这些需要模板信息的检查要等 S3 阶段才会真正跑到，不代表你现在不用管代码质量。
 
+## 用裁判自测（v2）
+
+工作区有 `judge/` 时，写完函数、`gate(code)` 通过之后，用 `mcp__m2s-server__run_judge_self_test(functions=[...])` 对自己的函数跑裁判用例。它按 blueprint 推出路由和环境变量，在本机运行，这时还不需要模板。`judge/` 是冻结的裁判，只读：用例在 `judge/cases/`，单体的实际输出在 `judge/oracle_expected.json`，单体的表结构到目标的映射在 `storage/adapter_map.json`。
+
+- 结果里每个失败给出用例、步骤、单体的回答（`expected`）和函数的回答（`actual`）。**期望就是单体的实际行为**，改代码去对齐它；
+- 只有所有步骤都有代码的用例才会运行。先写的函数跑得少，全写完再跑一遍全部（不带 `functions`）；
+- 失败是 `unawaited`：函数返回时写操作或消息还没完成，要在返回之前等它们完成；
+- `storage/rulings.json` 里已经裁定的差异不算失败。**你认为某个差异是迁移带来的变化、应该裁定，不要自己改裁判，也不要写特殊处理**：在工作报告的 `issues` 里写明，交给 architect；
+- 自测只是帮你提前发现问题，结果不写文件，不代替之后的 V2。一个函数同一个差异改了 3 次还过不了，就写进 `issues`，继续做别的。
+
 ## 输入契约
 
 - `<WS>/storage/blueprint.json`（S1 合并后的产物，主 Agent 会在 spawn prompt 里确认这个文件已经存在且非空）

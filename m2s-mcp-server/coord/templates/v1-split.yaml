@@ -1,0 +1,142 @@
+# v1 modules under the v3 dispatcher, split by work package (v3 M2/W2.7).
+#
+# The M1 template (v1.yaml) stays the serial equivalence baseline. This one
+# expands S0, V1 and S2 after the work-package plan exists:
+#   P0 closes  -> storage/work_packages.json, then S0:<pkg> and V1:<pkg>
+#   S1 closes  -> S2:<pkg> for each package, plus S2:shared for the shared layer
+# "<family>:*" means every child of that family; a child of the same package is
+# preferred when one exists (S2:books depends on V1:books, not on V1:cart).
+# "{pkg}" and "{pkg_dir}" in scope are replaced per child.
+name: v1-split
+max_attempts: 3
+max_rework_rounds: 2
+max_spec_issue_rounds: 2
+tasks:
+  - id: P0
+    runner: dispatcher
+    action: analyze_project
+    scope: [storage/analysis_report.json, storage/symbol_table.json]
+    check: [analysis_report]
+
+  - id: S0
+    role: m2s-spec-annotator
+    split: package
+    split_shared: true
+    expand_after: [P0]
+    deps: [P0]
+    scope: [storage/analysis_report.json, "storage/stage_reports/S0-{pkg}.json"]
+    shared_scope: [storage/analysis_report.json, storage/stage_reports/S0-shared.json]
+    shared_check: [global_middleware]
+    check: [check_provenance_pkg]
+    max_turns: 250
+    timeout_min: 150
+
+  - id: S1
+    role: m2s-architect
+    line: impl
+    deps: ["S0:*"]
+    # work_packages.json: S1 fills impl_packages from the blueprint (v3 M3
+    # open issue, fixed in M4) so run_gate(package=...) and S5's package
+    # checks no longer need an explicit functions_json.
+    scope: [storage/blueprint.json, storage/DECISIONS.md, storage/work_packages.json, storage/stage_reports/S1.json]
+    check: [blueprint_keys, gate_blueprint]
+    max_turns: 250
+    timeout_min: 150
+
+  - id: V1
+    role: m2s-verifier
+    line: verify
+    split: package
+    expand_after: [P0]
+    deps: [S1, "S0:*"]
+    scope: ["verification/**", "storage/stage_reports/V1-{pkg}.json"]
+    check: [validate_dry_run]
+    max_turns: 300
+    timeout_min: 180
+
+  - id: S2
+    role: m2s-code-developer
+    line: impl
+    split: package
+    split_shared: true
+    expand_after: [S1]
+    deps: [S1, "V1:*"]
+    scope: ["output/lambdas/{pkg_dir}/**", "storage/stage_reports/S2-{pkg}.json"]
+    shared_scope: [output/layers/**, storage/DECISIONS.md, storage/stage_reports/S2-shared.json]
+    check: [gate_code_pkg]
+    max_turns: 300
+    timeout_min: 180
+
+  - id: S3a
+    role: m2s-sam-engineer
+    line: impl
+    deps: ["S2:*"]
+    scope: [output/template.part1.yaml, storage/DECISIONS.md, storage/stage_reports/S3a.json]
+    check: [template_part1]
+    on_stale: recheck
+    max_turns: 150
+    timeout_min: 90
+
+  - id: S3b
+    role: m2s-sam-engineer
+    line: impl
+    deps: [S3a]
+    scope: [output/template.part2.yaml, storage/DECISIONS.md, storage/stage_reports/S3b.json]
+    check: [template_part2]
+    on_stale: recheck
+    max_turns: 150
+    timeout_min: 90
+
+  - id: S3c
+    role: m2s-sam-engineer
+    line: impl
+    deps: [S3b]
+    scope: [output/template.yaml, output/template.part1.yaml, output/template.part2.yaml,
+            storage/DECISIONS.md, storage/stage_reports/S3c.json]
+    check: [gate_template]
+    on_stale: recheck
+    max_turns: 200
+    timeout_min: 120
+
+  - id: S4
+    role: m2s-validator
+    line: impl
+    deps: [S3c]
+    scope: [output/consistency_report.json, storage/stage_reports/S4.json]
+    check: [gate_final, consistency_pass]
+    on_stale: recheck
+    max_turns: 150
+    timeout_min: 90
+
+  - id: V2
+    role: m2s-verifier
+    line: verify
+    deps: [S4]
+    scope: [verification/**, storage/stage_reports/V2.json]
+    check: [validate_full]
+    on_stale: rerun
+    max_turns: 300
+    timeout_min: 240
+
+  - id: TAG_V0
+    runner: dispatcher
+    action: tag_v0
+    deps: [V2]
+    scope: []
+    check: []
+
+  - id: S5
+    role: m2s-perf-optimizer
+    deps: [TAG_V0]
+    scope: [output/**, perf/**, verification/results/**, verification/coverage/**,
+            verification/fault_baseline_*.json, storage/stage_reports/S5.json]
+    check: [s5_report]
+    max_turns: 400
+    timeout_min: 300
+
+  - id: FINAL
+    runner: dispatcher
+    action: final
+    deps: [S5]
+    scope: [output/**]
+    check: []

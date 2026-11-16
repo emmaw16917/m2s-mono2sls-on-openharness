@@ -1,0 +1,131 @@
+# v1 modules under the v3 dispatcher (PIPELINE_V3_PLAN.md appendix A, M1: no work packages).
+#
+# runner: agent       -> one `oh -p` worker per attempt, role = ~/.openharness/agents/<role>.md
+#         dispatcher  -> the dispatcher runs `action` itself (no LLM)
+# scope:  workspace-relative globs the task may change ("**" crosses directories). Files
+#         that tools write on the worker's behalf (run_validate results, coverage, ...)
+#         are listed too, because the post-run diff cannot tell who wrote a file.
+# check:  done check names from coord/checks.py; all must pass before the task closes.
+# on_stale: what to do when an upstream rework invalidates a closed task:
+#         recheck = rerun its checks first and spawn a worker only if they fail;
+#         rerun   = always spawn a worker again.
+# line:   impl tasks never see test material in prompts or feedback (v1 SKILL §2).
+name: v1
+max_attempts: 3          # 1 spawn + 2 re-spawns per round (v1 SKILL §3)
+max_rework_rounds: 2     # upstream reworks caused by verification, per task (v1 SKILL §3)
+max_spec_issue_rounds: 2 # S1 <-> V1 spec_issues round trips (v1 SKILL §3)
+tasks:
+  - id: P0
+    runner: dispatcher
+    action: analyze_project
+    scope: [storage/analysis_report.json, storage/symbol_table.json]
+    check: [analysis_report]
+
+  - id: S0
+    role: m2s-spec-annotator
+    deps: [P0]
+    scope: [storage/analysis_report.json, storage/stage_reports/S0.json]
+    check: [check_provenance]
+    max_turns: 250
+    timeout_min: 150
+
+  - id: S1
+    role: m2s-architect
+    line: impl
+    deps: [S0]
+    scope: [storage/blueprint.json, storage/DECISIONS.md, storage/stage_reports/S1.json]
+    check: [blueprint_keys, gate_blueprint]
+    max_turns: 250
+    timeout_min: 150
+
+  - id: V1
+    role: m2s-verifier
+    line: verify
+    deps: [S1]
+    scope: [verification/**, storage/stage_reports/V1.json]
+    check: [validate_dry_run]
+    max_turns: 300
+    timeout_min: 180
+
+  - id: S2
+    role: m2s-code-developer
+    line: impl
+    deps: [V1]
+    scope: [output/lambdas/**, output/layers/**, storage/DECISIONS.md, storage/stage_reports/S2.json]
+    check: [gate_code]
+    max_turns: 300
+    timeout_min: 180
+
+  - id: S3a
+    role: m2s-sam-engineer
+    line: impl
+    deps: [S2]
+    scope: [output/template.part1.yaml, storage/DECISIONS.md, storage/stage_reports/S3a.json]
+    check: [template_part1]
+    on_stale: recheck
+    max_turns: 150
+    timeout_min: 90
+
+  - id: S3b
+    role: m2s-sam-engineer
+    line: impl
+    deps: [S3a]
+    scope: [output/template.part2.yaml, storage/DECISIONS.md, storage/stage_reports/S3b.json]
+    check: [template_part2]
+    on_stale: recheck
+    max_turns: 150
+    timeout_min: 90
+
+  - id: S3c
+    role: m2s-sam-engineer
+    line: impl
+    deps: [S3b]
+    scope: [output/template.yaml, output/template.part1.yaml, output/template.part2.yaml,
+            storage/DECISIONS.md, storage/stage_reports/S3c.json]
+    check: [gate_template]
+    on_stale: recheck
+    max_turns: 200
+    timeout_min: 120
+
+  - id: S4
+    role: m2s-validator
+    line: impl
+    deps: [S3c]
+    scope: [output/consistency_report.json, storage/stage_reports/S4.json]
+    check: [gate_final, consistency_pass]
+    on_stale: recheck
+    max_turns: 150
+    timeout_min: 90
+
+  - id: V2
+    role: m2s-verifier
+    line: verify
+    deps: [S4]
+    scope: [verification/**, storage/stage_reports/V2.json]
+    check: [validate_full]
+    on_stale: rerun
+    max_turns: 300
+    timeout_min: 240
+
+  - id: TAG_V0
+    runner: dispatcher
+    action: tag_v0
+    deps: [V2]
+    scope: []
+    check: []
+
+  - id: S5
+    role: m2s-perf-optimizer
+    deps: [TAG_V0]
+    scope: [output/**, perf/**, verification/results/**, verification/coverage/**,
+            verification/fault_baseline_*.json, storage/stage_reports/S5.json]
+    check: [s5_report]
+    max_turns: 400
+    timeout_min: 300
+
+  - id: FINAL
+    runner: dispatcher
+    action: final
+    deps: [S5]
+    scope: [output/**]
+    check: []

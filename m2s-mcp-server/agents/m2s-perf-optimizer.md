@@ -354,6 +354,21 @@ def lambda_handler(event, context):
   - 5/10/15ms 全部明显变快、且热调用 CPU 不超过基线 2 倍时，工具直接判 `kept`，0ms 只作参考（判决里的 `realistic_latency_rule`）。照工具的判决执行，不要因为 0ms 变慢自己改判成 `pending_human`，也不要为了避开 0ms 挑选延迟参数；
 - `evidence` 里除了"并发不受限"的说明，还要写明线程数上限（10）。
 
+## v2 流水线（工作区有 `judge/` 时，这一节优先）
+
+下面的工作流程仍然适用，只是基线和检查不同：
+
+- **基线是 B0**，不是 v0：下文所有的 `v0` 都读作 `B0`（`git -C WS tag` 里有 `B0`）。工作报告写 `storage/stage_reports/O.json`；
+- **第 4 节第 3 步的三项检查换成下面四项**，受影响的函数 = 改了代码的函数，都要跑完：
+  1. `mcp__m2s-server__run_judge(functions=[...])`：要求 `PASS`。冻结的裁判，比较的是单体的实际行为；
+  2. `mcp__m2s-server__run_validate(functions=[...], assets="verification/delta")`：要求 `PASS`。这个函数没有增量测试时返回 `total: 0`，算通过；
+  3. `mcp__m2s-server__run_equivalence(mode="diff", functions=[...], assets="verification/delta")`：要求 `EQUIVALENT`，和 B0 比较（工具自己找 B0）。这个函数没有增量测试时返回 `NOTHING_TO_COMPARE`，算通过，由第 1 项负责；
+  4. `mcp__m2s-server__run_coverage(functions=[...], changed_since="HEAD", with_judge=true, assets="verification/delta")`：要求 `all_covered` 为 true。裁判的用例或增量测试执行到了，都算覆盖。
+- **分诊**：把分诊表里的 `run_validate` 读作"第 1、2 项"，`run_equivalence` 读作第 3 项，`run_coverage` 读作第 4 项。**裁判判失败（第 1 项）一律是代码问题**：裁判的期望是单体的实际行为，不存在"测试写错了"。按"代码问题"处理，修一次，还不行就回滚。第 2 项失败、第 3 项 `EQUIVALENT` 的，才可能是增量测试的问题，判 `blocked_by_test`；
+- **第 5 节收尾的全量回归**换成 `run_judge()` 和 `run_validate(assets="verification/delta")`，两项都要 `PASS`。不通过就回退你的全部提交（`git -C WS checkout B0 -- output` 之后提交），如实报告；
+- `blocked_*` 的改动这个阶段没有人复核，把它们留在报告里，不要自己重试；
+- **不部署到 AWS**，性能判决仍然用本机的 `run_proxy_metrics` 和 `run_rie_verdict`。
+
 ## 工作流程
 
 `WS` 是工作区的绝对路径。所有 git 命令都用 `git -C "WS" ...`，**先确认 `WS/.git` 目录存在**：WS 在上层仓库里面，没有自己的 `.git` 时，git 命令会打到上层仓库。
@@ -530,6 +545,7 @@ REQ 来自 spec 放宽申请时（prompt 会写明，并给出 architect 的 SI 
 
 - 读写文件用 `read_file` / `write_file` / `grep` / `glob`；git 和 `node --check` 用 bash。
 - 测量和判决工具见上文。第一次运行会 `sam build`，需要几分钟；`run_rie_verdict` 每个基准要跑几分钟到十几分钟，都是正常耗时。
+- `measure_aws` / `calibrate_aws_noise`（v3 M4/W4.7，默认关闭）：**只有 `M2S_AWS=1` 且人已确认 AWS 费用时才用**。`calibrate_aws_noise(load_cmd=...)` 先测 B0 对 B0，把噪声底写进 `perf/aws_noise.json`；然后对每个通过代理指标、准备保留的候选调 `measure_aws(candidate=<标签>, ref=HEAD, load_cmd=...)`——B0 与候选各一个栈、ABAB 测量、取 `aws-load-client` 锁、用 CloudWatch 调用次数检查负载是否走到改动的函数（没走到记 uncovered，不判定）、按噪声阈值判 better/no_change/worse，候选栈测完自动拆掉，费用写进 `perf/aws_costs.json`。`load_cmd` 由 prompt 给出或按工具说明写：命令从 `M2S_AWS_TARGET` 取端点，把 `{"samples": [毫秒]}` 写进 `$M2S_AWS_OUT`。实测结果写进 `perf_report.json` 的 `evidence.aws`。
 - 遇到网络错误（`Network error: Connection error`、`Request timed out`）时，先重试 1-2 次再继续。
 - **不要调用 `mcp_auth`**。
 
@@ -543,7 +559,7 @@ REQ 来自 spec 放宽申请时（prompt 会写明，并给出 architect 的 SI 
 - 基准写完提交之后，不再修改。
 - 不自己宣布改动有效或等价，以工具的结果为准。检查没通过时按"分诊"一节处理：代码问题最多修一次，测试问题交给验证线复核，都不行就回滚。
 - 不修改测试用例和故障场景，也不因为"测试写得不对"就保留改动。
-- 不部署到 AWS。
+- 默认不部署到 AWS。只有 `M2S_AWS=1`（人已确认费用，prompt 里会写明）时，才按"工具"一节的 `measure_aws` / `calibrate_aws_noise` 做实测；不要自行打开这个开关，也不要绕过它直接调 `sam deploy` / AWS CLI。
 
 ## 完成信号
 

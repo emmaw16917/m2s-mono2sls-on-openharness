@@ -7,7 +7,13 @@ Registered in OpenHarness as `m2s-server`, so tool names resolve to:
     mcp__m2s-server__run_gate
     mcp__m2s-server__merge_blueprint_key
     mcp__m2s-server__annotate_entry_point
+    mcp__m2s-server__annotate_shared_entry
     mcp__m2s-server__check_provenance
+    mcp__m2s-server__notice_post
+    mcp__m2s-server__notice_read
+    mcp__m2s-server__room_post
+    mcp__m2s-server__room_read
+    mcp__m2s-server__raise_spec_issue
     mcp__m2s-server__run_validate
     mcp__m2s-server__run_coverage
     mcp__m2s-server__run_equivalence
@@ -33,6 +39,7 @@ import m2s_merge
 import provenance
 import verify
 import perf
+from coord import tools as coord_tools
 
 # Only import gates lazily / guard for P0: gates.py is a P1 deliverable.
 try:
@@ -183,7 +190,30 @@ def annotate_global_middleware(index: int, headers_json: str, note: str = "", so
 
 
 @mcp.tool()
-def check_provenance() -> str:
+def annotate_shared_entry(entry_json: str) -> str:
+    """F2:shared: write one shared-code rule into analysis_report.shared_rules.
+
+    Shared code (middleware, data-access helpers) is annotated once, here,
+    instead of once per endpoint. Endpoint business_rules cite it with
+    {"rule": "ref: shared/<id>", "source": [...], "origin": "llm"}.
+
+    Args:
+        entry_json: {"id": "shared/<slug>", "file": "...", "function": "...",
+            "rule": "...", "kind": "validation|authorization|data_scope|...",
+            "source": [{file, line, symbol}], "origin": "llm",
+            "used_by": ["METHOD /path", ...] (optional)}
+
+    Returns: JSON {ok, id, shared_entries, replaced} or {ok: false, errors}.
+    """
+    try:
+        result = provenance.annotate_shared_entry(str(_workspace()), entry_json)
+    except provenance.SpecError as exc:
+        return json.dumps({"ok": False, "errors": [str(exc)]}, ensure_ascii=False)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def check_provenance(endpoint: str = "") -> str:
     """Stage-1 gate for the spec fields in storage/analysis_report.json.
 
     Checks that every cited source line exists and mentions its symbol
@@ -191,10 +221,212 @@ def check_provenance() -> str:
     every endpoint is complete (request, responses incl. a success
     response, auth, handler_location, at least one business rule).
 
+    Args:
+        endpoint: optional "METHOD /path" (for example "POST /api/orders") to
+            check only that endpoint (v3 M2/W2.6). Shared rules are still
+            validated as a whole.
+
     Returns: JSON string {status: PASS|FAIL, errors, incomplete,
         checked_sources, unknown_items, endpoints}.
     """
-    return json.dumps(provenance.check_provenance(str(_workspace())), ensure_ascii=False)
+    return json.dumps(provenance.check_provenance(str(_workspace()), endpoint or None), ensure_ascii=False)
+
+
+@mcp.tool()
+def check_judge_assets() -> str:
+    """Check the judge assets under judge/ (J1's completion check).
+
+    Layout: judge/cases/<endpoint slug>/<case>.json (slug of "GET /api/books/:id"
+    is "get-api-books-id"), judge/fixtures/<name>.json ({monolith table:
+    [items]}), judge/faults/<scenario>.json ({description, cases, rules}),
+    judge/identities.json, optional judge/run_config.json and
+    judge/uncovered.json ([{ref, reason}]).
+
+    Checks: the format of every file; every fact_ref exists in the fact base
+    and its endpoint is called by a step; fixtures use the monolith's tables
+    with their key attributes; identities, fixtures and ${vars} used are
+    defined; every endpoint has a case; every response below 500 that is not
+    a caught exception is cited by some case; every endpoint that writes has
+    a case that reads the effect back (a later GET step with read_back: true).
+    Coverage J1 cannot provide goes in judge/uncovered.json with the reason.
+
+    Returns: JSON {status: PASS|FAIL, errors, warnings, summary}.
+    """
+    import judge
+    try:
+        return json.dumps(judge.check_judge_assets(_workspace()), ensure_ascii=False)
+    except judge.JudgeError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
+def judge_facts(endpoint: str = "") -> str:
+    """The fact base as J1 needs it, without source citations: per endpoint the
+    auth classification, request fields, every response (its fact ref such as
+    "POST /api/cart#responses[2]", status, kind, when, body fields), data
+    access and business rules (with their refs); plus the monolith's tables
+    (keys) and the global middleware. Read this instead of printing
+    storage/analysis_report.json.
+
+    Args:
+        endpoint: e.g. "POST /api/cart"; empty for every endpoint.
+
+    Returns: JSON {endpoints, tables?, global_middleware?}.
+    """
+    import judge
+    try:
+        return json.dumps(judge.fact_digest(_workspace(), endpoint or None), ensure_ascii=False)
+    except judge.JudgeError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
+def check_adapter_map() -> str:
+    """Check storage/adapter_map.json (A1's adapter map, PIPELINE_V2_PLAN.md
+    §4.8) without running anything: every monolith table of the fact base has
+    an entry (a target table, or target null with replaced_by and reason);
+    target tables exist in the blueprint; the target's key attributes are
+    produced; field specs are declarative (from / as identity / const /
+    format / split / encode|decode json, drop); identity claims use only
+    variables the aliases define; dropped endpoints exist; every judge
+    fixture item maps to the target and back to itself.
+
+    Returns: JSON {status: PASS|FAIL, errors}.
+    """
+    import judge
+    try:
+        return json.dumps(judge.check_adapter_map(_workspace()), ensure_ascii=False)
+    except judge.JudgeError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
+def check_adapter(ref: str = "", mode: str = "auto") -> str:
+    """V1: run the frozen judge's read-only cases over fixtures on the target,
+    the fixtures written through the adapter map: the target's reads must
+    answer what the monolith answered on the same data, or the map (or the
+    read) is wrong. Writes verification/check_adapter.json.
+
+    Args:
+        ref: a git ref of the workspace repo to judge (e.g. "v0"); empty: the working tree.
+        mode: "auto" (RIE with Docker, else local Node), "rie" or "local".
+
+    Returns: JSON {status: PASS|FAIL|ERROR, cases, failed, failures}.
+    """
+    import judge
+    return json.dumps(judge.check_adapter(_workspace(), ref or None, mode), ensure_ascii=False)
+
+
+@mcp.tool()
+def run_judge_self_test(functions: list[str] | None = None) -> str:
+    """I1 self test: run the frozen judge's cases on the code written so far, before any
+    template exists. Routes and environment come from the blueprint; the functions run on
+    this machine. Only the cases whose every step reaches a function with code. Advisory:
+    nothing is written, V2 gives the verdict on the built template.
+
+    Args:
+        functions: blueprint function names to look at; empty: every function with code.
+
+    Returns: JSON {status: PASS|FAIL|ERROR, cases_run, functions_with_code, summary, failures,
+        failures_total}. Each failure gives the case, the step, what the monolith answered
+        (expected) and what the function answered (actual); judge/cases/ has the case.
+    """
+    import judge
+    return json.dumps(judge.run_judge_self_test(_workspace(), functions or None), ensure_ascii=False)
+
+
+@mcp.tool()
+def run_judge(ref: str = "", mode: str = "auto", cases: list[str] | None = None,
+              functions: list[str] | None = None) -> str:
+    """V2: run the frozen judge on the target's whole API (every case and every
+    fault scenario; steps routed to their functions, SQS messages delivered
+    between steps) and compare each step with the monolith's record: status,
+    declared headers, body, symbol by symbol. Writes
+    verification/verdict_judge.json when all cases run.
+
+    Args:
+        ref: a git ref of the workspace repo to judge; empty: the working tree.
+        mode: "auto", "rie" or "local".
+        cases: only these judge case ids (and their fault runs); no verdict file.
+        functions: only the cases with a step these functions answer; no verdict file.
+
+    Returns: JSON {status: PASS|FAIL|ERROR, summary, failures, verdict}.
+    """
+    import judge
+    return json.dumps(judge.run_judge(_workspace(), ref or None, mode, cases or None, functions or None), ensure_ascii=False)
+
+
+@mcp.tool()
+def check_gap_inventory(require_decided: bool = False) -> str:
+    """Check storage/gap_inventory.json: format, categories, evidence (each
+    {file, line, symbol} really is in the monolith), endpoints in the fact base; a
+    decided gap has decision {choice, why, test: delta | judge | none}. With
+    require_decided (architect): every gap decided and mentioned in storage/DECISIONS.md.
+
+    Returns: JSON {status: PASS|FAIL, errors, gaps, open}.
+    """
+    import gaps
+    try:
+        return json.dumps(gaps.check_inventory(_workspace(), require_decided), ensure_ascii=False)
+    except gaps.GapError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
+def check_mutant_classes() -> str:
+    """J5 self-check: every mutant judge/judge_validation.json lists as not caught
+    (survived, not_covered, trace_only) has a class in judge/mutant_classes.json
+    ({mutant id: {class: equivalent | gap, reason, suggest?}}).
+
+    Returns: JSON {status: PASS|FAIL, survivors, classes (counts), errors}.
+    """
+    import mutants
+    return json.dumps(mutants.check_mutant_classes(_workspace()), ensure_ascii=False)
+
+
+@mcp.tool()
+def check_reconcile_classes() -> str:
+    """J3 self-check: every difference in judge/reconcile.json has a class in
+    judge/reconcile_classes.json ({difference id: {class, reason, fact_ref?,
+    fix?}}), class one of fact_error / needs_ruling / case_error / mask_gap,
+    with a reason; mask_gap needs rules in judge/mask_rules.json.
+
+    Returns: JSON {status: PASS|FAIL, differences, classes (counts), errors}.
+    """
+    import judge
+    return json.dumps(judge.check_reconcile_classified(_workspace()), ensure_ascii=False)
+
+
+@mcp.tool()
+def run_monolith(passes: int = 3, coverage: bool = True) -> str:
+    """J2: run every judge case, and every case of every fault scenario, on the
+    monolith itself, `passes` times (at least 3), and write the judge's
+    expectations. Needs check_judge_assets to pass.
+
+    Each pass starts the monolith afresh on a local DynamoDB (DynamoDB Local
+    with Docker, else dynalite) behind the recording proxy; before each case
+    the tables are emptied and seeded with its fixtures and its identities
+    are prepared (not recorded). Values that differ between passes 1 and 2
+    become symbols (<uuid#1>, <time#2>, <id:u1>, ...); pass 3 is checked
+    against them.
+
+    Writes judge/oracle_expected.json, judge/fault_baseline_monolith.json,
+    judge/masks.json, judge/monolith_calls.json, judge/coverage_monolith/.
+
+    Returns: JSON {status: PASS|FAIL|ERROR, problems (failed requests,
+    identity preparation, monolith exits), unstable (values that cannot be
+    masked), coverage, ...}.
+    """
+    import judge
+    if os.environ.get("M2S_MODE") == "J1":
+        # J1's predictions come from the fact base alone; the monolith's output is what they are checked against.
+        return json.dumps({"status": "REFUSED", "error": "J1 writes predictions from the fact base only; run_monolith "
+                           "is run by the dispatcher after J1 (J2)"}, ensure_ascii=False)
+    try:
+        return json.dumps(judge.run_monolith(_workspace(), passes=passes, coverage=coverage), ensure_ascii=False,
+                          default=str)
+    except judge.JudgeError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
 
 
 def _verify_call(fn, *args, **kwargs) -> str:
@@ -206,7 +438,8 @@ def _verify_call(fn, *args, **kwargs) -> str:
 
 @mcp.tool()
 def run_validate(functions: list[str] | None = None, cases: list[str] | None = None,
-                 dry_run: bool = False, mode: str = "auto", ref: str | None = None) -> str:
+                 dry_run: bool = False, mode: str = "auto", ref: str | None = None,
+                 assets: str | None = None) -> str:
     """Run the verification test cases (verification/events/<function>/*.json)
     and judge each one against its expectations.
 
@@ -221,6 +454,9 @@ def run_validate(functions: list[str] | None = None, cases: list[str] | None = N
         ref: run the current test assets against the code of this git ref
             of the workspace repo (e.g. "v0" after test cases were revised)
             instead of the working tree's code.
+        assets: the delta tests, "verification/delta" (v2 D1, V3). Their cases also
+            need source and expected_from, every gap decided with test: "delta"
+            needs a case, and a full run writes verification/verdict_delta.json.
 
     A full run (no functions/cases filter, not dry_run) also writes
     verification/verdict_A.json, the stage-A verdict. The first run does a
@@ -234,11 +470,12 @@ def run_validate(functions: list[str] | None = None, cases: list[str] | None = N
         touched an item of an ongoing transaction, as real DynamoDB does;
         sdk_calls mark them "!conflict"), mode, disclaimer} or {status, dry_run, schema_errors, ...}.
     """
-    return _verify_call(verify.run_validate, functions, cases, dry_run, mode, ref)
+    return _verify_call(verify.run_validate, functions, cases, dry_run, mode, ref, assets=assets)
 
 
 @mcp.tool()
-def run_coverage(functions: list[str] | None = None, mode: str = "auto", changed_since: str | None = None) -> str:
+def run_coverage(functions: list[str] | None = None, mode: str = "auto", changed_since: str | None = None,
+                 assets: str | None = None, with_judge: bool = False) -> str:
     """Run the test cases with V8 coverage and report branch/statement
     coverage per function. Every uncovered branch and statement (file, line,
     code) is written to verification/coverage/<function>.json -- use it to
@@ -250,17 +487,27 @@ def run_coverage(functions: list[str] | None = None, mode: str = "auto", changed
         changed_since: a git ref of the workspace repo (e.g. "HEAD"); also
             report whether every executable line changed since that ref was
             executed by at least one test (changed_lines.all_covered).
+        assets: run the delta tests, "verification/delta" (v2 V3).
+        with_judge: (v2 O2, needs functions and changed_since) a changed line counts as
+            covered when the judge's cases or the delta tests executed it. Returns
+            {status, functions: {name: {covered, uncovered, ...}}, all_covered}.
 
     Returns: JSON string {mode, functions: {name: {statements_pct,
         branches_pct, functions_pct, files, uncovered_count}},
         changed_lines?}.
     """
-    return _verify_call(verify.run_coverage, functions, mode, changed_since)
+    if with_judge:
+        import judge
+        if not functions or not changed_since:
+            return json.dumps({"status": "ERROR", "error": "with_judge needs functions and changed_since"})
+        return json.dumps(judge.changed_lines_covered(_workspace(), functions, changed_since, assets), ensure_ascii=False)
+    return _verify_call(verify.run_coverage, functions, mode, changed_since, assets=assets)
 
 
 @mcp.tool()
 def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str] | None = None,
-                    runtime: str = "auto", speculative_reads: list[str] | None = None) -> str:
+                    runtime: str = "auto", speculative_reads: list[str] | None = None,
+                    assets: str | None = None) -> str:
     """Fault-injection runs (verification/faults/*.json).
 
     Args:
@@ -282,11 +529,13 @@ def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str
             extra reads on runs the baseline answered with an error other
             than 401/403, provided writes, messages and every baseline read
             are unchanged; the extra reads are reported, not hidden.
+        assets: use the delta tests, "verification/delta" (v2 V3 records
+            label "B0" on them).
 
     Returns: JSON string {status: RECORDED|EQUIVALENT|DIFFERENT|..., runs,
         differences, infra_errors[, speculative_reads, extra_reads_total]}.
     """
-    return _verify_call(verify.run_equivalence, mode, label, functions, runtime, speculative_reads=speculative_reads)
+    return _verify_call(verify.run_equivalence, mode, label, functions, runtime, speculative_reads=speculative_reads, assets=assets)
 
 
 @mcp.tool()
@@ -360,6 +609,50 @@ def run_rie_verdict(benchmark: str, baseline: str = "HEAD", latencies: list[int]
 
 
 @mcp.tool()
+def measure_aws(candidate: str, ref: str = "HEAD", baseline_ref: str = "B0", load_cmd: str = "",
+                repeats: int = 2, keep: bool = False) -> str:
+    """O (v3 M4/W4.7): measure one optimization candidate against B0 on real
+    AWS (PIPELINE_V3_PLAN.md §4.13). Off by default: M2S_AWS=1 is required and
+    a real run spends money -- a person approves that first.
+
+    One stack per side (B0 kept, the candidate deleted unless keep), ABAB
+    passes under the aws-load-client lock, CloudWatch invocation counts of the
+    changed functions (a function the load never reached marks the run
+    uncovered), the B0-vs-B0 noise threshold from calibrate_aws_noise, and a
+    cost record in perf/aws_costs.json.
+
+    load_cmd: a command run once per pass; it reads M2S_AWS_TARGET (stack
+    endpoint) and writes {"samples": [milliseconds]} to $M2S_AWS_OUT.
+
+    Returns: JSON string {status, verdict, passes, uncovered, ...}.
+    """
+    from coord import aws as aws_mod
+
+    try:
+        result = aws_mod.measure_aws(_workspace(), candidate, ref=ref, baseline_ref=baseline_ref,
+                                     load_cmd=load_cmd or None, repeats=repeats, keep=keep)
+    except Exception as exc:  # noqa: BLE001 -- a measurement failure must come back as data
+        return json.dumps({"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def calibrate_aws_noise(load_cmd: str = "", repeats: int = 3) -> str:
+    """O (v3 M4/W4.7): measure B0 against B0 on AWS and write the observed
+    spread as perf/aws_noise.json (relative_threshold), the noise floor
+    measure_aws uses. M2S_AWS=1 is required; it deploys B0's stack if absent
+    and keeps it. Returns: JSON string {status, relative_threshold, ...}.
+    """
+    from coord import aws as aws_mod
+
+    try:
+        result = aws_mod.calibrate_noise(_workspace(), load_cmd=load_cmd or "", repeats=repeats)
+    except Exception as exc:  # noqa: BLE001
+        return json.dumps({"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
 def update_ledger() -> str:
     """Fold output/perf_report.json (its rule_scan and changes) into the
     cross-application rule ledger m2s-mcp-server/perf-rules/ledger.json.
@@ -374,15 +667,30 @@ def update_ledger() -> str:
 
 
 @mcp.tool()
-def run_gate(phase: str) -> str:
+def run_gate(phase: str, package: str = "", functions_json: str = "") -> str:
     """Run the deterministic consistency gate for a migration phase.
 
     Args:
         phase: one of "blueprint", "code", "template", "final".
+        package: optional work-package id (M2). For phase "code", C1 is scoped
+            to the functions listed for the package in
+            storage/work_packages.json (impl_packages, filled after S1).
+        functions_json: optional JSON list of function names; an explicit scope
+            that overrides `package` for the C1 code-direction check.
 
     Returns: JSON string {phase, status, mechanical_failures, checks,
         suspects, stage_report}.
     """
+    functions = None
+    if functions_json:
+        try:
+            functions = json.loads(functions_json)
+        except json.JSONDecodeError as exc:
+            return json.dumps({"phase": phase, "status": "ERROR", "error": f"functions_json is not valid JSON: {exc}"},
+                              ensure_ascii=False)
+        if not isinstance(functions, list) or not all(isinstance(f, str) for f in functions):
+            return json.dumps({"phase": phase, "status": "ERROR",
+                               "error": "functions_json must be a JSON list of function names"}, ensure_ascii=False)
     if _gates is None:
         return json.dumps(
             {
@@ -396,8 +704,200 @@ def run_gate(phase: str) -> str:
             },
             ensure_ascii=False,
         )
-    result = _gates.run_gate(phase, str(_workspace()))
+    result = _gates.run_gate(phase, str(_workspace()), functions=functions, package=package or None)
     return json.dumps(result, ensure_ascii=False)
+
+
+# --- v3 dispatcher coordination (PIPELINE_V3_PLAN.md §4.6) -------------------
+# These only work in a session started by coord.dispatcher (it sets
+# M2S_COORD_DIR / M2S_TASK_ID / M2S_ATTEMPT / M2S_ROLE on this process).
+
+
+@mcp.tool()
+def submit_task(summary: str, notes: str = "") -> str:
+    """Hand your finished task to the dispatcher. Call this once, after you have
+    written your stage report, then end the session. The dispatcher runs the
+    task's checks itself; your own success claim is not the verdict.
+
+    Args:
+        summary: one or two sentences on what you produced.
+        notes: anything the next attempt or a reviewer should know.
+    """
+    return json.dumps(coord_tools.safe(coord_tools.submit_task, summary, notes), ensure_ascii=False)
+
+
+@mcp.tool()
+def report_blocked(reason: str, evidence: str = "", suspected_module: str = "") -> str:
+    """Tell the dispatcher you cannot finish this task, then end the session.
+
+    Args:
+        reason: what stops you.
+        evidence: gate output, error text, file and line.
+        suspected_module: the earlier stage you believe caused it (e.g. "S2"
+            when the template is right but a handler is wrong); empty if it is
+            this task's own problem or you do not know.
+    """
+    return json.dumps(coord_tools.safe(coord_tools.report_blocked, reason, evidence, suspected_module), ensure_ascii=False)
+
+
+@mcp.tool()
+def get_task_context() -> str:
+    """Return the full instructions and feedback for your current task."""
+    return json.dumps(coord_tools.safe(coord_tools.get_task_context), ensure_ascii=False)
+
+
+@mcp.tool()
+def notice_post(topic: str, body: str, subject: str = "", task: str = "") -> str:
+    """Post to the run's notice board (§4.7). m2s-server enforces who may read it.
+
+    Args:
+        topic: "artifact", "ruling", "task" or "spec-issue".
+        body: the message. Implementation-line readers must not receive test
+            asset paths or text; such a post is refused.
+        subject: short title.
+        task: the task this concerns (optional).
+
+    Returns: JSON {ok, id} or {ok: false, error}.
+    """
+    from coord import notices
+
+    role = os.environ.get("M2S_ROLE") or ""
+    try:
+        result = notices.post_notice(_workspace(), role, topic, body, subject=subject, task=task)
+    except notices.RelayError as exc:
+        return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def notice_read(topics: list[str] | None = None) -> str:
+    """Read the notice board as this role. Filtering is done by m2s-server.
+
+    Args:
+        topics: only these topics; empty: every topic this role may see.
+
+    Returns: JSON list of entries (a ruling is conclusion + basis for the
+        implementation line, never the discussion).
+    """
+    from coord import notices
+
+    role = os.environ.get("M2S_ROLE") or ""
+    return json.dumps(notices.read_notices(_workspace(), role, topics), ensure_ascii=False)
+
+
+@mcp.tool()
+def room_post(room_id: str, kind: str, body: str, task: str = "") -> str:
+    """Post one turn into a discussion room (§4.7). Only participants may post.
+
+    Args:
+        room_id: the room from your prompt (e.g. "spec-SI-1").
+        kind: "spec" or "triage".
+        body: your contribution; same relay-format rule as notice_post.
+        task: the task this concerns (optional).
+
+    Returns: JSON {ok, seq, messages} or {ok: false, error}.
+    """
+    from coord import notices
+
+    role = os.environ.get("M2S_ROLE") or ""
+    try:
+        result = notices.post_room(_workspace(), role, room_id, kind, body, task=task)
+    except notices.RelayError as exc:
+        return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def room_read(room_id: str, kind: str) -> str:
+    """Read a discussion room as one of its participants.
+
+    Returns: JSON list of messages in order.
+    """
+    from coord import notices
+
+    role = os.environ.get("M2S_ROLE") or ""
+    try:
+        return json.dumps(notices.read_room(_workspace(), role, room_id, kind), ensure_ascii=False)
+    except notices.RelayError as exc:
+        return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
+def raise_spec_issue(topic: str, options: list[str] | None = None, evidence: str = "",
+                     affected: list[str] | None = None) -> str:
+    """Open a specification discussion: a spec-issue notice plus a spec room.
+
+    Args:
+        topic: the question in one sentence.
+        options: the readings the spec allows (A, B, ...).
+        evidence: source locations / observations (no test assets if the room
+            includes the implementation line).
+        affected: tasks or endpoints the answer changes.
+
+    Returns: JSON {ok, room_id, notice_id}.
+    """
+    from coord import notices
+
+    ws = _workspace()
+    role = os.environ.get("M2S_ROLE") or ""
+    room_id = f"spec-{abs(hash(topic)) % 100000:05d}"
+    body = {"topic": topic, "options": options or [], "evidence": evidence,
+            "affected": affected or [], "room_id": room_id, "status": "open"}
+    try:
+        posted = notices.post_notice(ws, role, "spec-issue", body, subject=topic, task=os.environ.get("M2S_TASK_ID", ""))
+    except notices.RelayError as exc:
+        return json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False)
+    return json.dumps({**posted, "room_id": room_id}, ensure_ascii=False)
+
+
+@mcp.tool()
+def handler_decide(case: str, action: str, target: str = "", feedback: str = "", rationale: str = "") -> str:
+    """Exception handler only: record your decision for a case, then end the session.
+
+    Args:
+        case: the case id from your instructions.
+        action: "retry" (same task once more, with your feedback), "reroute"
+            (rework an earlier task, named in target), "escalate" (hand to a
+            person), or "ok" (phase review: nothing to do).
+        target: task id for reroute (e.g. "S2").
+        feedback: what the worker should do differently, in specification
+            language (no test cases or test file paths for implementation tasks).
+        rationale: why, citing the evidence in the case file.
+    """
+    return json.dumps(coord_tools.safe(coord_tools.handler_decide, case, action, target, feedback, rationale), ensure_ascii=False)
+
+
+@mcp.tool()
+def record_ruling(question: str, conclusion: str, category: str, basis: str, raised_by: str = "",
+                  options: list[str] | None = None, relaxation: str = "", affected_cases: list[str] | None = None,
+                  layers: list[str] | None = None, affected_tasks: list[str] | None = None,
+                  deviates_from_monolith: bool = False) -> str:
+    """Architect or exception handler only: record a ruling on a question the facts do
+    not settle (PIPELINE_V2_PLAN.md §4.6). It becomes part of storage/rulings.json when
+    your task passes its checks; one that departs from the monolith also needs a person.
+    Do not edit storage/rulings.json yourself.
+
+    Args:
+        question: the question, as raised (cite the case, difference or issue id).
+        conclusion: what is decided, precise enough to compare against.
+        category: "contract" (observable behaviour the target must keep),
+            "implementation-trace" (how the monolith happens to do it; not compared),
+            "migration-change" (changed on purpose by the migration, e.g. Cognito
+            replaces the login endpoints), or "spec-gap" (the facts say nothing).
+        basis: the evidence: fact refs, monolith output, design rules.
+        raised_by: the module that raised it (e.g. "J3"); default: this task.
+        options: the options that were considered.
+        relaxation: for a behaviour that may vary: "order", "freshness" or
+            "alternatives" (several acceptable results); compared on the R layer.
+        affected_cases: judge case ids the ruling changes.
+        layers: observation layers it concerns: "P", "R", "T".
+        affected_tasks: closed tasks that must be checked again because of it.
+        deviates_from_monolith: true when the target will NOT copy the monolith's
+            behaviour (e.g. fixing a monolith defect); a person must confirm it.
+    """
+    return json.dumps(coord_tools.safe(coord_tools.record_ruling, question, conclusion, category, basis, raised_by,
+                                       options, relaxation, affected_cases, layers, affected_tasks,
+                                       deviates_from_monolith), ensure_ascii=False)
 
 
 if __name__ == "__main__":
