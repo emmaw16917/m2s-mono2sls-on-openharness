@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r2-1-1",
+  "attempt": 1,
+  "role": "m2s-architect",
+  "status": "done",
+  "time": "2026-11-13T02:39:14+0800",
+  "summary": "在 spec-j3-r2 以 architect 身份发言（seq 2）并记录确认型裁定 R-ROOM-spec-j3-r2-1-1-a1-1（contract / relaxation=order / layers=R / deviates_from_monolith=false）：本室两条差异（search-case-insensitive-200#upper-q、search-hits-200#author 的 body.subset 顺序差）已由在效的 R-ROOM-spec-j3-r1-1-1-a1-1 与 R-ROOM-spec-j3-r1-1-2-a1-1 覆盖，不需新裁定、不需第三轮对账，建议关闭本室并把分类改记为 ruled。本轮新增只有两处口径纠正：(1) 纠正验证线的记账不变量——differences 与 resolved_by_rulings 是互斥两桶，differences=0 是机制构造结果而非回归信号，有效 tripwire 改为「引用裁定在效且为 order 类」+「明细属仅顺序不同」；(2) 把「J3 每轮逐条按步骤复核 resolved_by_rulings」升格为强制口径，因为记账按用例剥步骤名，这两个 search 用例将来的内容级差异也会落进 resolved_by_rulings（V2 为第二道防线：order 类裁定下剩余不匹配非空仍判 fail，不降级为 ruled）。",
+  "notes": "未新增、未扩大任何放宽，未改动既有两条裁定文字，未动 affected_cases。用代码证据结掉 verifier 报告里的两项：SI-R2（多条裁定按并集生效，裸 case 优先于 case#step 且与书写顺序无关，故 R-…-1-1 是 R-…-1-2 子集不会漏步骤，无需把任何一条置为非 in-force）；SI-R1（search-no-match-and-absent-fields-200 四步已被 R-A1-a3-2 逐步骤点名，J4 日后补 hits 内容不会再产生同形顺序差异；substring-space 只断 total=2 属用例强度问题，交 J4）。SI-R3 维持 needs_spec_round：事实库 GET /api/bestsellers#business_rules[2] 的 note 仍与「并列名次不由 order 放宽吸收」口径冲突，R-…-1-2 第 7 点批准的改写尚未落地（facts_version 仍为 version 5 @ 01:28）；我在讨论轮里刻意不改 analysis_report.json——oracle/masks 是按 version 5 冻结的，改事实库必须走规格轮并递增 facts_version，否则对账与冻结预期脱钩。核对依据：rulings.json 6 条、reconcile.json differences=0/resolved_by_rulings=2（明细逐字复核确属仅顺序差）、judge_facts 的 GET /api/search#responses[1] 与 business_rules[1]/[3]、裁判代码中 order 路径标记与判定分支。本轮只写 storage/stage_reports/ROOM-spec-j3-r2-1-1.json，其余工作区文件未改动；发言内容符合给实现线的 relay 口径（未引用 verification/ 路径或原文）。"
+}

@@ -1,0 +1,552 @@
+{
+  "entries": [
+    {
+      "id": "R-ROOM-spec-j3-r1-1-1-a1-1",
+      "decider": "m2s-architect",
+      "task": "ROOM-spec-j3-r1-1-1",
+      "attempt": 1,
+      "time": "2026-11-13T16:15:44+0800",
+      "question": "规格对账差异 register-read-back-by-admin/list/body.subset：GET /auth/users 响应中 users 数组的元素顺序是否属于对外契约（J1 把 2 个元素按下标钉死，单体返回次序相反）？",
+      "conclusion": "元素顺序不属于契约，其余全部仍是契约。具体判定口径：该步骤的 body.subset 对 `users` 数组按**元素多重集（含重数）**比较，先后顺序不参与判定；除此之外不放宽任何东西——status 仍须 200；`users` 仍须恰含 2 个元素（等长要求保留）；每个元素内部的字段名与取值仍逐字比较（cust-admin / admin@example.com / [\"Admin\"] 与 cust-reg-3 / reg3@example.com / []，两个用户都必须在，缺一不可）；脱敏契约不变（password_hash、created_at 不得出现在列表项里）；read_back 语义不变（注册写入的行必须能被 Admin 的列表读回，Admin 行必须仍在）。执行方式：predicted 保持 J1 现有写法，**不改任何用例、不新增表达方式、不动裁判的比较词汇**；裁判在 R 层依本裁定把这一处数组按无序多重集比较，即可判 predicted 与 actual 一致。放宽范围仅限 register-read-back-by-admin#list 的 `users` 数组元素次序：元素内部 `groups` 数组的次序、其它端点/其它步骤的嵌套数组次序均不在本裁定范围内，不得由本裁定推而广之。",
+      "basis": "事实库 GET /auth/users#business_rules[2]（class=contract）：\"返回用户表里的全部用户，不按调用者过滤、不排序、不分页……条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺\"；GET /auth/users#responses[2] 与 #business_rules[4] 只承诺 users 每项脱敏为 {sub, email, groups} 及空表 200+[]，未承诺次序。单体代码印证：data/storage.py:352-356 只有 self.users_table.scan() 取 Items；services/auth.py:140-150 的脱敏推导式保持原顺序、无 sorted()。用例侧证据：judge/cases/post-auth-register/register-read-back-by-admin.json 的 predicted.list.body.subset.users 含 2 个元素，与 reconcile 的 actual 元素集合完全相同、仅次序相反。机制依据：PIPELINE_REDESIGN_v2.md 对 run_judge 输出的规定——P 层逐项与单体比对，R 层按裁定允许的范围判定（\"顺序不作要求时按集合比较\"），故 relaxation=order 的裁定由裁判在 R 层生效，无需改写用例。",
+      "category": "contract",
+      "raised_by": "J3",
+      "options": [
+        "case_error：改用例（降为 has_fields [users] 或只留 1 个元素）——否决，前者丢掉 read_back 要验的内容，后者在等长要求下必然不匹配，等于为实现能过而削弱规格要求的断言",
+        "mask_gap：加屏蔽规则——否决，屏蔽只处理逐遍变化的值，此处两遍值相同、仅次序不同，加屏蔽会掩盖真实差异",
+        "implementation-trace：整条作废——否决，被裁定的不是单体的内部步骤，元素内容与条数都是契约；且事实库把'顺序不属于对外承诺'写在 class=contract 的条目里，属契约自带的放宽，用 contract + relaxation=order 表达最准确",
+        "全局无序比较规则——否决，全部裁判用例中只有这 1 个步骤钉了 2 个元素，放宽到全局会无谓削弱其它断言"
+      ],
+      "relaxation": "order",
+      "affects": {
+        "cases": [
+          "register-read-back-by-admin#list"
+        ],
+        "layers": [
+          "R"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-ROOM-spec-j3-r1-1-2-a1-1",
+      "decider": "m2s-architect",
+      "task": "ROOM-spec-j3-r1-1-2",
+      "attempt": 1,
+      "time": "2026-11-13T16:42:49+0800",
+      "question": "规格对账差异 register-read-back-by-admin/list/body.subset 的执行收尾（承接 R-ROOM-spec-j3-r1-1-1-a1-1）：(1) 裁定的 affected_cases 该写 case#step 还是裸用例 id，对账与裁判能否认上；(2) relaxation=\"order\" 在该步骤实际覆盖哪些数组，R-…-a1-1 边界里\"元素内部 groups 次序仍严格比较\"这句是否成立？",
+      "conclusion": "两条都是执行口径，不改变 R-ROOM-spec-j3-r1-1-1-a1-1 的判定内容。\n\n(1) affected_cases 保留 \"register-read-back-by-admin#list\"，**不改成裸用例 id**。裁判（run_judge）读裁定时按 `#` 分区成用例与步骤：带步骤的条目只把放宽施加到那个步骤，裸用例条目会把放宽施加到该用例的**全部步骤及其中的每一条差异**。本差异只发生在 list 步骤，因此带步骤是更窄、更符合\"放宽只放到必要的程度\"的写法；改成裸 id 会把 register 步骤也一并放宽，属于放宽过度。对账（reconcile_spec）匹配时把 `#` 之后的部分去掉、只按用例 id 比对，且调度器对\"差异是否已被裁定覆盖\"的检查同样去掉 `#` 之后部分；所以下一轮对账会把这条差异从 differences 移到 resolved_by_rulings 并带上本裁定编号，裁判侧也会按步骤生效。结论：**用例、fixtures、identities、reconcile_classes 都不需要为这条差异改动，predicted 保持原样**，不需要新增任何表达方式，也不需要改比较工具。附带一条口径：对账侧的\"已解决\"是**用例粒度**的（`#list` 在对账里不起限定作用），所以将来这个用例若在别的步骤出现**与顺序无关**的新差异，也会先被记进 resolved_by_rulings——那不是本裁定在为其背书，J3 应当按本裁定的结论正文（只覆盖 list 步骤 users 数组的元素次序）复核，而不是把 resolved 当作\"无罪\"。\n\n(2) 更正 R-ROOM-spec-j3-r1-1-1-a1-1 边界里的一句表述：order 放宽在这个步骤的生效粒度是\"**该步骤单体记录里出现的每一个数组路径**按多重集比较\"，不是只有 users 外层数组。因此在 list 步骤里，users 外层数组**以及各元素内部的 groups 数组**都会按无序多重集判定，先前写的\"groups 数组的次序仍严格比较\"与工具实际行为不符，以本条为准。对判定能力的影响已核对：这一步 predicted 的两个 groups 分别是 [\"Admin\"] 与 []，元素数为 1 或 0，次序本来不参与判定，本差异也不会因为这条更正而被放过；等长/重数、字段名与取值、脱敏（password_hash、created_at 不得出现）、status=200、read_back 语义仍逐字比较。边界不变：其它步骤、其它端点（含 GET /flights/search、GET /customers/<customer_id>/bookings）的列表次序仍按现有口径严格比较；GAP-18（列表顺序的全局口径）与 GAP-15（导入期播种）由各自的缺口决定任务正式裁定，本裁定不预设其结论，也不被它们反向援引。",
+      "basis": "裁判/对账工具对裁定范围的既有规定（只读核实，未改工具）：judge.py `_rulings_in_force`（run_judge 侧，docstring 明写\"An entry 'case#step' reaches only that step (_steps); a bare 'case' reaches the whole case, and every difference in it, so name steps where that matters\"，按 partition(\"#\") 生成 _steps，judge_unit 再用 `name in r[\"_steps\"]` 决定该步骤是否套用 order 放宽）；judge.py `judge_unit` 里 `if order: unordered_paths |= _all_list_paths(该步骤的单体记录)` + `unify` 对 unordered 路径按多重集匹配，说明生效粒度是\"该步骤内所有数组路径\"；judge.py `_rulings_by_case`（reconcile 侧）用 `str(c).split(\"#\")[0]` 作键，即对账按裸用例 id 匹配；coord/dispatcher.py `_ruling_task_check` 的 covered 集合同样 `c.split(\"#\")[0]`。事实库依据不变：GET /auth/users#business_rules[2]（class=contract，\"返回全部用户…不排序、不分页…顺序不属于对外承诺\"）、#responses[2] 与 #business_rules[4]（只承诺每项脱敏为 {sub,email,groups} 与空表 200+[]）。单体代码依据不变：data/storage.py:352-356 仅 scan 取 Items、services/auth.py:140-150 脱敏推导式无 sorted()。用例侧：judge/cases/post-auth-register/register-read-back-by-admin.json 的 layer=\"R\"，步骤名为 register 与 list（list 带 read_back=true），predicted.list.body.subset.users 的 2 个元素与 actual 仅次序相反。",
+      "category": "contract",
+      "raised_by": "J3",
+      "options": [],
+      "relaxation": "order",
+      "affects": {
+        "cases": [
+          "register-read-back-by-admin#list"
+        ],
+        "layers": [
+          "R"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a2-1",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 2,
+      "time": "2026-11-13T16:53:01+0800",
+      "question": "受保护端点的未认证请求（缺 Authorization 头 / 头格式不是 \"Bearer <t>\" / 令牌伪造或过期）在目标上由谁应答、响应体是什么形状",
+      "conclusion": "由 API Gateway 的 Cognito/JWT 授权器应答：状态码仍是 401，响应体是网关默认形状（HTTP API：{\"message\": \"...\"}），不再是单体的 {\"error\": \"Authentication required. Please provide a valid token.\"} / {\"error\": \"Invalid token format. Use: Bearer <token>\"} / {\"error\": \"Invalid or expired token\"} 三句；单体的三态在目标上收敛为「授权器 401」一种，请求不进入函数、不产生任何 DynamoDB 读（这一半契约保持）。",
+      "basis": "规则手册默认做法：blueprint.cognito（GAP-10 自带 default「Cognito + API Gateway 授权器，认证端点删除」）+ blueprint.api_gateway.authorizer/claims_path；blueprint.metadata.spec_resolutions SI-9 逐条列出被替代的 7 个端点的 responses[401]（POST /bookings#responses[0]、GET /bookings/<booking_id>#responses[0]、POST /bookings/<booking_id>/confirm#responses[0]、POST /bookings/<booking_id>/cancel#responses[0]、GET /customers/<customer_id>/bookings#responses[0]、GET /loyalty/<customer_id>#responses[0]、POST /loyalty/<customer_id>/points#responses[0]）；m2s-architect「迁移带来的对外变化」表第一行（网关授权器应答 401，body 是 {message} 而不是单体的 {error}，deviates=false）。",
+      "category": "migration-change",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "booking-auth-guards#anon",
+          "booking-auth-guards#bad-format",
+          "booking-auth-guards#forged",
+          "booking-read-guards#anon",
+          "booking-confirm-guards#anon",
+          "booking-cancel-guards#anon",
+          "customer-bookings-owner-only#anon",
+          "loyalty-sum-and-level#anon",
+          "points-guards#anon"
+        ],
+        "layers": [
+          "P"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a2-2",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 2,
+      "time": "2026-11-13T16:53:29+0800",
+      "question": "/auth/register、/auth/login、/auth/me、/auth/users 四个端点在目标上不提供，涉及它们的用例与身份准备怎么算",
+      "conclusion": "四个端点整体作废（迁移决策，不是缺陷）：目标不注册这些路由，裁判不为它们出题、也不在目标上运行以它们为步骤的用例；身份改由 adapter_map.identities 的形状注入（claims.sub = ${id}，${id} 就是单体侧 POST /auth/login 保存的 body.user.sub：cust-u1 / cust-u2 / cust-admin）。连带作废：Airline-Users 的凭据属性（email/password_hash/created_at）不迁（groups 拆到 UserGroupsTable）、单体的同 email 可重复注册缺陷、users 列表的分页不完整缺陷、expires_in/user.groups 响应形状、HS256 每进程随机密钥与「同一进程签发的令牌才能被同一进程校验」的约束、以及 _init_default_users 的种子账号。若这些路径被请求，由网关应答 404 {\"message\": \"Not Found\"}。",
+      "basis": "blueprint.dropped_functions（四条 type=endpoint 条目 + 两条 type=code 的认证中间件/服务条目 + Users 表凭据的 type=table 条目）、storage/adapter_map.json 的 dropped_endpoints/identities、blueprint.metadata.spec_resolutions SI-8、storage/DECISIONS.md D-3/D-4/D-14；GAP-10/GAP-12/GAP-15 的默认做法与 m2s-basic-serverless-kb「Auth endpoints (/register, /login, /logout, /me) are DELETED」。涉及的 12 个用例每一步都只调这四个端点（judge/cases/post-auth-*、get-auth-* 已逐个核对），因此整案作废不会盖住任何对保留端点的断言。",
+      "category": "migration-change",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "register-new-user",
+          "register-duplicates",
+          "register-validation",
+          "register-bad-json",
+          "register-read-back-by-admin",
+          "login-success",
+          "login-bad-credentials",
+          "login-validation-and-bad-json",
+          "me-returns-table-record",
+          "me-token-of-deleted-or-forged-sub",
+          "users-admin-list",
+          "users-admin-only"
+        ],
+        "layers": [
+          "P",
+          "T"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a2-3",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 2,
+      "time": "2026-11-13T16:53:51+0800",
+      "question": "列表端点（Scan 结果数组）的元素顺序是否属于对外契约；register-read-back-by-admin#list 的 needs_ruling 结论",
+      "conclusion": "列表响应的元素顺序不是对外契约：GET /flights/search 的 flights、GET /customers/<customer_id>/bookings 的 bookings（以及已删除的 GET /auth/users 的 users）按 Scan 返回顺序原样给出，代码不排序；比较这些数组时只要求元素集合、每个元素的字段与数量一致，不要求先后。内容、条数、字段名与字段值仍是逐字比较的契约，本裁定只放宽顺序。",
+      "basis": "事实库 GET /auth/users#business_rules[2]（「条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺」）、GET /customers/<customer_id>/bookings#business_rules[3]、GET /flights/search#business_rules[2]；单体源码 data/storage.py:352-356 与 services/auth.py:140-150（无 sorted）、:257、:131；GAP-18 的 decide 见 storage/gap_inventory.json 与 storage/DECISIONS.md D-14。范围核对（J1/ROOM-spec-j3-r1 的脚本结论）：46 个用例里只有 register-read-back-by-admin#list 在嵌套数组上钉了 2 个元素，其余列表断言为 0 或 1 个元素，顺序无关；该步骤本身还因 GET /auth/users 被删除而不在目标上运行（R-A1-a2-2），本裁定是为 J3 报出的那条差异给出的正式结论。",
+      "category": "contract",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": "order",
+      "affects": {
+        "cases": [
+          "register-read-back-by-admin#list",
+          "customer-bookings-status-filter",
+          "search-route-match"
+        ],
+        "layers": [
+          "R"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a2-4",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 2,
+      "time": "2026-11-13T16:56:26+0800",
+      "question": "A1 自己新落的 R-A1-a2-3（列表顺序放宽）与已在案的 R-ROOM-spec-j3-r1-1-1-a1-1 / R-ROOM-spec-j3-r1-1-2-a1-1 重复，且它的 affected_cases 多写了 customer-bookings-status-filter、search-route-match 两个裸用例 id——放宽范围以哪一条为准",
+      "conclusion": "以在案的两条 ROOM 裁定为准，R-A1-a2-3 不作新增放宽、其 affected_cases 中多出的两项一律作废。准确范围：顺序放宽只施加于 register-read-back-by-admin#list 这一步（按 # 切分，只影响该步骤），判定口径仍是「等长 + 元素多重集（含重数）+ 每个元素字段逐字比较 + status/headers/脱敏不变」。customer-bookings-status-filter、search-route-match（以及其它任何列表步骤）**不因本条获得任何放宽**，仍按现有口径严格逐项比较——它们的嵌套数组断言元素数为 0 或 1，次序本来不参与判定，因此不改变任何结果。今后若有用例在别的列表端点上出现多元素次序差异，属新事实，另开裁定，不得援引本条或 R-A1-a2-3。R-A1-a2-3 的其余内容（GAP-18 的口径：目标不新增排序、也不为匹配字面次序加 sorted()）继续有效，作为实现线约束。",
+      "basis": "R-ROOM-spec-j3-r1-1-1-a1-1（局部放宽、只覆盖该步骤、\"另立全局无序比较也否决\"）、R-ROOM-spec-j3-r1-1-2-a1-1 第 1/2 点（run_judge 按 # 切分 affected_cases，裸用例 id 会把放宽施加到该用例全部步骤与每一条差异，故必须带步骤）；m2s-verifier 在讨论室 spec-j3-r1 的机器核对：46 个用例里\"≥2 个对象元素的嵌套数组\"断言只有 1 处；judge/reconcile.json 的 register-read-back-by-admin/list/body.subset。角色说明「宁可少写」：多写的放宽会盖住缺陷。",
+      "category": "contract",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": "order",
+      "affects": {
+        "cases": [
+          "register-read-back-by-admin#list"
+        ],
+        "layers": [
+          "R"
+        ],
+        "tasks": [
+          "A1"
+        ]
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-ROOM-spec-j3-r2-1-1-a1-1",
+      "decider": "m2s-architect",
+      "task": "ROOM-spec-j3-r2-1-1",
+      "attempt": 1,
+      "time": "2026-11-13T17:01:18+0800",
+      "question": "规格对账差异 register-read-back-by-admin/list/body.subset（J3 第 2 轮）：GET /auth/users 的 users 数组元素顺序按什么机制放宽——是否要求验证线改写用例、是否写成挂在事实条目上的通用规则、affected_cases 用裸用例 id 还是 case#step？（承接 R-ROOM-spec-j3-r1-1-1-a1-1 与 R-ROOM-spec-j3-r1-1-2-a1-1，判定内容不变，本条只定执行口径）",
+      "conclusion": "判定内容不变（顺序不是契约，其余全是契约），三条执行口径如下：\n\n(1) **由裁判在 R 层做无序多重集比较，验证线不重写用例**。不需要新增断言词、不允许把 body.subset 降级成 has_fields:[\"users\"]。机制：run_judge 里命中 relaxation=order 的裁定会把该步骤单体记录中出现的每一个数组路径标为 unordered，比较器在这些路径上要求「等长 + 一对一配对（含重数）+ 每个元素字段逐值比较」，只有先后不参与判定；配不上时退回逐位置报告差异。因此本放宽仍能抓住少一个用户（截断）、字段名/取值不同、脱敏泄漏（password_hash/created_at 出现）、status≠200。predicted 保持 J1 现有写法。\n\n(2) **不接受写成挂在 GET /auth/users#business_rules[2] 上的通用规则**。放宽在机制上只能由裁定的 affects.cases 逐个 case#step 施加（裁判按用例+步骤解析裁定，事实条目编号不参与匹配）；R-A1-a2-4 已把 R-A1-a2-3 多出的 customer-bookings-status-filter、search-route-match 两个裸用例 id 作废。本裁定的正文可作为**原则**被将来引用：顺序由存储 scan 的键分布决定且代码无排序步骤的列表，元素次序不作契约。但 J4 若在别的列表步骤补出多元素次序断言，须按新事实另开一条裁定并点名那个 case#step，不预先泛化——预先泛化等于在没人复核的情况下削弱将来的断言，违反「放宽只放到必要的程度」。\n\n(3) **affected_cases 维持 register-read-back-by-admin#list，不改裸用例 id**。对账与「差异是否已被裁定覆盖」的检查会去掉 # 之后部分按用例 id 匹配，因此带步骤照样认得上本差异；而裁判侧带步骤可把放宽只收在 list 一步，不扩到 register 步骤。验证线建议的 affected_cases=[register-read-back-by-admin] 不采纳。\n\n配套结论：GET /auth/users#business_rules[2] 不是 fact_error，保持原文，不改事实库、不按单体 scan 原序重写 predicted；目标侧也不得为了对上字面次序加 sorted()（GAP-18 口径，见 R-A1-a2-3 的实现线约束）。收尾动作：本差异已由在案裁定覆盖，J3 重跑 reconcile_spec 后即从 differences 移入 resolved_by_rulings 并带裁定编号（现有 judge/reconcile.json 生成于裁定之前，属陈旧文件），reconcile_classes.json 无需为它保留 needs_ruling 条目，用例/fixtures/identities 一律不动；本条与承接的两条 deviates_from_monolith=false，不触发人工确认。",
+      "basis": "事实库：GET /auth/users#business_rules[2]（class=contract，明写「条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺」）；GET /auth/users#responses[2] 只承诺 users 每项脱敏为 {sub,email,groups}；GET /auth/users#business_rules[3] 的单页截断仍是契约（放宽条数即失效，故保留等长要求）。\n单体代码：data/storage.py:352-356 get_all_users 只有 self.users_table.scan() 取 Items；services/auth.py:139-150 脱敏推导式保持原序、无 sorted()。\n差异本身：predicted 与 actual 两个元素的 {sub,email,groups} 三键值完全一致，仅先后相反（judge/reconcile.json 的 register-read-back-by-admin/list/body.subset）。\n工具行为（只读核实，未改工具）：run_judge 侧 relaxation=order 的施加粒度与多重集比较语义（judge.py `_rulings_in_force`、`judge_unit`、`unify` 的 unordered 分支：先要求 len(actual)==len(template)，再一对一配对、字段逐值比较，配不上则逐位置报差异）；对账与覆盖检查按去掉 # 之后的用例 id 匹配（judge.py `reconcile`/`_rulings_by_case`，dispatcher 的 rulings_cover）。\n在案裁定：R-ROOM-spec-j3-r1-1-1-a1-1（顺序不放宽内容、status/条数/脱敏仍逐字比）、R-ROOM-spec-j3-r1-1-2-a1-1（case#step 的收窄写法与该步骤内所有数组路径的生效粒度）、R-A1-a2-3（GAP-18 目标不新增排序）、R-A1-a2-4（多出的裸用例 id 作废、本类差异须另开裁定）。",
+      "category": "contract",
+      "raised_by": "J3",
+      "options": [
+        "改写用例以适配断言词汇（has_fields 或只留 1 个元素）——否决：丢掉 read_back 要验的内容，等长要求下单元素必然不匹配，属丢断言换通过",
+        "把放宽写成挂在事实条目 GET /auth/users#business_rules[2] 上的通用规则、覆盖所有列表端点——否决：裁定只能按 case#step 机械施加，泛化会在无复核的情况下削弱其它端点的断言（与 R-A1-a2-4 一致）",
+        "affected_cases 用裸用例 id register-read-back-by-admin——否决：会把放宽扩到该用例的 register 步骤，比必要范围更宽；覆盖检查按用例 id 匹配，带步骤不影响认账",
+        "判 fact_error、改事实库并按单体 scan 原序重写 predicted——否决：等于把存储布局与主键分布写进契约，迁移后 GSI/主键布局本就会变，且与 business_rules[2] 的明文矛盾",
+        "加屏蔽规则（mask_gap）——否决：屏蔽只处理逐遍变化的值，此处两遍值相同仅次序不同，屏蔽会掩盖真实差异"
+      ],
+      "relaxation": "order",
+      "affects": {
+        "cases": [
+          "register-read-back-by-admin#list"
+        ],
+        "layers": [
+          "R"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-ROOM-spec-j3-r2-1-2-a1-1",
+      "decider": "m2s-architect",
+      "task": "ROOM-spec-j3-r2-1-2",
+      "attempt": 1,
+      "time": "2026-11-13T17:59:14+0800",
+      "question": "规格对账差异 register-read-back-by-admin/list/body.subset 的结室口径（J3 第 2 轮）：次序放宽实际在哪一层生效、对账侧\"已被裁定覆盖\"按什么粒度认账、auth 作废类裁定的裸用例 id 要不要加防外溢边界？（承接 R-ROOM-spec-j3-r2-1-1-a1-1 与 R-ROOM-spec-j3-r1-1-1-a1-1 / R-ROOM-spec-j3-r1-1-2-a1-1，判定内容不变：users 数组的元素次序不是对外契约）",
+      "conclusion": "本差异按在案口径关闭，判定内容一字不改（category=contract、relaxation=order、只放开 R 层、影响面仅 register-read-back-by-admin#list）；本轮补三条执行边界，供 J3 重跑对账与 J4 补强引用：\n\n(1) **放宽只在\"目标 vs 单体记录\"这一层由比较器施加，对账层的这条差异靠裁定覆盖关闭，二者机制不同，不要混用**。目标侧：命中 relaxation=order 的裁定后，裁判把该步骤单体记录里出现的每一个数组路径（含嵌套的成员数组）标为无序，比较语义是\"等长 → 含重数的一对一配对 → 每个元素字段逐值比较\"，配不上则退回逐位置报告差异；因此 predicted/用例/fixtures/identities 一律不改写，也不允许降级为只断言字段存在。对账侧：预测与单体的比对走的是\"数组等长且逐位置包含\"的语义，没有任何次序放宽入口，本用例在单体三次运行里顺序稳定、掩码也没把它标成无序——所以这条差异不会因放宽自行消失，只能经\"已有裁定点名该用例 → 移入 resolved_by_rulings\"关闭。\n\n(2) **对账侧与调度器门侧的覆盖匹配都是用例粒度（去掉 # 之后按用例 id 认账），因此 J3 重跑对账后有强制复核**：移入 resolved_by_rulings 的每条差异必须核对 step=list 且差异形态确为\"元素集相同、只有先后不同\"；凡 step≠list，或表现为条数不等、字段名/取值不同、脱敏泄漏（password_hash / created_at 出现）、status≠200，一律视为未被本裁定覆盖、按新差异重开并另开裁定。裁判目标侧的收窄则按 case#step 生效，本裁定不外溢到同用例的 register 步骤。收尾动作只需重跑对账：该动作每跑一次会整份清除分类文件（不是谁手工\"撤条目\"），differences=0 且分类文件缺失时分类自查通过，无需为已消失的差异补任何分类。\n\n(3) **防外溢边界（新事实出现时的硬约束）**：作废类裁定 R-A1-a2-2 用的是裸用例 id，在目标侧命中整案每一步——当前无害，因为 register-read-back-by-admin 的全部步骤都落在不提供给目标的端点上，整案判为 dropped、根本不比较响应体；本次序裁定在目标侧的实际作用面因此为零，它的价值只在\"不按单体 scan 原序重写预期\"这一条。若 J4/补强阶段给这些 auth 用例**新增一个走保留端点的步骤**，必须先收窄该裸用例 id（改成 case#step）或另开裁定，否则作废类裁定会把那一步的任何不匹配判成\"迁移变化\"而非失败，等于掩盖缺陷。给别的列表端点/步骤加次序放宽同理：另开一条点名 case#step 的裁定，不得援引本条或 GAP-18 的原则句；也不得援用到 data/storage.py:322 `items[0] if items else None` 这类\"取到哪一条记录\"的契约（POST /auth/login#business_rules[1]、POST /auth/register#business_rules[2] 属内容而非次序）。\n\n配套结论维持：GET /auth/users#business_rules[2] 不是 fact_error，保持原文；目标侧不得为对上字面次序新增排序（GAP-18）。",
+      "basis": "事实库：GET /auth/users#business_rules[2]（明写\"条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺\"）、GET /auth/users#responses[2]（只承诺 {\"users\":[{\"sub\",\"email\",\"groups\"}]}）、POST /auth/register#business_rules[3]。单体代码：data/storage.py:352-356（get_all_users 只有 scan 并取 Items，无排序/分页）、services/auth.py:140-150（脱敏推导式逐条映射、保持原序）、data/storage.py:307/345（sub 是用户表唯一主键 → 同一列表不可能出现重复元素身份，多重集配对唯一）。裁判语义（只读核对，未改工具）：judge.py:2108-2125（case#step → 只命中该步；裸 case → 命中整案每一步）、2234-2241（relaxation=order → 该步记录里所有数组路径标为无序）、1094-1118（数组先要求等长，再在无序路径上做含重数一对一配对，配不上退回逐位置报告）、2066-2067/2244-2245/2213-2216（端点在 adapter_map.dropped_endpoints 里 → 该步不比较、整案 dropped）；对账侧 judge.py:1696-1743 + verify.py:1174-1178（预测比对是\"等长 + 逐位置包含\"，无次序放宽入口）；覆盖粒度 judge.py:1689 与 coord/dispatcher.py:1885（都 split(\"#\")[0]）；分类文件在对账动作里被整份清除 judge.py:1734-1736，缺失时按空处理 judge.py:1748-1752。在案记录：storage/rulings.json 的 R-ROOM-spec-j3-r1-1-1-a1-1 / R-ROOM-spec-j3-r1-1-2-a1-1 / R-ROOM-spec-j3-r2-1-1-a1-1（同参数、同范围）、R-A1-a2-3/R-A1-a2-4（放宽范围以 ROOM 两条为准、多余的裸用例 id 作废）、R-A1-a2-2（auth 四端点整案作废）；storage/adapter_map.json.dropped_endpoints（POST /auth/register、GET /auth/users 均不提供）；storage/gap_inventory.json GAP-18（目标不新增排序、裁判看不见，只能代码复核）、GAP-15。用例实测：judge/cases/post-auth-register/register-read-back-by-admin.json layer=R、步骤 register+list、read_back 只在 list；judge/masks.json 本用例 unordered=[]。",
+      "category": "contract",
+      "raised_by": "J3",
+      "options": [
+        "接受放宽、由裁判在目标侧做无序多重集比较（采纳：顺序由键分布决定、代码无排序，事实库已明写不承诺）",
+        "拒绝放宽、把 GET /auth/users#business_rules[2] 判成 fact_error 并按单体 scan 原序重写 predicted（否决：等于把存储布局写进契约，且该端点根本不提供给目标，无任何收益）",
+        "把用例断言降级为只断言 users 键存在以消除差异（否决：丢掉 read_back 要验证的内容，抓不住单页截断/脱敏泄漏）",
+        "affected_cases 用裸用例 id register-read-back-by-admin（否决：裁判目标侧会扩到同用例的 register 步骤；与 R-A1-a2-4 同口径）",
+        "把原则写成挂在事实条目上的通用规则（否决：覆盖匹配按用例粒度、事实编号不参与，泛化会在无人复核的情况下削弱将来的断言）",
+        "为 auth 作废类裁定的裸用例 id 加防外溢边界（采纳：J4 若给整案作废的用例新增走保留端点的步骤，先收窄或另开裁定）"
+      ],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "register-read-back-by-admin#list"
+        ],
+        "layers": [
+          "R"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-C003-V2-triage-a1-1",
+      "decider": "handler",
+      "task": "C003-V2-triage",
+      "attempt": 1,
+      "time": "2026-11-16T17:45:23+0800",
+      "question": "白盒故障场景 wb-booking-handler-read-fails-after-authz（nth=2）、wb-booking-confirm-read-fails-after-authz（nth=2）、wb-booking-cancel-read-fails-in-service（nth=3）按「同一条预订的第 n 次读」注入，在只读一次条目的目标上落点与单体不同，V2 判 3 个 fault run 失败：这些「第 2/3 次重复读落空 → 400」的臂算不算对外契约？（承接 storage/DECISIONS.md D-20 / SI-1，D-20 明写此裁定留给 V2 报差异后补）",
+      "conclusion": "是实现轨迹，不作 P 层判定。目标在这三条注入涉及的 7 个步骤上不再判失败（其余步骤、其余用例、其它故障场景一律仍严格比对）：booking-read-guards#owner、booking-read-guards#other、booking-confirm-unconfirmed#confirm、booking-confirm-unconfirmed#read-booking、booking-cancel-and-read#cancel、booking-cancel-and-read#read-booking、booking-cancel-and-read#read-seat。准确口径：(1) bookings-get / bookings-confirm / bookings-cancel 每个请求只按主键读一次该条目（SI-1），单体只有在第 2/3 次冗余读落空时才会产出的 'Booking <booking_id> not found' / 'Invalid booking ID: <booking_id>' 400 臂在目标上不存在，因此 nth=2/nth=3 注入要么命中不到（booking-cancel-and-read 全案对该条目只读 2 次 < nth=3），要么落到同一次运行里另一步的那次读（booking-read-guards 落在 #other、booking-confirm-unconfirmed 落在 #read-booking）；(2) 注入实际命中的那一步按 SI-13 的读失败语义回答（按主键读失败＝与「不存在」同一结果 → 404 {'error': 'Booking not found'}），实现不得为了让注入命中而补做冗余读（D-20 反向约束，perf 规则亦禁止靠加读凑数），也不得把这类读失败改写成 400；(3) 真实（未注入）流量下目标的行为落在单体既有臂之内（读失败 → 404、正常 → 200/403/404 逐字不变），故本条不是契约变化；(4) 已知代价并如实登记：裁判按「用例#步骤」取裁定且不区分正常运行与故障运行，这 7 步在同名用例的正常运行里也因此不再判失败（仍照常记录 status/body/headers/表差异，只是不判 fail）；这 7 步的对外行为仍由 booking-happy-path、booking-cancel-guards、booking-confirm-guards、booking-cancel-twice、booking-cancel-releases-stored-flight 等未受本裁定影响的用例覆盖；(5) table_differences 与 rules_fired（单体 true / 目标 false）继续作为信息项记录，不参与判定。若要恢复这 7 步在正常运行中的判定，只能由人解冻裁判改写这三条按 nth 读注入的场景——分诊与验证线都不得改 judge/。",
+      "basis": "storage/DECISIONS.md D-20（「留给 V2 报差异之后按本节口径补裁定」+ 落点与 nth 的事实描述）、D-17/D-18（SI-1 作废四条第二/三次读臂；「读次数、先读后写是做法，文案与状态码才是契约」）、D-18 汇总表第 3 行 category=implementation-trace；事实库 POST /bookings/<booking_id>/cancel#business_rules[8]「三次读的是同一个 Key，合成一次读对外部效果相同」；blueprint.metadata.spec_resolutions SI-1 / SI-13；judge/faults/ 三条场景的 nth=2/2/3 与 judge/fault_baseline_monolith.json 的落点（booking-read-guards#owner 400、booking-confirm-unconfirmed#confirm 400、booking-cancel-and-read#cancel 400）；verification/verdict_judge.json：3 个 fault run fail，rules_fired 目标 [false]（cancel 场景注入根本未命中），失败面与 D-20 预测逐字相符；m2s-mcp-server/judge.py `_rulings_in_force` / `judge_unit`（category implementation-trace → 步骤记 ruled，run_judge 仅把 fail/infra_error 计为失败）。",
+      "category": "implementation-trace",
+      "raised_by": "V2",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "booking-read-guards#owner",
+          "booking-read-guards#other",
+          "booking-confirm-unconfirmed#confirm",
+          "booking-confirm-unconfirmed#read-booking",
+          "booking-cancel-and-read#cancel",
+          "booking-cancel-and-read#read-booking",
+          "booking-cancel-and-read#read-seat"
+        ],
+        "layers": [
+          "P"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    }
+  ],
+  "rulings": [
+    {
+      "id": "R-ROOM-spec-j3-r1-1-1-a1-1",
+      "decider": "m2s-architect",
+      "task": "ROOM-spec-j3-r1-1-1",
+      "attempt": 1,
+      "time": "2026-11-13T16:15:44+0800",
+      "question": "规格对账差异 register-read-back-by-admin/list/body.subset：GET /auth/users 响应中 users 数组的元素顺序是否属于对外契约（J1 把 2 个元素按下标钉死，单体返回次序相反）？",
+      "conclusion": "元素顺序不属于契约，其余全部仍是契约。具体判定口径：该步骤的 body.subset 对 `users` 数组按**元素多重集（含重数）**比较，先后顺序不参与判定；除此之外不放宽任何东西——status 仍须 200；`users` 仍须恰含 2 个元素（等长要求保留）；每个元素内部的字段名与取值仍逐字比较（cust-admin / admin@example.com / [\"Admin\"] 与 cust-reg-3 / reg3@example.com / []，两个用户都必须在，缺一不可）；脱敏契约不变（password_hash、created_at 不得出现在列表项里）；read_back 语义不变（注册写入的行必须能被 Admin 的列表读回，Admin 行必须仍在）。执行方式：predicted 保持 J1 现有写法，**不改任何用例、不新增表达方式、不动裁判的比较词汇**；裁判在 R 层依本裁定把这一处数组按无序多重集比较，即可判 predicted 与 actual 一致。放宽范围仅限 register-read-back-by-admin#list 的 `users` 数组元素次序：元素内部 `groups` 数组的次序、其它端点/其它步骤的嵌套数组次序均不在本裁定范围内，不得由本裁定推而广之。",
+      "basis": "事实库 GET /auth/users#business_rules[2]（class=contract）：\"返回用户表里的全部用户，不按调用者过滤、不排序、不分页……条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺\"；GET /auth/users#responses[2] 与 #business_rules[4] 只承诺 users 每项脱敏为 {sub, email, groups} 及空表 200+[]，未承诺次序。单体代码印证：data/storage.py:352-356 只有 self.users_table.scan() 取 Items；services/auth.py:140-150 的脱敏推导式保持原顺序、无 sorted()。用例侧证据：judge/cases/post-auth-register/register-read-back-by-admin.json 的 predicted.list.body.subset.users 含 2 个元素，与 reconcile 的 actual 元素集合完全相同、仅次序相反。机制依据：PIPELINE_REDESIGN_v2.md 对 run_judge 输出的规定——P 层逐项与单体比对，R 层按裁定允许的范围判定（\"顺序不作要求时按集合比较\"），故 relaxation=order 的裁定由裁判在 R 层生效，无需改写用例。",
+      "category": "contract",
+      "raised_by": "J3",
+      "options": [
+        "case_error：改用例（降为 has_fields [users] 或只留 1 个元素）——否决，前者丢掉 read_back 要验的内容，后者在等长要求下必然不匹配，等于为实现能过而削弱规格要求的断言",
+        "mask_gap：加屏蔽规则——否决，屏蔽只处理逐遍变化的值，此处两遍值相同、仅次序不同，加屏蔽会掩盖真实差异",
+        "implementation-trace：整条作废——否决，被裁定的不是单体的内部步骤，元素内容与条数都是契约；且事实库把'顺序不属于对外承诺'写在 class=contract 的条目里，属契约自带的放宽，用 contract + relaxation=order 表达最准确",
+        "全局无序比较规则——否决，全部裁判用例中只有这 1 个步骤钉了 2 个元素，放宽到全局会无谓削弱其它断言"
+      ],
+      "relaxation": "order",
+      "affects": {
+        "cases": [
+          "register-read-back-by-admin#list"
+        ],
+        "layers": [
+          "R"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-ROOM-spec-j3-r1-1-2-a1-1",
+      "decider": "m2s-architect",
+      "task": "ROOM-spec-j3-r1-1-2",
+      "attempt": 1,
+      "time": "2026-11-13T16:42:49+0800",
+      "question": "规格对账差异 register-read-back-by-admin/list/body.subset 的执行收尾（承接 R-ROOM-spec-j3-r1-1-1-a1-1）：(1) 裁定的 affected_cases 该写 case#step 还是裸用例 id，对账与裁判能否认上；(2) relaxation=\"order\" 在该步骤实际覆盖哪些数组，R-…-a1-1 边界里\"元素内部 groups 次序仍严格比较\"这句是否成立？",
+      "conclusion": "两条都是执行口径，不改变 R-ROOM-spec-j3-r1-1-1-a1-1 的判定内容。\n\n(1) affected_cases 保留 \"register-read-back-by-admin#list\"，**不改成裸用例 id**。裁判（run_judge）读裁定时按 `#` 分区成用例与步骤：带步骤的条目只把放宽施加到那个步骤，裸用例条目会把放宽施加到该用例的**全部步骤及其中的每一条差异**。本差异只发生在 list 步骤，因此带步骤是更窄、更符合\"放宽只放到必要的程度\"的写法；改成裸 id 会把 register 步骤也一并放宽，属于放宽过度。对账（reconcile_spec）匹配时把 `#` 之后的部分去掉、只按用例 id 比对，且调度器对\"差异是否已被裁定覆盖\"的检查同样去掉 `#` 之后部分；所以下一轮对账会把这条差异从 differences 移到 resolved_by_rulings 并带上本裁定编号，裁判侧也会按步骤生效。结论：**用例、fixtures、identities、reconcile_classes 都不需要为这条差异改动，predicted 保持原样**，不需要新增任何表达方式，也不需要改比较工具。附带一条口径：对账侧的\"已解决\"是**用例粒度**的（`#list` 在对账里不起限定作用），所以将来这个用例若在别的步骤出现**与顺序无关**的新差异，也会先被记进 resolved_by_rulings——那不是本裁定在为其背书，J3 应当按本裁定的结论正文（只覆盖 list 步骤 users 数组的元素次序）复核，而不是把 resolved 当作\"无罪\"。\n\n(2) 更正 R-ROOM-spec-j3-r1-1-1-a1-1 边界里的一句表述：order 放宽在这个步骤的生效粒度是\"**该步骤单体记录里出现的每一个数组路径**按多重集比较\"，不是只有 users 外层数组。因此在 list 步骤里，users 外层数组**以及各元素内部的 groups 数组**都会按无序多重集判定，先前写的\"groups 数组的次序仍严格比较\"与工具实际行为不符，以本条为准。对判定能力的影响已核对：这一步 predicted 的两个 groups 分别是 [\"Admin\"] 与 []，元素数为 1 或 0，次序本来不参与判定，本差异也不会因为这条更正而被放过；等长/重数、字段名与取值、脱敏（password_hash、created_at 不得出现）、status=200、read_back 语义仍逐字比较。边界不变：其它步骤、其它端点（含 GET /flights/search、GET /customers/<customer_id>/bookings）的列表次序仍按现有口径严格比较；GAP-18（列表顺序的全局口径）与 GAP-15（导入期播种）由各自的缺口决定任务正式裁定，本裁定不预设其结论，也不被它们反向援引。",
+      "basis": "裁判/对账工具对裁定范围的既有规定（只读核实，未改工具）：judge.py `_rulings_in_force`（run_judge 侧，docstring 明写\"An entry 'case#step' reaches only that step (_steps); a bare 'case' reaches the whole case, and every difference in it, so name steps where that matters\"，按 partition(\"#\") 生成 _steps，judge_unit 再用 `name in r[\"_steps\"]` 决定该步骤是否套用 order 放宽）；judge.py `judge_unit` 里 `if order: unordered_paths |= _all_list_paths(该步骤的单体记录)` + `unify` 对 unordered 路径按多重集匹配，说明生效粒度是\"该步骤内所有数组路径\"；judge.py `_rulings_by_case`（reconcile 侧）用 `str(c).split(\"#\")[0]` 作键，即对账按裸用例 id 匹配；coord/dispatcher.py `_ruling_task_check` 的 covered 集合同样 `c.split(\"#\")[0]`。事实库依据不变：GET /auth/users#business_rules[2]（class=contract，\"返回全部用户…不排序、不分页…顺序不属于对外承诺\"）、#responses[2] 与 #business_rules[4]（只承诺每项脱敏为 {sub,email,groups} 与空表 200+[]）。单体代码依据不变：data/storage.py:352-356 仅 scan 取 Items、services/auth.py:140-150 脱敏推导式无 sorted()。用例侧：judge/cases/post-auth-register/register-read-back-by-admin.json 的 layer=\"R\"，步骤名为 register 与 list（list 带 read_back=true），predicted.list.body.subset.users 的 2 个元素与 actual 仅次序相反。",
+      "category": "contract",
+      "raised_by": "J3",
+      "options": [],
+      "relaxation": "order",
+      "affects": {
+        "cases": [
+          "register-read-back-by-admin#list"
+        ],
+        "layers": [
+          "R"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a2-1",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 2,
+      "time": "2026-11-13T16:53:01+0800",
+      "question": "受保护端点的未认证请求（缺 Authorization 头 / 头格式不是 \"Bearer <t>\" / 令牌伪造或过期）在目标上由谁应答、响应体是什么形状",
+      "conclusion": "由 API Gateway 的 Cognito/JWT 授权器应答：状态码仍是 401，响应体是网关默认形状（HTTP API：{\"message\": \"...\"}），不再是单体的 {\"error\": \"Authentication required. Please provide a valid token.\"} / {\"error\": \"Invalid token format. Use: Bearer <token>\"} / {\"error\": \"Invalid or expired token\"} 三句；单体的三态在目标上收敛为「授权器 401」一种，请求不进入函数、不产生任何 DynamoDB 读（这一半契约保持）。",
+      "basis": "规则手册默认做法：blueprint.cognito（GAP-10 自带 default「Cognito + API Gateway 授权器，认证端点删除」）+ blueprint.api_gateway.authorizer/claims_path；blueprint.metadata.spec_resolutions SI-9 逐条列出被替代的 7 个端点的 responses[401]（POST /bookings#responses[0]、GET /bookings/<booking_id>#responses[0]、POST /bookings/<booking_id>/confirm#responses[0]、POST /bookings/<booking_id>/cancel#responses[0]、GET /customers/<customer_id>/bookings#responses[0]、GET /loyalty/<customer_id>#responses[0]、POST /loyalty/<customer_id>/points#responses[0]）；m2s-architect「迁移带来的对外变化」表第一行（网关授权器应答 401，body 是 {message} 而不是单体的 {error}，deviates=false）。",
+      "category": "migration-change",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "booking-auth-guards#anon",
+          "booking-auth-guards#bad-format",
+          "booking-auth-guards#forged",
+          "booking-read-guards#anon",
+          "booking-confirm-guards#anon",
+          "booking-cancel-guards#anon",
+          "customer-bookings-owner-only#anon",
+          "loyalty-sum-and-level#anon",
+          "points-guards#anon"
+        ],
+        "layers": [
+          "P"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a2-2",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 2,
+      "time": "2026-11-13T16:53:29+0800",
+      "question": "/auth/register、/auth/login、/auth/me、/auth/users 四个端点在目标上不提供，涉及它们的用例与身份准备怎么算",
+      "conclusion": "四个端点整体作废（迁移决策，不是缺陷）：目标不注册这些路由，裁判不为它们出题、也不在目标上运行以它们为步骤的用例；身份改由 adapter_map.identities 的形状注入（claims.sub = ${id}，${id} 就是单体侧 POST /auth/login 保存的 body.user.sub：cust-u1 / cust-u2 / cust-admin）。连带作废：Airline-Users 的凭据属性（email/password_hash/created_at）不迁（groups 拆到 UserGroupsTable）、单体的同 email 可重复注册缺陷、users 列表的分页不完整缺陷、expires_in/user.groups 响应形状、HS256 每进程随机密钥与「同一进程签发的令牌才能被同一进程校验」的约束、以及 _init_default_users 的种子账号。若这些路径被请求，由网关应答 404 {\"message\": \"Not Found\"}。",
+      "basis": "blueprint.dropped_functions（四条 type=endpoint 条目 + 两条 type=code 的认证中间件/服务条目 + Users 表凭据的 type=table 条目）、storage/adapter_map.json 的 dropped_endpoints/identities、blueprint.metadata.spec_resolutions SI-8、storage/DECISIONS.md D-3/D-4/D-14；GAP-10/GAP-12/GAP-15 的默认做法与 m2s-basic-serverless-kb「Auth endpoints (/register, /login, /logout, /me) are DELETED」。涉及的 12 个用例每一步都只调这四个端点（judge/cases/post-auth-*、get-auth-* 已逐个核对），因此整案作废不会盖住任何对保留端点的断言。",
+      "category": "migration-change",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "register-new-user",
+          "register-duplicates",
+          "register-validation",
+          "register-bad-json",
+          "register-read-back-by-admin",
+          "login-success",
+          "login-bad-credentials",
+          "login-validation-and-bad-json",
+          "me-returns-table-record",
+          "me-token-of-deleted-or-forged-sub",
+          "users-admin-list",
+          "users-admin-only"
+        ],
+        "layers": [
+          "P",
+          "T"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a2-3",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 2,
+      "time": "2026-11-13T16:53:51+0800",
+      "question": "列表端点（Scan 结果数组）的元素顺序是否属于对外契约；register-read-back-by-admin#list 的 needs_ruling 结论",
+      "conclusion": "列表响应的元素顺序不是对外契约：GET /flights/search 的 flights、GET /customers/<customer_id>/bookings 的 bookings（以及已删除的 GET /auth/users 的 users）按 Scan 返回顺序原样给出，代码不排序；比较这些数组时只要求元素集合、每个元素的字段与数量一致，不要求先后。内容、条数、字段名与字段值仍是逐字比较的契约，本裁定只放宽顺序。",
+      "basis": "事实库 GET /auth/users#business_rules[2]（「条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺」）、GET /customers/<customer_id>/bookings#business_rules[3]、GET /flights/search#business_rules[2]；单体源码 data/storage.py:352-356 与 services/auth.py:140-150（无 sorted）、:257、:131；GAP-18 的 decide 见 storage/gap_inventory.json 与 storage/DECISIONS.md D-14。范围核对（J1/ROOM-spec-j3-r1 的脚本结论）：46 个用例里只有 register-read-back-by-admin#list 在嵌套数组上钉了 2 个元素，其余列表断言为 0 或 1 个元素，顺序无关；该步骤本身还因 GET /auth/users 被删除而不在目标上运行（R-A1-a2-2），本裁定是为 J3 报出的那条差异给出的正式结论。",
+      "category": "contract",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": "order",
+      "affects": {
+        "cases": [
+          "register-read-back-by-admin#list",
+          "customer-bookings-status-filter",
+          "search-route-match"
+        ],
+        "layers": [
+          "R"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-A1-a2-4",
+      "decider": "m2s-architect",
+      "task": "A1",
+      "attempt": 2,
+      "time": "2026-11-13T16:56:26+0800",
+      "question": "A1 自己新落的 R-A1-a2-3（列表顺序放宽）与已在案的 R-ROOM-spec-j3-r1-1-1-a1-1 / R-ROOM-spec-j3-r1-1-2-a1-1 重复，且它的 affected_cases 多写了 customer-bookings-status-filter、search-route-match 两个裸用例 id——放宽范围以哪一条为准",
+      "conclusion": "以在案的两条 ROOM 裁定为准，R-A1-a2-3 不作新增放宽、其 affected_cases 中多出的两项一律作废。准确范围：顺序放宽只施加于 register-read-back-by-admin#list 这一步（按 # 切分，只影响该步骤），判定口径仍是「等长 + 元素多重集（含重数）+ 每个元素字段逐字比较 + status/headers/脱敏不变」。customer-bookings-status-filter、search-route-match（以及其它任何列表步骤）**不因本条获得任何放宽**，仍按现有口径严格逐项比较——它们的嵌套数组断言元素数为 0 或 1，次序本来不参与判定，因此不改变任何结果。今后若有用例在别的列表端点上出现多元素次序差异，属新事实，另开裁定，不得援引本条或 R-A1-a2-3。R-A1-a2-3 的其余内容（GAP-18 的口径：目标不新增排序、也不为匹配字面次序加 sorted()）继续有效，作为实现线约束。",
+      "basis": "R-ROOM-spec-j3-r1-1-1-a1-1（局部放宽、只覆盖该步骤、\"另立全局无序比较也否决\"）、R-ROOM-spec-j3-r1-1-2-a1-1 第 1/2 点（run_judge 按 # 切分 affected_cases，裸用例 id 会把放宽施加到该用例全部步骤与每一条差异，故必须带步骤）；m2s-verifier 在讨论室 spec-j3-r1 的机器核对：46 个用例里\"≥2 个对象元素的嵌套数组\"断言只有 1 处；judge/reconcile.json 的 register-read-back-by-admin/list/body.subset。角色说明「宁可少写」：多写的放宽会盖住缺陷。",
+      "category": "contract",
+      "raised_by": "A1",
+      "options": [],
+      "relaxation": "order",
+      "affects": {
+        "cases": [
+          "register-read-back-by-admin#list"
+        ],
+        "layers": [
+          "R"
+        ],
+        "tasks": [
+          "A1"
+        ]
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-ROOM-spec-j3-r2-1-1-a1-1",
+      "decider": "m2s-architect",
+      "task": "ROOM-spec-j3-r2-1-1",
+      "attempt": 1,
+      "time": "2026-11-13T17:01:18+0800",
+      "question": "规格对账差异 register-read-back-by-admin/list/body.subset（J3 第 2 轮）：GET /auth/users 的 users 数组元素顺序按什么机制放宽——是否要求验证线改写用例、是否写成挂在事实条目上的通用规则、affected_cases 用裸用例 id 还是 case#step？（承接 R-ROOM-spec-j3-r1-1-1-a1-1 与 R-ROOM-spec-j3-r1-1-2-a1-1，判定内容不变，本条只定执行口径）",
+      "conclusion": "判定内容不变（顺序不是契约，其余全是契约），三条执行口径如下：\n\n(1) **由裁判在 R 层做无序多重集比较，验证线不重写用例**。不需要新增断言词、不允许把 body.subset 降级成 has_fields:[\"users\"]。机制：run_judge 里命中 relaxation=order 的裁定会把该步骤单体记录中出现的每一个数组路径标为 unordered，比较器在这些路径上要求「等长 + 一对一配对（含重数）+ 每个元素字段逐值比较」，只有先后不参与判定；配不上时退回逐位置报告差异。因此本放宽仍能抓住少一个用户（截断）、字段名/取值不同、脱敏泄漏（password_hash/created_at 出现）、status≠200。predicted 保持 J1 现有写法。\n\n(2) **不接受写成挂在 GET /auth/users#business_rules[2] 上的通用规则**。放宽在机制上只能由裁定的 affects.cases 逐个 case#step 施加（裁判按用例+步骤解析裁定，事实条目编号不参与匹配）；R-A1-a2-4 已把 R-A1-a2-3 多出的 customer-bookings-status-filter、search-route-match 两个裸用例 id 作废。本裁定的正文可作为**原则**被将来引用：顺序由存储 scan 的键分布决定且代码无排序步骤的列表，元素次序不作契约。但 J4 若在别的列表步骤补出多元素次序断言，须按新事实另开一条裁定并点名那个 case#step，不预先泛化——预先泛化等于在没人复核的情况下削弱将来的断言，违反「放宽只放到必要的程度」。\n\n(3) **affected_cases 维持 register-read-back-by-admin#list，不改裸用例 id**。对账与「差异是否已被裁定覆盖」的检查会去掉 # 之后部分按用例 id 匹配，因此带步骤照样认得上本差异；而裁判侧带步骤可把放宽只收在 list 一步，不扩到 register 步骤。验证线建议的 affected_cases=[register-read-back-by-admin] 不采纳。\n\n配套结论：GET /auth/users#business_rules[2] 不是 fact_error，保持原文，不改事实库、不按单体 scan 原序重写 predicted；目标侧也不得为了对上字面次序加 sorted()（GAP-18 口径，见 R-A1-a2-3 的实现线约束）。收尾动作：本差异已由在案裁定覆盖，J3 重跑 reconcile_spec 后即从 differences 移入 resolved_by_rulings 并带裁定编号（现有 judge/reconcile.json 生成于裁定之前，属陈旧文件），reconcile_classes.json 无需为它保留 needs_ruling 条目，用例/fixtures/identities 一律不动；本条与承接的两条 deviates_from_monolith=false，不触发人工确认。",
+      "basis": "事实库：GET /auth/users#business_rules[2]（class=contract，明写「条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺」）；GET /auth/users#responses[2] 只承诺 users 每项脱敏为 {sub,email,groups}；GET /auth/users#business_rules[3] 的单页截断仍是契约（放宽条数即失效，故保留等长要求）。\n单体代码：data/storage.py:352-356 get_all_users 只有 self.users_table.scan() 取 Items；services/auth.py:139-150 脱敏推导式保持原序、无 sorted()。\n差异本身：predicted 与 actual 两个元素的 {sub,email,groups} 三键值完全一致，仅先后相反（judge/reconcile.json 的 register-read-back-by-admin/list/body.subset）。\n工具行为（只读核实，未改工具）：run_judge 侧 relaxation=order 的施加粒度与多重集比较语义（judge.py `_rulings_in_force`、`judge_unit`、`unify` 的 unordered 分支：先要求 len(actual)==len(template)，再一对一配对、字段逐值比较，配不上则逐位置报差异）；对账与覆盖检查按去掉 # 之后的用例 id 匹配（judge.py `reconcile`/`_rulings_by_case`，dispatcher 的 rulings_cover）。\n在案裁定：R-ROOM-spec-j3-r1-1-1-a1-1（顺序不放宽内容、status/条数/脱敏仍逐字比）、R-ROOM-spec-j3-r1-1-2-a1-1（case#step 的收窄写法与该步骤内所有数组路径的生效粒度）、R-A1-a2-3（GAP-18 目标不新增排序）、R-A1-a2-4（多出的裸用例 id 作废、本类差异须另开裁定）。",
+      "category": "contract",
+      "raised_by": "J3",
+      "options": [
+        "改写用例以适配断言词汇（has_fields 或只留 1 个元素）——否决：丢掉 read_back 要验的内容，等长要求下单元素必然不匹配，属丢断言换通过",
+        "把放宽写成挂在事实条目 GET /auth/users#business_rules[2] 上的通用规则、覆盖所有列表端点——否决：裁定只能按 case#step 机械施加，泛化会在无复核的情况下削弱其它端点的断言（与 R-A1-a2-4 一致）",
+        "affected_cases 用裸用例 id register-read-back-by-admin——否决：会把放宽扩到该用例的 register 步骤，比必要范围更宽；覆盖检查按用例 id 匹配，带步骤不影响认账",
+        "判 fact_error、改事实库并按单体 scan 原序重写 predicted——否决：等于把存储布局与主键分布写进契约，迁移后 GSI/主键布局本就会变，且与 business_rules[2] 的明文矛盾",
+        "加屏蔽规则（mask_gap）——否决：屏蔽只处理逐遍变化的值，此处两遍值相同仅次序不同，屏蔽会掩盖真实差异"
+      ],
+      "relaxation": "order",
+      "affects": {
+        "cases": [
+          "register-read-back-by-admin#list"
+        ],
+        "layers": [
+          "R"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-ROOM-spec-j3-r2-1-2-a1-1",
+      "decider": "m2s-architect",
+      "task": "ROOM-spec-j3-r2-1-2",
+      "attempt": 1,
+      "time": "2026-11-13T17:59:14+0800",
+      "question": "规格对账差异 register-read-back-by-admin/list/body.subset 的结室口径（J3 第 2 轮）：次序放宽实际在哪一层生效、对账侧\"已被裁定覆盖\"按什么粒度认账、auth 作废类裁定的裸用例 id 要不要加防外溢边界？（承接 R-ROOM-spec-j3-r2-1-1-a1-1 与 R-ROOM-spec-j3-r1-1-1-a1-1 / R-ROOM-spec-j3-r1-1-2-a1-1，判定内容不变：users 数组的元素次序不是对外契约）",
+      "conclusion": "本差异按在案口径关闭，判定内容一字不改（category=contract、relaxation=order、只放开 R 层、影响面仅 register-read-back-by-admin#list）；本轮补三条执行边界，供 J3 重跑对账与 J4 补强引用：\n\n(1) **放宽只在\"目标 vs 单体记录\"这一层由比较器施加，对账层的这条差异靠裁定覆盖关闭，二者机制不同，不要混用**。目标侧：命中 relaxation=order 的裁定后，裁判把该步骤单体记录里出现的每一个数组路径（含嵌套的成员数组）标为无序，比较语义是\"等长 → 含重数的一对一配对 → 每个元素字段逐值比较\"，配不上则退回逐位置报告差异；因此 predicted/用例/fixtures/identities 一律不改写，也不允许降级为只断言字段存在。对账侧：预测与单体的比对走的是\"数组等长且逐位置包含\"的语义，没有任何次序放宽入口，本用例在单体三次运行里顺序稳定、掩码也没把它标成无序——所以这条差异不会因放宽自行消失，只能经\"已有裁定点名该用例 → 移入 resolved_by_rulings\"关闭。\n\n(2) **对账侧与调度器门侧的覆盖匹配都是用例粒度（去掉 # 之后按用例 id 认账），因此 J3 重跑对账后有强制复核**：移入 resolved_by_rulings 的每条差异必须核对 step=list 且差异形态确为\"元素集相同、只有先后不同\"；凡 step≠list，或表现为条数不等、字段名/取值不同、脱敏泄漏（password_hash / created_at 出现）、status≠200，一律视为未被本裁定覆盖、按新差异重开并另开裁定。裁判目标侧的收窄则按 case#step 生效，本裁定不外溢到同用例的 register 步骤。收尾动作只需重跑对账：该动作每跑一次会整份清除分类文件（不是谁手工\"撤条目\"），differences=0 且分类文件缺失时分类自查通过，无需为已消失的差异补任何分类。\n\n(3) **防外溢边界（新事实出现时的硬约束）**：作废类裁定 R-A1-a2-2 用的是裸用例 id，在目标侧命中整案每一步——当前无害，因为 register-read-back-by-admin 的全部步骤都落在不提供给目标的端点上，整案判为 dropped、根本不比较响应体；本次序裁定在目标侧的实际作用面因此为零，它的价值只在\"不按单体 scan 原序重写预期\"这一条。若 J4/补强阶段给这些 auth 用例**新增一个走保留端点的步骤**，必须先收窄该裸用例 id（改成 case#step）或另开裁定，否则作废类裁定会把那一步的任何不匹配判成\"迁移变化\"而非失败，等于掩盖缺陷。给别的列表端点/步骤加次序放宽同理：另开一条点名 case#step 的裁定，不得援引本条或 GAP-18 的原则句；也不得援用到 data/storage.py:322 `items[0] if items else None` 这类\"取到哪一条记录\"的契约（POST /auth/login#business_rules[1]、POST /auth/register#business_rules[2] 属内容而非次序）。\n\n配套结论维持：GET /auth/users#business_rules[2] 不是 fact_error，保持原文；目标侧不得为对上字面次序新增排序（GAP-18）。",
+      "basis": "事实库：GET /auth/users#business_rules[2]（明写\"条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺\"）、GET /auth/users#responses[2]（只承诺 {\"users\":[{\"sub\",\"email\",\"groups\"}]}）、POST /auth/register#business_rules[3]。单体代码：data/storage.py:352-356（get_all_users 只有 scan 并取 Items，无排序/分页）、services/auth.py:140-150（脱敏推导式逐条映射、保持原序）、data/storage.py:307/345（sub 是用户表唯一主键 → 同一列表不可能出现重复元素身份，多重集配对唯一）。裁判语义（只读核对，未改工具）：judge.py:2108-2125（case#step → 只命中该步；裸 case → 命中整案每一步）、2234-2241（relaxation=order → 该步记录里所有数组路径标为无序）、1094-1118（数组先要求等长，再在无序路径上做含重数一对一配对，配不上退回逐位置报告）、2066-2067/2244-2245/2213-2216（端点在 adapter_map.dropped_endpoints 里 → 该步不比较、整案 dropped）；对账侧 judge.py:1696-1743 + verify.py:1174-1178（预测比对是\"等长 + 逐位置包含\"，无次序放宽入口）；覆盖粒度 judge.py:1689 与 coord/dispatcher.py:1885（都 split(\"#\")[0]）；分类文件在对账动作里被整份清除 judge.py:1734-1736，缺失时按空处理 judge.py:1748-1752。在案记录：storage/rulings.json 的 R-ROOM-spec-j3-r1-1-1-a1-1 / R-ROOM-spec-j3-r1-1-2-a1-1 / R-ROOM-spec-j3-r2-1-1-a1-1（同参数、同范围）、R-A1-a2-3/R-A1-a2-4（放宽范围以 ROOM 两条为准、多余的裸用例 id 作废）、R-A1-a2-2（auth 四端点整案作废）；storage/adapter_map.json.dropped_endpoints（POST /auth/register、GET /auth/users 均不提供）；storage/gap_inventory.json GAP-18（目标不新增排序、裁判看不见，只能代码复核）、GAP-15。用例实测：judge/cases/post-auth-register/register-read-back-by-admin.json layer=R、步骤 register+list、read_back 只在 list；judge/masks.json 本用例 unordered=[]。",
+      "category": "contract",
+      "raised_by": "J3",
+      "options": [
+        "接受放宽、由裁判在目标侧做无序多重集比较（采纳：顺序由键分布决定、代码无排序，事实库已明写不承诺）",
+        "拒绝放宽、把 GET /auth/users#business_rules[2] 判成 fact_error 并按单体 scan 原序重写 predicted（否决：等于把存储布局写进契约，且该端点根本不提供给目标，无任何收益）",
+        "把用例断言降级为只断言 users 键存在以消除差异（否决：丢掉 read_back 要验证的内容，抓不住单页截断/脱敏泄漏）",
+        "affected_cases 用裸用例 id register-read-back-by-admin（否决：裁判目标侧会扩到同用例的 register 步骤；与 R-A1-a2-4 同口径）",
+        "把原则写成挂在事实条目上的通用规则（否决：覆盖匹配按用例粒度、事实编号不参与，泛化会在无人复核的情况下削弱将来的断言）",
+        "为 auth 作废类裁定的裸用例 id 加防外溢边界（采纳：J4 若给整案作废的用例新增走保留端点的步骤，先收窄或另开裁定）"
+      ],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "register-read-back-by-admin#list"
+        ],
+        "layers": [
+          "R"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    },
+    {
+      "id": "R-C003-V2-triage-a1-1",
+      "decider": "handler",
+      "task": "C003-V2-triage",
+      "attempt": 1,
+      "time": "2026-11-16T17:45:23+0800",
+      "question": "白盒故障场景 wb-booking-handler-read-fails-after-authz（nth=2）、wb-booking-confirm-read-fails-after-authz（nth=2）、wb-booking-cancel-read-fails-in-service（nth=3）按「同一条预订的第 n 次读」注入，在只读一次条目的目标上落点与单体不同，V2 判 3 个 fault run 失败：这些「第 2/3 次重复读落空 → 400」的臂算不算对外契约？（承接 storage/DECISIONS.md D-20 / SI-1，D-20 明写此裁定留给 V2 报差异后补）",
+      "conclusion": "是实现轨迹，不作 P 层判定。目标在这三条注入涉及的 7 个步骤上不再判失败（其余步骤、其余用例、其它故障场景一律仍严格比对）：booking-read-guards#owner、booking-read-guards#other、booking-confirm-unconfirmed#confirm、booking-confirm-unconfirmed#read-booking、booking-cancel-and-read#cancel、booking-cancel-and-read#read-booking、booking-cancel-and-read#read-seat。准确口径：(1) bookings-get / bookings-confirm / bookings-cancel 每个请求只按主键读一次该条目（SI-1），单体只有在第 2/3 次冗余读落空时才会产出的 'Booking <booking_id> not found' / 'Invalid booking ID: <booking_id>' 400 臂在目标上不存在，因此 nth=2/nth=3 注入要么命中不到（booking-cancel-and-read 全案对该条目只读 2 次 < nth=3），要么落到同一次运行里另一步的那次读（booking-read-guards 落在 #other、booking-confirm-unconfirmed 落在 #read-booking）；(2) 注入实际命中的那一步按 SI-13 的读失败语义回答（按主键读失败＝与「不存在」同一结果 → 404 {'error': 'Booking not found'}），实现不得为了让注入命中而补做冗余读（D-20 反向约束，perf 规则亦禁止靠加读凑数），也不得把这类读失败改写成 400；(3) 真实（未注入）流量下目标的行为落在单体既有臂之内（读失败 → 404、正常 → 200/403/404 逐字不变），故本条不是契约变化；(4) 已知代价并如实登记：裁判按「用例#步骤」取裁定且不区分正常运行与故障运行，这 7 步在同名用例的正常运行里也因此不再判失败（仍照常记录 status/body/headers/表差异，只是不判 fail）；这 7 步的对外行为仍由 booking-happy-path、booking-cancel-guards、booking-confirm-guards、booking-cancel-twice、booking-cancel-releases-stored-flight 等未受本裁定影响的用例覆盖；(5) table_differences 与 rules_fired（单体 true / 目标 false）继续作为信息项记录，不参与判定。若要恢复这 7 步在正常运行中的判定，只能由人解冻裁判改写这三条按 nth 读注入的场景——分诊与验证线都不得改 judge/。",
+      "basis": "storage/DECISIONS.md D-20（「留给 V2 报差异之后按本节口径补裁定」+ 落点与 nth 的事实描述）、D-17/D-18（SI-1 作废四条第二/三次读臂；「读次数、先读后写是做法，文案与状态码才是契约」）、D-18 汇总表第 3 行 category=implementation-trace；事实库 POST /bookings/<booking_id>/cancel#business_rules[8]「三次读的是同一个 Key，合成一次读对外部效果相同」；blueprint.metadata.spec_resolutions SI-1 / SI-13；judge/faults/ 三条场景的 nth=2/2/3 与 judge/fault_baseline_monolith.json 的落点（booking-read-guards#owner 400、booking-confirm-unconfirmed#confirm 400、booking-cancel-and-read#cancel 400）；verification/verdict_judge.json：3 个 fault run fail，rules_fired 目标 [false]（cancel 场景注入根本未命中），失败面与 D-20 预测逐字相符；m2s-mcp-server/judge.py `_rulings_in_force` / `judge_unit`（category implementation-trace → 步骤记 ruled，run_judge 仅把 fail/infra_error 计为失败）。",
+      "category": "implementation-trace",
+      "raised_by": "V2",
+      "options": [],
+      "relaxation": null,
+      "affects": {
+        "cases": [
+          "booking-read-guards#owner",
+          "booking-read-guards#other",
+          "booking-confirm-unconfirmed#confirm",
+          "booking-confirm-unconfirmed#read-booking",
+          "booking-cancel-and-read#cancel",
+          "booking-cancel-and-read#read-booking",
+          "booking-cancel-and-read#read-seat"
+        ],
+        "layers": [
+          "P"
+        ],
+        "tasks": []
+      },
+      "deviates_from_monolith": false,
+      "status": "decided"
+    }
+  ]
+}

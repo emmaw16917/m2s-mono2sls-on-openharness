@@ -1,0 +1,9 @@
+{
+  "task": "J4",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T03:53:29+0800",
+  "summary": "J4 白盒补测完成，check_judge_assets = PASS（79 用例 / 254 步 / 15 故障场景 / 4 fixtures / business_rules 引用 82→85）。30 条未覆盖行里只有 routes/cart.js:91-93（POST /cart 的 catch → 500）可达，用新故障场景 wb-cart-write-fails（PutItem + ValidationException，不重试）打进去；其余 27 行（dev-mode 分支、token 合法但用户条目不存在的 401/404、orders 后台更新的 .catch、updateBestSellers 空数组早退）逐条论证为不可达并写明原因。另补 5 个 wb 用例覆盖行覆盖率看不到的分支/契约，并把 3 条「代码里有、事实库没有」的规则写进 judge/spec_issues.json。",
+  "notes": "新增资产：judge/cases/{post-api-orders/wb-order-qty-not-number, get-api-search/wb-search-non-string-name-500, post-api-auth-register/wb-auth-public-endpoints-ignore-bad-authorization, post-api-auth-login/wb-login-does-not-revoke-old-token, delete-api-cart/wb-cart-delete-touches-nothing-else}.json、judge/faults/{wb-cart-write-fails, wb-cart-write-fails-second-write}.json、judge/fixtures/books-bad-types.json、judge/spec_issues.json（J4-1/J4-2/J4-3）。未改任何已有用例/identities/uncovered.json。\n\n需要调度器留意的三件事（详见 storage/stage_reports/J4.json 的 tool_notes）：\n1) judge/uncovered.json 把 POST /api/cart#responses[3] 归给 cart-write-throttled-once，但 throttle 会被 SDK 重试掉、最终 200，走不到 cart.js 的 catch；本轮新增的 wb-cart-write-fails 才是这条臂的记录场景。uncovered.json 属 J1 资产、不在本次可写范围，若要更正说明请派给 J1。\n2) 行覆盖率把「从未被调用的函数」整体当成已覆盖：middleware/auth.js 的 optionalAuthMiddleware（69-96 行，全仓无挂载点）没出现在 uncovered 列表里，所以 611 行的分母偏乐观——后续拿覆盖率做关口时请注意口径。只是报告，没有动工具。\n3) 故障 kind tx_conflict 在单体上没有落点（11 处写全是 PutItem/UpdateItem/DeleteItem，无 TransactWriteItems）。\n\n对账风险预告：wb-order-qty-not-number 读回 GET /api/bestsellers 依赖「畅销榜更新未被 await」这一既有行为（已标 layer=R，与 J1 的 order-bestsellers-async 同一手法）；若三遍运行报 unstable，应按 freshness 放宽裁定处理，不要删断言。J4-3（body-parser 100KB → 413）有意没写用例：要用例就得塞 >102400 字节的请求体，而目标端 API Gateway 上限 10MB 无法等价复现，建议走裁定而不是直接当事实补进库。"
+}

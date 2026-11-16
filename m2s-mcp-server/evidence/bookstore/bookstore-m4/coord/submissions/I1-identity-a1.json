@@ -1,0 +1,9 @@
+{
+  "task": "I1-identity",
+  "attempt": 1,
+  "role": "m2s-code-developer",
+  "status": "done",
+  "time": "2026-11-13T08:50:42+0800",
+  "summary": "identity 包按规格零函数可实现：4 个 /api/auth/* 端点与 authMiddleware/jwt.js/password.js、Bookstore-Users 表都在 blueprint.dropped_functions 里被 Cognito+网关授权器取代（cognito.no_cognito_triggers 明确不配触发 Lambda；SI-1..SI-6 把认证端点相关臂作废/裁定不保留），impl_packages.identity.functions=[]，因此没有生成 handler、依赖文件或共享层，也没有创建 output/lambdas/identity/。run_gate(phase=\"code\", package=\"identity\") 第 1 次即 PASS（0 finding）；不带 scope 的 gate(code) 12 条 C1 全部属于另一个包。judge/ 与模板未触碰，工作报告见 storage/stage_reports/I1-identity.json（含 spec_basis 出处与对 I2/shared 的交接说明）。",
+  "notes": "若后续 gate(final) 或 I2 阶段出现 output/lambdas/identity/ 目录或任何 auth handler，那是凭空造的，应当删除：C1 的双向检查会因为该目录没有匹配的 blueprint 函数而报错。认证行为的对外契约全部落在模板线（Cognito User Pool、REST 授权器、GatewayResponses 的 401 与 CORS 两个头，R-A1-a3-1 / D-9），实现线 identity 包无代码义务。裁判侧 4 个认证用例目录经 adapter_map.dropped_endpoints 走 \"dropped\" 路由，不需要代码支撑。"
+}

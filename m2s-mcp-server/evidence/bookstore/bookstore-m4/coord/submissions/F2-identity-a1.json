@@ -1,0 +1,9 @@
+{
+  "task": "F2-identity",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T00:09:23+0800",
+  "summary": "identity 包 4 个端点全部标注完成：41 条 business_rules（register 13 / login 10 / refresh 9 / me 9，每条都有 class 和可核对出处）、24 项 responses 补齐 when+body 描述、10 项提前返回的错误响应标 guard_kind、新增 3 项 body-parser 400、2 项中间件 401、5 项 request.headers，修正 6 个字段的 type/required。scoped check_provenance 对 POST /api/auth/register、POST /api/auth/login、POST /api/auth/refresh、GET /api/auth/me 逐个 PASS（errors=[]、incomplete=[]），一次通过。",
+  "notes": "脚本核对结果：handler_location/auth/data_access 四项均确认无误，未改动。全量 check_provenance 目前唯一的 incomplete 是 global_middleware[0]（server.js:29 cors origin '*' + credentials true）的 headers 未填——那是 app 级中间件任务的范围，我没有猜测 cors 包在该组合下的实际行为，已在 issues 里写明。其他要点：(1) /me 第 241 行的 401 在默认 AUTH_DEV_MODE=false 下不可达（没 token 会被中间件第 43 行先拦），已写在 when/note 里，未标 trace_arm；(2) 「用户不存在」在 refresh 是 401、在 /me 是 404，按单体现状分别记录，要统一需 architect 出 ruling；(3) register 的邮箱唯一性是 Query-then-Put 无条件写，存在并发重复条目的缺陷，本任务非 G2 模式未写 gap_inventory，建议缺口扫描收录；(4) work_packages.shared_code 有 authMiddleware 但报告里还没有 shared_rules（F2:shared 未落盘），因此 /me 用内联规则描述中间件行为而非 `ref: shared/auth-middleware`，引用不存在的 id 会被校验拒绝；若 F2:shared 随后落盘，可去重。"
+}

@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "tables": [
+    {
+      "monolith": "Airline-Flight-{stage}",
+      "target": "FlightTable",
+      "fields": {},
+      "note": "整表原样迁移（blueprint.dynamodb_tables[FlightTable]：主键 id/S，无排序键、无 GSI，与 analysis_report.dynamodb_info.table_schemas 一致）。除主键外没有任何属性改名，没有用户 id 字段：seatCapacity/maximumSeating 是座位计数器（flights-reserve / flights-release 的条件更新对象），ticketPrice/flightNumber 等按 SI-16 做 Decimal↔int/float。导入期种子 FL001/FL002 不迁（SI-11 / D-12），航班数据只由夹具或部署侧导入提供。"
+    },
+    {
+      "monolith": "Airline-Booking-{stage}",
+      "target": "BookingTable",
+      "fields": {
+        "customer": {"from": "customer", "as": "identity"}
+      },
+      "note": "主键 id/S（uuid4 字符串）不变；GSI customer-index(customer/S) 与 table_schemas 一致，代码仍走 Scan+Filter（SI-12 / D-8）。customer 存的是「下单方的身份 id」：单体 = Airline-Users.sub（由 POST /bookings 用登录用户的 sub 覆写，`POST /bookings#business_rules[1]`/`#business_rules[4]`），目标 = 网关已验证身份的 claims.sub，所以按 identity 映射。其余属性（bookingOutboundFlightId、paymentToken、status、checkedIn、createdAt、bookingReference）原名照搬；bookingReference 的 null 与 createdAt 的无时区 ISO 形状保持（SI-15）。"
+    },
+    {
+      "monolith": "Airline-Loyalty-{stage}",
+      "target": "LoyaltyTable",
+      "fields": {
+        "customerId": {"from": "customerId", "as": "identity"}
+      },
+      "note": "主键 id/S（每次加分新生成的 uuid4）不变；GSI customer-flag-index(customerId/S + flag/S) 按 table_schemas 保留但代码不使用（SI-12）。customerId 是用户 id，目标侧同样是身份 id（claims.sub），按 identity 映射；points/flag/date 原名照搬，points 是整数（Decimal↔int，SI-16），flag 取值 active/expired 只有 active 计分（`GET /loyalty/<customer_id>#business_rules[1]`）。"
+    },
+    {
+      "monolith": "Airline-Users-{stage}",
+      "target": "UserGroupsTable",
+      "fields": {
+        "sub": {"from": "sub", "as": "identity"},
+        "groups": {"from": "groups"}
+      },
+      "drop": {
+        "email": "凭据/身份属性，归 Cognito 用户池的标准属性（同时是登录名，blueprint.cognito.username_attribute=email），不进 DynamoDB（角色硬性规则：不把任何用户凭据字段迁进 DynamoDB）",
+        "password_hash": "口令散列（单体是无盐 SHA-256，services/auth.py:23-26），由 Cognito 管理，不迁（D-4 / SI-8）",
+        "created_at": "账号创建时间；唯二读取方 GET /auth/me、GET /auth/users 都不提供（D-3），Cognito 自带 userCreateDate"
+      },
+      "note": "Users 表处理方式 ②：凭据归 Cognito、authorization 数据单独建表。主键名沿用 sub（目标里它是 Cognito 用户的 sub，即本映射里该用户的身份 id），属性只留 groups（字符串数组，取值 'Admin' 或 []）：Admin 判定每请求查这张表而不是查 claims 里的组声明，以保持 `POST /loyalty/<customer_id>/points#business_rules[0]` 与 `GET /auth/users#business_rules[1]` 规定的「看库里当前记录、改组立刻生效」。**缺行不 401**：视为 groups=[]（非 Admin），因为身份已由网关验证（SI-10）。"
+    }
+  ],
+  "identities": {
+    "claims": {
+      "sub": "${id}",
+      "email": "${email}"
+    },
+    "user_id": "${id}",
+    "note": "认证由 Cognito 取代（D-3/SI-8），所以单体准备身份用的 POST /auth/register + POST /auth/login 在目标上不存在；目标侧身份 = 网关授权器交给函数的 claims。${id} 取裁判在单体侧登录步骤里保存的 body.user.sub（u1→cust-u1、u2→cust-u2、admin→cust-admin，见 judge/identities.json 与 judge/fixtures/admin-user.json），它在目标里就是同一个用户 id（user_id=${id}），因此 BookingTable.customer / LoyaltyTable.customerId / UserGroupsTable.sub 的取值在两侧一致，夹具映射后可原样映射回来。不写 seed：目标不需要为任何身份预置用户资料行——普通用户（u1/u2）在 UserGroupsTable 里没有行就等价于 groups=[]（SI-10），admin 的 groups:['Admin'] 那行由 admin-user 夹具经上面的表映射写入，凡是用到 admin 别名的用例都被 J1 要求声明了这个夹具。claims 里不给 cognito:groups：HTTP API 的 JWT 授权器把数组 claim 序列化成 \"[Admin ]\" 这类字符串（api_gateway.claims_note），而函数的 Admin 判定本来就不读 claims（D-4），给了反而会被误用。"
+  },
+  "dropped_endpoints": [
+    {"endpoint": "POST /auth/register", "replaced_by": "cognito", "reason": "注册改为客户端调 Cognito SignUp（或管理员 AdminCreateUser）；单体这条路径写的就是被 drop 的凭据属性（email/password_hash）。`POST /auth/register#business_rules[2]`（同 email 可重复注册的缺陷）与 `#responses[3]`（坏 JSON 500）随端点作废，裁判不在目标上运行这些步骤（SI-8 / D-3）。"},
+    {"endpoint": "POST /auth/login", "replaced_by": "cognito", "reason": "登录改为 Cognito InitiateAuth（USER_SRP_AUTH），令牌由用户池签发、有效期 1 小时与单体 expires_in=3600 对齐（cognito.token_validity）；单体自己验口令、自己用每进程随机的 HS256 密钥签令牌（GAP-12）不是要复刻的契约（SI-8 / D-3）。"},
+    {"endpoint": "GET /auth/me", "replaced_by": "cognito", "reason": "客户端直接读自己 id token 的 claims（sub/email/groups）或用 Cognito SDK 取属性；该端点不访问任何业务表，`GET /auth/me#business_rules[6]` 已被标 implementation-trace（SI-8 / D-3）。"},
+    {"endpoint": "GET /auth/users", "replaced_by": "cognito", "reason": "管理员列用户改用 Cognito ListUsers：用户记录本身已不在 DynamoDB（凭据 drop，D-4）。它唯一独立的对外契约『非 Admin 一律 403 Admin privileges required』由保留端点 POST /loyalty/{customer_id}/points 继续承载（同一个 admin_required 装饰器，`POST /loyalty/<customer_id>/points#business_rules[0]`）（D-3 / D-4）。"}
+  ],
+  "target_only_tables": [
+    {
+      "target": "PaymentTable",
+      "reason": "单体没有对应的表：收款记录只放在 PaymentService._payments 这个进程内字典里（services/payment.py:21，GAP-5）。跨调用共享的状态不能留在函数实例里（m2s-basic-serverless-kb 的默认做法），所以建表承载；条目形状照搬内存记录 {chargeId, receiptUrl, price, status, mode}，因此 `GET /payments/<charge_id>` 的读回内容与单体一致（SI-6 / D-11）。裁判没有对应的单体夹具（没有任何 fixture 文件写支付表），它由 payments 三个函数自己写、自己读。PaymentService._refunds 没有读取方，不建表（D-11）。"
+    }
+  ],
+  "note": "四张单体表全部有映射；没有整表被静默丢掉（Airline-Users 的凭据属性按 drop 记录，业务字段 groups 保留为 UserGroupsTable）。没有复合键、没有 JSON 编解码、没有格式转换：单体的键本来就是字符串（id/sub/customerId 都是 S），因此本映射只做 identity 语义标注 + 三个凭据属性的 drop。check_adapter_map 的往返检查应满足：BookingTable.customer、LoyaltyTable.customerId、UserGroupsTable.sub 的 target 值 = 该用户的 ${id} = 单体值（两侧同一个 id 字符串，见 identities.note），映射回单体得到原值。"
+}

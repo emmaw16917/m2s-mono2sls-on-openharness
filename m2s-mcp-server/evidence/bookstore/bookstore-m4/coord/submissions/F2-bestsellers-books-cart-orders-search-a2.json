@@ -1,0 +1,9 @@
+{
+  "task": "F2-bestsellers-books-cart-orders-search",
+  "attempt": 2,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T01:19:16+0800",
+  "summary": "按 J3 对账修正 POST /api/cart 的事实错误：单体除 bodyParser.json()（server.js:33）外还全局注册了 bodyParser.urlencoded({extended:true})（server.js:34），所以 application/x-www-form-urlencoded 的表单请求体同样被解析，字段齐全时执行 PutItem（cart.js:88）并返回 200 {message:'Item added to cart successfully'}，且 urlencoded 的值必为字符串，quantity/price 以 '2'、'10' 原样入条目（cart.js:83-84 不校验/不转换），GET /api/cart 因此回读到条目——三条差异（form/status、form/body.subset、read/body.equals）同源于此。改了 request（新增 content-type 头项、quantity/price 补类型随编码而变的 note、bookId 补出处）、responses 三臂的 when（缺字段 400、成功 200、entity.parse.failed 400 收紧为仅 JSON Content-Type）、business_rules（新增 1 条 contract 规则 + 给原规则补 note）；其余 10 个端点未动。check_provenance() 第 1 次自查即 PASS（全包 15 端点，errors=0，incomplete=0，checked_sources=782），POST /api/cart 剩 2 项 unknown（quantity/price 的 type，代码无法确定单一类型）。",
+  "notes": "范围提示：同一根因（urlencoded 也被解析）对 PUT /api/cart、DELETE /api/cart、POST /api/orders 同样成立，但本次 J3 差异未点到，按「不要改动无关的事实」保持原样，已在 stage_report 的 issues 里写明。另：body-parser 对不匹配 Content-Type「跳过解析、req.body 保持 {}」这一行为是从应用代码（server.js 只注册两个解析中间件）推出的，未引用 node_modules 行号作出处。报告见 storage/stage_reports/F2-bestsellers-books-cart-orders-search.json。"
+}

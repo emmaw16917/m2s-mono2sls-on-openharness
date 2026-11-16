@@ -1,0 +1,9 @@
+{
+  "task": "F2-bookings-customers-flights-loyalty-payments",
+  "attempt": 4,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T21:12:27+0800",
+  "summary": "J3 回炉修正完成：5 条差异同源于 POST /bookings#business_rules[15] 把「数组 chargeId」当成了成功路径。按单体代码核实——Step 2 的 put_item 确实能写 list（data/storage.py:197/:40-41/:204-205），但 Step 3 模拟收款在 return 前先做内存记账 PaymentService._payments[charge_id]（services/payment.py:177，_payments 声明为 Dict[str, dict]），不可哈希值抛 TypeError: unhashable type: 'list'，而 app.py:136 只 except ValueError，于是冒到 app.py:219 catch-all → 500 {error, message}（app.py:245-248），receiptUrl 永远进不了响应；标量（15.5/15）可哈希照旧 201 且 URL 跟随输入，假值走 Step 3 的 ValueError → 400。已改：business_rules[15] 重写为按可哈希性分三档、responses[6] 的 201 description 删掉「['a','b'] 出现在 URL 里」、responses[7] 的 when/description 补上这个成因与「无 bookingId 可读回」、request.body[1] 的 note 去掉「数组照样接受」，并按差异点到的 fact_ref 给 business_rules[4]、GET /bookings/<booking_id>#responses[1]/#responses[3] 补了同样的澄清（404 臂本身没写错，actual 就是 404）。响应臂与规则的条数、顺序未变（POST /bookings 9 臂 / 17 规则），未动任何 origin=script 项。check_provenance：整库 PASS（errors 0、incomplete 0、checked_sources 647、unknown_items 3），尝试 1 次。",
+  "notes": "给 J1 的提示已写进工作报告 issues：数组臂 predicted 改成 500 + {error 以 'Unexpected error during booking: ' 开头, message='The booking has been rolled back. Please try again.'}（POST /bookings#responses[7]），删掉 read-list 步骤（500 不返回 bookingId），seat-after predicted 用 seatCapacity 回到扣座前的值（回滚放座，见 business_rules[7]/[11]，与单体一致）。另外纠正 J3 理由里的一处：单体确实有按 customer 列预订的端点 GET /customers/<customer_id>/bookings（app.py:309-315 → data/storage.py:248-257 的 scan，不带 status 时 CANCELLED 条目也在里面），所以那条残留并不是对外不可见，只是 id 不回给建单方——想检验「建单失败不留 CONFIRMED 预订」可以用它读回 status='CANCELLED'。仍有两条未动：POST /bookings#request.body[1].type=unknown（代码证明不了合法类型集合）、POST /bookings#responses[1] 的「不是 JSON → 400」这半句缺实测证据（需一条 raw_body='{not json' 的白盒用例）。"
+}

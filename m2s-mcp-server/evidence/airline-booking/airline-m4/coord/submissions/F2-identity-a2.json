@@ -1,0 +1,9 @@
+{
+  "task": "F2-identity",
+  "attempt": 2,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T20:40:38+0800",
+  "summary": "J4-3 已按代码核实并补进事实库：GET /auth/users 新增一条 contract/error_handling 规则（storage.get_user 吞掉 GetItem 异常返回 None → _get_authenticated_user 一律 401 'Invalid or expired token'，既不是 5xx 也到不了 403/列表 scan），并把它 401 臂的 when/body.description 写成“读表失败也算查不到”；同因把 GET /auth/me 的 401 臂 when 补上同一句（该端点已有规则未动）。register/login 非需认证端点、login 的读表故障→401 第 1 次已记录，未改动无关事实。check_provenance 整库 PASS（errors 0、incomplete 0、checked_sources 639），一次修正通过。",
+  "notes": "所有新增出处：data/storage.py:311/312/313、services/auth.py:120/170/171（GET /auth/users 与 GET /auth/me 的 responses 与 business_rules，origin=llm）。工作报告 storage/stage_reports/F2-identity.json 的 fixes 列出每条差异改的是哪一项。同一机制也影响另一工作包（bookings-customers-flights-loyalty-payments）12 个需认证端点的 401 描述——它们仍只写“sub 在用户表里查不到”，不在本包范围，我按约束未改，建议调度器把同因修正转给该包的标注任务（代码出处相同）。整库 unknown_items 剩 3 条：本包 2 条是 register/login 的 body.email 类型（代码只有存在性判断与等值过滤），第 3 条在 POST /bookings。"
+}

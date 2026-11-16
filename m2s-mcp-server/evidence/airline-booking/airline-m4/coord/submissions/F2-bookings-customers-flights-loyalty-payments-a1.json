@@ -1,0 +1,9 @@
+{
+  "task": "F2-bookings-customers-flights-loyalty-payments",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T14:48:44+0800",
+  "summary": "本包 14 个端点全部标注完成：98 条 business_rules（94 contract / 4 implementation-trace，每条带 class 与逐行出处），59 项 responses 全部补上 when 与 body 描述，并补入脚本看不到的装饰器 401/403/404 臂与全局 errorhandler 的 ValueError→400 臂（24 项 guard_kind：16 authz + 8 error_propagation；4 项 trace_arm），request 补齐 type/required 与 Authorization 头，data_access 补上脚本漏掉的忠诚表写入、回滚写入与 release 的前置读。check_provenance 按端点逐个查为 PASS（errors 0、incomplete 0、本包 unknown_items 0）。",
+  "notes": "1) 整库 check_provenance 仍会报 4 条 incomplete：POST /auth/register、POST /auth/login、GET /auth/me、GET /auth/users 没有 business_rules——它们属于 identity 工作包，不在本任务范围，请确认该包也被派发过。2) work_packages.shared_code 列了 login_required / admin_required，但 analysis_report 里还没有 shared_rules 段，所以本包的鉴权规则是按端点内联写的（没用 'ref: shared/...'，否则 check_provenance 会判 unknown ref）；若之后补了 shared 条目，可把这些 authorization 规则改成引用。3) 需要 architect 裁定的 4 条 trace_arm 臂：GET /bookings/<booking_id> 400、POST /bookings/<booking_id>/confirm 两条 400、POST /bookings/<booking_id>/cancel 400（都源于“装饰器读过一次预订、handler/service 再读一次”）。4) P0 的 global_middleware 只收了 CORS(app)（headers 已填好，无需我再标注）；app.py:28-34 的 @app.errorhandler(Exception)（ValueError→400、其他→500，body {error,type}）没有出现在 global_middleware 列表里，我已把它对各端点错误臂的影响逐条写进 responses/business_rules，但列表本身缺这一项，请主 Agent 决定是否补录。5) 环境提醒：仓库里 m2s-mcp-server/perf-rules/ledger.json 的未提交改动与 m2s-mcp-server/evidence/bookstore/bookstore-m4/ 未跟踪目录时间戳早于本次尝试，不是本任务产生的，我没有碰过 m2s-mcp-server/。详细逐端点说明见 storage/stage_reports/F2-bookings-customers-flights-loyalty-payments.json。"
+}

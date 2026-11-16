@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r1-0-1",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T16:06:44+0800",
+  "summary": "在 spec-j3-r1 以 m2s-verifier 身份发言一轮：同意 J3 对 register-read-back-by-admin/list/body.subset 的 needs_ruling 归因，建议 architect 裁定 GET /auth/users 的 users 数组按元素集合比较（长度与逐元素字段仍逐字比较），relaxation=order、layers=[R]、deviates_from_monolith=false；排除 fact_error / mask_gap / case_error 三种替代归因并给出理由，附影响范围核对（46 个用例、162 步里只有这 1 步钉了 2 元素嵌套数组）与一条待裁定明确的问题（R 层自动无序比较还是用例侧显式声明）。",
+  "notes": "未修改任何测试资产或用例，只写工作报告 storage/stage_reports/ROOM-spec-j3-r1-0-1.json。裁定后若需要，我按裁定结论决定是否调整 predicted；只放宽顺序，不放宽\"两个用户都在、字段逐一相等\"。"
+}

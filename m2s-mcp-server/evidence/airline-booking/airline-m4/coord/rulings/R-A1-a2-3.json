@@ -1,0 +1,27 @@
+{
+  "id": "R-A1-a2-3",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 2,
+  "time": "2026-11-13T16:53:51+0800",
+  "question": "列表端点（Scan 结果数组）的元素顺序是否属于对外契约；register-read-back-by-admin#list 的 needs_ruling 结论",
+  "conclusion": "列表响应的元素顺序不是对外契约：GET /flights/search 的 flights、GET /customers/<customer_id>/bookings 的 bookings（以及已删除的 GET /auth/users 的 users）按 Scan 返回顺序原样给出，代码不排序；比较这些数组时只要求元素集合、每个元素的字段与数量一致，不要求先后。内容、条数、字段名与字段值仍是逐字比较的契约，本裁定只放宽顺序。",
+  "basis": "事实库 GET /auth/users#business_rules[2]（「条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺」）、GET /customers/<customer_id>/bookings#business_rules[3]、GET /flights/search#business_rules[2]；单体源码 data/storage.py:352-356 与 services/auth.py:140-150（无 sorted）、:257、:131；GAP-18 的 decide 见 storage/gap_inventory.json 与 storage/DECISIONS.md D-14。范围核对（J1/ROOM-spec-j3-r1 的脚本结论）：46 个用例里只有 register-read-back-by-admin#list 在嵌套数组上钉了 2 个元素，其余列表断言为 0 或 1 个元素，顺序无关；该步骤本身还因 GET /auth/users 被删除而不在目标上运行（R-A1-a2-2），本裁定是为 J3 报出的那条差异给出的正式结论。",
+  "category": "contract",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": "order",
+  "affects": {
+    "cases": [
+      "register-read-back-by-admin#list",
+      "customer-bookings-status-filter",
+      "search-route-match"
+    ],
+    "layers": [
+      "R"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

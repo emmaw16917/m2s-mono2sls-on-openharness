@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r1-3-2",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T02:26:50+0800",
+  "summary": "已在 spec-j3-r1 发完本轮意见（seq 8）并写工作报告。核对结果：R-ROOM-spec-j3-r1-1-2-a1-1 已落库且 affects.cases 为 8 条，reconcile 现状 differences=0、resolved_by_rulings 两条均为纯顺序（按裁定段 6 逐步复核，无内容差异被吞）。新增三项产出：更正我上轮的说法——按下标断言列表的位置敏感写法除 search 6 步外还有畅销榜 3 步（ordered-200#list、shared-between-users#u1/u2），因此事实库那句\"验证时不应断言同分条目的次序\"若被照做的代价是三处断言，支持 class 保持 contract 并删该半句；新报一处与顺序无关的内容盲区（search-no-match-and-absent-fields-200#substring-space 只断 total=2 不断 hits），请求把该用例作为第三条裸用例条目并进 affected_cases 以便补内容；独立复核\"无 API 写 Books\"成立，并把内层快照数组纪律清单从 3 步补到 5 步（新增 orders-list-isolation#list-u1/#list-u2）。另请 architect 确认两条 decided 裁定是否取并集。本轮未修改任何工作区文件，三条 search 步骤的预期、夹具、故障场景全部不动。",
+  "notes": "待 architect 拍板两件：(1) affected_cases 增补 search-no-match-and-absent-fields-200（我据它补 substring-space 的命中集合断言，属增加覆盖不是放宽）；(2) R-…-1-1-a1-1 与 R-…-1-2-a1-1 同时 decided，若引擎取\"命中即返回\"而非并集，则 mixed-name/mixed-target/name 三步可能被 1-1 的子集漏掉，需要把 1-1 置为非 in-force。规格轮侧还剩两处文字：GET /api/bestsellers#business_rules[2] 删半句且 class 保持 contract、GET /api/books#responses[0] 补顺序语义。我这侧承诺不变：不放宽任何畅销榜位置断言、不把单体 scan 次序抄进预期、并列与翻页完整性各自单独立条、V2 若仅因顺序判这三步失败则按机制问题报出而不改用例。"
+}

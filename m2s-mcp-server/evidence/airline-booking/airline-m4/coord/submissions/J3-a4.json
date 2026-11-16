@@ -1,0 +1,9 @@
+{
+  "task": "J3",
+  "attempt": 4,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T21:22:26+0800",
+  "summary": "judge/reconcile.json 的 5 条差异全部判为 case_error 并写进 judge/reconcile_classes.json：上一轮判为 fact_error 的“数组 chargeId 能否走到 201”已由 annotator 修正进事实库（#business_rules[15] 三臂、#responses[6]/[7]、#request.body[1]），本轮 oracle 是对着修正后的事实库重跑的，actual（create-list 500、read-list 404、seat-after seatCapacity=4）与事实库逐条相符，差异只剩 J4 在事实库修正之前写下的旧 predicted 未跟上，故不能再判 fact_error。read-list 另有一处请求本身不成立（500 不返回 bookingId，${bidList} 取不到值），已在 fix 里给出改用 GET /customers/${u1.id}/bookings + contains 的写法。无 needs_ruling、无 mask_gap，未新增 judge/mask_rules.json；未改用例、未改事实库、未改单体。check_reconcile_classes = PASS。",
+  "notes": "交接口径：本轮 by_class 只有 case_error，需要 J1 回炉按修正后的事实库重写 wb-booking-charge-id-non-string-stored-verbatim 的 create-list/read-list/seat-after 三步（只改 predicted，除 read-list 换用列表接口；create-float/read-float 保留）。证据要点：services/payment.py:177 的字典记账抛 TypeError（_payments 是 Dict，services/payment.py:21），Step 3 只 except ValueError（app.py:136）→ catch-all（app.py:219，响应体 app.py:246-247 不含 bookingId/payment），回滚按 payment_result=None 不退款 / booking_id 存在 → cancel_booking 打成 CANCELLED / flight_reserved → release_flight_seat（data/storage.py:174-175，3<10 通过）故 seatCapacity 回到 4（fixture 5 − create-float 1）。残留交接：judge/spec_issues.json 的 J4-1 文本仍是上一轮错误来源（写着数组原样存成列表并给出 ['a','b'] 的 receiptUrl 例子，文件时间 20:44 早于事实库修正 21:09），J3 无权限修改，建议由 J4/annotator 同步，否则下一个白盒轮可能把同一错误重新引进；详见 storage/stage_reports/J3.json 的 residual_doc_issue。本轮只写 judge/reconcile_classes.json 与 storage/stage_reports/J3.json 两个文件。"
+}

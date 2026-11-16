@@ -1,0 +1,9 @@
+{
+  "task": "J5C",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T04:59:53+0800",
+  "summary": "补上回炉点名的两条未分类变异体并写入 judge/mutant_classes.json：negate:middleware/auth.js:19 判 gap（AUTH_DEV_MODE 默认 false，条件取反后开发模式的 x-customer-id 通道反而生效，带该头即可跳过 Bearer 校验，而 judge/cases 里没有任何用例发过这个头，属鉴权绕过方向的覆盖缺口，已给出补测建议）；branch_off:middleware/auth.js:19 判 equivalent（该通道在默认配置下本来就恒不执行，短路成 false 对外部行为零影响）。check_mutant_classes 返回 PASS（survivors=2，equivalent 1 / gap 1，errors 空）。",
+  "notes": "只写了 judge/mutant_classes.json 和 storage/stage_reports/J5C.json，未改用例、事实库或流水线工具。judge_validation.json 里其余 9 条 survived 变异体已带 source=uncovered 的自动分类（routes/auth.js:207/208/209/240/241/242/255/256/257），按要求未重复分类；serial 反向检查项不分类。gap 那条的下一步动作（J4 补 x-customer-id 用例）已写进工作报告的 suggestions_for_j4。"
+}

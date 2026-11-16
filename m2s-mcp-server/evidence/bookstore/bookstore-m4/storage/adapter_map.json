@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "tables": [
+    {
+      "monolith": "Bookstore-Books",
+      "target": "BooksTable",
+      "fields": {},
+      "note": "键与属性全部同名照搬（partition key id S；GSI category-index pk category S，blueprint dynamodb_tables[0]）。夹具 books.json 的 id/name/author/category/price/rating/cover 原样复制（copy_rest 默认 true）：books-list / books-get-item / search-books 都按原样返回条目，不裁剪、不改名、不把 price/rating 转成字符串。"
+    },
+    {
+      "monolith": "Bookstore-Bestsellers",
+      "target": "BestsellersTable",
+      "fields": {},
+      "note": "partition key bookId S，属性 salesCount（数字）同名照搬；夹具 bestsellers.json / bestsellers-many.json 里缺 salesCount 的条目在目标里也缺（bestsellers-list 的排序把缺失当 0，规格 GET /api/bestsellers#business_rules[1]）。消费者只写 ADD salesCount，不加任何其他属性（blueprint update-bestsellers 的 notes）。"
+    },
+    {
+      "monolith": "Bookstore-Cart",
+      "target": "CartTable",
+      "fields": {
+        "customerId": {
+          "from": "customerId",
+          "as": "identity",
+          "note": "单体的 customerId 是 POST /api/auth/register 返回的 user.userId（uuidv4）；目标里同一用户的外键是 Cognito Sub，见 blueprint D-5 与 identities.claims.sub。quantity/price/bookId 同名照搬、保持原类型（数字仍是数字、字符串仍是字符串，规格 POST /api/cart#business_rules[1]）。"
+        }
+      }
+    },
+    {
+      "monolith": "Bookstore-Orders",
+      "target": "OrdersTable",
+      "fields": {
+        "customerId": {
+          "from": "customerId",
+          "as": "identity",
+          "note": "同上（D-5）。orderId（sk，uuidv4 字符串）、orderDate（epoch 毫秒数字）、books（请求体数组的原样快照，元素结构不校验不裁剪）同名照搬。"
+        }
+      }
+    },
+    {
+      "monolith": "Bookstore-Users",
+      "target": null,
+      "replaced_by": "cognito",
+      "reason": "凭据不进 DynamoDB（硬规则）：表里的 password 是 bcryptjs 哈希（routes/auth.js:65 hashPassword）、email 是登录名，二者都由 Cognito User Pool 接管；剩下的 name 是 Cognito 标准属性，createdAt/updatedAt 由 User Pool 自己维护（处理方式 ③，不建 UserProfiles）。迁移后没有任何端点读这张表：entry_point_dependencies 里只有 POST /api/auth/register、POST /api/auth/login、POST /api/auth/refresh、GET /api/auth/me 碰 usersTable，而这四个端点全部删除（blueprint dropped_functions，D-4）。email-index GSI 随之消失（唯一性由 User Pool 保证，GAP-16）。"
+    }
+  ],
+  "identities": {
+    "claims": {
+      "sub": "${id}",
+      "email": "${email}",
+      "name": "${name}"
+    },
+    "note": "认证被 Cognito 取代（blueprint cognito.enabled=true，api_gateway.authorizer=Cognito，D-1），所以裁判在每个别名上准备的用户（judge/identities.json：POST /api/auth/register 送 email/password/name，保存 body.accessToken 作 Bearer、body.user.userId 作 id）在目标侧就是一个 User Pool 用户：网关授权器验完 ID token 把这些 claims 放进 event.requestContext.authorizer.claims。业务函数只读 claims.sub 当 customerId（D-10），user_id 用默认 ${id}（=claims.sub）。没有要写进表的用户资料，所以不配 seed。"
+  },
+  "dropped_endpoints": [
+    {
+      "endpoint": "POST /api/auth/register",
+      "replaced_by": "cognito",
+      "reason": "Replaced by Cognito Sign UP（D-1/R-4）。目标不建这个资源；裁判的注册步骤只在单体侧运行，目标侧的同一用户由上面的 identities 准备。单体的 201 {message,user{userId,email,name},accessToken,refreshToken} 契约由 Cognito SDK 的输出取代，400/409 校验臂（email 格式、密码长度、邮箱占用）不再由目标 API 应答。"
+    },
+    {
+      "endpoint": "POST /api/auth/login",
+      "replaced_by": "cognito",
+      "reason": "Replaced by Cognito signIn（D-1/R-4）。401 {error:'Invalid email or password'}、400 缺字段、bcrypt 对非字符串密码的 500（judge/cases/post-api-auth-login/login-non-string-password-500）都不再由目标提供。"
+    },
+    {
+      "endpoint": "POST /api/auth/refresh",
+      "replaced_by": "cognito",
+      "reason": "Replaced by Cognito 用 refreshToken 续期（D-1/R-4/GAP-20）。单体只返回新 accessToken 且旧 refreshToken 7 天内可无限续期的行为不复刻。"
+    },
+    {
+      "endpoint": "GET /api/auth/me",
+      "replaced_by": "cognito",
+      "reason": "Replaced by Cognito getCurrentUser/fetchUserAttributes（D-1/R-4）。该端点只是把 Bookstore-Users 的条目按 claims.userId 读回一次，业务表不依赖它。"
+    }
+  ],
+  "target_only_tables": [
+    {
+      "target": "IdempotencyTable",
+      "reason": "迁移新增（单体没有对应物）：SQS 消费者 update-bestsellers 的幂等标记表，pk='update-bestsellers#<orderId>'（拆批时 '<consumer>#<idempotency key>#<批次序号>'），TTL 属性 expiresAt（epoch 秒，7 天）。单体只在进程里执行一次副作用，改成消息后投递变成至少一次，必须有这张表才能保证重投不重复累加（D-3，m2s-async-patterns-kb REQUIRED correctness rule）。裁判用例走不到重投路径，由 delta 测试验证（GAP-2 test=delta）。"
+    }
+  ],
+  "note": "映射依据：dynamodb_info.table_schemas（scripts/init-db.js:72/82/118/120/150/152/228/230）+ blueprint.json 的 dynamodb_tables 与各函数 notes。回环要求：每张表的键属性都由映射产生（BooksTable.id、BestsellersTable.bookId 原名复制；CartTable customerId/bookId、OrdersTable customerId/orderId 中 customerId 走 identity、其余原名复制）。被某个 from 用掉的属性不会再按原名复制一份，所以 Cart/Orders 的 customerId 只有一个目标值（Cognito Sub）。"
+}

@@ -1,0 +1,9 @@
+{
+  "task": "I3",
+  "attempt": 1,
+  "role": "m2s-validator",
+  "status": "done",
+  "time": "2026-11-14T02:52:26+0800",
+  "summary": "S4 一致性检查完成：以只读方式取到 gate(template) 输入（status=PASS、mechanical_failures=0，spawn prompt 未内嵌该报告），再对 blueprint ↔ output/template.yaml ↔ output/lambdas 做 C1-C12（C7b 并入 C7，另核对 C13/C14）交叉核对，并用 validate_sam 亲自复验（ok=true，无 error/warning）。结论 PASS，fixes_applied=0（I3 可写范围只有两份报告）。",
+  "notes": "产出：output/consistency_report.json（status=PASS，12 条 finding：11 INFO + 1 WARNING）、storage/stage_reports/I3.json。\n\n已核对通过：14 个函数名/CodeUri/Handler(handler.lambda_handler)/python3.12 三方一致；env 声明键 = 代码读取键 = blueprint.environment_variables（值均为 !Ref 真实表资源，bookings-create 正确地没有 USER_GROUPS_TABLE_NAME）；IAM 按“逐表读/写”核对（只读→DynamoDBReadPolicy，有 put/update→Crud，UserGroupsTable 一律 Read），无缺 policy、无多余跨服务 policy；14 条 HttpApi 事件 path/method 与 blueprint entry_point 逐字一致、7 个 auth=none 显式 Authorizer: NONE、7 个 auth=required 继承 CognitoAuthorizer、全部 PayloadFormatVersion '1.0'；路径参数与 handler pathParameters 键、flights-search 的三个 query 名与 analysis_report 一致；5 张表主键与 GSI 照 blueprint 落地；无 requirements.txt/package.json/JS，C10/C11/C12 不适用且干净。\n\n唯一真实发现（C6，WARNING，不导致部署失败）：SharedUtilsLayer 挂在全部 14 个 Function 的 Layers 上，但没有任何 handler import shared_utils（D-22 要求 `import shared_utils as su`），契约在各目录里写了 14 遍。行为仍自洽（每个 handler 只有一处 statusCode 构造点且都带 Content-Type + Access-Control-Allow-Origin:*，即 SI-14/D-9；11 个有 ValueError→400/Exception→500 顶层映射，其余 3 个纯读路径按 SI-13 已降级），代价是死重层 + 漂移面。若要把这条收敛，可 reroute S3b/S2 二选一：handler 改用共享层，或去掉 Layers 引用与该层。\n\n两点请主 Agent 知悉：(1) gates.suspects_c4_env 的 _ENV_PY_RE 匹配不到本项目使用的 os.environ[\"X\"] 下标形式，因此 suspects.C4 的 14 条 declared_but_unused 是抽取不全造成的假候选，我未据此改动任何文件，并已用人工核对给出结论（机械 gate 检查不依赖该正则）；(2) 模板的 Cognito JWT issuer 用 cognito-idp.${AWS::Region}.amazonaws.com/${UserPool}，与 blueprint.api_gateway.http_api_authorizer 散文里的 amazoncognito.com 不同——模板取值是正确的（KB + AWS probe），照散文写反而会让全部 auth=required 调用 403，故不改。我未调用 MCP 的 run_gate，权威裁决仍是 gate(final)。"
+}

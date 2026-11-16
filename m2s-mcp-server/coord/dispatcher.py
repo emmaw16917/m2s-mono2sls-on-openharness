@@ -1190,6 +1190,7 @@ class Dispatcher:
         functions = blueprint.get("lambda_functions") or []
         existing = set(self.board.tasks())
         created: list[str] = []
+        new: list[str] = []
         for package in plan.get("packages") or []:
             pid = str(package.get("id"))
             pkg_dir = re.sub(r"[^a-z0-9_]+", "_", pid.lower())
@@ -1207,6 +1208,7 @@ class Dispatcher:
                          "scope": [s.replace("{pkg}", pid).replace("{pkg_dir}", pkg_dir) for s in spec.scope]})
             self.board.add_task(data, deps)
             created.append(child_id)
+            new.append(child_id)
             self.events.append("expand", family=spec.id, task=child_id, package=pid, functions=fns)
         if spec.split_shared:
             child_id = f"{spec.id}-shared"
@@ -1224,9 +1226,11 @@ class Dispatcher:
                                        for s in (spec.shared_scope or spec.scope)]})
                 self.board.add_task(data, deps)
                 created.append(child_id)
+                new.append(child_id)
                 self.events.append("expand", family=spec.id, task=child_id, package="shared", functions=[])
         self._wire_deps(spec.id, created)
-        self.log(f"{spec.id}: expanded to {created}")
+        if new:
+            self.log(f"{spec.id}: expanded to {created}")
 
     def _expand_domain(self, spec: TaskSpec) -> None:
         """v3 M4/W4.2: expand by the blueprint's domains (rule 8). A1 fills
@@ -1253,6 +1257,7 @@ class Dispatcher:
                                     "and the blueprint has no lambda_functions to compute them from")
             return
         created: list[str] = []
+        new: list[str] = []
         existing = set(self.board.tasks())
         for pid, info in impl.items():
             pid = str(pid)
@@ -1282,6 +1287,7 @@ class Dispatcher:
                          "scope": scope})
             self.board.add_task(data, deps)
             created.append(child_id)
+            new.append(child_id)
             self.events.append("expand", family=spec.id, task=child_id, package=pid, functions=functions)
         if spec.split_shared:
             child_id = f"{spec.id}-shared"
@@ -1299,9 +1305,11 @@ class Dispatcher:
                                        for s in (spec.shared_scope or spec.scope)]})
                 self.board.add_task(data, deps)
                 created.append(child_id)
+                new.append(child_id)
                 self.events.append("expand", family=spec.id, task=child_id, package="shared", functions=[])
         self._wire_deps(spec.id, created)
-        self.log(f"{spec.id}: expanded by domain to {created}")
+        if new:
+            self.log(f"{spec.id}: expanded by domain to {created}")
 
     def _resolve_deps(self, spec: TaskSpec, child_id: str, same_package: str | None) -> list[str]:
         """Resolve "<family>:*" to the same package's child when there is one,

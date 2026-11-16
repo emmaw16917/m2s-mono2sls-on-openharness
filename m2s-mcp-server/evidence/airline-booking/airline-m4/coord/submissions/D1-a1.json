@@ -1,0 +1,9 @@
+{
+  "task": "D1",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T17:27:10+0800",
+  "summary": "D1 完成：22 条缺口无一 test=delta、异步强制规则按 SI-17 在本设计无适用对象，增量套件据此只钉裁判看不到的迁移后行为——PaymentTable 持久化五面（写表/覆盖/条件退款不建条/表来源读/Saga 收款行）、网关 401 新形状与零表访问（R-A1-a2-1）、ghost-sub 403 不复刻 401（GAP-13/SI-10）含 authz 守卫的读写排除、无导入期播种（GAP-14/SI-11）。16 个用例 + 4 个只记录故障场景（均按 match.item 钉目标新增写路径），expected_from 全部解析到 decision:GAP-x 或 ruling:R-A1-a2-1；run_validate(dry_run, delta) 第 2 轮 PASS。flights-reserve/release 无可引用的 GAP 目标独有行为，留给裁判，理由已写进报告。",
+  "notes": "第 1 轮 dry_run 报 request.repeat 键不支持，已把重复收款用例改为夹具预置 refunded 行、断言整条覆盖回 captured（对去重跳过/追加新行两种错法都更敏感）。网关 401 上的 ACAO 头未在运行态断言（HTTP API 无 GatewayResponses，该头由模板核对，S3c 范围）。"
+}

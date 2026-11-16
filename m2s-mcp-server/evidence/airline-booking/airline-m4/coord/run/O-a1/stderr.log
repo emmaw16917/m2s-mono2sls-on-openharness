@@ -1,0 +1,43 @@
+C:\Users\36029\miniconda3\envs\mono2sls\Lib\site-packages\pydantic_settings\sources\utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(
+[11/16/26 18:18:09] INFO     Processing request of type           server.py:733
+                             ListToolsRequest                                  
+                    INFO     Processing request of type           server.py:733
+                             ListResourcesRequest                              
+[11/16/26 18:21:32] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:21:36] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:33:20] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:38:11] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:38:20] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:39:05] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:39:28] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:39:45] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:40:33] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:44:26] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:45:21] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:55:18] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:56:49] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:56:55] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:57:38] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:58:16] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:58:33] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/16/26 18:59:29] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+dropping empty assistant message from provider response

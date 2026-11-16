@@ -1,0 +1,367 @@
+=== 2026-11-12 23:24:15 dispatcher run  (pid 72488; template v2-split; max-workers 3; mail+rooms)
+mail: http://127.0.0.1:8765/mcp/
+new run: 24 tasks on the board
+F1: analyzed bookstore
+work packages: ['identity', 'bestsellers-books-cart-orders-search']
+F2: expanded to ['F2-identity', 'F2-bestsellers-books-cart-orders-search', 'F2-shared']
+F2-bestsellers-books-cart-orders-search: recheck failed, a worker will redo it
+F2-identity: waits, its scope overlaps a running task
+F2-bestsellers-books-cart-orders-search: started spec-annotator-F2-bestsellers-books-cart-orders-search-a1 (pid 32112)
+F2-bestsellers-books-cart-orders-search: attempt 1 passed
+facts v1 (7cb756bd5ed5) after F2-bestsellers-books-cart-orders-search
+F2-identity: recheck failed, a worker will redo it
+F2-identity: started spec-annotator-F2-identity-a1 (pid 8820)
+F2-identity: attempt 1 passed
+facts v2 (eb41f95942a5) after F2-identity
+F2-shared: recheck failed, a worker will redo it
+F2-shared: started spec-annotator-F2-shared-a1 (pid 36284)
+F2-shared: attempt 1 passed
+facts v3 (146b2b5def17) after F2-shared
+G1: gap_scan: 10 gaps (10 new): {'auth_semantics': 1, 'fire_and_forget': 1, 'global_middleware': 1, 'monolith_defect': 3, 'multi_write': 1, 'order_and_consistency': 1, 'time': 2}
+J1: recheck failed, a worker will redo it
+G2: started spec-annotator-G2-a1 (pid 19828)
+J1: started verifier-J1-a1 (pid 17448)
+G2: attempt 1 passed
+J1: attempt 1 passed
+J2: run_monolith PASS: 73 cases, 26 fault runs, 0 unstable, 0 problems, coverage 581/611
+A1: started architect-A1-a1 (pid 25496)
+RC: 7 differences, 0 settled by rulings, 232 steps
+J3: recheck failed, a worker will redo it
+J3: started verifier-J3-a1 (pid 43764)
+J3: attempt 1 passed
+room spec-j3-r1: opened (J3 differences)
+HUMAN_RECONCILE: needs a person: 规格对账的这些差异在模板里没有可以退回的任务：[
+ {
+  "id": "auth-endpoints-bad-json-400/reg-form-encoding/status",
+  "case": "auth-endpoints-bad-json-400",
+  "step": "reg-form-encoding",
+  "request": {
+   "method": "POST",
+   "path": "/api/auth/register"
+  },
+  "check": "status",
+  "predicted": 400,
+  "actual": 201,
+  "fact_refs": [
+   "POST /api/auth/register#responses[6]",
+   "POST /api/auth/login#responses[5]",
+   "POST /api/auth/refresh#responses[5]",
+   "POST /api/auth/register#request",
+   "POST /api/auth/login#request"
+  ],
+  "reason": "单体确实会解析表单编码的请求体：bookstore/server.js:33-34 同时挂了 app.use(bodyParser.json()) 和 app.use(bodyParser.urlencoded({ extended: true }))，所以 Content-Type: application/x-www-form-urlencoded 的请求体也会被填进 req.body：routes/auth.js:22 取出 email/password 得到字符串 'form@example.com' / 'Passw0rd!'，第 25 行的真值守卫、第 33 行的邮箱格式与第 40 行的长度检查都通过，最终按 responses[4] 返回 201。事实库写的是相反的话：POST /api/auth/register#request.headers[content-type] 写 \"body-parser 只在 content-type 匹配 json 时填充 req.body，否则 req.body 保持 {}\"，POST /api/auth/register#responses[6] 写 \"Content-Type 不是 JSON 类型时请求体不被解析，req.body 为 {}，落到上面那条 400\"。同一个错在 POST /api/auth/login#request.headers[content-type]/#responses[5] 和 POST /api/auth/refresh#request.headers[content-type]/#responses[5] 也各有一份。事实库的 cors 全局中间件条目里已经提到 bodyParser.urlencoded 存在（\"app.use(bodyParser.json()) 与 app.use(bodyParser.urlencoded(...)) 不加响应头……故不在本项记录\"），但请求解析这件事没有端点级事实覆盖，而且现有说法是错的。annotator 要改这几项为：content-type 为 application/json 或 application/x-www-form-urlencoded 时 body-parser 都会填充 req.body（urlencoded 解出的值一律是字符串，extended:true 只影响 qs 嵌套语法），其他 content-type（如 text/plain）才保持 req.body 为 {}；并宜补一条全局请求解析条目记录 server.js:33-34 这两个中间件与各自的 100kb 默认上限。改完后 J1 把 reg-form-encoding 的预期换成 201（本差异不是易变值屏蔽不全，也不是用例请求写错——用例发的是合法表单，单体照事实库之外的方式解析了它）。",
+  "fact_ref": "POST /api/auth/register#responses[6]"
+ },
+ {
+  "id": "auth-endpoints-bad-json-400/reg-form-encoding/body.subset",
+  "case": "auth-endpoints-bad-json-400",
+  "step": "reg-form-encoding",
+  "request": {
+   "method": "POST",
+   "path": "/api/auth/register"
+  },
+  "check": "body.subset",
+  "predicted": {
+   "error": "Email and password are required"
+  },
+  "actual": {
+   "message": "User registered successfully",
+   "user": {
+    "userId": "<uuid#3>",
+    "email": "form@example.com",
+    "name": "form"
+   },
+   "accessToken": "<token#4>",
+   "refreshToken": "<token#5>"
+  },
+  "fact_refs": [
+   "POST /api/auth/register#responses[6]",
+   "POST /api/auth/login#responses[5]",
+   "POST /api/auth/refresh#responses[5]",
+   "POST /api/auth/register#request",
+   "POST /api/auth/login#request"
+  ],
+  "reason": "单体的实际响应 {message:'User registered successfully', user:{userId:<uuid>, email:'form@example.com', name:'form'}, accessToken:<token>, refreshToken:<token>} 与事实库 POST /api/auth/register#responses[4] 的描述逐项吻合（user.name='form' 正是 business_rules[6]：name 缺省时取 email 的 @ 前缀；表单里没有 name），也与 business_rules[9] 的双 token 描述一致。预期写成 400 'Email and password are required' 只因为上面那条 content-type 事实错了（见 reg-form-encoding/status：server.js:34 的 bodyParser.urlencoded 会把表单字段填进 req.body，routes/auth.js:25 的守卫不会触发）。修的都是同一条事实库错误，fact_ref 指向应当被采信的那一项。",
+  "fact_ref": "POST /api/auth/register#responses[4]"
+ },
+ {
+  "id": "cart-add-non-json-content-type-400/form/status",
+  "case": "cart-add-non-json-content-type-400",
+  "step": "form",
+  "request": {
+   "method": "POST",
+   "path": "/api/cart"
+  },
+  "check": "status",
+  "predicted": 400,
+  "actual": 200,
+  "fact_refs": [
+   "POST /api/cart#responses[0]",
+   "POST /api/cart#responses[2]",
+   "POST /api/cart#request"
+  ],
+  "reason": "同一个 bodyParser.urlencoded 事实错误（bookstore/server.js:34），落到购物车上：表单请求体被解析成 {bookId:'book-001', quantity:'2', price:'10'}（值都是字符串），routes/cart.js:72 的 `if (!bookId || !quantity || !price)` 真值判断全部通过，PutItem 成功，返回 200。事实库对 POST /api/cart#request 完全没写请求体是怎么解析的（headers 只记了 authorization 和 x-customer-id），属于漏记；而它另外几个端点写的\"非 JSON content-type 不解析\"是错的，J1 按那个说法推的 400。事实库里能对上实际行为的只有 POST /api/cart#business_rules[1]（quantity、price 原样存进条目，可以是数字也可以是字符串）——这条恰好印证表单路径存在。annotator 应给 POST /api/cart#request 补上 content-type/body 解析事实（json 与 x-www-form-urlencoded 都解析，urlencoded 的值是字符串；其他 content-type 得到 req.body={} 走 responses[0] 的缺字段 400），并与 register/login/refresh 的同类修正保持一致。用例里 text/plain 那一步仍按原预期 400（没有差异，说明未解析这条路是对的）。",
+  "fact_ref": "POST /api/cart#request"
+ },
+ {
+  "id": "cart-add-non-json-content-type-400/form/body.subset",
+  "case": "cart-add-non-json-content-type-400",
+  "step": "form",
+  "request": {
+   "method": "POST",
+   "path": "/api/cart"
+  },
+  "check": "body.subset",
+  "predicted": {
+   "error": "Missing required fields: bookId, quantity, price"
+  },
+  "actual": {
+   "message": "Item added to cart successfully"
+  },
+  "fact_refs": [
+   "POST /api/cart#responses[0]",
+   "POST /api/cart#responses[2]",
+   "POST /api/cart#request"
+  ],
+  "reason": "实际响应体 {message:'Item added to cart successfully'} 与 POST /api/cart#responses[1] 的描述逐字一致（不回显条目内容）；预期写的是 responses[0] 的错误体，源于同一处 body 解析事实缺失/错误（server.js:34 的 bodyParser.urlencoded 会填充 req.body，因此不会缺字段）。属于事实库要改、改完 J1 更新预期，不是用例请求写错，也不是屏蔽不全。",
+  "fact_ref": "POST /api/cart#responses[1]"
+ },
+ {
+  "id": "cart-add-non-json-content-type-400/read/body.equals",
+  "case": "cart-add-non-json-content-type-400",
+  "step": "read",
+  "request": {
+   "method": "GET",
+   "path": "/api/cart"
+  },
+  "check": "body.equals",
+  "predicted": [],
+  "actual": [
+   {
+    "customerId": "<id:u1>",
+    "quantity": "2",
+    "price": "10",
+    "bookId": "book-001"
+   }
+  ],
+  "fact_refs": [
+   "POST /api/cart#responses[0]",
+   "POST /api/cart#responses[2]",
+   "POST /api/cart#request"
+  ],
+  "reason": "读回这一步本身没错，错在上游：form 那一步实际成功写入了条目，所以 GET /api/cart 返回一条而不是空数组。实际内容 [{customerId:<id:u1>, quantity:'2', price:'10', bookId:'book-001'}] 与事实库完全一致——GET /api/cart#responses[0]（元素即 Bookstore-Cart 的条目、按 bookId 升序、只有第一页）、business_rules[2]（不 join 不补字段），quantity/price 是字符串也正落在 POST /api/cart#business_rules[1] 说的\"原样存进条目，可以是数字也可以是字符串\"里。所以要改的还是同一条请求体解析事实（server.js:34）：事实库修正后 J1 把这一步的预期改成含这一条字符串值条目的数组，无需改请求。",
+  "fact_ref": "GET /api/cart#respo
+…（截断，原文 6013 字符）
+J3: reconcile round 1: fact_error 5, needs_ruling 2
+room spec-j3-r1: turn 0 -> m2s-verifier
+ROOM-spec-j3-r1-0-1: started verifier-ROOM-spec-j3-r1-0-1-a1 (pid 8224)
+ERROR conda.cli.main_run:execute(148): `conda run python -u -m coord.dispatcher run --ws D:/Emma/MyLab/Mono2SLs/Mono2Sls-artifacts/M2S/runs/bookstore-m4 --monolith D:/Emma/MyLab/Mono2SLs/Mono2Sls-artifacts/mono_benchmark/bookstore --template v2-split --max-workers 3` failed. (See above for error)
+=== 2026-11-13 00:55:11 dispatcher exit 127
+=== 2026-11-13 01:02:22 dispatcher run  (pid 78963; template v2-split; max-workers 3; mail+rooms)
+mail: http://127.0.0.1:8765/mcp/
+ROOM-spec-j3-r1-0-1: worker verifier-ROOM-spec-j3-r1-0-1-a1 still running, adopted
+A1: upstream reopened ['F2-bestsellers-books-cart-orders-search', 'F2-identity', 'F2-shared', 'G1', 'G2', 'J1']; cancelled and will rerun
+F2-bestsellers-books-cart-orders-search: waits, its scope overlaps a running task
+F2-identity: waits, its scope overlaps a running task
+ROOM-spec-j3-r1-0-1: attempt 1 passed
+room spec-j3-r1: turn 1 -> m2s-architect
+F2-bestsellers-books-cart-orders-search: started spec-annotator-F2-bestsellers-books-cart-orders-search-a2 (pid 41692)
+ROOM-spec-j3-r1-1-1: waits, its scope overlaps a running task
+F2-bestsellers-books-cart-orders-search: attempt 2 passed
+facts v4 (803d38ffb54c) after F2-bestsellers-books-cart-orders-search
+F2-identity: started spec-annotator-F2-identity-a2 (pid 44100)
+F2-identity: attempt 2 passed
+facts v5 (a81e889e4027) after F2-identity
+F2-shared: recheck passed
+G1: gap_scan: 22 gaps (0 new): {'auth_semantics': 3, 'files_and_connections': 2, 'fire_and_forget': 1, 'global_middleware': 4, 'monolith_defect': 6, 'multi_write': 1, 'order_and_consistency': 3, 'time': 2}
+J1: recheck passed
+ROOM-spec-j3-r1-1-1: started architect-ROOM-spec-j3-r1-1-1-a1 (pid 43776)
+G2: recheck passed
+J2: run_monolith PASS: 73 cases, 26 fault runs, 0 unstable, 0 problems, coverage 581/611
+RC: 7 differences, 0 settled by rulings, 232 steps
+A1: started architect-A1-a2 (pid 40152)
+J3: recheck failed, a worker will redo it
+J3: started verifier-J3-a2 (pid 45160)
+ROOM-spec-j3-r1-1-1: attempt 1 passed
+ROOM-spec-j3-r1-1-1: 1 rulings accepted: ['R-ROOM-spec-j3-r1-1-1-a1-1']
+room spec-j3-r1: turn 2 -> m2s-spec-annotator
+ROOM-spec-j3-r1-2-1: started spec-annotator-ROOM-spec-j3-r1-2-1-a1 (pid 45740)
+J3: attempt 2 passed
+J1: reworked (reconcile, requested by J3)
+room spec-j3-r2: opened (J3 differences)
+J3: reconcile round 2: needs_ruling 2, case_error 5
+room spec-j3-r2: turn 0 -> m2s-verifier
+J1: started verifier-J1-a2 (pid 35740)
+ROOM-spec-j3-r2-0-1: waits, its scope overlaps a running task
+ROOM-spec-j3-r1-2-1: attempt 1 passed
+room spec-j3-r1: turn 3 -> m2s-verifier
+ROOM-spec-j3-r1-3-1: started verifier-ROOM-spec-j3-r1-3-1-a1 (pid 46592)
+J1: attempt 2 passed
+J2: run_monolith PASS: 74 cases, 26 fault runs, 0 unstable, 0 problems, coverage 581/611
+A1: started architect-A1-a3 (pid 44712)
+ROOM-spec-j3-r1-3-1: attempt 1 passed
+room spec-j3-r1: turn 0 -> m2s-verifier
+RC: 0 differences, 2 settled by rulings, 233 steps
+ROOM-spec-j3-r1-0-2: started verifier-ROOM-spec-j3-r1-0-2-a1 (pid 44484)
+J3: recheck passed
+ROOM-spec-j3-r1-0-2: attempt 1 passed
+room spec-j3-r1: turn 1 -> m2s-architect
+ROOM-spec-j3-r1-1-2: started architect-ROOM-spec-j3-r1-1-2-a1 (pid 39452)
+ROOM-spec-j3-r1-1-2: attempt 1 passed
+ROOM-spec-j3-r1-1-2: 1 rulings accepted: ['R-ROOM-spec-j3-r1-1-2-a1-1']
+room spec-j3-r1: turn 2 -> m2s-spec-annotator
+ROOM-spec-j3-r1-2-2: started spec-annotator-ROOM-spec-j3-r1-2-2-a1 (pid 41156)
+ROOM-spec-j3-r1-2-2: attempt 1 passed
+room spec-j3-r1: turn 3 -> m2s-verifier
+ROOM-spec-j3-r1-3-2: started verifier-ROOM-spec-j3-r1-3-2-a1 (pid 32416)
+ROOM-spec-j3-r1-3-2: attempt 1 passed
+room spec-j3-r1: closed; the ruling gate RULE_J3_1 checks coverage
+ROOM-spec-j3-r2-0-1: started verifier-ROOM-spec-j3-r2-0-1-a1 (pid 42404)
+RULE_J3_1: recheck passed
+A1: attempt 3 passed
+A1: 4 rulings accepted: ['R-A1-a3-1', 'R-A1-a3-2', 'R-A1-a3-3', 'R-A1-a3-4']
+I1: expanded by domain to ['I1-identity', 'I1-bestsellers-books-cart-orders-search', 'I1-shared']
+D1: started verifier-D1-a1 (pid 17348)
+ROOM-spec-j3-r2-0-1: attempt 1 passed
+room spec-j3-r2: turn 1 -> m2s-architect
+ROOM-spec-j3-r2-1-1: started architect-ROOM-spec-j3-r2-1-1-a1 (pid 41024)
+ROOM-spec-j3-r2-1-1: attempt 1 passed
+ROOM-spec-j3-r2-1-1: 1 rulings accepted: ['R-ROOM-spec-j3-r2-1-1-a1-1']
+room spec-j3-r2: turn 2 -> m2s-spec-annotator
+ROOM-spec-j3-r2-2-1: started spec-annotator-ROOM-spec-j3-r2-2-1-a1 (pid 20620)
+ROOM-spec-j3-r2-2-1: attempt 1 passed
+room spec-j3-r2: turn 3 -> m2s-verifier
+ROOM-spec-j3-r2-3-1: started verifier-ROOM-spec-j3-r2-3-1-a1 (pid 46900)
+D1: attempt 1 passed
+ROOM-spec-j3-r2-3-1: attempt 1 passed
+room spec-j3-r2: turn 0 -> m2s-verifier
+ROOM-spec-j3-r2-0-2: started verifier-ROOM-spec-j3-r2-0-2-a1 (pid 44772)
+ROOM-spec-j3-r2-0-2: attempt 1 passed
+room spec-j3-r2: turn 1 -> m2s-architect
+ROOM-spec-j3-r2-1-2: started architect-ROOM-spec-j3-r2-1-2-a1 (pid 18556)
+ROOM-spec-j3-r2-1-2: attempt 1 passed
+ROOM-spec-j3-r2-1-2: 1 rulings accepted: ['R-ROOM-spec-j3-r2-1-2-a1-1']
+room spec-j3-r2: turn 2 -> m2s-spec-annotator
+ROOM-spec-j3-r2-2-2: started spec-annotator-ROOM-spec-j3-r2-2-2-a1 (pid 25140)
+ROOM-spec-j3-r2-2-2: attempt 1 passed
+room spec-j3-r2: turn 3 -> m2s-verifier
+ROOM-spec-j3-r2-3-2: started verifier-ROOM-spec-j3-r2-3-2-a1 (pid 18712)
+ROOM-spec-j3-r2-3-2: attempt 1 passed
+room spec-j3-r2: closed; the ruling gate RULE_J3_2 checks coverage
+RULE_J3_2: recheck passed
+J4: recheck failed, a worker will redo it
+J4: started verifier-J4-a1 (pid 44716)
+J4: attempt 1 passed
+F2-bestsellers-books-cart-orders-search: reworked (spec_issues_j4, requested by J4)
+J4: 3 spec issues -> ['F2-bestsellers-books-cart-orders-search']
+F2-bestsellers-books-cart-orders-search: started spec-annotator-F2-bestsellers-books-cart-orders-search-a3 (pid 17820)
+F2-bestsellers-books-cart-orders-search: attempt 3 passed
+facts v6 (7a22505d2a52) after F2-bestsellers-books-cart-orders-search
+F2-shared: recheck passed
+G1: gap_scan: 22 gaps (0 new): {'auth_semantics': 3, 'files_and_connections': 2, 'fire_and_forget': 1, 'global_middleware': 4, 'monolith_defect': 6, 'multi_write': 1, 'order_and_consistency': 3, 'time': 2}
+J1: recheck failed, a worker will redo it
+G2: recheck passed
+J1: started verifier-J1-a3 (pid 43308)
+J1: attempt 3 passed
+J2: run_monolith PASS: 84 cases, 28 fault runs, 0 unstable, 0 problems, coverage 584/611
+A1: recheck passed
+RC: 0 differences, 2 settled by rulings, 273 steps
+D1: recheck passed
+J3: recheck passed
+J4: recheck passed
+J5: run_mutants: score 0.98 (96 killed of 107; 11 survived, 0 not covered, 0 trace only, 0 invalid); reverse {'serial': 'survived'}
+J5C: recheck failed, a worker will redo it
+J5C: started verifier-J5C-a1 (pid 37724)
+J5C: attempt 1 passed
+J4: reworked (strength, requested by J5C)
+J5C: strength round 1: 1 gaps -> J4
+J4: started verifier-J4-a2 (pid 21432)
+J4: attempt 2 passed
+J4: new or changed cases -> J2 runs the monolith again
+J2: run_monolith PASS: 86 cases, 28 fault runs, 0 unstable, 0 problems, coverage 584/611
+RC: 0 differences, 2 settled by rulings, 284 steps
+D1: recheck passed
+J3: recheck passed
+J4: recheck passed
+J5: run_mutants: score 1.0 (97 killed of 107; 10 survived, 0 not covered, 0 trace only, 0 invalid); reverse {'serial': 'survived'}
+J5C: recheck passed
+J6: judge v1 frozen: 86 cases, 230 files, coverage 584/611
+J6: exception handler started for C001-J6-review
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\Emma\MyLab\Mono2SLs-v3\m2s-mcp-server\coord\dispatcher.py", line 2445, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "D:\Emma\MyLab\Mono2SLs-v3\m2s-mcp-server\coord\dispatcher.py", line 2441, in main
+    return dispatcher.run()
+           ^^^^^^^^^^^^^^^^
+  File "D:\Emma\MyLab\Mono2SLs-v3\m2s-mcp-server\coord\dispatcher.py", line 419, in run
+    self._collect()
+  File "D:\Emma\MyLab\Mono2SLs-v3\m2s-mcp-server\coord\dispatcher.py", line 539, in _collect
+    self._on_handler_exit(handle, timed_out)
+  File "D:\Emma\MyLab\Mono2SLs-v3\m2s-mcp-server\coord\dispatcher.py", line 1060, in _on_handler_exit
+    self._human_gate(f"HUMAN_{task_id}", f"阶段复查要求人确认：{decision.get('rationale', '')}", self._next_tasks(task_id))
+  File "D:\Emma\MyLab\Mono2SLs-v3\m2s-mcp-server\coord\dispatcher.py", line 1017, in _human_gate
+    self.board.add_dep(task, gate_id)
+  File "D:\Emma\MyLab\Mono2SLs-v3\m2s-mcp-server\coord\board.py", line 126, in add_dep
+    self.br.run("dep", "add", self.issue_id(task_id), self.issue_id(depends_on))
+                              ^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Emma\MyLab\Mono2SLs-v3\m2s-mcp-server\coord\board.py", line 138, in issue_id
+    return self._ids[task_id]
+           ~~~~~~~~~^^^^^^^^^
+KeyError: 'I1'
+ERROR conda.cli.main_run:execute(148): `conda run python -u -m coord.dispatcher run --ws D:/Emma/MyLab/Mono2SLs/Mono2Sls-artifacts/M2S/runs/bookstore-m4 --monolith D:/Emma/MyLab/Mono2SLs/Mono2Sls-artifacts/mono_benchmark/bookstore --template v2-split --max-workers 3` failed. (See above for error)
+=== 2026-11-13 05:45:34 dispatcher exit 1
+=== 2026-11-13 08:36:59 dispatcher run  (pid 97403; template v2-split; max-workers 3; mail+rooms)
+mail: http://127.0.0.1:8765/mcp/
+HUMAN_J6: needs a person: 阶段复查要求人确认：阶段复查：J6 本身通过（judge v1 冻结，86 用例/284 步，differences=0、2 条按裁定结案，变异 score 1.0、gap 0，覆盖率 584/611），但冻结的裁判里有 4 个步骤在目标上必然由 API Gateway 的 Cognito 授权器应答、却没有在效裁定记账到这些步骤，V2 会把它们判成 fail，白耗一轮实现线。其中一类是状态码级的偏差，按本流水线自己的口径需要人确认，我不自行裁定。
+
+证据（工作区只读核对）：
+1) 机制：verify-tools/judge-run.js runUnit —— `route.authorized && !as` 时直接 gatewayAnswer('unauthorized')，不进 Lambda；judge.py `_rulings_in_force`/`judge_unit` 按「用例 + 步骤名」匹配裁定，未记到的步骤若比较出不匹配就是 verdict=fail（不是 migration-change/ruled）。
+2) 已被裁定但记账漏了的两步：judge/cases/get-api-cart/wb-cart-x-customer-id-header-ignored.json 的 spoof-read-no-token（GET /api/cart）、spoof-write-no-token（POST /api/cart），无 Authorization、只带 x-customer-id，oracle 记 401 {"error":"Authentication required. Please provide a valid Bearer token."}；管辖它的是 R-A1-a3-1（migration-change，02:18 记录），其 affected_cases 只有 12 个 *-unauthenticated-401 用例的 27 个步骤。这两个用例是 J4 第 2 轮（05:06，为消 J5C 的 gap 变异 negate:middleware/auth.js:19）新加的，写账时不存在，所以覆盖不到（同用例的 spoof-read-u1-token 带有效 token，不受影响；wb-x-customer-id-header-ignored 挂在 GET /api/auth/me，属 R-A1-a3-3 的 dropped 端点，按 dropped 处理，无风险）。
+3) 需要人判断的两步：cart-add-oversize-body-413#oversize-no-auth（POST /api/cart）与 order-oversize-body-413#oversize-no-auth（POST /api/orders）——无凭证且请求体 >100KB，单体由 body-parser 在 authMiddleware 之前拒掉，oracle 记的是 413 {"error":"request entity too large"}；目标的授权器先于函数，GAP-12/D-12 决定「在共享 helper 里复刻 body-parser 语义与 413」位于 Lambda 内，走不到，故目标答 401。这不是响应体文案差异，而是可观察状态码 413→401 的改变。R-A1-a3-1 的结论只覆盖「无凭证/坏凭证/refresh 当 access」三类单体本就 401 的请求，任何在效裁定都没有把「网关先于请求体大小检查」登记到这两步。
+4) 为什么交人而不是退回 A1：storage/DECISIONS.md:483 里 A1 自己写明「放弃 413」属于需要人确认的那一类，而 GAP-12/D-12 的决定是复刻 413；现在正是这一类偏差在鉴权前置后自动发生，是否接受它不是事实能推出的结论。
+
+要人判断的问题：
+(a) 是否接受「未鉴权 + 超大请求体」由网关先答 401、不再复现单体的 413（即作为 migration-change 记入裁定账，点名 cart-add-oversize-body-413#oversize-no-auth、order-oversize-body-413#oversize-no-auth 两步；单体一侧的 413 契约仍由同用例带凭证的 oversize-json/oversize-urlencoded 步骤保住）。
+(b) 同一口径下把 R-A1-a3-1 的 affected_cases 补到 wb-cart-x-customer-id-header-ignored#spoof-read-no-token、#spoof-write-no-token ——这是已裁定规则的必然结果，不涉及行为改变，补记可由 A1 以 record_ruling 完成，无需解冻裁判、judge/ 不必改动。
+(c) 若人不接受 (a)：413 这一臂只能以 V2 失败暴露，需要在进实现线之前决定是解冻改资产、还是把这两步标为已知不可通过项——这一步我判断不了。
+run needs_human; report: D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\M2S\runs\bookstore-m4\coord\report.md
+ERROR conda.cli.main_run:execute(148): `conda run python -u -m coord.dispatcher run --ws D:/Emma/MyLab/Mono2SLs/Mono2Sls-artifacts/M2S/runs/bookstore-m4 --monolith D:/Emma/MyLab/Mono2SLs/Mono2Sls-artifacts/mono_benchmark/bookstore --template v2-split --max-workers 3` failed. (See above for error)
+=== 2026-11-13 08:37:17 dispatcher exit 3
+=== 2026-11-13 08:37:50 dispatcher run  (pid 97442; template v2-split; max-workers 3; mail+rooms)
+mail: http://127.0.0.1:8765/mcp/
+I1-shared: started code-developer-I1-shared-a1 (pid 43336)
+I1-bestsellers-books-cart-orders-search: started code-developer-I1-bestsellers-books-cart-orders-search-a1 (pid 44808)
+I1-identity: started code-developer-I1-identity-a1 (pid 46184)
+I1-identity: attempt 1 passed
+I1-shared: attempt 1 passed
+I1-bestsellers-books-cart-orders-search: worker crashed (rc=1)
+I1-bestsellers-books-cart-orders-search: started code-developer-I1-bestsellers-books-cart-orders-search-a2 (pid 49524)
+I1-bestsellers-books-cart-orders-search: attempt 2 passed
+I2a: started sam-engineer-I2a-a1 (pid 41748)
+I2a: attempt 1 failed: ['ended without submit_task']
+I2a: started sam-engineer-I2a-a2 (pid 29332)
+I2a: attempt 2 passed
+I2b: started sam-engineer-I2b-a1 (pid 13712)
+I2b: attempt 1 passed
+I2c: started sam-engineer-I2c-a1 (pid 41684)
+I2c: attempt 1 passed
+I3: started validator-I3-a1 (pid 43168)
+I3: attempt 1 passed
+V1: check_adapter PASS: 29 data steps in 20 cases
+V2: run_judge PASS: cases {'dropped': 18, 'migration-change': 14, 'pass': 54}, fault runs {'dropped': 6, 'pass': 22}
+V3: started verifier-V3-a1 (pid 44004)
+V3: attempt 1 passed
+B0: tagged B0 at a9dea7f
+B0: exception handler started for C002-B0-review
+O: started perf-optimizer-O-a1 (pid 39348)
+O: attempt 1 passed
+C1: needs a person: the optimizer left changes a person has to look at (blocked=[{'req': 'REQ-1', 'rule': 'R4', 'function': 'update-bestsellers', 'type': 'coverage', 'verdict': 'blocked_by_coverage', 'uncovered_changed_lines': [{'file': 'output/lambdas/bookstore/update-bestsellers/handler.js', 'line': 302, 'code': 'return;', 'statement': '消息 books 为空 → no-op 的防御分支（单体 utils/bestsellers.js:41-43，blueprint:lambda_functions[update-bestsellers].notes）。R4 把 `continue` 改成 `return`，这一行因此算改动行；POST /api/orders 对空 books 数组先返回 400（POST /api/orders#business_rules[0]），生产者不会发出这种消息，所以裁判用例覆盖不到它。'}], 'cases': [], 'patch': 'perf/patches/REQ-1.patch', 'other_checks': 'gate(final) PASS；run_judge(functions=[update-bestsellers]) PASS（10 pass + 2 migration-change，6 个故障运行 pass）；run_validate(functions=[update-bestsellers], assets=verification/delta) PASS 9/9，cases_with_conflicts=[]；run_equivalence(mode=diff, functions=[update-bestsellers], assets=verification/delta) EQUIVALENT（runs 14，differences=[]，unstable_in_baseline=[]）；改动行覆盖 65/66。', 'ask_of_verification_line': '补一条 verification/delta/events/update-bestsellers 用例：批次里混一条 {orderId, books: []} 的 SQS 消息，期望 batch_item_failures=[] 且 BestsellersTable/IdempotencyTable 原封不动。补好后用重新判决模式把 REQ-1 交回来即可（补丁可干净应用）。'}], pending_spec=[])
+run needs_human; report: D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\M2S\runs\bookstore-m4\coord\report.md
+ERROR conda.cli.main_run:execute(148): `conda run python -u -m coord.dispatcher run --ws D:/Emma/MyLab/Mono2SLs/Mono2Sls-artifacts/M2S/runs/bookstore-m4 --monolith D:/Emma/MyLab/Mono2SLs/Mono2Sls-artifacts/mono_benchmark/bookstore --template v2-split --max-workers 3` failed. (See above for error)
+=== 2026-11-13 13:40:56 dispatcher exit 3
+=== 2026-11-13 13:46:22 dispatcher run  (pid 115847; template v2-split; max-workers 3; mail+rooms)
+mail: http://127.0.0.1:8765/mcp/
+C1: gate(final), the judge and the delta tests pass; output/final_report.md written

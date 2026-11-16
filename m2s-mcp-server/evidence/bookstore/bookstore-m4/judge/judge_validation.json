@@ -1,0 +1,6862 @@
+{
+ "meta": {
+  "generated_at": "2026-11-12T21:35:18Z",
+  "backend": "ddblocal",
+  "oracle_generated_at": "2026-11-12T21:11:29Z"
+ },
+ "summary": {
+  "mutants": 107,
+  "killed": 97,
+  "survived": 10,
+  "not_covered": 0,
+  "trace_only": 0,
+  "invalid": 0,
+  "equivalent": 10,
+  "score": 1.0,
+  "by_operator": {
+   "auth": {
+    "killed": 6,
+    "survived": 0,
+    "not_covered": 0,
+    "trace_only": 0,
+    "invalid": 0
+   },
+   "branch_off": {
+    "killed": 19,
+    "survived": 4,
+    "not_covered": 0,
+    "trace_only": 0,
+    "invalid": 0
+   },
+   "drop_write": {
+    "killed": 6,
+    "survived": 0,
+    "not_covered": 0,
+    "trace_only": 0,
+    "invalid": 0
+   },
+   "field": {
+    "killed": 24,
+    "survived": 3,
+    "not_covered": 0,
+    "trace_only": 0,
+    "invalid": 0
+   },
+   "negate": {
+    "killed": 23,
+    "survived": 0,
+    "not_covered": 0,
+    "trace_only": 0,
+    "invalid": 0
+   },
+   "status": {
+    "killed": 19,
+    "survived": 3,
+    "not_covered": 0,
+    "trace_only": 0,
+    "invalid": 0
+   }
+  },
+  "reverse": {
+   "serial": "survived"
+  },
+  "reverse_ok": true,
+  "seconds": 1413.5
+ },
+ "mutants": [
+  {
+   "id": "negate:middleware/auth.js:19",
+   "kind": "source",
+   "operator": "negate",
+   "file": "middleware/auth.js",
+   "line": 19,
+   "before": "if (config.auth.devMode) {",
+   "after": "if (!(config.auth.devMode)) {",
+   "refs": [
+    "GET /api/auth/me#business_rules[7]"
+   ],
+   "endpoints": [
+    "GET /api/auth/me"
+   ],
+   "units": [
+    "bestsellers-ordered-200",
+    "bestsellers-shared-between-users-200",
+    "bestsellers-top-20-cap-200",
+    "bestsellers-unauthenticated-401",
+    "book-detail-200",
+    "book-detail-id-is-string-404",
+    "book-detail-not-found-404",
+    "book-detail-unauthenticated-401",
+    "books-list-all-200",
+    "books-list-by-category-200",
+    "books-shared-between-users-200",
+    "books-unauthenticated-401",
+    "cart-add-body-size-boundary",
+    "cart-add-extra-fields-ignored",
+    "cart-add-missing-fields-400",
+    "cart-add-non-json-content-type-400",
+    "cart-add-oversize-body-413",
+    "cart-add-overwrite-not-accumulate",
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-text-plain-400-no-write",
+    "cart-add-then-read",
+    "cart-add-unauthenticated-401",
+    "cart-add-unknown-book-accepted",
+    "cart-add-zero-values-400",
+    "cart-and-orders-bad-json-400",
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-oversize-body-413",
+    "cart-delete-then-read",
+    "cart-delete-unauthenticated-401",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-item-unauthenticated-401",
+    "cart-list-empty-200",
+    "cart-list-isolation-between-users",
+    "cart-list-no-book-join",
+    "cart-list-unauthenticated-401",
+    "cart-update-creates-missing-item",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-oversize-body-413",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "me-unauthenticated-401",
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "orders-list-empty-200",
+    "orders-list-isolation",
+    "orders-list-unauthenticated-401",
+    "refresh-success-200",
+    "register-success-201",
+    "search-array-q-500",
+    "search-case-insensitive-200",
+    "search-hits-200",
+    "search-missing-q-400",
+    "search-no-match-and-absent-fields-200",
+    "search-unauthenticated-401",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-cart-x-customer-id-header-ignored",
+    "wb-login-does-not-revoke-old-token",
+    "wb-order-qty-not-number",
+    "wb-search-non-string-name-500",
+    "wb-x-customer-id-header-ignored",
+    "bestsellers-read-fails/bestsellers-ordered-200",
+    "bestsellers-read-fails/bestsellers-shared-between-users-200",
+    "bestsellers-read-fails/bestsellers-top-20-cap-200",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "books-read-fails/books-list-all-200",
+    "books-read-fails/books-list-by-category-200",
+    "books-read-fails/book-detail-200",
+    "books-read-fails/search-hits-200",
+    "books-read-throttled/book-detail-200",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "cart-write-throttled-once/cart-add-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/orders-list-empty-200",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400",
+    "users-read-fails/login-success-200",
+    "users-read-fails/me-success-200",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "wb-cart-x-customer-id-header-ignored",
+    "mismatches": [
+     {
+      "path": "steps.spoof-read-no-token.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.spoof-read-no-token.body",
+      "expected": {
+       "error": "Authentication required. Please provide a valid Bearer token."
+      },
+      "actual": [
+       {
+        "customerId": "c9b9f000-59f2-4fb7-b50f-ec24c4855bee",
+        "quantity": 3,
+        "price": 30,
+        "bookId": "book-101"
+       }
+      ],
+      "why": "expected an object"
+     },
+     {
+      "path": "steps.spoof-read-u1-token.body[0].customerId",
+      "expected": "<id:u1>",
+      "actual": "c9b9f000-59f2-4fb7-b50f-ec24c4855bee",
+      "why": "<id:u1> is 'cfb21574-3d5c-4468-b243-8c55de880864' elsewhere"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "branch_off:middleware/auth.js:19",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "middleware/auth.js",
+   "line": 19,
+   "before": "if (config.auth.devMode) {",
+   "after": "if (false) {",
+   "refs": [
+    "GET /api/auth/me#business_rules[7]"
+   ],
+   "endpoints": [
+    "GET /api/auth/me"
+   ],
+   "units": [
+    "bestsellers-ordered-200",
+    "bestsellers-shared-between-users-200",
+    "bestsellers-top-20-cap-200",
+    "bestsellers-unauthenticated-401",
+    "book-detail-200",
+    "book-detail-id-is-string-404",
+    "book-detail-not-found-404",
+    "book-detail-unauthenticated-401",
+    "books-list-all-200",
+    "books-list-by-category-200",
+    "books-shared-between-users-200",
+    "books-unauthenticated-401",
+    "cart-add-body-size-boundary",
+    "cart-add-extra-fields-ignored",
+    "cart-add-missing-fields-400",
+    "cart-add-non-json-content-type-400",
+    "cart-add-oversize-body-413",
+    "cart-add-overwrite-not-accumulate",
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-text-plain-400-no-write",
+    "cart-add-then-read",
+    "cart-add-unauthenticated-401",
+    "cart-add-unknown-book-accepted",
+    "cart-add-zero-values-400",
+    "cart-and-orders-bad-json-400",
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-oversize-body-413",
+    "cart-delete-then-read",
+    "cart-delete-unauthenticated-401",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-item-unauthenticated-401",
+    "cart-list-empty-200",
+    "cart-list-isolation-between-users",
+    "cart-list-no-book-join",
+    "cart-list-unauthenticated-401",
+    "cart-update-creates-missing-item",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-oversize-body-413",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "me-unauthenticated-401",
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "orders-list-empty-200",
+    "orders-list-isolation",
+    "orders-list-unauthenticated-401",
+    "refresh-success-200",
+    "register-success-201",
+    "search-array-q-500",
+    "search-case-insensitive-200",
+    "search-hits-200",
+    "search-missing-q-400",
+    "search-no-match-and-absent-fields-200",
+    "search-unauthenticated-401",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-cart-x-customer-id-header-ignored",
+    "wb-login-does-not-revoke-old-token",
+    "wb-order-qty-not-number",
+    "wb-search-non-string-name-500",
+    "wb-x-customer-id-header-ignored",
+    "bestsellers-read-fails/bestsellers-ordered-200",
+    "bestsellers-read-fails/bestsellers-shared-between-users-200",
+    "bestsellers-read-fails/bestsellers-top-20-cap-200",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "books-read-fails/books-list-all-200",
+    "books-read-fails/books-list-by-category-200",
+    "books-read-fails/book-detail-200",
+    "books-read-fails/search-hits-200",
+    "books-read-throttled/book-detail-200",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "cart-write-throttled-once/cart-add-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/orders-list-empty-200",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400",
+    "users-read-fails/login-success-200",
+    "users-read-fails/me-success-200",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "survived",
+   "units_run": 103,
+   "class": {
+    "class": "equivalent",
+    "reason": "把第 19 行的条件短路成 false 只是关掉开发模式的 x-customer-id 快速通道，而这条通道在裁判的运行条件下本来就进不去：config.js:15 `AUTH_DEV_MODE = process.env.AUTH_DEV_MODE === 'true'` 默认 false，裁判没有 judge/run_config.json、不注入 AUTH_DEV_MODE，所以基线里第 19 行恒为假、第 20-25 行从不执行，改成 `if (false)` 后每个请求的结果逐字相同。事实库同样写明这条路默认不可达：GET /api/auth/me#request.headers[1]（“config.js:15 默认 false，此时该头被忽略”）、GET /api/auth/me#business_rules[7]（“config.js:15 默认 'true' 不成立，此路径默认不可达”）。属于只在开发模式下才走的代码，对外部行为没有影响。"
+   }
+  },
+  {
+   "id": "negate:middleware/auth.js:34",
+   "kind": "source",
+   "operator": "negate",
+   "file": "middleware/auth.js",
+   "line": 34,
+   "before": "if (!token) {",
+   "after": "if (!(!token)) {",
+   "refs": [
+    "DELETE /api/cart#responses[4]",
+    "GET /api/auth/me#responses[4]",
+    "GET /api/bestsellers#responses[2]",
+    "GET /api/books#responses[3]",
+    "GET /api/books/:id#responses[3]",
+    "GET /api/cart#responses[2]",
+    "GET /api/cart/:bookId#responses[3]",
+    "GET /api/orders#responses[2]",
+    "GET /api/search#responses[3]",
+    "POST /api/cart#responses[4]",
+    "POST /api/orders#responses[4]",
+    "PUT /api/cart#responses[4]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart",
+    "GET /api/auth/me",
+    "GET /api/bestsellers",
+    "GET /api/books",
+    "GET /api/books/:id",
+    "GET /api/cart",
+    "GET /api/cart/:bookId",
+    "GET /api/orders",
+    "GET /api/search",
+    "POST /api/cart",
+    "POST /api/orders",
+    "PUT /api/cart"
+   ],
+   "units": [
+    "bestsellers-ordered-200",
+    "bestsellers-shared-between-users-200",
+    "bestsellers-top-20-cap-200",
+    "bestsellers-unauthenticated-401",
+    "book-detail-200",
+    "book-detail-id-is-string-404",
+    "book-detail-not-found-404",
+    "book-detail-unauthenticated-401",
+    "books-list-all-200",
+    "books-list-by-category-200",
+    "books-shared-between-users-200",
+    "books-unauthenticated-401",
+    "cart-add-body-size-boundary",
+    "cart-add-extra-fields-ignored",
+    "cart-add-missing-fields-400",
+    "cart-add-non-json-content-type-400",
+    "cart-add-oversize-body-413",
+    "cart-add-overwrite-not-accumulate",
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-text-plain-400-no-write",
+    "cart-add-then-read",
+    "cart-add-unauthenticated-401",
+    "cart-add-unknown-book-accepted",
+    "cart-add-zero-values-400",
+    "cart-and-orders-bad-json-400",
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-oversize-body-413",
+    "cart-delete-then-read",
+    "cart-delete-unauthenticated-401",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-item-unauthenticated-401",
+    "cart-list-empty-200",
+    "cart-list-isolation-between-users",
+    "cart-list-no-book-join",
+    "cart-list-unauthenticated-401",
+    "cart-update-creates-missing-item",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-oversize-body-413",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "me-unauthenticated-401",
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "orders-list-empty-200",
+    "orders-list-isolation",
+    "orders-list-unauthenticated-401",
+    "refresh-success-200",
+    "register-success-201",
+    "search-array-q-500",
+    "search-case-insensitive-200",
+    "search-hits-200",
+    "search-missing-q-400",
+    "search-no-match-and-absent-fields-200",
+    "search-unauthenticated-401",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-cart-x-customer-id-header-ignored",
+    "wb-login-does-not-revoke-old-token",
+    "wb-order-qty-not-number",
+    "wb-search-non-string-name-500",
+    "wb-x-customer-id-header-ignored",
+    "bestsellers-read-fails/bestsellers-ordered-200",
+    "bestsellers-read-fails/bestsellers-shared-between-users-200",
+    "bestsellers-read-fails/bestsellers-top-20-cap-200",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "books-read-fails/books-list-all-200",
+    "books-read-fails/books-list-by-category-200",
+    "books-read-fails/book-detail-200",
+    "books-read-fails/search-hits-200",
+    "books-read-throttled/book-detail-200",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "cart-write-throttled-once/cart-add-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/orders-list-empty-200",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400",
+    "users-read-fails/login-success-200",
+    "users-read-fails/me-success-200",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "bestsellers-ordered-200",
+    "mismatches": [
+     {
+      "path": "steps.list.status",
+      "expected": 200,
+      "actual": 401,
+      "why": "differs"
+     },
+     {
+      "path": "steps.list.body",
+      "expected": [
+       "book-002",
+       "book-001",
+       "book-101",
+       "book-102"
+      ],
+      "actual": {
+       "error": "Authentication required. Please provide a valid Bearer token."
+      },
+      "why": "expected 4 items"
+     }
+    ]
+   },
+   "killing_units": 103
+  },
+  {
+   "id": "branch_off:middleware/auth.js:34",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "middleware/auth.js",
+   "line": 34,
+   "before": "if (!token) {",
+   "after": "if (false) {",
+   "refs": [
+    "DELETE /api/cart#responses[4]",
+    "GET /api/auth/me#responses[4]",
+    "GET /api/bestsellers#responses[2]",
+    "GET /api/books#responses[3]",
+    "GET /api/books/:id#responses[3]",
+    "GET /api/cart#responses[2]",
+    "GET /api/cart/:bookId#responses[3]",
+    "GET /api/orders#responses[2]",
+    "GET /api/search#responses[3]",
+    "POST /api/cart#responses[4]",
+    "POST /api/orders#responses[4]",
+    "PUT /api/cart#responses[4]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart",
+    "GET /api/auth/me",
+    "GET /api/bestsellers",
+    "GET /api/books",
+    "GET /api/books/:id",
+    "GET /api/cart",
+    "GET /api/cart/:bookId",
+    "GET /api/orders",
+    "GET /api/search",
+    "POST /api/cart",
+    "POST /api/orders",
+    "PUT /api/cart"
+   ],
+   "units": [
+    "bestsellers-ordered-200",
+    "bestsellers-shared-between-users-200",
+    "bestsellers-top-20-cap-200",
+    "bestsellers-unauthenticated-401",
+    "book-detail-200",
+    "book-detail-id-is-string-404",
+    "book-detail-not-found-404",
+    "book-detail-unauthenticated-401",
+    "books-list-all-200",
+    "books-list-by-category-200",
+    "books-shared-between-users-200",
+    "books-unauthenticated-401",
+    "cart-add-body-size-boundary",
+    "cart-add-extra-fields-ignored",
+    "cart-add-missing-fields-400",
+    "cart-add-non-json-content-type-400",
+    "cart-add-oversize-body-413",
+    "cart-add-overwrite-not-accumulate",
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-text-plain-400-no-write",
+    "cart-add-then-read",
+    "cart-add-unauthenticated-401",
+    "cart-add-unknown-book-accepted",
+    "cart-add-zero-values-400",
+    "cart-and-orders-bad-json-400",
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-oversize-body-413",
+    "cart-delete-then-read",
+    "cart-delete-unauthenticated-401",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-item-unauthenticated-401",
+    "cart-list-empty-200",
+    "cart-list-isolation-between-users",
+    "cart-list-no-book-join",
+    "cart-list-unauthenticated-401",
+    "cart-update-creates-missing-item",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-oversize-body-413",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "me-unauthenticated-401",
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "orders-list-empty-200",
+    "orders-list-isolation",
+    "orders-list-unauthenticated-401",
+    "refresh-success-200",
+    "register-success-201",
+    "search-array-q-500",
+    "search-case-insensitive-200",
+    "search-hits-200",
+    "search-missing-q-400",
+    "search-no-match-and-absent-fields-200",
+    "search-unauthenticated-401",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-cart-x-customer-id-header-ignored",
+    "wb-login-does-not-revoke-old-token",
+    "wb-order-qty-not-number",
+    "wb-search-non-string-name-500",
+    "wb-x-customer-id-header-ignored",
+    "bestsellers-read-fails/bestsellers-ordered-200",
+    "bestsellers-read-fails/bestsellers-shared-between-users-200",
+    "bestsellers-read-fails/bestsellers-top-20-cap-200",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "books-read-fails/books-list-all-200",
+    "books-read-fails/books-list-by-category-200",
+    "books-read-fails/book-detail-200",
+    "books-read-fails/search-hits-200",
+    "books-read-throttled/book-detail-200",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "cart-write-throttled-once/cart-add-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/orders-list-empty-200",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400",
+    "users-read-fails/login-success-200",
+    "users-read-fails/me-success-200",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "bestsellers-unauthenticated-401",
+    "mismatches": [
+     {
+      "path": "steps.no-token.body.error",
+      "expected": "Authentication required. Please provide a valid Bearer token.",
+      "actual": "Invalid or expired token",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 14
+  },
+  {
+   "id": "status:middleware/auth.js:43",
+   "kind": "source",
+   "operator": "status",
+   "file": "middleware/auth.js",
+   "line": 43,
+   "before": "return res.status(401).json({",
+   "after": "return res.status(403).json({",
+   "refs": [
+    "DELETE /api/cart#responses[4]",
+    "GET /api/auth/me#responses[4]",
+    "GET /api/bestsellers#responses[2]",
+    "GET /api/books#responses[3]",
+    "GET /api/books/:id#responses[3]",
+    "GET /api/cart#responses[2]",
+    "GET /api/cart/:bookId#responses[3]",
+    "GET /api/orders#responses[2]",
+    "GET /api/search#responses[3]",
+    "POST /api/cart#responses[4]",
+    "POST /api/orders#responses[4]",
+    "PUT /api/cart#responses[4]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart",
+    "GET /api/auth/me",
+    "GET /api/bestsellers",
+    "GET /api/books",
+    "GET /api/books/:id",
+    "GET /api/cart",
+    "GET /api/cart/:bookId",
+    "GET /api/orders",
+    "GET /api/search",
+    "POST /api/cart",
+    "POST /api/orders",
+    "PUT /api/cart"
+   ],
+   "units": [
+    "bestsellers-unauthenticated-401",
+    "book-detail-unauthenticated-401",
+    "books-unauthenticated-401",
+    "cart-add-unauthenticated-401",
+    "cart-delete-unauthenticated-401",
+    "cart-item-unauthenticated-401",
+    "cart-list-unauthenticated-401",
+    "cart-update-unauthenticated-401",
+    "me-unauthenticated-401",
+    "order-unauthenticated-401",
+    "orders-list-unauthenticated-401",
+    "search-unauthenticated-401",
+    "wb-cart-x-customer-id-header-ignored",
+    "wb-x-customer-id-header-ignored"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "bestsellers-unauthenticated-401",
+    "mismatches": [
+     {
+      "path": "steps.no-token.status",
+      "expected": 401,
+      "actual": 403,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 14
+  },
+  {
+   "id": "field:middleware/auth.js:44",
+   "kind": "source",
+   "operator": "field",
+   "file": "middleware/auth.js",
+   "line": 44,
+   "before": "error: 'Authentication required. Please provide a valid Bearer token.'",
+   "after": "error_m2s: 'Authentication required. Please provide a valid Bearer token.'",
+   "refs": [
+    "DELETE /api/cart#responses[4]",
+    "GET /api/auth/me#responses[4]",
+    "GET /api/bestsellers#responses[2]",
+    "GET /api/books#responses[3]",
+    "GET /api/books/:id#responses[3]",
+    "GET /api/cart#responses[2]",
+    "GET /api/cart/:bookId#responses[3]",
+    "GET /api/orders#responses[2]",
+    "GET /api/search#responses[3]",
+    "POST /api/cart#responses[4]",
+    "POST /api/orders#responses[4]",
+    "PUT /api/cart#responses[4]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart",
+    "GET /api/auth/me",
+    "GET /api/bestsellers",
+    "GET /api/books",
+    "GET /api/books/:id",
+    "GET /api/cart",
+    "GET /api/cart/:bookId",
+    "GET /api/orders",
+    "GET /api/search",
+    "POST /api/cart",
+    "POST /api/orders",
+    "PUT /api/cart"
+   ],
+   "units": [
+    "bestsellers-unauthenticated-401",
+    "book-detail-unauthenticated-401",
+    "books-unauthenticated-401",
+    "cart-add-unauthenticated-401",
+    "cart-delete-unauthenticated-401",
+    "cart-item-unauthenticated-401",
+    "cart-list-unauthenticated-401",
+    "cart-update-unauthenticated-401",
+    "me-unauthenticated-401",
+    "order-unauthenticated-401",
+    "orders-list-unauthenticated-401",
+    "search-unauthenticated-401",
+    "wb-cart-x-customer-id-header-ignored",
+    "wb-x-customer-id-header-ignored"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "bestsellers-unauthenticated-401",
+    "mismatches": [
+     {
+      "path": "steps.no-token.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 14
+  },
+  {
+   "id": "negate:middleware/auth.js:51",
+   "kind": "source",
+   "operator": "negate",
+   "file": "middleware/auth.js",
+   "line": 51,
+   "before": "if (!payload) {",
+   "after": "if (!(!payload)) {",
+   "refs": [
+    "DELETE /api/cart#responses[5]",
+    "GET /api/auth/me#responses[5]",
+    "GET /api/bestsellers#responses[3]",
+    "GET /api/books#responses[4]",
+    "GET /api/books/:id#responses[4]",
+    "GET /api/cart#responses[3]",
+    "GET /api/cart/:bookId#responses[4]",
+    "GET /api/orders#responses[3]",
+    "GET /api/search#responses[4]",
+    "POST /api/cart#responses[5]",
+    "POST /api/orders#responses[5]",
+    "PUT /api/cart#responses[5]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart",
+    "GET /api/auth/me",
+    "GET /api/bestsellers",
+    "GET /api/books",
+    "GET /api/books/:id",
+    "GET /api/cart",
+    "GET /api/cart/:bookId",
+    "GET /api/orders",
+    "GET /api/search",
+    "POST /api/cart",
+    "POST /api/orders",
+    "PUT /api/cart"
+   ],
+   "units": [
+    "bestsellers-ordered-200",
+    "bestsellers-shared-between-users-200",
+    "bestsellers-top-20-cap-200",
+    "bestsellers-unauthenticated-401",
+    "book-detail-200",
+    "book-detail-id-is-string-404",
+    "book-detail-not-found-404",
+    "book-detail-unauthenticated-401",
+    "books-list-all-200",
+    "books-list-by-category-200",
+    "books-shared-between-users-200",
+    "books-unauthenticated-401",
+    "cart-add-body-size-boundary",
+    "cart-add-extra-fields-ignored",
+    "cart-add-missing-fields-400",
+    "cart-add-non-json-content-type-400",
+    "cart-add-oversize-body-413",
+    "cart-add-overwrite-not-accumulate",
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-text-plain-400-no-write",
+    "cart-add-then-read",
+    "cart-add-unauthenticated-401",
+    "cart-add-unknown-book-accepted",
+    "cart-add-zero-values-400",
+    "cart-and-orders-bad-json-400",
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-oversize-body-413",
+    "cart-delete-then-read",
+    "cart-delete-unauthenticated-401",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-item-unauthenticated-401",
+    "cart-list-empty-200",
+    "cart-list-isolation-between-users",
+    "cart-list-no-book-join",
+    "cart-list-unauthenticated-401",
+    "cart-update-creates-missing-item",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-oversize-body-413",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "me-unauthenticated-401",
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "orders-list-empty-200",
+    "orders-list-isolation",
+    "orders-list-unauthenticated-401",
+    "refresh-success-200",
+    "register-success-201",
+    "search-array-q-500",
+    "search-case-insensitive-200",
+    "search-hits-200",
+    "search-missing-q-400",
+    "search-no-match-and-absent-fields-200",
+    "search-unauthenticated-401",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-cart-x-customer-id-header-ignored",
+    "wb-login-does-not-revoke-old-token",
+    "wb-order-qty-not-number",
+    "wb-search-non-string-name-500",
+    "wb-x-customer-id-header-ignored",
+    "bestsellers-read-fails/bestsellers-ordered-200",
+    "bestsellers-read-fails/bestsellers-shared-between-users-200",
+    "bestsellers-read-fails/bestsellers-top-20-cap-200",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "books-read-fails/books-list-all-200",
+    "books-read-fails/books-list-by-category-200",
+    "books-read-fails/book-detail-200",
+    "books-read-fails/search-hits-200",
+    "books-read-throttled/book-detail-200",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "cart-write-throttled-once/cart-add-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/orders-list-empty-200",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400",
+    "users-read-fails/login-success-200",
+    "users-read-fails/me-success-200",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "bestsellers-ordered-200",
+    "mismatches": [
+     {
+      "path": "steps.list.status",
+      "expected": 200,
+      "actual": 401,
+      "why": "differs"
+     },
+     {
+      "path": "steps.list.body",
+      "expected": [
+       "book-002",
+       "book-001",
+       "book-101",
+       "book-102"
+      ],
+      "actual": {
+       "error": "Invalid or expired token"
+      },
+      "why": "expected 4 items"
+     }
+    ]
+   },
+   "killing_units": 103
+  },
+  {
+   "id": "branch_off:middleware/auth.js:51",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "middleware/auth.js",
+   "line": 51,
+   "before": "if (!payload) {",
+   "after": "if (false) {",
+   "refs": [
+    "DELETE /api/cart#responses[5]",
+    "GET /api/auth/me#responses[5]",
+    "GET /api/bestsellers#responses[3]",
+    "GET /api/books#responses[4]",
+    "GET /api/books/:id#responses[4]",
+    "GET /api/cart#responses[3]",
+    "GET /api/cart/:bookId#responses[4]",
+    "GET /api/orders#responses[3]",
+    "GET /api/search#responses[4]",
+    "POST /api/cart#responses[5]",
+    "POST /api/orders#responses[5]",
+    "PUT /api/cart#responses[5]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart",
+    "GET /api/auth/me",
+    "GET /api/bestsellers",
+    "GET /api/books",
+    "GET /api/books/:id",
+    "GET /api/cart",
+    "GET /api/cart/:bookId",
+    "GET /api/orders",
+    "GET /api/search",
+    "POST /api/cart",
+    "POST /api/orders",
+    "PUT /api/cart"
+   ],
+   "units": [
+    "bestsellers-ordered-200",
+    "bestsellers-shared-between-users-200",
+    "bestsellers-top-20-cap-200",
+    "bestsellers-unauthenticated-401",
+    "book-detail-200",
+    "book-detail-id-is-string-404",
+    "book-detail-not-found-404",
+    "book-detail-unauthenticated-401",
+    "books-list-all-200",
+    "books-list-by-category-200",
+    "books-shared-between-users-200",
+    "books-unauthenticated-401",
+    "cart-add-body-size-boundary",
+    "cart-add-extra-fields-ignored",
+    "cart-add-missing-fields-400",
+    "cart-add-non-json-content-type-400",
+    "cart-add-oversize-body-413",
+    "cart-add-overwrite-not-accumulate",
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-text-plain-400-no-write",
+    "cart-add-then-read",
+    "cart-add-unauthenticated-401",
+    "cart-add-unknown-book-accepted",
+    "cart-add-zero-values-400",
+    "cart-and-orders-bad-json-400",
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-oversize-body-413",
+    "cart-delete-then-read",
+    "cart-delete-unauthenticated-401",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-item-unauthenticated-401",
+    "cart-list-empty-200",
+    "cart-list-isolation-between-users",
+    "cart-list-no-book-join",
+    "cart-list-unauthenticated-401",
+    "cart-update-creates-missing-item",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-oversize-body-413",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "me-unauthenticated-401",
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "orders-list-empty-200",
+    "orders-list-isolation",
+    "orders-list-unauthenticated-401",
+    "refresh-success-200",
+    "register-success-201",
+    "search-array-q-500",
+    "search-case-insensitive-200",
+    "search-hits-200",
+    "search-missing-q-400",
+    "search-no-match-and-absent-fields-200",
+    "search-unauthenticated-401",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-cart-x-customer-id-header-ignored",
+    "wb-login-does-not-revoke-old-token",
+    "wb-order-qty-not-number",
+    "wb-search-non-string-name-500",
+    "wb-x-customer-id-header-ignored",
+    "bestsellers-read-fails/bestsellers-ordered-200",
+    "bestsellers-read-fails/bestsellers-shared-between-users-200",
+    "bestsellers-read-fails/bestsellers-top-20-cap-200",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "books-read-fails/books-list-all-200",
+    "books-read-fails/books-list-by-category-200",
+    "books-read-fails/book-detail-200",
+    "books-read-fails/search-hits-200",
+    "books-read-throttled/book-detail-200",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "cart-write-throttled-once/cart-add-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/orders-list-empty-200",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400",
+    "users-read-fails/login-success-200",
+    "users-read-fails/me-success-200",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "bestsellers-unauthenticated-401",
+    "mismatches": [
+     {
+      "path": "steps.bad-token.status",
+      "expected": 401,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.bad-token.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "stack"
+      ]
+     },
+     {
+      "path": "steps.bad-token.body.error",
+      "expected": "Invalid or expired token",
+      "actual": "Cannot read properties of null (reading 'userId')",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 16
+  },
+  {
+   "id": "status:middleware/auth.js:52",
+   "kind": "source",
+   "operator": "status",
+   "file": "middleware/auth.js",
+   "line": 52,
+   "before": "return res.status(401).json({",
+   "after": "return res.status(403).json({",
+   "refs": [
+    "DELETE /api/cart#responses[5]",
+    "GET /api/auth/me#responses[5]",
+    "GET /api/bestsellers#responses[3]",
+    "GET /api/books#responses[4]",
+    "GET /api/books/:id#responses[4]",
+    "GET /api/cart#responses[3]",
+    "GET /api/cart/:bookId#responses[4]",
+    "GET /api/orders#responses[3]",
+    "GET /api/search#responses[4]",
+    "POST /api/cart#responses[5]",
+    "POST /api/orders#responses[5]",
+    "PUT /api/cart#responses[5]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart",
+    "GET /api/auth/me",
+    "GET /api/bestsellers",
+    "GET /api/books",
+    "GET /api/books/:id",
+    "GET /api/cart",
+    "GET /api/cart/:bookId",
+    "GET /api/orders",
+    "GET /api/search",
+    "POST /api/cart",
+    "POST /api/orders",
+    "PUT /api/cart"
+   ],
+   "units": [
+    "bestsellers-unauthenticated-401",
+    "book-detail-unauthenticated-401",
+    "books-unauthenticated-401",
+    "cart-add-unauthenticated-401",
+    "cart-delete-unauthenticated-401",
+    "cart-item-unauthenticated-401",
+    "cart-list-unauthenticated-401",
+    "cart-update-unauthenticated-401",
+    "me-unauthenticated-401",
+    "order-unauthenticated-401",
+    "orders-list-unauthenticated-401",
+    "search-unauthenticated-401",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/login-success-200",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "bestsellers-unauthenticated-401",
+    "mismatches": [
+     {
+      "path": "steps.bad-token.status",
+      "expected": 401,
+      "actual": 403,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 16
+  },
+  {
+   "id": "field:middleware/auth.js:53",
+   "kind": "source",
+   "operator": "field",
+   "file": "middleware/auth.js",
+   "line": 53,
+   "before": "error: 'Invalid or expired token'",
+   "after": "error_m2s: 'Invalid or expired token'",
+   "refs": [
+    "GET /api/auth/me#responses[5]"
+   ],
+   "endpoints": [
+    "GET /api/auth/me"
+   ],
+   "units": [
+    "bestsellers-unauthenticated-401",
+    "book-detail-unauthenticated-401",
+    "books-unauthenticated-401",
+    "cart-add-unauthenticated-401",
+    "cart-delete-unauthenticated-401",
+    "cart-item-unauthenticated-401",
+    "cart-list-unauthenticated-401",
+    "cart-update-unauthenticated-401",
+    "me-unauthenticated-401",
+    "order-unauthenticated-401",
+    "orders-list-unauthenticated-401",
+    "search-unauthenticated-401",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/login-success-200",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "bestsellers-unauthenticated-401",
+    "mismatches": [
+     {
+      "path": "steps.bad-token.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 16
+  },
+  {
+   "id": "negate:routes/auth.js:25",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/auth.js",
+   "line": 25,
+   "before": "if (!email || !password) {",
+   "after": "if (!(!email || !password)) {",
+   "refs": [
+    "POST /api/auth/register#business_rules[0]",
+    "POST /api/auth/register#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "register-duplicate-email-409",
+    "register-non-string-password-500",
+    "register-success-201",
+    "register-validation-400",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/register-duplicate-email-409",
+    "users-write-fails/register-success-201",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "auth-endpoints-bad-json-400",
+    "mismatches": [
+     {
+      "path": "steps.reg-form-encoding.status",
+      "expected": 201,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.reg-form-encoding.body",
+      "why": "keys differ",
+      "missing": [
+       "accessToken",
+       "message",
+       "refreshToken",
+       "user"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "tables_after.Bookstore-Users",
+      "expected": [
+       {
+        "name": "Judge User One",
+        "createdAt": "<time#6>",
+        "password": "<hash#7>",
+        "userId": "<id:u1>",
+        "email": "judge-u1@example.com",
+        "updatedAt": "<time#6>"
+       },
+       {
+        "name": "form",
+        "createdAt": "<time#8>",
+        "password": "<hash#9>",
+        "userId": "<uuid#3>",
+        "email": "form@example.com",
+        "updatedAt": "<time#8>"
+       }
+      ],
+      "actual": [],
+      "why": "expected 2 items"
+     }
+    ]
+   },
+   "killing_units": 9
+  },
+  {
+   "id": "branch_off:routes/auth.js:25",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/auth.js",
+   "line": 25,
+   "before": "if (!email || !password) {",
+   "after": "if (false) {",
+   "refs": [
+    "POST /api/auth/register#business_rules[0]",
+    "POST /api/auth/register#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "register-duplicate-email-409",
+    "register-non-string-password-500",
+    "register-success-201",
+    "register-validation-400",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/register-duplicate-email-409",
+    "users-write-fails/register-success-201",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-validation-400",
+    "mismatches": [
+     {
+      "path": "steps.no-fields.body.error",
+      "expected": "Email and password are required",
+      "actual": "Invalid email format",
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-password.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-password.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "stack"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:routes/auth.js:26",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/auth.js",
+   "line": 26,
+   "before": "return res.status(400).json({",
+   "after": "return res.status(422).json({",
+   "refs": [
+    "POST /api/auth/register#business_rules[0]",
+    "POST /api/auth/register#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "register-validation-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-validation-400",
+    "mismatches": [
+     {
+      "path": "steps.no-fields.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-password.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-password.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "negate:routes/auth.js:33",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/auth.js",
+   "line": 33,
+   "before": "if (!emailRegex.test(email)) {",
+   "after": "if (!(!emailRegex.test(email))) {",
+   "refs": [
+    "POST /api/auth/register#business_rules[1]",
+    "POST /api/auth/register#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "register-duplicate-email-409",
+    "register-non-string-password-500",
+    "register-success-201",
+    "register-validation-400",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/register-duplicate-email-409",
+    "users-write-fails/register-success-201",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "auth-endpoints-bad-json-400",
+    "mismatches": [
+     {
+      "path": "steps.reg-form-encoding.status",
+      "expected": 201,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.reg-form-encoding.body",
+      "why": "keys differ",
+      "missing": [
+       "accessToken",
+       "message",
+       "refreshToken",
+       "user"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "tables_after.Bookstore-Users",
+      "expected": [
+       {
+        "name": "Judge User One",
+        "createdAt": "<time#6>",
+        "password": "<hash#7>",
+        "userId": "<id:u1>",
+        "email": "judge-u1@example.com",
+        "updatedAt": "<time#6>"
+       },
+       {
+        "name": "form",
+        "createdAt": "<time#8>",
+        "password": "<hash#9>",
+        "userId": "<uuid#3>",
+        "email": "form@example.com",
+        "updatedAt": "<time#8>"
+       }
+      ],
+      "actual": [],
+      "why": "expected 2 items"
+     }
+    ]
+   },
+   "killing_units": 9
+  },
+  {
+   "id": "branch_off:routes/auth.js:33",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/auth.js",
+   "line": 33,
+   "before": "if (!emailRegex.test(email)) {",
+   "after": "if (false) {",
+   "refs": [
+    "POST /api/auth/register#business_rules[1]",
+    "POST /api/auth/register#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "register-duplicate-email-409",
+    "register-non-string-password-500",
+    "register-success-201",
+    "register-validation-400",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/register-duplicate-email-409",
+    "users-write-fails/register-success-201",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-validation-400",
+    "mismatches": [
+     {
+      "path": "steps.bad-email-no-at.status",
+      "expected": 400,
+      "actual": 201,
+      "why": "differs"
+     },
+     {
+      "path": "steps.bad-email-no-at.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "accessToken",
+       "message",
+       "refreshToken",
+       "user"
+      ]
+     },
+     {
+      "path": "steps.bad-email-no-tld.status",
+      "expected": 400,
+      "actual": 201,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:routes/auth.js:34",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/auth.js",
+   "line": 34,
+   "before": "return res.status(400).json({",
+   "after": "return res.status(422).json({",
+   "refs": [
+    "POST /api/auth/register#business_rules[1]",
+    "POST /api/auth/register#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "register-validation-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-validation-400",
+    "mismatches": [
+     {
+      "path": "steps.bad-email-no-at.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.bad-email-no-tld.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.bad-email-space.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "negate:routes/auth.js:40",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/auth.js",
+   "line": 40,
+   "before": "if (password.length < 6) {",
+   "after": "if (!(password.length < 6)) {",
+   "refs": [
+    "POST /api/auth/register#business_rules[2]",
+    "POST /api/auth/register#responses[2]",
+    "POST /api/auth/register#responses[5]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "register-duplicate-email-409",
+    "register-non-string-password-500",
+    "register-success-201",
+    "register-validation-400",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/register-duplicate-email-409",
+    "users-write-fails/register-success-201",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "auth-endpoints-bad-json-400",
+    "mismatches": [
+     {
+      "path": "steps.reg-form-encoding.status",
+      "expected": 201,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.reg-form-encoding.body",
+      "why": "keys differ",
+      "missing": [
+       "accessToken",
+       "message",
+       "refreshToken",
+       "user"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "tables_after.Bookstore-Users",
+      "expected": [
+       {
+        "name": "Judge User One",
+        "createdAt": "<time#6>",
+        "password": "<hash#7>",
+        "userId": "<id:u1>",
+        "email": "judge-u1@example.com",
+        "updatedAt": "<time#6>"
+       },
+       {
+        "name": "form",
+        "createdAt": "<time#8>",
+        "password": "<hash#9>",
+        "userId": "<uuid#3>",
+        "email": "form@example.com",
+        "updatedAt": "<time#8>"
+       }
+      ],
+      "actual": [],
+      "why": "expected 2 items"
+     }
+    ]
+   },
+   "killing_units": 9
+  },
+  {
+   "id": "branch_off:routes/auth.js:40",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/auth.js",
+   "line": 40,
+   "before": "if (password.length < 6) {",
+   "after": "if (false) {",
+   "refs": [
+    "POST /api/auth/register#business_rules[2]",
+    "POST /api/auth/register#responses[2]",
+    "POST /api/auth/register#responses[5]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "register-duplicate-email-409",
+    "register-non-string-password-500",
+    "register-success-201",
+    "register-validation-400",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/register-duplicate-email-409",
+    "users-write-fails/register-success-201",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-validation-400",
+    "mismatches": [
+     {
+      "path": "steps.short-password.status",
+      "expected": 400,
+      "actual": 201,
+      "why": "differs"
+     },
+     {
+      "path": "steps.short-password.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "accessToken",
+       "message",
+       "refreshToken",
+       "user"
+      ]
+     },
+     {
+      "path": "tables_after.Bookstore-Users",
+      "expected": [
+       {
+        "name": "Judge User One",
+        "createdAt": "<time#4>",
+        "password": "<hash#5>",
+        "userId": "<id:u1>",
+        "email": "judge-u1@example.com",
+        "updatedAt": "<time#4>"
+       },
+       {
+        "name": "six-char",
+        "createdAt": "<time#6>",
+        "password": "<hash#7>",
+        "userId": "<uuid#1>",
+        "email": "six-char@example.com",
+        "updatedAt": "<time#6>"
+       }
+      ],
+      "actual": [
+       {
+        "name": "six-char",
+        "createdAt": 1794518463310,
+        "password": "$2a$10$0Vm5rCRAgNvTVESMKPw0JeNvCd5Y7Y6CWEzX7Y/XxTcoTOrWbHVqy",
+        "userId": "2a671f1c-e4d5-4796-8579-57d61ddfd9b5",
+        "email": "six-char@example.com",
+        "updatedAt": 1794518463310
+       },
+       {
+        "name": "short",
+        "createdAt": 1794518463053,
+        "password": "$2a$10$gvLQjGCxidO3adgxbDCsg.0wlTthPec32N7as0yYfOtFClC9foZp6",
+        "userId": "424fcc21-16de-4d58-b375-1fe897aef821",
+        "email": "short@example.com",
+        "updatedAt": 1794518463053
+       },
+       {
+        "name": "Judge User One",
+        "createdAt": 1794518462249,
+        "password": "$2a$10$xcYLSZ5F1Aen2nfixt8jM.ftLpa2XTsCgJ0VYRyq0FKk6jGH8L4H2",
+        "userId": "d1b9ac8b-37e1-4cc4-aeab-1a9f3ce67c88",
+        "email": "judge-u1@example.com",
+        "updatedAt": 1794518462249
+       }
+      ],
+      "why": "expected 2 items"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:routes/auth.js:41",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/auth.js",
+   "line": 41,
+   "before": "return res.status(400).json({",
+   "after": "return res.status(422).json({",
+   "refs": [
+    "POST /api/auth/register#business_rules[2]",
+    "POST /api/auth/register#responses[2]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "register-validation-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-validation-400",
+    "mismatches": [
+     {
+      "path": "steps.short-password.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "negate:routes/auth.js:58",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/auth.js",
+   "line": 58,
+   "before": "if (existingUser.Items && existingUser.Items.length > 0) {",
+   "after": "if (!(existingUser.Items && existingUser.Items.length > 0)) {",
+   "refs": [
+    "POST /api/auth/register#business_rules[3]",
+    "POST /api/auth/register#responses[3]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "register-duplicate-email-409",
+    "register-non-string-password-500",
+    "register-success-201",
+    "register-validation-400",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/register-duplicate-email-409",
+    "users-write-fails/register-success-201",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "auth-endpoints-bad-json-400",
+    "mismatches": [
+     {
+      "path": "steps.reg-form-encoding.status",
+      "expected": 201,
+      "actual": 409,
+      "why": "differs"
+     },
+     {
+      "path": "steps.reg-form-encoding.body",
+      "why": "keys differ",
+      "missing": [
+       "accessToken",
+       "message",
+       "refreshToken",
+       "user"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "tables_after.Bookstore-Users",
+      "expected": [
+       {
+        "name": "Judge User One",
+        "createdAt": "<time#6>",
+        "password": "<hash#7>",
+        "userId": "<id:u1>",
+        "email": "judge-u1@example.com",
+        "updatedAt": "<time#6>"
+       },
+       {
+        "name": "form",
+        "createdAt": "<time#8>",
+        "password": "<hash#9>",
+        "userId": "<uuid#3>",
+        "email": "form@example.com",
+        "updatedAt": "<time#8>"
+       }
+      ],
+      "actual": [],
+      "why": "expected 2 items"
+     }
+    ]
+   },
+   "killing_units": 9
+  },
+  {
+   "id": "branch_off:routes/auth.js:58",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/auth.js",
+   "line": 58,
+   "before": "if (existingUser.Items && existingUser.Items.length > 0) {",
+   "after": "if (false) {",
+   "refs": [
+    "POST /api/auth/register#business_rules[3]",
+    "POST /api/auth/register#responses[3]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "register-duplicate-email-409",
+    "register-non-string-password-500",
+    "register-success-201",
+    "register-validation-400",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/register-duplicate-email-409",
+    "users-write-fails/register-success-201",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-duplicate-email-409",
+    "mismatches": [
+     {
+      "path": "steps.second.status",
+      "expected": 409,
+      "actual": 201,
+      "why": "differs"
+     },
+     {
+      "path": "steps.second.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "accessToken",
+       "message",
+       "refreshToken",
+       "user"
+      ]
+     },
+     {
+      "path": "tables_after.Bookstore-Users",
+      "expected": [
+       {
+        "name": "Judge User One",
+        "createdAt": "<time#6>",
+        "password": "<hash#7>",
+        "userId": "<id:u1>",
+        "email": "judge-u1@example.com",
+        "updatedAt": "<time#6>"
+       },
+       {
+        "name": "First Account",
+        "createdAt": "<time#8>",
+        "password": "<hash#9>",
+        "userId": "<uuid#1>",
+        "email": "dup@example.com",
+        "updatedAt": "<time#8>"
+       }
+      ],
+      "actual": [
+       {
+        "name": "Second Account",
+        "createdAt": 1794518476963,
+        "password": "$2a$10$2LQLjgKCDhSmhor1o1ppTuERqdO9jie4Ym2kfcx4hWlhXTZKaAABi",
+        "userId": "038155ba-f38c-4b2a-8087-949738ad5b29",
+        "email": "dup@example.com",
+        "updatedAt": 1794518476963
+       },
+       {
+        "name": "First Account",
+        "createdAt": 1794518476704,
+        "password": "$2a$10$vNXf.s51rA7VfpJjU5wcu.WNrFgUBh.tCrQYJDRwNUu0s0fslSKNm",
+        "userId": "8f9d5f2f-5cf7-45a2-8f0a-4e93bfd143b8",
+        "email": "dup@example.com",
+        "updatedAt": 1794518476704
+       },
+       {
+        "name": "Judge User One",
+        "createdAt": 1794518476530,
+        "password": "$2a$10$1N3j16Lgf1OptAXu6xVjT.k1.1NERY.gIfHG39xTpSYF25j/D3Uze",
+        "userId": "4cec63e1-483c-42ff-86f6-c2a50225fc59",
+        "email": "judge-u1@example.com",
+        "updatedAt": 1794518476530
+       }
+      ],
+      "why": "expected 2 items"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:routes/auth.js:59",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/auth.js",
+   "line": 59,
+   "before": "return res.status(409).json({",
+   "after": "return res.status(400).json({",
+   "refs": [
+    "POST /api/auth/register#business_rules[3]",
+    "POST /api/auth/register#responses[3]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "register-duplicate-email-409"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "register-duplicate-email-409",
+    "mismatches": [
+     {
+      "path": "steps.second.status",
+      "expected": 409,
+      "actual": 400,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:routes/auth.js:87",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/auth.js",
+   "line": 87,
+   "before": "res.status(201).json({",
+   "after": "res.status(200).json({",
+   "refs": [
+    "POST /api/auth/register#business_rules[8]",
+    "POST /api/auth/register#responses[4]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "register-duplicate-email-409",
+    "register-success-201",
+    "register-validation-400",
+    "wb-auth-public-endpoints-ignore-bad-authorization"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "auth-endpoints-bad-json-400",
+    "mismatches": [
+     {
+      "path": "steps.reg-form-encoding.status",
+      "expected": 201,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "field:routes/auth.js:88",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/auth.js",
+   "line": 88,
+   "before": "message: 'User registered successfully',",
+   "after": "message_m2s: 'User registered successfully',",
+   "refs": [
+    "POST /api/auth/register#responses[4]"
+   ],
+   "endpoints": [
+    "POST /api/auth/register"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "register-duplicate-email-409",
+    "register-success-201",
+    "register-validation-400",
+    "wb-auth-public-endpoints-ignore-bad-authorization"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "auth-endpoints-bad-json-400",
+    "mismatches": [
+     {
+      "path": "steps.reg-form-encoding.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "message_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "negate:routes/auth.js:113",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/auth.js",
+   "line": 113,
+   "before": "if (!email || !password) {",
+   "after": "if (!(!email || !password)) {",
+   "refs": [
+    "POST /api/auth/login#business_rules[0]",
+    "POST /api/auth/login#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/auth/login"
+   ],
+   "units": [
+    "login-invalid-credentials-401",
+    "login-missing-fields-400",
+    "login-non-string-password-500",
+    "login-success-200",
+    "register-duplicate-email-409",
+    "register-non-string-password-500",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "users-read-fails/login-success-200",
+    "users-read-fails/register-duplicate-email-409",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-invalid-credentials-401",
+    "mismatches": [
+     {
+      "path": "steps.unknown-email.status",
+      "expected": 401,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.unknown-email.body.error",
+      "expected": "Invalid email or password",
+      "actual": "Email and password are required",
+      "why": "differs"
+     },
+     {
+      "path": "steps.wrong-password.status",
+      "expected": 401,
+      "actual": 400,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 11
+  },
+  {
+   "id": "branch_off:routes/auth.js:113",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/auth.js",
+   "line": 113,
+   "before": "if (!email || !password) {",
+   "after": "if (false) {",
+   "refs": [
+    "POST /api/auth/login#business_rules[0]",
+    "POST /api/auth/login#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/auth/login"
+   ],
+   "units": [
+    "login-invalid-credentials-401",
+    "login-missing-fields-400",
+    "login-non-string-password-500",
+    "login-success-200",
+    "register-duplicate-email-409",
+    "register-non-string-password-500",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "users-read-fails/login-success-200",
+    "users-read-fails/register-duplicate-email-409",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-missing-fields-400",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "stack"
+      ]
+     },
+     {
+      "path": "steps.empty-body.body.error",
+      "expected": "Email and password are required",
+      "actual": "ExpressionAttributeValues must not be empty",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:routes/auth.js:114",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/auth.js",
+   "line": 114,
+   "before": "return res.status(400).json({",
+   "after": "return res.status(422).json({",
+   "refs": [
+    "POST /api/auth/login#business_rules[0]",
+    "POST /api/auth/login#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/auth/login"
+   ],
+   "units": [
+    "login-missing-fields-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-missing-fields-400",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.only-email.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.only-password.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "negate:routes/auth.js:131",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/auth.js",
+   "line": 131,
+   "before": "if (!result.Items || result.Items.length === 0) {",
+   "after": "if (!(!result.Items || result.Items.length === 0)) {",
+   "refs": [
+    "POST /api/auth/login#business_rules[2]",
+    "POST /api/auth/login#business_rules[3]",
+    "POST /api/auth/login#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/auth/login"
+   ],
+   "units": [
+    "login-invalid-credentials-401",
+    "login-missing-fields-400",
+    "login-non-string-password-500",
+    "login-success-200",
+    "register-duplicate-email-409",
+    "register-non-string-password-500",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "users-read-fails/login-success-200",
+    "users-read-fails/register-duplicate-email-409",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-invalid-credentials-401",
+    "mismatches": [
+     {
+      "path": "steps.unknown-email.status",
+      "expected": 401,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.unknown-email.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "stack"
+      ]
+     },
+     {
+      "path": "steps.unknown-email.body.error",
+      "expected": "Invalid email or password",
+      "actual": "Cannot read properties of undefined (reading 'password')",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 8
+  },
+  {
+   "id": "branch_off:routes/auth.js:131",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/auth.js",
+   "line": 131,
+   "before": "if (!result.Items || result.Items.length === 0) {",
+   "after": "if (false) {",
+   "refs": [
+    "POST /api/auth/login#business_rules[2]",
+    "POST /api/auth/login#business_rules[3]",
+    "POST /api/auth/login#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/auth/login"
+   ],
+   "units": [
+    "login-invalid-credentials-401",
+    "login-missing-fields-400",
+    "login-non-string-password-500",
+    "login-success-200",
+    "register-duplicate-email-409",
+    "register-non-string-password-500",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "users-read-fails/login-success-200",
+    "users-read-fails/register-duplicate-email-409",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-invalid-credentials-401",
+    "mismatches": [
+     {
+      "path": "steps.unknown-email.status",
+      "expected": 401,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.unknown-email.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "stack"
+      ]
+     },
+     {
+      "path": "steps.unknown-email.body.error",
+      "expected": "Invalid email or password",
+      "actual": "Cannot read properties of undefined (reading 'password')",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 3
+  },
+  {
+   "id": "status:routes/auth.js:132",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/auth.js",
+   "line": 132,
+   "before": "return res.status(401).json({",
+   "after": "return res.status(403).json({",
+   "refs": [
+    "POST /api/auth/login#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/auth/login"
+   ],
+   "units": [
+    "login-invalid-credentials-401",
+    "register-non-string-password-500",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-invalid-credentials-401",
+    "mismatches": [
+     {
+      "path": "steps.unknown-email.status",
+      "expected": 401,
+      "actual": 403,
+      "why": "differs"
+     },
+     {
+      "path": "steps.uppercase-email.status",
+      "expected": 401,
+      "actual": 403,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 3
+  },
+  {
+   "id": "field:routes/auth.js:133",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/auth.js",
+   "line": 133,
+   "before": "error: 'Invalid email or password'",
+   "after": "error_m2s: 'Invalid email or password'",
+   "refs": [
+    "POST /api/auth/login#business_rules[3]",
+    "POST /api/auth/login#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/auth/login"
+   ],
+   "units": [
+    "login-invalid-credentials-401",
+    "register-non-string-password-500",
+    "users-write-fails/register-non-string-password-500"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-invalid-credentials-401",
+    "mismatches": [
+     {
+      "path": "steps.unknown-email.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.uppercase-email.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 3
+  },
+  {
+   "id": "negate:routes/auth.js:142",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/auth.js",
+   "line": 142,
+   "before": "if (!isPasswordValid) {",
+   "after": "if (!(!isPasswordValid)) {",
+   "refs": [
+    "POST /api/auth/login#business_rules[3]",
+    "POST /api/auth/login#responses[2]"
+   ],
+   "endpoints": [
+    "POST /api/auth/login"
+   ],
+   "units": [
+    "login-invalid-credentials-401",
+    "login-non-string-password-500",
+    "login-success-200",
+    "register-duplicate-email-409",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-invalid-credentials-401",
+    "mismatches": [
+     {
+      "path": "steps.wrong-password.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.wrong-password.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "accessToken",
+       "message",
+       "refreshToken",
+       "user"
+      ]
+     }
+    ]
+   },
+   "killing_units": 6
+  },
+  {
+   "id": "branch_off:routes/auth.js:142",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/auth.js",
+   "line": 142,
+   "before": "if (!isPasswordValid) {",
+   "after": "if (false) {",
+   "refs": [
+    "POST /api/auth/login#business_rules[3]",
+    "POST /api/auth/login#responses[2]"
+   ],
+   "endpoints": [
+    "POST /api/auth/login"
+   ],
+   "units": [
+    "login-invalid-credentials-401",
+    "login-non-string-password-500",
+    "login-success-200",
+    "register-duplicate-email-409",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-invalid-credentials-401",
+    "mismatches": [
+     {
+      "path": "steps.wrong-password.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.wrong-password.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "accessToken",
+       "message",
+       "refreshToken",
+       "user"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:routes/auth.js:143",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/auth.js",
+   "line": 143,
+   "before": "return res.status(401).json({",
+   "after": "return res.status(403).json({",
+   "refs": [
+    "POST /api/auth/login#business_rules[3]",
+    "POST /api/auth/login#responses[2]"
+   ],
+   "endpoints": [
+    "POST /api/auth/login"
+   ],
+   "units": [
+    "login-invalid-credentials-401"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-invalid-credentials-401",
+    "mismatches": [
+     {
+      "path": "steps.wrong-password.status",
+      "expected": 401,
+      "actual": 403,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:routes/auth.js:158",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/auth.js",
+   "line": 158,
+   "before": "message: 'Login successful',",
+   "after": "message_m2s: 'Login successful',",
+   "refs": [
+    "POST /api/auth/login#responses[3]"
+   ],
+   "endpoints": [
+    "POST /api/auth/login"
+   ],
+   "units": [
+    "login-non-string-password-500",
+    "login-success-200",
+    "register-duplicate-email-409",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-non-string-password-500",
+    "mismatches": [
+     {
+      "path": "steps.ok-after.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "message_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "negate:routes/auth.js:182",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/auth.js",
+   "line": 182,
+   "before": "if (!refreshToken) {",
+   "after": "if (!(!refreshToken)) {",
+   "refs": [
+    "POST /api/auth/refresh#business_rules[0]",
+    "POST /api/auth/refresh#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/auth/refresh"
+   ],
+   "units": [
+    "refresh-invalid-token-401",
+    "refresh-missing-token-400",
+    "refresh-success-200",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/refresh-success-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refresh-invalid-token-401",
+    "mismatches": [
+     {
+      "path": "steps.garbage.status",
+      "expected": 401,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.garbage.body.error",
+      "expected": "Invalid or expired refresh token",
+      "actual": "Refresh token is required",
+      "why": "differs"
+     },
+     {
+      "path": "steps.three-parts-wrong-sig.status",
+      "expected": 401,
+      "actual": 400,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "branch_off:routes/auth.js:182",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/auth.js",
+   "line": 182,
+   "before": "if (!refreshToken) {",
+   "after": "if (false) {",
+   "refs": [
+    "POST /api/auth/refresh#business_rules[0]",
+    "POST /api/auth/refresh#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/auth/refresh"
+   ],
+   "units": [
+    "refresh-invalid-token-401",
+    "refresh-missing-token-400",
+    "refresh-success-200",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/refresh-success-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refresh-missing-token-400",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 401,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-body.body.error",
+      "expected": "Refresh token is required",
+      "actual": "Invalid or expired refresh token",
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-string.status",
+      "expected": 400,
+      "actual": 401,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:routes/auth.js:183",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/auth.js",
+   "line": 183,
+   "before": "return res.status(400).json({",
+   "after": "return res.status(422).json({",
+   "refs": [
+    "POST /api/auth/refresh#business_rules[0]",
+    "POST /api/auth/refresh#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/auth/refresh"
+   ],
+   "units": [
+    "refresh-missing-token-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refresh-missing-token-400",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-string.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.null-token.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:routes/auth.js:184",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/auth.js",
+   "line": 184,
+   "before": "error: 'Refresh token is required'",
+   "after": "error_m2s: 'Refresh token is required'",
+   "refs": [
+    "POST /api/auth/refresh#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/auth/refresh"
+   ],
+   "units": [
+    "refresh-missing-token-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refresh-missing-token-400",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.empty-string.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.null-token.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "negate:routes/auth.js:191",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/auth.js",
+   "line": 191,
+   "before": "if (!payload) {",
+   "after": "if (!(!payload)) {",
+   "refs": [
+    "POST /api/auth/refresh#business_rules[2]",
+    "POST /api/auth/refresh#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/auth/refresh"
+   ],
+   "units": [
+    "refresh-invalid-token-401",
+    "refresh-success-200",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/refresh-success-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refresh-invalid-token-401",
+    "mismatches": [
+     {
+      "path": "steps.garbage.status",
+      "expected": 401,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.garbage.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "stack"
+      ]
+     },
+     {
+      "path": "steps.garbage.body.error",
+      "expected": "Invalid or expired refresh token",
+      "actual": "Cannot read properties of null (reading 'userId')",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "branch_off:routes/auth.js:191",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/auth.js",
+   "line": 191,
+   "before": "if (!payload) {",
+   "after": "if (false) {",
+   "refs": [
+    "POST /api/auth/refresh#business_rules[2]",
+    "POST /api/auth/refresh#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/auth/refresh"
+   ],
+   "units": [
+    "refresh-invalid-token-401",
+    "refresh-success-200",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/refresh-success-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refresh-invalid-token-401",
+    "mismatches": [
+     {
+      "path": "steps.garbage.status",
+      "expected": 401,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.garbage.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "stack"
+      ]
+     },
+     {
+      "path": "steps.garbage.body.error",
+      "expected": "Invalid or expired refresh token",
+      "actual": "Cannot read properties of null (reading 'userId')",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:routes/auth.js:192",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/auth.js",
+   "line": 192,
+   "before": "return res.status(401).json({",
+   "after": "return res.status(403).json({",
+   "refs": [
+    "POST /api/auth/refresh#business_rules[2]",
+    "POST /api/auth/refresh#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/auth/refresh"
+   ],
+   "units": [
+    "refresh-invalid-token-401"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refresh-invalid-token-401",
+    "mismatches": [
+     {
+      "path": "steps.garbage.status",
+      "expected": 401,
+      "actual": 403,
+      "why": "differs"
+     },
+     {
+      "path": "steps.three-parts-wrong-sig.status",
+      "expected": 401,
+      "actual": 403,
+      "why": "differs"
+     },
+     {
+      "path": "steps.access-as-refresh.status",
+      "expected": 401,
+      "actual": 403,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:routes/auth.js:193",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/auth.js",
+   "line": 193,
+   "before": "error: 'Invalid or expired refresh token'",
+   "after": "error_m2s: 'Invalid or expired refresh token'",
+   "refs": [
+    "POST /api/auth/refresh#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/auth/refresh"
+   ],
+   "units": [
+    "refresh-invalid-token-401"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refresh-invalid-token-401",
+    "mismatches": [
+     {
+      "path": "steps.garbage.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.three-parts-wrong-sig.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.access-as-refresh.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "negate:routes/auth.js:207",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/auth.js",
+   "line": 207,
+   "before": "if (!result.Item) {",
+   "after": "if (!(!result.Item)) {",
+   "refs": [
+    "POST /api/auth/refresh#business_rules[4]",
+    "POST /api/auth/refresh#responses[2]"
+   ],
+   "endpoints": [
+    "POST /api/auth/refresh"
+   ],
+   "units": [
+    "refresh-success-200",
+    "wb-auth-public-endpoints-ignore-bad-authorization"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "refresh-success-200",
+    "mismatches": [
+     {
+      "path": "steps.refresh.status",
+      "expected": 200,
+      "actual": 401,
+      "why": "differs"
+     },
+     {
+      "path": "steps.refresh.body",
+      "why": "keys differ",
+      "missing": [
+       "accessToken"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "steps.me.status",
+      "expected": 200,
+      "actual": 401,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "branch_off:routes/auth.js:207",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/auth.js",
+   "line": 207,
+   "before": "if (!result.Item) {",
+   "after": "if (false) {",
+   "refs": [
+    "POST /api/auth/refresh#business_rules[4]",
+    "POST /api/auth/refresh#responses[2]"
+   ],
+   "endpoints": [
+    "POST /api/auth/refresh"
+   ],
+   "units": [
+    "refresh-success-200",
+    "wb-auth-public-endpoints-ignore-bad-authorization"
+   ],
+   "outcome": "survived",
+   "units_run": 2,
+   "class": {
+    "class": "equivalent",
+    "source": "uncovered",
+    "reason": "judge/uncovered.json: POST /api/auth/refresh#responses[2]: 401 'User not found' 与上面同一条前提：需要“refreshToken 合法但用户条目不存在”。refreshToken 只能由注册接口签发（identities 的 u1.refresh），签发时条目已经写入，单体没有删除用户的接口，条目必然存在。"
+   }
+  },
+  {
+   "id": "status:routes/auth.js:208",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/auth.js",
+   "line": 208,
+   "before": "return res.status(401).json({",
+   "after": "return res.status(403).json({",
+   "refs": [
+    "POST /api/auth/refresh#business_rules[4]",
+    "POST /api/auth/refresh#responses[2]"
+   ],
+   "endpoints": [
+    "POST /api/auth/refresh"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "refresh-invalid-token-401",
+    "refresh-missing-token-400",
+    "refresh-success-200",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/refresh-success-200"
+   ],
+   "outcome": "survived",
+   "units_run": 6,
+   "class": {
+    "class": "equivalent",
+    "source": "uncovered",
+    "reason": "judge/uncovered.json: POST /api/auth/refresh#responses[2]: 401 'User not found' 与上面同一条前提：需要“refreshToken 合法但用户条目不存在”。refreshToken 只能由注册接口签发（identities 的 u1.refresh），签发时条目已经写入，单体没有删除用户的接口，条目必然存在。"
+   }
+  },
+  {
+   "id": "field:routes/auth.js:209",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/auth.js",
+   "line": 209,
+   "before": "error: 'User not found'",
+   "after": "error_m2s: 'User not found'",
+   "refs": [
+    "POST /api/auth/refresh#responses[2]"
+   ],
+   "endpoints": [
+    "POST /api/auth/refresh"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "refresh-invalid-token-401",
+    "refresh-missing-token-400",
+    "refresh-success-200",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-read-fails/refresh-success-200"
+   ],
+   "outcome": "survived",
+   "units_run": 6,
+   "class": {
+    "class": "equivalent",
+    "source": "uncovered",
+    "reason": "judge/uncovered.json: POST /api/auth/refresh#responses[2]: 401 'User not found' 与上面同一条前提：需要“refreshToken 合法但用户条目不存在”。refreshToken 只能由注册接口签发（identities 的 u1.refresh），签发时条目已经写入，单体没有删除用户的接口，条目必然存在。"
+   }
+  },
+  {
+   "id": "auth:routes/auth.js:235",
+   "kind": "source",
+   "operator": "auth",
+   "file": "routes/auth.js",
+   "line": 235,
+   "before": "router.get('/me', authMiddleware, async (req, res, next) => {",
+   "after": "router.get('/me', async (req, res, next) => {",
+   "refs": [
+    "GET /api/auth/me#auth",
+    "GET /api/auth/me#business_rules[0]",
+    "GET /api/auth/me#responses[4]"
+   ],
+   "endpoints": [
+    "GET /api/auth/me"
+   ],
+   "units": [
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "refresh-success-200",
+    "register-success-201",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "wb-x-customer-id-header-ignored",
+    "users-read-fails/me-success-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-success-200",
+    "mismatches": [
+     {
+      "path": "steps.me.status",
+      "expected": 200,
+      "actual": 401,
+      "why": "differs"
+     },
+     {
+      "path": "steps.me.body",
+      "why": "keys differ",
+      "missing": [
+       "user"
+      ],
+      "extra": [
+       "error"
+      ]
+     }
+    ]
+   },
+   "killing_units": 9
+  },
+  {
+   "id": "negate:routes/auth.js:240",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/auth.js",
+   "line": 240,
+   "before": "if (!userId || userId === 'default-customer-id') {",
+   "after": "if (!(!userId || userId === 'default-customer-id')) {",
+   "refs": [
+    "GET /api/auth/me#business_rules[2]",
+    "GET /api/auth/me#business_rules[7]",
+    "GET /api/auth/me#business_rules[8]",
+    "GET /api/auth/me#responses[0]"
+   ],
+   "endpoints": [
+    "GET /api/auth/me"
+   ],
+   "units": [
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "refresh-success-200",
+    "register-success-201",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "wb-x-customer-id-header-ignored",
+    "users-read-fails/me-success-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-success-200",
+    "mismatches": [
+     {
+      "path": "steps.me.status",
+      "expected": 200,
+      "actual": 401,
+      "why": "differs"
+     },
+     {
+      "path": "steps.me.body",
+      "why": "keys differ",
+      "missing": [
+       "user"
+      ],
+      "extra": [
+       "error"
+      ]
+     }
+    ]
+   },
+   "killing_units": 9
+  },
+  {
+   "id": "branch_off:routes/auth.js:240",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/auth.js",
+   "line": 240,
+   "before": "if (!userId || userId === 'default-customer-id') {",
+   "after": "if (false) {",
+   "refs": [
+    "GET /api/auth/me#business_rules[2]",
+    "GET /api/auth/me#business_rules[7]",
+    "GET /api/auth/me#business_rules[8]",
+    "GET /api/auth/me#responses[0]"
+   ],
+   "endpoints": [
+    "GET /api/auth/me"
+   ],
+   "units": [
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "refresh-success-200",
+    "register-success-201",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "wb-x-customer-id-header-ignored",
+    "users-read-fails/me-success-200"
+   ],
+   "outcome": "survived",
+   "units_run": 9,
+   "class": {
+    "class": "equivalent",
+    "source": "uncovered",
+    "reason": "judge/uncovered.json: GET /api/auth/me#responses[0]: handler 自己抛的 401 'Authentication required' 只在 AUTH_DEV_MODE=true 且请求既没有可用 token 也没带 x-customer-id 时出现（authMiddleware 会把 req.customerId 设成哨兵值 'default-customer-id'）。裁判用默认配置（AUTH_DEV_MODE=false，事实库 GET /api/auth/me#business_rules[7]/[8] 都写明此路默认不可达）跑单体，无凭证请求在中间件里就返回 responses[4]，任何 HTTP 请求都走不到这一臂。"
+   }
+  },
+  {
+   "id": "status:routes/auth.js:241",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/auth.js",
+   "line": 241,
+   "before": "return res.status(401).json({",
+   "after": "return res.status(403).json({",
+   "refs": [
+    "GET /api/auth/me#responses[0]"
+   ],
+   "endpoints": [
+    "GET /api/auth/me"
+   ],
+   "units": [
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "me-unauthenticated-401",
+    "refresh-success-200",
+    "register-success-201",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "wb-x-customer-id-header-ignored",
+    "users-read-fails/login-success-200",
+    "users-read-fails/me-success-200",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201"
+   ],
+   "outcome": "survived",
+   "units_run": 13,
+   "class": {
+    "class": "equivalent",
+    "source": "uncovered",
+    "reason": "judge/uncovered.json: GET /api/auth/me#responses[0]: handler 自己抛的 401 'Authentication required' 只在 AUTH_DEV_MODE=true 且请求既没有可用 token 也没带 x-customer-id 时出现（authMiddleware 会把 req.customerId 设成哨兵值 'default-customer-id'）。裁判用默认配置（AUTH_DEV_MODE=false，事实库 GET /api/auth/me#business_rules[7]/[8] 都写明此路默认不可达）跑单体，无凭证请求在中间件里就返回 responses[4]，任何 HTTP 请求都走不到这一臂。"
+   }
+  },
+  {
+   "id": "field:routes/auth.js:242",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/auth.js",
+   "line": 242,
+   "before": "error: 'Authentication required'",
+   "after": "error_m2s: 'Authentication required'",
+   "refs": [
+    "GET /api/auth/me#responses[0]"
+   ],
+   "endpoints": [
+    "GET /api/auth/me"
+   ],
+   "units": [
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "me-unauthenticated-401",
+    "refresh-success-200",
+    "register-success-201",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "wb-x-customer-id-header-ignored",
+    "users-read-fails/login-success-200",
+    "users-read-fails/me-success-200",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201"
+   ],
+   "outcome": "survived",
+   "units_run": 13,
+   "class": {
+    "class": "equivalent",
+    "source": "uncovered",
+    "reason": "judge/uncovered.json: GET /api/auth/me#responses[0]: handler 自己抛的 401 'Authentication required' 只在 AUTH_DEV_MODE=true 且请求既没有可用 token 也没带 x-customer-id 时出现（authMiddleware 会把 req.customerId 设成哨兵值 'default-customer-id'）。裁判用默认配置（AUTH_DEV_MODE=false，事实库 GET /api/auth/me#business_rules[7]/[8] 都写明此路默认不可达）跑单体，无凭证请求在中间件里就返回 responses[4]，任何 HTTP 请求都走不到这一臂。"
+   }
+  },
+  {
+   "id": "negate:routes/auth.js:255",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/auth.js",
+   "line": 255,
+   "before": "if (!result.Item) {",
+   "after": "if (!(!result.Item)) {",
+   "refs": [
+    "GET /api/auth/me#business_rules[5]",
+    "GET /api/auth/me#responses[1]"
+   ],
+   "endpoints": [
+    "GET /api/auth/me"
+   ],
+   "units": [
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "refresh-success-200",
+    "register-success-201",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "wb-x-customer-id-header-ignored"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-success-200",
+    "mismatches": [
+     {
+      "path": "steps.me.status",
+      "expected": 200,
+      "actual": 404,
+      "why": "differs"
+     },
+     {
+      "path": "steps.me.body",
+      "why": "keys differ",
+      "missing": [
+       "user"
+      ],
+      "extra": [
+       "error"
+      ]
+     }
+    ]
+   },
+   "killing_units": 8
+  },
+  {
+   "id": "branch_off:routes/auth.js:255",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/auth.js",
+   "line": 255,
+   "before": "if (!result.Item) {",
+   "after": "if (false) {",
+   "refs": [
+    "GET /api/auth/me#business_rules[5]",
+    "GET /api/auth/me#responses[1]"
+   ],
+   "endpoints": [
+    "GET /api/auth/me"
+   ],
+   "units": [
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "refresh-success-200",
+    "register-success-201",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "wb-x-customer-id-header-ignored"
+   ],
+   "outcome": "survived",
+   "units_run": 8,
+   "class": {
+    "class": "equivalent",
+    "source": "uncovered",
+    "reason": "judge/uncovered.json: GET /api/auth/me#responses[1]: 404 'User not found' 需要“accessToken 合法但 Bookstore-Users 里没有该 userId 的条目”。JWT 用服务端密钥签名，裁判伪造不出指向别的 userId 的 token；而身份准备总是先注册（PutItem）出条目，单体也没有任何删除用户的接口，所以主键 GetItem 必然命中。"
+   }
+  },
+  {
+   "id": "status:routes/auth.js:256",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/auth.js",
+   "line": 256,
+   "before": "return res.status(404).json({",
+   "after": "return res.status(410).json({",
+   "refs": [
+    "GET /api/auth/me#business_rules[5]",
+    "GET /api/auth/me#responses[1]"
+   ],
+   "endpoints": [
+    "GET /api/auth/me"
+   ],
+   "units": [
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "me-unauthenticated-401",
+    "refresh-success-200",
+    "register-success-201",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "wb-x-customer-id-header-ignored",
+    "users-read-fails/login-success-200",
+    "users-read-fails/me-success-200",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201"
+   ],
+   "outcome": "survived",
+   "units_run": 13,
+   "class": {
+    "class": "equivalent",
+    "source": "uncovered",
+    "reason": "judge/uncovered.json: GET /api/auth/me#responses[1]: 404 'User not found' 需要“accessToken 合法但 Bookstore-Users 里没有该 userId 的条目”。JWT 用服务端密钥签名，裁判伪造不出指向别的 userId 的 token；而身份准备总是先注册（PutItem）出条目，单体也没有任何删除用户的接口，所以主键 GetItem 必然命中。"
+   }
+  },
+  {
+   "id": "field:routes/auth.js:257",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/auth.js",
+   "line": 257,
+   "before": "error: 'User not found'",
+   "after": "error_m2s: 'User not found'",
+   "refs": [
+    "GET /api/auth/me#business_rules[5]",
+    "GET /api/auth/me#responses[1]"
+   ],
+   "endpoints": [
+    "GET /api/auth/me"
+   ],
+   "units": [
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "me-unauthenticated-401",
+    "refresh-success-200",
+    "register-success-201",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "wb-x-customer-id-header-ignored",
+    "users-read-fails/login-success-200",
+    "users-read-fails/me-success-200",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201"
+   ],
+   "outcome": "survived",
+   "units_run": 13,
+   "class": {
+    "class": "equivalent",
+    "source": "uncovered",
+    "reason": "judge/uncovered.json: GET /api/auth/me#responses[1]: 404 'User not found' 需要“accessToken 合法但 Bookstore-Users 里没有该 userId 的条目”。JWT 用服务端密钥签名，裁判伪造不出指向别的 userId 的 token；而身份准备总是先注册（PutItem）出条目，单体也没有任何删除用户的接口，所以主键 GetItem 必然命中。"
+   }
+  },
+  {
+   "id": "field:routes/auth.js:267",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/auth.js",
+   "line": 267,
+   "before": "user: user",
+   "after": "user_m2s: user",
+   "refs": [
+    "GET /api/auth/me#business_rules[4]",
+    "GET /api/auth/me#responses[2]"
+   ],
+   "endpoints": [
+    "GET /api/auth/me"
+   ],
+   "units": [
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "refresh-success-200",
+    "register-success-201",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-login-does-not-revoke-old-token",
+    "wb-x-customer-id-header-ignored"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "login-success-200",
+    "mismatches": [
+     {
+      "path": "steps.me.body",
+      "why": "keys differ",
+      "missing": [
+       "user"
+      ],
+      "extra": [
+       "user_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 8
+  },
+  {
+   "id": "negate:routes/books.js:23",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/books.js",
+   "line": 23,
+   "before": "if (category) {",
+   "after": "if (!(category)) {",
+   "refs": [
+    "GET /api/books#business_rules[3]"
+   ],
+   "endpoints": [
+    "GET /api/books"
+   ],
+   "units": [
+    "books-list-all-200",
+    "books-list-by-category-200",
+    "books-shared-between-users-200",
+    "wb-search-non-string-name-500",
+    "books-read-fails/books-list-all-200",
+    "books-read-fails/books-list-by-category-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "books-list-all-200",
+    "mismatches": [
+     {
+      "path": "steps.all.status",
+      "expected": 200,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.all.body",
+      "expected": [
+       {
+        "cover": "https://covers.example/book-002.png",
+        "author": "J.R.R. Tolkien",
+        "price": 20,
+        "name": "The Silmarillion",
+        "rating": 4.2,
+        "id": "book-002",
+        "category": "fiction"
+       },
+       {
+        "cover": "https://covers.example/book-999.png",
+        "price": 5,
+        "id": "book-999"
+       },
+       {
+        "cover": "https://covers.example/book-101.png",
+        "author": "Robert C. Martin",
+        "price": 30,
+        "name": "Clean Code",
+        "rating": 4.7,
+        "id": "book-101",
+        "category": "programming"
+       },
+       {
+        "name": "Design Patterns",
+        "rating": 4,
+        "id": "book-102",
+        "category": "programming",
+        "author": "Gang of Four",
+        "price": 45
+       },
+       {
+        "cover": "https://covers.example/book-001.png",
+        "author": "J.R.R. Tolkien",
+        "price": 15.5,
+        "name": "The Hobbit",
+        "rating": 4.5,
+        "id": "book-001",
+        "category": "fiction"
+       }
+      ],
+      "actual": {
+       "error": "ExpressionAttributeValues must not be empty",
+       "stack": "ValidationException: ExpressionAttributeValues must not be empty\n    at Request.extractError (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\mono_benchmark\\bookstore\\node_modules\\aws-sdk\\lib\\protocol\\json.js:80:27)\n    at Request.callListeners (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\mono_benchmark\\bookstore\\node_modules\\aws-sdk\\lib\\sequential_executor.js:106:20)\n    at Request.emit (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\mono_benchmark\\bookstore\\node_modules\\aws-sdk\\lib\\sequential_executor.js:78:10)\n    at Request.emit (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\mono_benchmark\\bookstore\\node_modules\\aws-sdk\\lib\\request.js:686:14)\n    at Request.transition (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\mono_benchmark\\bookstore\\node_modules\\aws-sdk\\lib\\request.js:22:10)\n    at AcceptorStateMachine.runTo (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\mono_benchmark\\bookstore\\node_modules\\aws-sdk\\lib\\state_machine.js:14:12)\n    at D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\mono_benchmark\\bookstore\\node_modules\\aws-sdk\\lib\\state_machine.js:26:10\n    at Request.<anonymous> (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\mono_benchmark\\bookstore\\node_modules\\aws-sdk\\lib\\request.js:38:9)\n    at Request.<anonymous> (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\mono_benchmark\\bookstore\\node_modules\\aws-sdk\\lib\\request.js:688:12)\n    at Request.callListeners (D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\mono_benchmark\\bookstore\\node_modules\\aws-sdk\\lib\\sequential_executor.js:116:18)"
+      },
+      "why": "expected 5 items"
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "branch_off:routes/books.js:23",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/books.js",
+   "line": 23,
+   "before": "if (category) {",
+   "after": "if (false) {",
+   "refs": [
+    "GET /api/books#business_rules[3]"
+   ],
+   "endpoints": [
+    "GET /api/books"
+   ],
+   "units": [
+    "books-list-all-200",
+    "books-list-by-category-200",
+    "books-shared-between-users-200",
+    "wb-search-non-string-name-500",
+    "books-read-fails/books-list-all-200",
+    "books-read-fails/books-list-by-category-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "books-list-by-category-200",
+    "mismatches": [
+     {
+      "path": "steps.fiction.body",
+      "expected": [
+       {
+        "cover": "https://covers.example/book-002.png",
+        "author": "J.R.R. Tolkien",
+        "price": 20,
+        "name": "The Silmarillion",
+        "rating": 4.2,
+        "id": "book-002",
+        "category": "fiction"
+       },
+       {
+        "cover": "https://covers.example/book-001.png",
+        "author": "J.R.R. Tolkien",
+        "price": 15.5,
+        "name": "The Hobbit",
+        "rating": 4.5,
+        "id": "book-001",
+        "category": "fiction"
+       }
+      ],
+      "actual": [
+       {
+        "cover": "https://covers.example/book-002.png",
+        "author": "J.R.R. Tolkien",
+        "price": 20,
+        "name": "The Silmarillion",
+        "rating": 4.2,
+        "id": "book-002",
+        "category": "fiction"
+       },
+       {
+        "cover": "https://covers.example/book-999.png",
+        "price": 5,
+        "id": "book-999"
+       },
+       {
+        "cover": "https://covers.example/book-101.png",
+        "author": "Robert C. Martin",
+        "price": 30,
+        "name": "Clean Code",
+        "rating": 4.7,
+        "id": "book-101",
+        "category": "programming"
+       },
+       {
+        "name": "Design Patterns",
+        "rating": 4,
+        "id": "book-102",
+        "category": "programming",
+        "author": "Gang of Four",
+        "price": 45
+       },
+       {
+        "cover": "https://covers.example/book-001.png",
+        "author": "J.R.R. Tolkien",
+        "price": 15.5,
+        "name": "The Hobbit",
+        "rating": 4.5,
+        "id": "book-001",
+        "category": "fiction"
+       }
+      ],
+      "why": "expected 2 items"
+     },
+     {
+      "path": "steps.programming.body",
+      "expected": [
+       {
+        "cover": "https://covers.example/book-101.png",
+        "author": "Robert C. Martin",
+        "price": 30,
+        "name": "Clean Code",
+        "rating": 4.7,
+        "id": "book-101",
+        "category": "programming"
+       },
+       {
+        "name": "Design Patterns",
+        "rating": 4,
+        "id": "book-102",
+        "category": "programming",
+        "author": "Gang of Four",
+        "price": 45
+       }
+      ],
+      "actual": [
+       {
+        "cover": "https://covers.example/book-002.png",
+        "author": "J.R.R. Tolkien",
+        "price": 20,
+        "name": "The Silmarillion",
+        "rating": 4.2,
+        "id": "book-002",
+        "category": "fiction"
+       },
+       {
+        "cover": "https://covers.example/book-999.png",
+        "price": 5,
+        "id": "book-999"
+       },
+       {
+        "cover": "https://covers.example/book-101.png",
+        "author": "Robert C. Martin",
+        "price": 30,
+        "name": "Clean Code",
+        "rating": 4.7,
+        "id": "book-101",
+        "category": "programming"
+       },
+       {
+        "name": "Design Patterns",
+        "rating": 4,
+        "id": "book-102",
+        "category": "programming",
+        "author": "Gang of Four",
+        "price": 45
+       },
+       {
+        "cover": "https://covers.example/book-001.png",
+        "author": "J.R.R. Tolkien",
+        "price": 15.5,
+        "name": "The Hobbit",
+        "rating": 4.5,
+        "id": "book-001",
+        "category": "fiction"
+       }
+      ],
+      "why": "expected 2 items"
+     },
+     {
+      "path": "steps.unknown.body",
+      "expected": [],
+      "actual": [
+       {
+        "cover": "https://covers.example/book-002.png",
+        "author": "J.R.R. Tolkien",
+        "price": 20,
+        "name": "The Silmarillion",
+        "rating": 4.2,
+        "id": "book-002",
+        "category": "fiction"
+       },
+       {
+        "cover": "https://covers.example/book-999.png",
+        "price": 5,
+        "id": "book-999"
+       },
+       {
+        "cover": "https://covers.example/book-101.png",
+        "author": "Robert C. Martin",
+        "price": 30,
+        "name": "Clean Code",
+        "rating": 4.7,
+        "id": "book-101",
+        "category": "programming"
+       },
+       {
+        "name": "Design Patterns",
+        "rating": 4,
+        "id": "book-102",
+        "category": "programming",
+        "author": "Gang of Four",
+        "price": 45
+       },
+       {
+        "cover": "https://covers.example/book-001.png",
+        "author": "J.R.R. Tolkien",
+        "price": 15.5,
+        "name": "The Hobbit",
+        "rating": 4.5,
+        "id": "book-001",
+        "category": "fiction"
+       }
+      ],
+      "why": "expected 0 items"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "negate:routes/books.js:67",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/books.js",
+   "line": 67,
+   "before": "if (data.Item) {",
+   "after": "if (!(data.Item)) {",
+   "refs": [
+    "GET /api/books/:id#responses[0]"
+   ],
+   "endpoints": [
+    "GET /api/books/:id"
+   ],
+   "units": [
+    "book-detail-200",
+    "book-detail-id-is-string-404",
+    "book-detail-not-found-404",
+    "wb-search-non-string-name-500",
+    "books-read-throttled/book-detail-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "book-detail-200",
+    "mismatches": [
+     {
+      "path": "steps.one.status",
+      "expected": 200,
+      "actual": 404,
+      "why": "differs"
+     },
+     {
+      "path": "steps.one.body",
+      "why": "keys differ",
+      "missing": [
+       "author",
+       "category",
+       "cover",
+       "id",
+       "name",
+       "price",
+       "rating"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "steps.two.status",
+      "expected": 200,
+      "actual": 404,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "branch_off:routes/books.js:67",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/books.js",
+   "line": 67,
+   "before": "if (data.Item) {",
+   "after": "if (false) {",
+   "refs": [
+    "GET /api/books/:id#responses[0]"
+   ],
+   "endpoints": [
+    "GET /api/books/:id"
+   ],
+   "units": [
+    "book-detail-200",
+    "book-detail-id-is-string-404",
+    "book-detail-not-found-404",
+    "wb-search-non-string-name-500",
+    "books-read-throttled/book-detail-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "book-detail-200",
+    "mismatches": [
+     {
+      "path": "steps.one.status",
+      "expected": 200,
+      "actual": 404,
+      "why": "differs"
+     },
+     {
+      "path": "steps.one.body",
+      "why": "keys differ",
+      "missing": [
+       "author",
+       "category",
+       "cover",
+       "id",
+       "name",
+       "price",
+       "rating"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "steps.two.status",
+      "expected": 200,
+      "actual": 404,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "status:routes/books.js:70",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/books.js",
+   "line": 70,
+   "before": "res.status(404).json({ error: 'Book not found' });",
+   "after": "res.status(410).json({ error: 'Book not found' });",
+   "refs": [
+    "GET /api/books/:id#business_rules[3]",
+    "GET /api/books/:id#responses[1]"
+   ],
+   "endpoints": [
+    "GET /api/books/:id"
+   ],
+   "units": [
+    "book-detail-id-is-string-404",
+    "book-detail-not-found-404"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "book-detail-id-is-string-404",
+    "mismatches": [
+     {
+      "path": "steps.numeric-string.status",
+      "expected": 404,
+      "actual": 410,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:routes/books.js:70",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/books.js",
+   "line": 70,
+   "before": "res.status(404).json({ error: 'Book not found' });",
+   "after": "res.status(404).json({ error_m2s: 'Book not found' });",
+   "refs": [
+    "GET /api/books/:id#business_rules[3]",
+    "GET /api/books/:id#responses[1]"
+   ],
+   "endpoints": [
+    "GET /api/books/:id"
+   ],
+   "units": [
+    "book-detail-id-is-string-404",
+    "book-detail-not-found-404"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "book-detail-id-is-string-404",
+    "mismatches": [
+     {
+      "path": "steps.numeric-string.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "negate:routes/cart.js:52",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/cart.js",
+   "line": 52,
+   "before": "if (data.Item) {",
+   "after": "if (!(data.Item)) {",
+   "refs": [
+    "GET /api/cart/:bookId#responses[0]"
+   ],
+   "endpoints": [
+    "GET /api/cart/:bookId"
+   ],
+   "units": [
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-then-read",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-update-creates-missing-item",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "cart-write-throttled-once/cart-add-then-read",
+    "wb-cart-write-fails/cart-add-then-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-add-string-quantity-stored-as-is",
+    "mismatches": [
+     {
+      "path": "steps.read.status",
+      "expected": 200,
+      "actual": 404,
+      "why": "differs"
+     },
+     {
+      "path": "steps.read.body",
+      "why": "keys differ",
+      "missing": [
+       "bookId",
+       "customerId",
+       "price",
+       "quantity"
+      ],
+      "extra": [
+       "error"
+      ]
+     }
+    ]
+   },
+   "killing_units": 14
+  },
+  {
+   "id": "branch_off:routes/cart.js:52",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/cart.js",
+   "line": 52,
+   "before": "if (data.Item) {",
+   "after": "if (false) {",
+   "refs": [
+    "GET /api/cart/:bookId#responses[0]"
+   ],
+   "endpoints": [
+    "GET /api/cart/:bookId"
+   ],
+   "units": [
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-then-read",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-update-creates-missing-item",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "cart-write-throttled-once/cart-add-then-read",
+    "wb-cart-write-fails/cart-add-then-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-add-string-quantity-stored-as-is",
+    "mismatches": [
+     {
+      "path": "steps.read.status",
+      "expected": 200,
+      "actual": 404,
+      "why": "differs"
+     },
+     {
+      "path": "steps.read.body",
+      "why": "keys differ",
+      "missing": [
+       "bookId",
+       "customerId",
+       "price",
+       "quantity"
+      ],
+      "extra": [
+       "error"
+      ]
+     }
+    ]
+   },
+   "killing_units": 11
+  },
+  {
+   "id": "status:routes/cart.js:55",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/cart.js",
+   "line": 55,
+   "before": "res.status(404).json({ error: 'Item not found in cart' });",
+   "after": "res.status(410).json({ error: 'Item not found in cart' });",
+   "refs": [
+    "GET /api/cart/:bookId#business_rules[2]",
+    "GET /api/cart/:bookId#responses[1]"
+   ],
+   "endpoints": [
+    "GET /api/cart/:bookId"
+   ],
+   "units": [
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "wb-cart-write-fails/cart-add-then-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-item-missing-404",
+    "mismatches": [
+     {
+      "path": "steps.get-missing.status",
+      "expected": 404,
+      "actual": 410,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "field:routes/cart.js:55",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/cart.js",
+   "line": 55,
+   "before": "res.status(404).json({ error: 'Item not found in cart' });",
+   "after": "res.status(404).json({ error_m2s: 'Item not found in cart' });",
+   "refs": [
+    "GET /api/cart/:bookId#business_rules[2]",
+    "GET /api/cart/:bookId#responses[1]"
+   ],
+   "endpoints": [
+    "GET /api/cart/:bookId"
+   ],
+   "units": [
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "wb-cart-write-fails/cart-add-then-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-item-missing-404",
+    "mismatches": [
+     {
+      "path": "steps.get-missing.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "negate:routes/cart.js:72",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/cart.js",
+   "line": 72,
+   "before": "if (!bookId || !quantity || !price) {",
+   "after": "if (!(!bookId || !quantity || !price)) {",
+   "refs": [
+    "POST /api/cart#business_rules[0]",
+    "POST /api/cart#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/cart"
+   ],
+   "units": [
+    "cart-add-body-size-boundary",
+    "cart-add-extra-fields-ignored",
+    "cart-add-missing-fields-400",
+    "cart-add-non-json-content-type-400",
+    "cart-add-overwrite-not-accumulate",
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-text-plain-400-no-write",
+    "cart-add-then-read",
+    "cart-add-unknown-book-accepted",
+    "cart-add-zero-values-400",
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-oversize-body-413",
+    "cart-delete-then-read",
+    "cart-delete-unauthenticated-401",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-list-isolation-between-users",
+    "cart-list-no-book-join",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-oversize-body-413",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-cart-x-customer-id-header-ignored",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-write-throttled-once/cart-add-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-add-body-size-boundary",
+    "mismatches": [
+     {
+      "path": "steps.at-limit.status",
+      "expected": 200,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.at-limit.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "steps.oversize-text-plain.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 48
+  },
+  {
+   "id": "branch_off:routes/cart.js:72",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/cart.js",
+   "line": 72,
+   "before": "if (!bookId || !quantity || !price) {",
+   "after": "if (false) {",
+   "refs": [
+    "POST /api/cart#business_rules[0]",
+    "POST /api/cart#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/cart"
+   ],
+   "units": [
+    "cart-add-body-size-boundary",
+    "cart-add-extra-fields-ignored",
+    "cart-add-missing-fields-400",
+    "cart-add-non-json-content-type-400",
+    "cart-add-overwrite-not-accumulate",
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-text-plain-400-no-write",
+    "cart-add-then-read",
+    "cart-add-unknown-book-accepted",
+    "cart-add-zero-values-400",
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-oversize-body-413",
+    "cart-delete-then-read",
+    "cart-delete-unauthenticated-401",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-list-isolation-between-users",
+    "cart-list-no-book-join",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-oversize-body-413",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-cart-x-customer-id-header-ignored",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-write-throttled-once/cart-add-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-add-body-size-boundary",
+    "mismatches": [
+     {
+      "path": "steps.oversize-text-plain.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.oversize-text-plain.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "stack"
+      ]
+     },
+     {
+      "path": "steps.oversize-text-plain.body.error",
+      "expected": "Missing required fields: bookId, quantity, price",
+      "actual": "One of the required keys was not given a value",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "status:routes/cart.js:73",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/cart.js",
+   "line": 73,
+   "before": "return res.status(400).json({",
+   "after": "return res.status(422).json({",
+   "refs": [
+    "POST /api/cart#business_rules[0]",
+    "POST /api/cart#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/cart"
+   ],
+   "units": [
+    "cart-add-body-size-boundary",
+    "cart-add-missing-fields-400",
+    "cart-add-text-plain-400-no-write",
+    "cart-add-zero-values-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-add-body-size-boundary",
+    "mismatches": [
+     {
+      "path": "steps.oversize-text-plain.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "field:routes/cart.js:74",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/cart.js",
+   "line": 74,
+   "before": "error: 'Missing required fields: bookId, quantity, price'",
+   "after": "error_m2s: 'Missing required fields: bookId, quantity, price'",
+   "refs": [
+    "POST /api/cart#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/cart"
+   ],
+   "units": [
+    "cart-add-body-size-boundary",
+    "cart-add-missing-fields-400",
+    "cart-add-text-plain-400-no-write",
+    "cart-add-zero-values-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-add-body-size-boundary",
+    "mismatches": [
+     {
+      "path": "steps.oversize-text-plain.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "field:routes/cart.js:89",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/cart.js",
+   "line": 89,
+   "before": "res.json({ message: 'Item added to cart successfully' });",
+   "after": "res.json({ message_m2s: 'Item added to cart successfully' });",
+   "refs": [
+    "POST /api/cart#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/cart"
+   ],
+   "units": [
+    "cart-add-body-size-boundary",
+    "cart-add-extra-fields-ignored",
+    "cart-add-non-json-content-type-400",
+    "cart-add-overwrite-not-accumulate",
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-then-read",
+    "cart-add-unknown-book-accepted",
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-oversize-body-413",
+    "cart-delete-then-read",
+    "cart-delete-unauthenticated-401",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-list-isolation-between-users",
+    "cart-list-no-book-join",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-oversize-body-413",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-cart-x-customer-id-header-ignored",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-write-throttled-once/cart-add-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-add-body-size-boundary",
+    "mismatches": [
+     {
+      "path": "steps.at-limit.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "message_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 44
+  },
+  {
+   "id": "negate:routes/cart.js:105",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/cart.js",
+   "line": 105,
+   "before": "if (!bookId || !quantity) {",
+   "after": "if (!(!bookId || !quantity)) {",
+   "refs": [
+    "PUT /api/cart#business_rules[0]",
+    "PUT /api/cart#responses[0]"
+   ],
+   "endpoints": [
+    "PUT /api/cart"
+   ],
+   "units": [
+    "cart-update-creates-missing-item",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-conditional-fails/cart-update-creates-missing-item"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-update-creates-missing-item",
+    "mismatches": [
+     {
+      "path": "steps.upd.status",
+      "expected": 200,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.upd.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "steps.read.status",
+      "expected": 200,
+      "actual": 404,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 6
+  },
+  {
+   "id": "branch_off:routes/cart.js:105",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/cart.js",
+   "line": 105,
+   "before": "if (!bookId || !quantity) {",
+   "after": "if (false) {",
+   "refs": [
+    "PUT /api/cart#business_rules[0]",
+    "PUT /api/cart#responses[0]"
+   ],
+   "endpoints": [
+    "PUT /api/cart"
+   ],
+   "units": [
+    "cart-update-creates-missing-item",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-conditional-fails/cart-update-creates-missing-item"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-update-missing-fields-400",
+    "mismatches": [
+     {
+      "path": "steps.no-fields.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-fields.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "stack"
+      ]
+     },
+     {
+      "path": "steps.no-fields.body.error",
+      "expected": "Missing required fields: bookId, quantity",
+      "actual": "The number of conditions on the keys is invalid",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:routes/cart.js:106",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/cart.js",
+   "line": 106,
+   "before": "return res.status(400).json({",
+   "after": "return res.status(422).json({",
+   "refs": [
+    "PUT /api/cart#responses[0]"
+   ],
+   "endpoints": [
+    "PUT /api/cart"
+   ],
+   "units": [
+    "cart-update-missing-fields-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-update-missing-fields-400",
+    "mismatches": [
+     {
+      "path": "steps.no-fields.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-quantity.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.zero-quantity.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:routes/cart.js:107",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/cart.js",
+   "line": 107,
+   "before": "error: 'Missing required fields: bookId, quantity'",
+   "after": "error_m2s: 'Missing required fields: bookId, quantity'",
+   "refs": [
+    "PUT /api/cart#responses[0]"
+   ],
+   "endpoints": [
+    "PUT /api/cart"
+   ],
+   "units": [
+    "cart-update-missing-fields-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-update-missing-fields-400",
+    "mismatches": [
+     {
+      "path": "steps.no-fields.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.no-quantity.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.zero-quantity.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:routes/cart.js:125",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/cart.js",
+   "line": 125,
+   "before": "res.json({ message: 'Cart updated successfully' });",
+   "after": "res.json({ message_m2s: 'Cart updated successfully' });",
+   "refs": [
+    "PUT /api/cart#business_rules[4]",
+    "PUT /api/cart#responses[1]"
+   ],
+   "endpoints": [
+    "PUT /api/cart"
+   ],
+   "units": [
+    "cart-update-creates-missing-item",
+    "cart-update-other-user-item-untouched",
+    "cart-update-string-quantity",
+    "cart-update-then-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-update-creates-missing-item",
+    "mismatches": [
+     {
+      "path": "steps.upd.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "message_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "negate:routes/cart.js:141",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/cart.js",
+   "line": 141,
+   "before": "if (!bookId) {",
+   "after": "if (!(!bookId)) {",
+   "refs": [
+    "DELETE /api/cart#business_rules[0]",
+    "DELETE /api/cart#responses[0]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart"
+   ],
+   "units": [
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-then-read",
+    "wb-cart-delete-touches-nothing-else",
+    "cart-delete-fails/cart-delete-then-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-delete-cannot-touch-other-user",
+    "mismatches": [
+     {
+      "path": "steps.del-as-u1.status",
+      "expected": 200,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.del-as-u1.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "error"
+      ]
+     }
+    ]
+   },
+   "killing_units": 6
+  },
+  {
+   "id": "branch_off:routes/cart.js:141",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/cart.js",
+   "line": 141,
+   "before": "if (!bookId) {",
+   "after": "if (false) {",
+   "refs": [
+    "DELETE /api/cart#business_rules[0]",
+    "DELETE /api/cart#responses[0]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart"
+   ],
+   "units": [
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-then-read",
+    "wb-cart-delete-touches-nothing-else",
+    "cart-delete-fails/cart-delete-then-read"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-delete-missing-book-id-400",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "stack"
+      ]
+     },
+     {
+      "path": "steps.empty-body.body.error",
+      "expected": "Missing required field: bookId",
+      "actual": "The number of conditions on the keys is invalid",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:routes/cart.js:142",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/cart.js",
+   "line": 142,
+   "before": "return res.status(400).json({",
+   "after": "return res.status(422).json({",
+   "refs": [
+    "DELETE /api/cart#business_rules[0]",
+    "DELETE /api/cart#responses[0]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart"
+   ],
+   "units": [
+    "cart-delete-missing-book-id-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-delete-missing-book-id-400",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-book-id.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.null-book-id.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:routes/cart.js:143",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/cart.js",
+   "line": 143,
+   "before": "error: 'Missing required field: bookId'",
+   "after": "error_m2s: 'Missing required field: bookId'",
+   "refs": [
+    "DELETE /api/cart#responses[0]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart"
+   ],
+   "units": [
+    "cart-delete-missing-book-id-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-delete-missing-book-id-400",
+    "mismatches": [
+     {
+      "path": "steps.empty-body.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.empty-book-id.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.null-book-id.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:routes/cart.js:156",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/cart.js",
+   "line": 156,
+   "before": "res.json({ message: 'Item removed from cart successfully' });",
+   "after": "res.json({ message_m2s: 'Item removed from cart successfully' });",
+   "refs": [
+    "DELETE /api/cart#business_rules[3]",
+    "DELETE /api/cart#responses[1]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart"
+   ],
+   "units": [
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-then-read",
+    "wb-cart-delete-touches-nothing-else"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-delete-cannot-touch-other-user",
+    "mismatches": [
+     {
+      "path": "steps.del-as-u1.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "message_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "negate:routes/orders.js:49",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/orders.js",
+   "line": 49,
+   "before": "if (!books || !Array.isArray(books) || books.length === 0) {",
+   "after": "if (!(!books || !Array.isArray(books) || books.length === 0)) {",
+   "refs": [
+    "POST /api/orders#business_rules[0]",
+    "POST /api/orders#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/orders"
+   ],
+   "units": [
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-then-read-all",
+    "order-validation-400",
+    "orders-list-isolation",
+    "wb-order-qty-not-number",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "order-bestsellers-async",
+    "mismatches": [
+     {
+      "path": "steps.create.status",
+      "expected": 200,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.create.body",
+      "why": "keys differ",
+      "missing": [
+       "message",
+       "orderId"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "steps.bestsellers.body",
+      "expected": [
+       "book-002",
+       "book-101"
+      ],
+      "actual": [],
+      "why": "expected 2 items"
+     }
+    ]
+   },
+   "killing_units": 15
+  },
+  {
+   "id": "branch_off:routes/orders.js:49",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/orders.js",
+   "line": 49,
+   "before": "if (!books || !Array.isArray(books) || books.length === 0) {",
+   "after": "if (false) {",
+   "refs": [
+    "POST /api/orders#business_rules[0]",
+    "POST /api/orders#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/orders"
+   ],
+   "units": [
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-then-read-all",
+    "order-validation-400",
+    "orders-list-isolation",
+    "wb-order-qty-not-number",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "order-validation-400",
+    "mismatches": [
+     {
+      "path": "steps.no-books.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-books.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "stack"
+      ]
+     },
+     {
+      "path": "steps.no-books.body.error",
+      "expected": "Missing or invalid books array",
+      "actual": "Cannot read properties of undefined (reading 'map')",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "status:routes/orders.js:50",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/orders.js",
+   "line": 50,
+   "before": "return res.status(400).json({",
+   "after": "return res.status(422).json({",
+   "refs": [
+    "POST /api/orders#business_rules[0]",
+    "POST /api/orders#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/orders"
+   ],
+   "units": [
+    "order-validation-400",
+    "orders-write-fails/order-validation-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "order-validation-400",
+    "mismatches": [
+     {
+      "path": "steps.no-books.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.null-books.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.string-books.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:routes/orders.js:51",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/orders.js",
+   "line": 51,
+   "before": "error: 'Missing or invalid books array'",
+   "after": "error_m2s: 'Missing or invalid books array'",
+   "refs": [
+    "POST /api/orders#responses[0]"
+   ],
+   "endpoints": [
+    "POST /api/orders"
+   ],
+   "units": [
+    "order-validation-400",
+    "orders-write-fails/order-validation-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "order-validation-400",
+    "mismatches": [
+     {
+      "path": "steps.no-books.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.null-books.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.string-books.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "field:routes/orders.js:100",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/orders.js",
+   "line": 100,
+   "before": "message: 'Order created successfully',",
+   "after": "message_m2s: 'Order created successfully',",
+   "refs": [
+    "POST /api/orders#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/orders"
+   ],
+   "units": [
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-then-read-all",
+    "orders-list-isolation",
+    "wb-order-qty-not-number",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "orders-read-fails/order-then-read-all"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "order-bestsellers-async",
+    "mismatches": [
+     {
+      "path": "steps.create.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "message_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 10
+  },
+  {
+   "id": "field:routes/orders.js:101",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/orders.js",
+   "line": 101,
+   "before": "orderId: orderId",
+   "after": "orderId_m2s: orderId",
+   "refs": [
+    "POST /api/orders#business_rules[2]",
+    "POST /api/orders#responses[1]"
+   ],
+   "endpoints": [
+    "POST /api/orders"
+   ],
+   "units": [
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-then-read-all",
+    "orders-list-isolation",
+    "wb-order-qty-not-number",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "orders-read-fails/order-then-read-all"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "order-bestsellers-async",
+    "mismatches": [
+     {
+      "path": "steps.create.body",
+      "why": "keys differ",
+      "missing": [
+       "orderId"
+      ],
+      "extra": [
+       "orderId_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 10
+  },
+  {
+   "id": "negate:routes/search.js:20",
+   "kind": "source",
+   "operator": "negate",
+   "file": "routes/search.js",
+   "line": 20,
+   "before": "if (!query) {",
+   "after": "if (!(!query)) {",
+   "refs": [
+    "GET /api/search#business_rules[0]",
+    "GET /api/search#responses[0]"
+   ],
+   "endpoints": [
+    "GET /api/search"
+   ],
+   "units": [
+    "search-array-q-500",
+    "search-case-insensitive-200",
+    "search-hits-200",
+    "search-missing-q-400",
+    "search-no-match-and-absent-fields-200",
+    "search-unauthenticated-401",
+    "wb-search-non-string-name-500",
+    "books-read-fails/search-hits-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "search-array-q-500",
+    "mismatches": [
+     {
+      "path": "steps.dup-q.status",
+      "expected": 500,
+      "actual": 400,
+      "why": "differs"
+     },
+     {
+      "path": "steps.dup-q.body",
+      "why": "keys differ",
+      "missing": [
+       "stack"
+      ],
+      "extra": []
+     },
+     {
+      "path": "steps.dup-q.body.error",
+      "expected": "query.toLowerCase is not a function",
+      "actual": "Missing required query parameter: q",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 8
+  },
+  {
+   "id": "branch_off:routes/search.js:20",
+   "kind": "source",
+   "operator": "branch_off",
+   "file": "routes/search.js",
+   "line": 20,
+   "before": "if (!query) {",
+   "after": "if (false) {",
+   "refs": [
+    "GET /api/search#business_rules[0]",
+    "GET /api/search#responses[0]"
+   ],
+   "endpoints": [
+    "GET /api/search"
+   ],
+   "units": [
+    "search-array-q-500",
+    "search-case-insensitive-200",
+    "search-hits-200",
+    "search-missing-q-400",
+    "search-no-match-and-absent-fields-200",
+    "search-unauthenticated-401",
+    "wb-search-non-string-name-500",
+    "books-read-fails/search-hits-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "search-missing-q-400",
+    "mismatches": [
+     {
+      "path": "steps.no-q.status",
+      "expected": 400,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-q.body",
+      "why": "keys differ",
+      "missing": [],
+      "extra": [
+       "stack"
+      ]
+     },
+     {
+      "path": "steps.no-q.body.error",
+      "expected": "Missing required query parameter: q",
+      "actual": "Cannot read properties of undefined (reading 'toLowerCase')",
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "status:routes/search.js:21",
+   "kind": "source",
+   "operator": "status",
+   "file": "routes/search.js",
+   "line": 21,
+   "before": "return res.status(400).json({",
+   "after": "return res.status(422).json({",
+   "refs": [
+    "GET /api/search#business_rules[0]",
+    "GET /api/search#responses[0]"
+   ],
+   "endpoints": [
+    "GET /api/search"
+   ],
+   "units": [
+    "search-missing-q-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "search-missing-q-400",
+    "mismatches": [
+     {
+      "path": "steps.no-q.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     },
+     {
+      "path": "steps.empty-q.status",
+      "expected": 400,
+      "actual": 422,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:routes/search.js:22",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/search.js",
+   "line": 22,
+   "before": "error: 'Missing required query parameter: q'",
+   "after": "error_m2s: 'Missing required query parameter: q'",
+   "refs": [
+    "GET /api/search#responses[0]"
+   ],
+   "endpoints": [
+    "GET /api/search"
+   ],
+   "units": [
+    "search-missing-q-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "search-missing-q-400",
+    "mismatches": [
+     {
+      "path": "steps.no-q.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.empty-q.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:routes/search.js:42",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/search.js",
+   "line": 42,
+   "before": "total: results.length,",
+   "after": "total_m2s: results.length,",
+   "refs": [
+    "GET /api/search#business_rules[3]",
+    "GET /api/search#responses[1]"
+   ],
+   "endpoints": [
+    "GET /api/search"
+   ],
+   "units": [
+    "search-array-q-500",
+    "search-case-insensitive-200",
+    "search-hits-200",
+    "search-missing-q-400",
+    "search-no-match-and-absent-fields-200",
+    "search-unauthenticated-401",
+    "wb-search-non-string-name-500",
+    "books-read-fails/search-hits-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "search-case-insensitive-200",
+    "mismatches": [
+     {
+      "path": "steps.upper-q.body",
+      "why": "keys differ",
+      "missing": [
+       "total"
+      ],
+      "extra": [
+       "total_m2s"
+      ]
+     },
+     {
+      "path": "steps.mixed-name.body",
+      "why": "keys differ",
+      "missing": [
+       "total"
+      ],
+      "extra": [
+       "total_m2s"
+      ]
+     },
+     {
+      "path": "steps.mixed-target.body",
+      "why": "keys differ",
+      "missing": [
+       "total"
+      ],
+      "extra": [
+       "total_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "field:routes/search.js:43",
+   "kind": "source",
+   "operator": "field",
+   "file": "routes/search.js",
+   "line": 43,
+   "before": "hits: results.map(item => ({",
+   "after": "hits_m2s: results.map(item => ({",
+   "refs": [
+    "GET /api/search#business_rules[3]",
+    "GET /api/search#responses[1]"
+   ],
+   "endpoints": [
+    "GET /api/search"
+   ],
+   "units": [
+    "search-array-q-500",
+    "search-case-insensitive-200",
+    "search-hits-200",
+    "search-missing-q-400",
+    "search-no-match-and-absent-fields-200",
+    "search-unauthenticated-401",
+    "wb-search-non-string-name-500",
+    "books-read-fails/search-hits-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "search-case-insensitive-200",
+    "mismatches": [
+     {
+      "path": "steps.upper-q.body",
+      "why": "keys differ",
+      "missing": [
+       "hits"
+      ],
+      "extra": [
+       "hits_m2s"
+      ]
+     },
+     {
+      "path": "steps.mixed-name.body",
+      "why": "keys differ",
+      "missing": [
+       "hits"
+      ],
+      "extra": [
+       "hits_m2s"
+      ]
+     },
+     {
+      "path": "steps.mixed-target.body",
+      "why": "keys differ",
+      "missing": [
+       "hits"
+      ],
+      "extra": [
+       "hits_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "auth:server.js:41",
+   "kind": "source",
+   "operator": "auth",
+   "file": "server.js",
+   "line": 41,
+   "before": "app.use('/api/books', authMiddleware, booksRoutes);",
+   "after": "app.use('/api/books', booksRoutes);",
+   "refs": [
+    "DELETE /api/cart#responses[6]",
+    "GET /api/books#auth",
+    "GET /api/books#business_rules[5]",
+    "GET /api/books#responses[3]",
+    "GET /api/books/:id#auth",
+    "GET /api/books/:id#responses[3]",
+    "POST /api/cart#responses[6]",
+    "POST /api/orders#responses[6]",
+    "PUT /api/cart#responses[6]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart",
+    "GET /api/books",
+    "GET /api/books/:id",
+    "POST /api/cart",
+    "POST /api/orders",
+    "PUT /api/cart"
+   ],
+   "units": [
+    "book-detail-200",
+    "book-detail-id-is-string-404",
+    "book-detail-not-found-404",
+    "book-detail-unauthenticated-401",
+    "books-list-all-200",
+    "books-list-by-category-200",
+    "books-shared-between-users-200",
+    "books-unauthenticated-401",
+    "cart-add-body-size-boundary",
+    "cart-add-extra-fields-ignored",
+    "cart-add-missing-fields-400",
+    "cart-add-non-json-content-type-400",
+    "cart-add-oversize-body-413",
+    "cart-add-overwrite-not-accumulate",
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-text-plain-400-no-write",
+    "cart-add-then-read",
+    "cart-add-unauthenticated-401",
+    "cart-add-unknown-book-accepted",
+    "cart-add-zero-values-400",
+    "cart-and-orders-bad-json-400",
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-oversize-body-413",
+    "cart-delete-then-read",
+    "cart-delete-unauthenticated-401",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-list-isolation-between-users",
+    "cart-list-no-book-join",
+    "cart-update-creates-missing-item",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-oversize-body-413",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "orders-list-isolation",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-cart-x-customer-id-header-ignored",
+    "wb-order-qty-not-number",
+    "wb-search-non-string-name-500",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "books-read-fails/books-list-all-200",
+    "books-read-fails/books-list-by-category-200",
+    "books-read-fails/book-detail-200",
+    "books-read-throttled/book-detail-200",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "cart-write-throttled-once/cart-add-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "book-detail-unauthenticated-401",
+    "mismatches": [
+     {
+      "path": "steps.no-token.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-token.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "author",
+       "category",
+       "cover",
+       "id",
+       "name",
+       "price",
+       "rating"
+      ]
+     },
+     {
+      "path": "steps.bad-token.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 2
+  },
+  {
+   "id": "auth:server.js:42",
+   "kind": "source",
+   "operator": "auth",
+   "file": "server.js",
+   "line": 42,
+   "before": "app.use('/api/cart', authMiddleware, cartRoutes);",
+   "after": "app.use('/api/cart', cartRoutes);",
+   "refs": [
+    "DELETE /api/cart#auth",
+    "DELETE /api/cart#responses[4]",
+    "GET /api/cart#auth",
+    "GET /api/cart#responses[2]",
+    "GET /api/cart/:bookId#auth",
+    "GET /api/cart/:bookId#responses[3]",
+    "POST /api/cart#auth",
+    "POST /api/cart#responses[4]",
+    "PUT /api/cart#auth",
+    "PUT /api/cart#responses[4]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart",
+    "GET /api/cart",
+    "GET /api/cart/:bookId",
+    "POST /api/cart",
+    "PUT /api/cart"
+   ],
+   "units": [
+    "cart-add-body-size-boundary",
+    "cart-add-extra-fields-ignored",
+    "cart-add-missing-fields-400",
+    "cart-add-non-json-content-type-400",
+    "cart-add-oversize-body-413",
+    "cart-add-overwrite-not-accumulate",
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-text-plain-400-no-write",
+    "cart-add-then-read",
+    "cart-add-unauthenticated-401",
+    "cart-add-unknown-book-accepted",
+    "cart-add-zero-values-400",
+    "cart-and-orders-bad-json-400",
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-oversize-body-413",
+    "cart-delete-then-read",
+    "cart-delete-unauthenticated-401",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-item-unauthenticated-401",
+    "cart-list-empty-200",
+    "cart-list-isolation-between-users",
+    "cart-list-no-book-join",
+    "cart-list-unauthenticated-401",
+    "cart-update-creates-missing-item",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-oversize-body-413",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-cart-x-customer-id-header-ignored",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "cart-write-throttled-once/cart-add-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-add-body-size-boundary",
+    "mismatches": [
+     {
+      "path": "steps.at-limit.status",
+      "expected": 200,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.at-limit.body",
+      "why": "keys differ",
+      "missing": [
+       "message"
+      ],
+      "extra": [
+       "error",
+       "stack"
+      ]
+     },
+     {
+      "path": "steps.read.status",
+      "expected": 200,
+      "actual": 500,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 56
+  },
+  {
+   "id": "auth:server.js:43",
+   "kind": "source",
+   "operator": "auth",
+   "file": "server.js",
+   "line": 43,
+   "before": "app.use('/api/orders', authMiddleware, ordersRoutes);",
+   "after": "app.use('/api/orders', ordersRoutes);",
+   "refs": [
+    "GET /api/orders#auth",
+    "GET /api/orders#responses[2]",
+    "POST /api/orders#auth",
+    "POST /api/orders#responses[4]"
+   ],
+   "endpoints": [
+    "GET /api/orders",
+    "POST /api/orders"
+   ],
+   "units": [
+    "cart-and-orders-bad-json-400",
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "orders-list-empty-200",
+    "orders-list-isolation",
+    "orders-list-unauthenticated-401",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-order-qty-not-number",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/orders-list-empty-200",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "order-bestsellers-async",
+    "mismatches": [
+     {
+      "path": "steps.create.status",
+      "expected": 200,
+      "actual": 500,
+      "why": "differs"
+     },
+     {
+      "path": "steps.create.body",
+      "why": "keys differ",
+      "missing": [
+       "message",
+       "orderId"
+      ],
+      "extra": [
+       "error",
+       "stack"
+      ]
+     },
+     {
+      "path": "steps.bestsellers.body",
+      "expected": [
+       "book-002",
+       "book-101"
+      ],
+      "actual": [],
+      "why": "expected 2 items"
+     }
+    ]
+   },
+   "killing_units": 20
+  },
+  {
+   "id": "auth:server.js:44",
+   "kind": "source",
+   "operator": "auth",
+   "file": "server.js",
+   "line": 44,
+   "before": "app.use('/api/bestsellers', authMiddleware, bestSellersRoutes);",
+   "after": "app.use('/api/bestsellers', bestSellersRoutes);",
+   "refs": [
+    "GET /api/bestsellers#auth",
+    "GET /api/bestsellers#business_rules[4]",
+    "GET /api/bestsellers#responses[2]"
+   ],
+   "endpoints": [
+    "GET /api/bestsellers"
+   ],
+   "units": [
+    "bestsellers-ordered-200",
+    "bestsellers-shared-between-users-200",
+    "bestsellers-top-20-cap-200",
+    "bestsellers-unauthenticated-401",
+    "order-bestsellers-async",
+    "order-oversize-body-413",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-order-qty-not-number",
+    "bestsellers-read-fails/bestsellers-ordered-200",
+    "bestsellers-read-fails/bestsellers-shared-between-users-200",
+    "bestsellers-read-fails/bestsellers-top-20-cap-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "bestsellers-unauthenticated-401",
+    "mismatches": [
+     {
+      "path": "steps.no-token.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-token.body",
+      "expected": {
+       "error": "Authentication required. Please provide a valid Bearer token."
+      },
+      "actual": [
+       "book-002",
+       "book-001",
+       "book-101",
+       "book-102"
+      ],
+      "why": "expected an object"
+     },
+     {
+      "path": "steps.bad-token.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "auth:server.js:45",
+   "kind": "source",
+   "operator": "auth",
+   "file": "server.js",
+   "line": 45,
+   "before": "app.use('/api/search', authMiddleware, searchRoutes);",
+   "after": "app.use('/api/search', searchRoutes);",
+   "refs": [
+    "GET /api/search#auth",
+    "GET /api/search#responses[3]"
+   ],
+   "endpoints": [
+    "GET /api/search"
+   ],
+   "units": [
+    "search-array-q-500",
+    "search-case-insensitive-200",
+    "search-hits-200",
+    "search-missing-q-400",
+    "search-no-match-and-absent-fields-200",
+    "search-unauthenticated-401",
+    "wb-search-non-string-name-500",
+    "books-read-fails/search-hits-200"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "search-unauthenticated-401",
+    "mismatches": [
+     {
+      "path": "steps.no-token.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     },
+     {
+      "path": "steps.no-token.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "hits",
+       "total"
+      ]
+     },
+     {
+      "path": "steps.bad-token.status",
+      "expected": 401,
+      "actual": 200,
+      "why": "differs"
+     }
+    ]
+   },
+   "killing_units": 1
+  },
+  {
+   "id": "field:server.js:53",
+   "kind": "source",
+   "operator": "field",
+   "file": "server.js",
+   "line": 53,
+   "before": "error: err.message || 'Internal Server Error',",
+   "after": "error_m2s: err.message || 'Internal Server Error',",
+   "refs": [
+    "DELETE /api/cart#responses[6]",
+    "POST /api/cart#responses[6]",
+    "POST /api/orders#responses[6]",
+    "PUT /api/cart#responses[6]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart",
+    "POST /api/cart",
+    "POST /api/orders",
+    "PUT /api/cart"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "cart-add-oversize-body-413",
+    "cart-and-orders-bad-json-400",
+    "cart-delete-oversize-body-413",
+    "cart-update-oversize-body-413",
+    "login-non-string-password-500",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "register-non-string-password-500",
+    "search-array-q-500",
+    "wb-search-non-string-name-500",
+    "books-read-fails/books-list-all-200",
+    "books-read-fails/books-list-by-category-200",
+    "books-read-fails/book-detail-200",
+    "books-read-fails/search-hits-200",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/orders-list-empty-200",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "users-read-fails/login-success-200",
+    "users-read-fails/me-success-200",
+    "users-read-fails/register-duplicate-email-409",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201",
+    "users-write-fails/register-non-string-password-500",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "auth-endpoints-bad-json-400",
+    "mismatches": [
+     {
+      "path": "steps.reg-bad.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.login-bad.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     },
+     {
+      "path": "steps.refresh-bad.body",
+      "why": "keys differ",
+      "missing": [
+       "error"
+      ],
+      "extra": [
+       "error_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 31
+  },
+  {
+   "id": "field:server.js:54",
+   "kind": "source",
+   "operator": "field",
+   "file": "server.js",
+   "line": 54,
+   "before": "stack: config.nodeEnv === 'development' ? err.stack : undefined",
+   "after": "stack_m2s: config.nodeEnv === 'development' ? err.stack : undefined",
+   "refs": [
+    "DELETE /api/cart#responses[3]",
+    "GET /api/auth/me#responses[3]",
+    "GET /api/books#responses[2]",
+    "GET /api/books/:id#responses[2]",
+    "GET /api/cart#responses[1]",
+    "GET /api/cart/:bookId#responses[2]",
+    "GET /api/orders#responses[1]",
+    "POST /api/auth/login#responses[4]",
+    "POST /api/auth/refresh#responses[4]",
+    "POST /api/auth/register#responses[5]",
+    "POST /api/cart#responses[3]",
+    "POST /api/orders#responses[3]",
+    "PUT /api/cart#responses[3]"
+   ],
+   "endpoints": [
+    "DELETE /api/cart",
+    "GET /api/auth/me",
+    "GET /api/books",
+    "GET /api/books/:id",
+    "GET /api/cart",
+    "GET /api/cart/:bookId",
+    "GET /api/orders",
+    "POST /api/auth/login",
+    "POST /api/auth/refresh",
+    "POST /api/auth/register",
+    "POST /api/cart",
+    "POST /api/orders",
+    "PUT /api/cart"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "cart-add-oversize-body-413",
+    "cart-and-orders-bad-json-400",
+    "cart-delete-oversize-body-413",
+    "cart-update-oversize-body-413",
+    "login-non-string-password-500",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "register-non-string-password-500",
+    "search-array-q-500",
+    "wb-search-non-string-name-500",
+    "books-read-fails/books-list-all-200",
+    "books-read-fails/books-list-by-category-200",
+    "books-read-fails/book-detail-200",
+    "books-read-fails/search-hits-200",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/orders-list-empty-200",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "users-read-fails/login-success-200",
+    "users-read-fails/me-success-200",
+    "users-read-fails/register-duplicate-email-409",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201",
+    "users-write-fails/register-non-string-password-500",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "auth-endpoints-bad-json-400",
+    "mismatches": [
+     {
+      "path": "steps.reg-bad.body",
+      "why": "keys differ",
+      "missing": [
+       "stack"
+      ],
+      "extra": [
+       "stack_m2s"
+      ]
+     },
+     {
+      "path": "steps.login-bad.body",
+      "why": "keys differ",
+      "missing": [
+       "stack"
+      ],
+      "extra": [
+       "stack_m2s"
+      ]
+     },
+     {
+      "path": "steps.refresh-bad.body",
+      "why": "keys differ",
+      "missing": [
+       "stack"
+      ],
+      "extra": [
+       "stack_m2s"
+      ]
+     }
+    ]
+   },
+   "killing_units": 31
+  },
+  {
+   "id": "drop_write:Bookstore-Bestsellers:UpdateItem",
+   "kind": "drop_write",
+   "operator": "drop_write",
+   "table": "Bookstore-Bestsellers",
+   "op": "UpdateItem",
+   "refs": [
+    "POST /api/orders#data_access[2]"
+   ],
+   "units": [
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-then-read-all",
+    "orders-list-isolation",
+    "wb-order-qty-not-number",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "orders-read-fails/order-then-read-all"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "order-bestsellers-async",
+    "mismatches": [
+     {
+      "path": "steps.bestsellers.body",
+      "expected": [
+       "book-002",
+       "book-101"
+      ],
+      "actual": [],
+      "why": "expected 2 items"
+     },
+     {
+      "path": "tables_after.Bookstore-Bestsellers",
+      "expected": [
+       {
+        "salesCount": 2,
+        "bookId": "book-002"
+       },
+       {
+        "salesCount": 1,
+        "bookId": "book-101"
+       }
+      ],
+      "actual": [],
+      "why": "expected 2 items"
+     }
+    ]
+   },
+   "killing_units": 8
+  },
+  {
+   "id": "drop_write:Bookstore-Cart:DeleteItem",
+   "kind": "drop_write",
+   "operator": "drop_write",
+   "table": "Bookstore-Cart",
+   "op": "DeleteItem",
+   "refs": [
+    "DELETE /api/cart#data_access[0]",
+    "POST /api/orders#data_access[1]"
+   ],
+   "units": [
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-then-read",
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-then-read-all",
+    "orders-list-isolation",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-order-qty-not-number",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "cart-delete-fails/cart-delete-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/order-then-read-all"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-delete-then-read",
+    "mismatches": [
+     {
+      "path": "steps.list.body",
+      "expected": [
+       {
+        "customerId": "<id:u1>",
+        "quantity": 2,
+        "price": 20,
+        "bookId": "book-002"
+       }
+      ],
+      "actual": [
+       {
+        "customerId": "6fe245a4-e3b9-401d-9b6e-60d8ca49e444",
+        "quantity": 1,
+        "price": 10,
+        "bookId": "book-001"
+       },
+       {
+        "customerId": "6fe245a4-e3b9-401d-9b6e-60d8ca49e444",
+        "quantity": 2,
+        "price": 20,
+        "bookId": "book-002"
+       }
+      ],
+      "why": "expected 1 items"
+     },
+     {
+      "path": "tables_after.Bookstore-Cart",
+      "expected": [
+       {
+        "customerId": "<id:u1>",
+        "quantity": 2,
+        "price": 20,
+        "bookId": "book-002"
+       }
+      ],
+      "actual": [
+       {
+        "customerId": "6fe245a4-e3b9-401d-9b6e-60d8ca49e444",
+        "quantity": 1,
+        "price": 10,
+        "bookId": "book-001"
+       },
+       {
+        "customerId": "6fe245a4-e3b9-401d-9b6e-60d8ca49e444",
+        "quantity": 2,
+        "price": 20,
+        "bookId": "book-002"
+       }
+      ],
+      "why": "expected 1 items"
+     }
+    ]
+   },
+   "killing_units": 10
+  },
+  {
+   "id": "drop_write:Bookstore-Cart:PutItem",
+   "kind": "drop_write",
+   "operator": "drop_write",
+   "table": "Bookstore-Cart",
+   "op": "PutItem",
+   "refs": [
+    "POST /api/cart#data_access[0]"
+   ],
+   "units": [
+    "cart-add-body-size-boundary",
+    "cart-add-extra-fields-ignored",
+    "cart-add-non-json-content-type-400",
+    "cart-add-overwrite-not-accumulate",
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-then-read",
+    "cart-add-unknown-book-accepted",
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-oversize-body-413",
+    "cart-delete-then-read",
+    "cart-delete-unauthenticated-401",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-list-isolation-between-users",
+    "cart-list-no-book-join",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-oversize-body-413",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-cart-x-customer-id-header-ignored",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-write-throttled-once/cart-add-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-add-body-size-boundary",
+    "mismatches": [
+     {
+      "path": "steps.read.body",
+      "expected": [
+       {
+        "customerId": "<id:u1>",
+        "quantity": 2,
+        "price": 10,
+        "bookId": "book-001"
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     },
+     {
+      "path": "tables_after.Bookstore-Cart",
+      "expected": [
+       {
+        "customerId": "<id:u1>",
+        "quantity": 2,
+        "price": 10,
+        "bookId": "book-001"
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ]
+   },
+   "killing_units": 38
+  },
+  {
+   "id": "drop_write:Bookstore-Cart:UpdateItem",
+   "kind": "drop_write",
+   "operator": "drop_write",
+   "table": "Bookstore-Cart",
+   "op": "UpdateItem",
+   "refs": [
+    "PUT /api/cart#data_access[0]"
+   ],
+   "units": [
+    "cart-update-creates-missing-item",
+    "cart-update-other-user-item-untouched",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-conditional-fails/cart-update-creates-missing-item"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "cart-update-creates-missing-item",
+    "mismatches": [
+     {
+      "path": "steps.read.status",
+      "expected": 200,
+      "actual": 404,
+      "why": "differs"
+     },
+     {
+      "path": "steps.read.body",
+      "why": "keys differ",
+      "missing": [
+       "bookId",
+       "customerId",
+       "quantity"
+      ],
+      "extra": [
+       "error"
+      ]
+     },
+     {
+      "path": "steps.list.body",
+      "expected": [
+       {
+        "customerId": "<id:u1>",
+        "quantity": 3,
+        "bookId": "book-404"
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ]
+   },
+   "killing_units": 4
+  },
+  {
+   "id": "drop_write:Bookstore-Orders:PutItem",
+   "kind": "drop_write",
+   "operator": "drop_write",
+   "table": "Bookstore-Orders",
+   "op": "PutItem",
+   "refs": [
+    "POST /api/orders#data_access[0]"
+   ],
+   "units": [
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-then-read-all",
+    "orders-list-isolation",
+    "wb-order-qty-not-number",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "order-bestsellers-async",
+    "mismatches": [
+     {
+      "path": "tables_after.Bookstore-Orders",
+      "expected": [
+       {
+        "customerId": "<id:u1>",
+        "books": [
+         {
+          "price": 20,
+          "bookId": "book-002",
+          "quantity": 2
+         },
+         {
+          "price": 30,
+          "bookId": "book-101",
+          "quantity": 1
+         }
+        ],
+        "orderId": "<uuid#1>",
+        "orderDate": "<time#2>"
+       }
+      ],
+      "actual": [],
+      "why": "expected 1 items"
+     }
+    ]
+   },
+   "killing_units": 12
+  },
+  {
+   "id": "drop_write:Bookstore-Users:PutItem",
+   "kind": "drop_write",
+   "operator": "drop_write",
+   "table": "Bookstore-Users",
+   "op": "PutItem",
+   "refs": [
+    "POST /api/auth/register#data_access[1]"
+   ],
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "register-duplicate-email-409",
+    "register-success-201",
+    "register-validation-400",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "users-write-fails/register-success-201"
+   ],
+   "outcome": "killed",
+   "by": {
+    "unit": "auth-endpoints-bad-json-400",
+    "mismatches": [
+     {
+      "path": "tables_after.Bookstore-Users",
+      "expected": [
+       {
+        "name": "Judge User One",
+        "createdAt": "<time#6>",
+        "password": "<hash#7>",
+        "userId": "<id:u1>",
+        "email": "judge-u1@example.com",
+        "updatedAt": "<time#6>"
+       },
+       {
+        "name": "form",
+        "createdAt": "<time#8>",
+        "password": "<hash#9>",
+        "userId": "<uuid#3>",
+        "email": "form@example.com",
+        "updatedAt": "<time#8>"
+       }
+      ],
+      "actual": [
+       {
+        "name": "Judge User One",
+        "createdAt": 1794519223187,
+        "password": "$2a$10$57e4uxPOjLSeAc8aoBcVjeWrZyZ5whL/xZyV9bHPXSVApCjY2trNK",
+        "userId": "db3b420e-758a-4536-afeb-b573972ce219",
+        "email": "judge-u1@example.com",
+        "updatedAt": 1794519223187
+       }
+      ],
+      "why": "expected 2 items"
+     }
+    ]
+   },
+   "killing_units": 5
+  },
+  {
+   "id": "serial",
+   "kind": "serial",
+   "operator": "serial",
+   "reverse": true,
+   "note": "the proxy takes one SDK request at a time: must NOT be noticed",
+   "units": [
+    "auth-endpoints-bad-json-400",
+    "bestsellers-ordered-200",
+    "bestsellers-shared-between-users-200",
+    "bestsellers-top-20-cap-200",
+    "bestsellers-unauthenticated-401",
+    "book-detail-200",
+    "book-detail-id-is-string-404",
+    "book-detail-not-found-404",
+    "book-detail-unauthenticated-401",
+    "books-list-all-200",
+    "books-list-by-category-200",
+    "books-shared-between-users-200",
+    "books-unauthenticated-401",
+    "cart-add-body-size-boundary",
+    "cart-add-extra-fields-ignored",
+    "cart-add-missing-fields-400",
+    "cart-add-non-json-content-type-400",
+    "cart-add-oversize-body-413",
+    "cart-add-overwrite-not-accumulate",
+    "cart-add-string-quantity-stored-as-is",
+    "cart-add-text-plain-400-no-write",
+    "cart-add-then-read",
+    "cart-add-unauthenticated-401",
+    "cart-add-unknown-book-accepted",
+    "cart-add-zero-values-400",
+    "cart-and-orders-bad-json-400",
+    "cart-delete-cannot-touch-other-user",
+    "cart-delete-idempotent-200",
+    "cart-delete-missing-book-id-400",
+    "cart-delete-oversize-body-413",
+    "cart-delete-then-read",
+    "cart-delete-unauthenticated-401",
+    "cart-item-found-200",
+    "cart-item-missing-404",
+    "cart-item-of-other-user-404",
+    "cart-item-unauthenticated-401",
+    "cart-list-empty-200",
+    "cart-list-isolation-between-users",
+    "cart-list-no-book-join",
+    "cart-list-unauthenticated-401",
+    "cart-update-creates-missing-item",
+    "cart-update-missing-fields-400",
+    "cart-update-other-user-item-untouched",
+    "cart-update-oversize-body-413",
+    "cart-update-string-quantity",
+    "cart-update-then-read",
+    "cart-update-unauthenticated-401",
+    "login-invalid-credentials-401",
+    "login-missing-fields-400",
+    "login-non-string-password-500",
+    "login-success-200",
+    "me-only-own-record",
+    "me-success-200",
+    "me-unauthenticated-401",
+    "order-bestsellers-async",
+    "order-books-elements-not-validated",
+    "order-clears-only-ordered-items",
+    "order-duplicate-book-id",
+    "order-element-missing-book-id-500",
+    "order-oversize-body-413",
+    "order-then-read-all",
+    "order-unauthenticated-401",
+    "order-validation-400",
+    "orders-list-empty-200",
+    "orders-list-isolation",
+    "orders-list-unauthenticated-401",
+    "refresh-invalid-token-401",
+    "refresh-missing-token-400",
+    "refresh-success-200",
+    "register-duplicate-email-409",
+    "register-non-string-password-500",
+    "register-success-201",
+    "register-validation-400",
+    "search-array-q-500",
+    "search-case-insensitive-200",
+    "search-hits-200",
+    "search-missing-q-400",
+    "search-no-match-and-absent-fields-200",
+    "search-unauthenticated-401",
+    "wb-auth-public-endpoints-ignore-bad-authorization",
+    "wb-cart-delete-touches-nothing-else",
+    "wb-cart-x-customer-id-header-ignored",
+    "wb-login-does-not-revoke-old-token",
+    "wb-order-qty-not-number",
+    "wb-search-non-string-name-500",
+    "wb-x-customer-id-header-ignored",
+    "bestsellers-read-fails/bestsellers-ordered-200",
+    "bestsellers-read-fails/bestsellers-shared-between-users-200",
+    "bestsellers-read-fails/bestsellers-top-20-cap-200",
+    "bestsellers-write-fails/order-duplicate-book-id",
+    "bestsellers-write-fails/order-then-read-all",
+    "books-read-fails/books-list-all-200",
+    "books-read-fails/books-list-by-category-200",
+    "books-read-fails/book-detail-200",
+    "books-read-fails/search-hits-200",
+    "books-read-throttled/book-detail-200",
+    "cart-delete-fails/cart-delete-then-read",
+    "cart-read-fails/cart-list-isolation-between-users",
+    "cart-read-fails/cart-item-found-200",
+    "cart-update-conditional-fails/cart-update-creates-missing-item",
+    "cart-write-throttled-once/cart-add-then-read",
+    "orders-cart-delete-network/order-clears-only-ordered-items",
+    "orders-read-fails/orders-list-empty-200",
+    "orders-read-fails/order-then-read-all",
+    "orders-write-fails/order-then-read-all",
+    "orders-write-fails/order-validation-400",
+    "users-read-fails/login-success-200",
+    "users-read-fails/me-success-200",
+    "users-read-fails/register-duplicate-email-409",
+    "users-read-fails/refresh-success-200",
+    "users-write-fails/register-success-201",
+    "users-write-fails/register-non-string-password-500",
+    "wb-cart-write-fails/cart-add-then-read",
+    "wb-cart-write-fails-second-write/cart-add-overwrite-not-accumulate"
+   ],
+   "outcome": "survived",
+   "units_run": 114
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+{
+  "id": "R-ROOM-spec-j3-r2-1-2-a1-1",
+  "decider": "m2s-architect",
+  "task": "ROOM-spec-j3-r2-1-2",
+  "attempt": 1,
+  "time": "2026-11-13T17:59:14+0800",
+  "question": "规格对账差异 register-read-back-by-admin/list/body.subset 的结室口径（J3 第 2 轮）：次序放宽实际在哪一层生效、对账侧\"已被裁定覆盖\"按什么粒度认账、auth 作废类裁定的裸用例 id 要不要加防外溢边界？（承接 R-ROOM-spec-j3-r2-1-1-a1-1 与 R-ROOM-spec-j3-r1-1-1-a1-1 / R-ROOM-spec-j3-r1-1-2-a1-1，判定内容不变：users 数组的元素次序不是对外契约）",
+  "conclusion": "本差异按在案口径关闭，判定内容一字不改（category=contract、relaxation=order、只放开 R 层、影响面仅 register-read-back-by-admin#list）；本轮补三条执行边界，供 J3 重跑对账与 J4 补强引用：\n\n(1) **放宽只在\"目标 vs 单体记录\"这一层由比较器施加，对账层的这条差异靠裁定覆盖关闭，二者机制不同，不要混用**。目标侧：命中 relaxation=order 的裁定后，裁判把该步骤单体记录里出现的每一个数组路径（含嵌套的成员数组）标为无序，比较语义是\"等长 → 含重数的一对一配对 → 每个元素字段逐值比较\"，配不上则退回逐位置报告差异；因此 predicted/用例/fixtures/identities 一律不改写，也不允许降级为只断言字段存在。对账侧：预测与单体的比对走的是\"数组等长且逐位置包含\"的语义，没有任何次序放宽入口，本用例在单体三次运行里顺序稳定、掩码也没把它标成无序——所以这条差异不会因放宽自行消失，只能经\"已有裁定点名该用例 → 移入 resolved_by_rulings\"关闭。\n\n(2) **对账侧与调度器门侧的覆盖匹配都是用例粒度（去掉 # 之后按用例 id 认账），因此 J3 重跑对账后有强制复核**：移入 resolved_by_rulings 的每条差异必须核对 step=list 且差异形态确为\"元素集相同、只有先后不同\"；凡 step≠list，或表现为条数不等、字段名/取值不同、脱敏泄漏（password_hash / created_at 出现）、status≠200，一律视为未被本裁定覆盖、按新差异重开并另开裁定。裁判目标侧的收窄则按 case#step 生效，本裁定不外溢到同用例的 register 步骤。收尾动作只需重跑对账：该动作每跑一次会整份清除分类文件（不是谁手工\"撤条目\"），differences=0 且分类文件缺失时分类自查通过，无需为已消失的差异补任何分类。\n\n(3) **防外溢边界（新事实出现时的硬约束）**：作废类裁定 R-A1-a2-2 用的是裸用例 id，在目标侧命中整案每一步——当前无害，因为 register-read-back-by-admin 的全部步骤都落在不提供给目标的端点上，整案判为 dropped、根本不比较响应体；本次序裁定在目标侧的实际作用面因此为零，它的价值只在\"不按单体 scan 原序重写预期\"这一条。若 J4/补强阶段给这些 auth 用例**新增一个走保留端点的步骤**，必须先收窄该裸用例 id（改成 case#step）或另开裁定，否则作废类裁定会把那一步的任何不匹配判成\"迁移变化\"而非失败，等于掩盖缺陷。给别的列表端点/步骤加次序放宽同理：另开一条点名 case#step 的裁定，不得援引本条或 GAP-18 的原则句；也不得援用到 data/storage.py:322 `items[0] if items else None` 这类\"取到哪一条记录\"的契约（POST /auth/login#business_rules[1]、POST /auth/register#business_rules[2] 属内容而非次序）。\n\n配套结论维持：GET /auth/users#business_rules[2] 不是 fact_error，保持原文；目标侧不得为对上字面次序新增排序（GAP-18）。",
+  "basis": "事实库：GET /auth/users#business_rules[2]（明写\"条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺\"）、GET /auth/users#responses[2]（只承诺 {\"users\":[{\"sub\",\"email\",\"groups\"}]}）、POST /auth/register#business_rules[3]。单体代码：data/storage.py:352-356（get_all_users 只有 scan 并取 Items，无排序/分页）、services/auth.py:140-150（脱敏推导式逐条映射、保持原序）、data/storage.py:307/345（sub 是用户表唯一主键 → 同一列表不可能出现重复元素身份，多重集配对唯一）。裁判语义（只读核对，未改工具）：judge.py:2108-2125（case#step → 只命中该步；裸 case → 命中整案每一步）、2234-2241（relaxation=order → 该步记录里所有数组路径标为无序）、1094-1118（数组先要求等长，再在无序路径上做含重数一对一配对，配不上退回逐位置报告）、2066-2067/2244-2245/2213-2216（端点在 adapter_map.dropped_endpoints 里 → 该步不比较、整案 dropped）；对账侧 judge.py:1696-1743 + verify.py:1174-1178（预测比对是\"等长 + 逐位置包含\"，无次序放宽入口）；覆盖粒度 judge.py:1689 与 coord/dispatcher.py:1885（都 split(\"#\")[0]）；分类文件在对账动作里被整份清除 judge.py:1734-1736，缺失时按空处理 judge.py:1748-1752。在案记录：storage/rulings.json 的 R-ROOM-spec-j3-r1-1-1-a1-1 / R-ROOM-spec-j3-r1-1-2-a1-1 / R-ROOM-spec-j3-r2-1-1-a1-1（同参数、同范围）、R-A1-a2-3/R-A1-a2-4（放宽范围以 ROOM 两条为准、多余的裸用例 id 作废）、R-A1-a2-2（auth 四端点整案作废）；storage/adapter_map.json.dropped_endpoints（POST /auth/register、GET /auth/users 均不提供）；storage/gap_inventory.json GAP-18（目标不新增排序、裁判看不见，只能代码复核）、GAP-15。用例实测：judge/cases/post-auth-register/register-read-back-by-admin.json layer=R、步骤 register+list、read_back 只在 list；judge/masks.json 本用例 unordered=[]。",
+  "category": "contract",
+  "raised_by": "J3",
+  "options": [
+    "接受放宽、由裁判在目标侧做无序多重集比较（采纳：顺序由键分布决定、代码无排序，事实库已明写不承诺）",
+    "拒绝放宽、把 GET /auth/users#business_rules[2] 判成 fact_error 并按单体 scan 原序重写 predicted（否决：等于把存储布局写进契约，且该端点根本不提供给目标，无任何收益）",
+    "把用例断言降级为只断言 users 键存在以消除差异（否决：丢掉 read_back 要验证的内容，抓不住单页截断/脱敏泄漏）",
+    "affected_cases 用裸用例 id register-read-back-by-admin（否决：裁判目标侧会扩到同用例的 register 步骤；与 R-A1-a2-4 同口径）",
+    "把原则写成挂在事实条目上的通用规则（否决：覆盖匹配按用例粒度、事实编号不参与，泛化会在无人复核的情况下削弱将来的断言）",
+    "为 auth 作废类裁定的裸用例 id 加防外溢边界（采纳：J4 若给整案作废的用例新增走保留端点的步骤，先收窄或另开裁定）"
+  ],
+  "relaxation": null,
+  "affects": {
+    "cases": [
+      "register-read-back-by-admin#list"
+    ],
+    "layers": [
+      "R"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

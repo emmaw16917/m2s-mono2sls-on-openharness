@@ -1,0 +1,9 @@
+{
+  "task": "J1",
+  "attempt": 2,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T15:46:41+0800",
+  "summary": "J1 第 2 次尝试：修好 J2 报的 admin 身份准备失败。原因不是身份写法，而是用例 customer-bookings-owner-only 漏声明 admin-user 夹具——每遍都会清空表再只按用例声明的夹具播种，Users 表为空时 POST /auth/login 按 POST /auth/login#responses[1] 回 401，别名拿不到 id。事实库确认没有任何单体接口能授予 Admin（注册写 groups=[]），所以只能靠夹具预置 Admin 用户再用单体自己的登录接口换令牌；已把 admin-user 加入该用例 fixtures，请求步骤与 predicted 一字未改，未放宽任何断言。资产规模不变：46 用例 / 18 接口 / 8 夹具 / 3 身份 / 12 故障场景 / 13 条 uncovered；脚本核对全部 11 个使用 admin 的用例都声明了 admin-user，夹具与故障场景引用完整。check_judge_assets = PASS（errors/warnings 均空）。报告见 storage/stage_reports/J1.json（含 rework 与依据的 fact refs）。",
+  "notes": "给后续任务的提示：admin 别名的准备依赖夹具播种先于身份准备，凡引用 admin 的用例必须在 fixtures 里带 admin-user（已在报告 identity_preparation 里写明）。若 J2 这次仍报同样的 401，说明身份准备其实早于夹具写入，那就需要改用别的机制取得 Admin（单体没有可用的授权接口），届时请把它当成运行约定问题回给调度器而不是继续改用例。另外 uncovered.json 里 13 条豁免臂（并发窗口、未配置 Stripe、非条件写异常）仍保持原样。"
+}

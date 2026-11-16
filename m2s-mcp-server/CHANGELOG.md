@@ -1170,3 +1170,12 @@ bookstore-v2 第一次全链运行时，S0 子 Agent 和主 Agent 先后因为 `
 - **泄漏**：`coord/mail/` 扫描 0 命中；`tests/test_coord_leak.py` 4 项通过。
 - **镜像修复（f7b33fb）**：W3.7 发现 agent_mail 里没有任何讨论室消息——m2s-server 在事件循环线程上调用 `mail.call_sync`，`asyncio.run` 在运行中的循环里抛错、异常被吞。`call_sync` 在已有循环时改用独立线程；镜像失败写 `coord/mail/mirror_errors.jsonl`。本次运行的 35 条消息已按工作区文件回填，`room-spec-16250` / `room-spec-70814` 与公告板线程可在 Web UI 检索。
 - **运行中修掉的编排缺陷**：3c13470（回炉动态包子任务沿看板依赖边传播）、2dbdc7c（重启后按事件日志识别“下游在旧上游上跑”）、6806a7c（V2 路由按函数定位 `S2-<包>`；分诊共识可写族名并展开）、984f9f3（`_collect` 跳过同一轮被取消的 worker）、b016fb1（`_downstream` 只走看板边，裁定可写族名）。
+
+## v3 M4：v2 模块接入，bookstore/airline 验收（2026-11-13 至 16，`bookstore-m4`、`airline-m4`）
+
+- **编排侧（W4.1–W4.6）**：`coord/facts.py` 事实库版本与 `artifact` 公告（W4.1，spawn 记 `facts_version`/`judge_version`）；`run_monolith` 取 `docker-rie` 槽（W4.3）；J3 的 `needs_ruling` 改开 spec 房间 + `start: recheck` 门（W4.4，测试 `tests/test_coord_room_gate.py`）；J6 版本记录（W4.5）；规则 7 探针结论「已具备」（W4.6）。
+- **v2-split（W4.2）**：新增 `coord/templates/v2-split.yaml`——F2 按包展开 + `F2-shared`（`shared_after_children`，完整 `check_provenance`）；I1 按领域展开（`split: domain`，A1 的 `impl_packages`，缺省时按蓝图的 `entry_points` 机械补齐并记 `impl_packages_fallback`），每函数目录一个 scope、另有 `I1-shared`；I2a 等 `I1:*`/`I1:shared`。J1/D1/G2 暂不拆（资产命名与检查要先改，记录为后续项）。`_expand_family`/`_expand_domain` 改为只在真正新建子任务时打一行日志。
+- **bookstore-m4**：跑到 C2（`evidence/bookstore/bookstore-m4`）。两轮 J3 规格室、`R-A1-a3-1..4`；两个 HUMAN_J6 决定（未认证超大体 401 先于 413；spoof 步骤记账延伸）由人接受；O 的 REQ-1（`update-bestsellers`）由人接受，含 1 条未覆盖的防御性行；C1 `gate(final)`/裁判/delta PASS。
+- **airline-m4**：跑到 C2（`evidence/airline-booking/airline-m4`，`dispatcher exit 0`）。身份 id 冲突由人定方案 (A)，工具修复 `788d9cf`；V2 首跑败在 3 个按「同一条预订第 n 次读」注入的故障场景（单体读 2–3 次、目标按 SI-1 只读一次），异常处理者按 A1 的 D-20 补 `R-C003-V2-triage-a1-1`（implementation-trace，7 个 `case#step`）后重跑 PASS。终局：裁判 cases 34 pass / 7 migration-change / 14 dropped，fault runs 21 pass / 4 migration-change / 4 dropped / 2 ruled；delta 16/16；`gate(final)` PASS；22 条 gap 全 decided。B0 复查 `ok`，C6 的 `SharedUtilsLayer` 未被任何 handler 引用一项交优化线。O 保留 1 处改动（`bookings-cancel` 两步补偿并发化 `5fe0c7c`，串行深度 5→4，调用数/RRU/WRU 不变），全量回归 PASS。
+- **运行中修掉的调度缺陷**：`63ab894`（J3/J4 的事实修正按端点路由到 F2 包子任务；`_fact_targets`）、`f286ec3`（`_next_tasks` 把拆分的族展开成子任务；`_human_gate` 跳过非看板阻塞项）、`8c06d7f`（`br` 的 `kind:<id>` label 截断到 50 字符；部分展开在续跑时补齐）、`61e37e3`（action 可能重开任务，ready 列表不能跨 action 复用）、`788d9cf`（`check_adapter` 的目标侧身份 id 用裁判字面值，回退 register body 的 `userId`）。
+- **未做**：W4.2 的 J1/D1/G2 拆分（需先定资产约定）、W4.7 AWS 实测（真实运行需人确认费用）。acmeair/MongoDB 按 V2P-08 属 Q5 扩展，不在 M4 内。

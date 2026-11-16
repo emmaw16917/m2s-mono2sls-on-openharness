@@ -1,0 +1,9 @@
+{
+  "task": "I2c",
+  "attempt": 1,
+  "role": "m2s-sam-engineer",
+  "status": "done",
+  "time": "2026-11-14T02:41:06+0800",
+  "summary": "S3c 完成：m2s_merge.py 拼 part1+part2 → output/template.yaml（768 行），自查两轮后 run_gate(phase=\"template\")=PASS（mechanical_failures=[]）且 validate_sam=ok。唯一的机械失败是第 1 轮的 GM2 两条，修法是给合并产物补 Globals.Api.GatewayResponses（DEFAULT_4XX/DEFAULT_5XX 声明 Access-Control-Allow-Origin: \"'*'\"）并改掉 Api 上自相矛盾的注释；分片文件未动。",
+  "notes": "已确认这次修改对部署行为是中性的，不是随手加块过检：samtranslator 的 Globals.supported_properties 里 HttpApi 没有 GatewayResponses，我用 samtranslator.transform 直接翻译本模板（CodeUri 换成 s3:// 形式）产物里 0 处 gateway response，且 sam build 实际构建通过（临时目录 D:/tmp/m2s-i2c-test，已删）。按 blueprint.api_gateway.api_type=\"http\"，网关自答 401 的 ACAO:* 仍由 Api 的 CorsConfiguration 覆盖（DECISIONS.md D-9 / SI-14），函数真实响应的头由代码带（GM1 无发现）——模板注释里把这段的实际效力范围写清了。\n\n请 S1/规格侧留意的口径不一致（我没动任何工具）：GM2 对 http 模板也要求 GatewayResponses，而 gates.py 自己的 AT1 api_type_needs / REST_FEATURES['gateway_responses'] 认为头只有 ACAO:* 时不需要该特性，m2s-sam-kb 第 239 行又写着 \"No GatewayResponses\"，D-9 正是据此决定不写，于是 S3a 少写、S3c 只能补一段不生效的声明来满足检查。要根治应在检查或裁定侧，不在模板侧。\n\n另：template.yaml 现在与两个分片不再逐字相同（这是角色规定：合并产物为准）；若有人重跑 m2s_merge 会丢这段并再次触发 GM2。详见 storage/stage_reports/I2c.json。"
+}

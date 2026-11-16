@@ -1,0 +1,19 @@
+{
+ "id": "spec-j3-r1",
+ "kind": "spec",
+ "theme": "规格对账（J3）有争议的差异需要裁定：\n[\n {\n  \"id\": \"register-read-back-by-admin/list/body.subset\",\n  \"case\": \"register-read-back-by-admin\",\n  \"step\": \"list\",\n  \"request\": {\n   \"method\": \"GET\",\n   \"path\": \"/auth/users\"\n  },\n  \"check\": \"body.subset\",\n  \"predicted\": {\n   \"users\": [\n    {\n     \"sub\": \"cust-admin\",\n     \"email\": \"admin@example.com\",\n     \"groups\": [\n      \"Admin\"\n     ]\n    },\n    {\n     \"sub\": \"cust-reg-3\",\n     \"email\": \"reg3@example.com\",\n     \"groups\": []\n    }\n   ]\n  },\n  \"actual\": {\n   \"users\": [\n    {\n     \"email\": \"reg3@example.com\",\n     \"groups\": [],\n     \"sub\": \"cust-reg-3\"\n    },\n    {\n     \"email\": \"admin@example.com\",\n     \"groups\": [\n      \"Admin\"\n     ],\n     \"sub\": \"cust-admin\"\n    }\n   ]\n  },\n  \"fact_refs\": [\n   \"POST /auth/register#responses[1]\",\n   \"POST /auth/register#business_rules[3]\",\n   \"GET /auth/users#responses[2]\",\n   \"GET /auth/users#business_rules[2]\",\n   \"GET /auth/users#business_rules[4]\"\n  ],\n  \"reason\": \"差异在数组元素的顺序，而事实库明确说了顺序不属于对外承诺：GET /auth/users#business_rules[2] —— '不排序、不分页……条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺'。代码印证：data/storage.py:352-356 只有 self.users_table.scan() 取 Items，services/auth.py:140-150 的脱敏推导式保持原顺序、没有 sorted()。两个字段集合（cust-admin / cust-reg-3）单体都返回了，只是先 reg3 后 admin；J1 按 fixtures/admin-user.json 的书写顺序把 2 个元素按下标钉死了（body.subset 对数组要求等长、逐位匹配）。\"\n }\n]",
+ "status": "closed",
+ "proposer_role": "m2s-verifier",
+ "proposer_task": "J3",
+ "participants": [
+  "m2s-verifier",
+  "m2s-architect",
+  "m2s-spec-annotator",
+  "m2s-verifier"
+ ],
+ "turn": 4,
+ "round": 2,
+ "max_rounds": 2,
+ "created": "2026-11-13T15:55:48+0800",
+ "ruling_gate": "RULE_J3_1"
+}

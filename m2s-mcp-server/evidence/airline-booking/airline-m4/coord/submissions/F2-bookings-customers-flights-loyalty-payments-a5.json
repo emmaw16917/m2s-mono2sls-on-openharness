@@ -1,0 +1,9 @@
+{
+  "task": "F2-bookings-customers-flights-loyalty-payments",
+  "attempt": 5,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T22:43:07+0800",
+  "summary": "J4-5 已按单体代码核实并重写 POST /bookings#business_rules[11]：catch-all 的补偿只看本次请求自己的局部变量，退款被 app.py:224 的 if payment_result 挡住，而两条可达成因（缺 outboundFlightId 的 KeyError 抛在 app.py:106、不可哈希 chargeId 的 TypeError 抛在 services/payment.py:177）都在 app.py:135 赋值 payment_result 之前发生，payment_result 恒为 None，故可达路径上 catch-all 从不退款；先前同一 chargeId 的 captured 收款保持不变、GET /payments/<charge_id> 读回不变，这一外部效果已写入规则（class 保持 contract，10 条出处）。本包其余 16 条 business_rules 与其他端点、其他字段原样未动。check_provenance：POST /bookings 单查 PASS、整库 PASS（errors 0、incomplete 0、checked_sources 654、unknown_items 3），尝试 1 次。",
+  "notes": "唯一的 unknown 项仍是 POST /bookings#request.body[1] chargeId.type（代码无任何类型校验，行为按可哈希性分档，已由 business_rules[15] 记明），不需要修。J4-5 只点 business_rules[11]，因此 responses[7]（catch-all 那一臂）的 status/when/body 有意未改动；若 J4 后续认为那一臂也应引用「不退款」这一效果，请再派一次。报告见 storage/stage_reports/F2-bookings-customers-flights-loyalty-payments.json。"
+}

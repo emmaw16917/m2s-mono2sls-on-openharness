@@ -1,0 +1,9 @@
+{
+  "task": "F2-shared",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T00:16:53+0800",
+  "summary": "补齐了 recheck 指出的唯一 incomplete：global_middleware[0]（app.use(cors({origin:'*',credentials:true}))，cors 2.8.5）的响应头已确定并写入——每个响应固定 Access-Control-Allow-Origin: * 与 Access-Control-Allow-Credentials: true（origin 为字面 '*'，不反映请求 Origin、不加 Vary: Origin），OPTIONS 预检另带 Allow-Methods 默认值、反射请求 Access-Control-Request-Headers 的 Allow-Headers、Vary: Access-Control-Request-Headers 与 Content-Length: 0（就地 204 回答，不进路由），无 Max-Age；出处 server.js:29-31/11、package.json:27。同时按 work_packages.shared_code 补写共享条目 shared/auth-middleware（authMiddleware 的挂载点、AUTH_DEV_MODE 两条放行分支、生产模式 401 两臂、通过后写入 req.customerId/req.userEmail）。事实库端点字段未改动。",
+  "notes": "check_provenance 现为 PASS（errors 0、incomplete 0、checked_sources 768、unknown_items 4）。给 architect/handler 的提示已写进 storage/stage_reports/F2-shared.json 的 issues：(1) 两个 F2 包任务先于本阶段完成，已把 authMiddleware 行为各自内联进端点 business_rules，事实库中不存在 \"ref: shared/auth-middleware\" 引用，我未越权重写 15 个端点；(2) routes/books.js:10、cart.js:10、orders.js:10 的 authMiddleware 是死导入，生效挂载点是 server.js:41-45；(3) P0 未登记的全局行为：server.js:50-56 统一错误处理（err.status||500 + {error, stack}，NODE_ENV 默认 development 会带堆栈）与 body-parser 默认 100kb 上限（超限 413 由该中间件返回）；(4) origin '*' + credentials true 在浏览器侧会使携带凭据的跨域请求被拒，属单体现状，是否保持待裁定；(5) auth 的 401/放行两臂取决于运行时 AUTH_DEV_MODE，验证线出题前需确认。剩余 6 个 type=unknown 字段（register 的 name、cart/orders 的 quantity 与 price）属包任务范围，代码原样入库无类型检查，故保持不变。"
+}

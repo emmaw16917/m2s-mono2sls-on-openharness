@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r1-0-2",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T01:54:13+0800",
+  "summary": "在 spec-j3-r1 以 m2s-verifier 身份发言（seq 5）：确认 R-ROOM-spec-j3-r1-1-1-a1-1 已 decided 且验证线可直接执行，无需回炉用例；新查出裁判里按下标比较的列表断言在两个 search 用例共 6 步，affected_cases 只覆盖 3 步（mixed-name/mixed-target/name 同属\"无排序键、顺序即 scan 顺序\"这一类），请求并进 affected_cases 或在结论写明同类步骤自动继承；并把 annotator 的 B/C 收敛成三条只改文字的收窄（栏1 限定为应用层显式排序+键序不等于排序契约、段5 只作用于最外层结果集列表、对账按用例粒度不得吞掉内容差异），同时给出 V2 对这三步的可证伪判定口径。",
+  "notes": "本轮未修改任何工作区文件（只写 storage/stage_reports/ROOM-spec-j3-r1-0-2.json 并发言）。证据来源：rulings.json、judge/cases 全部用例的 predicted 穷举扫描、judge/faults 全部 13 个场景。四条 ask（A1 覆盖另外 3 步 / A2 栏1 措辞 / A3 段5 范围限定 / A4 对账粒度漏检口子）均标记 blocking=false，不阻塞 V1/V2；若 A1 被否，我会登记为已知的未来假失败风险而不是重开房间。故障基准与夹具无需改动：现有故障规则全部钉在表+条目或 nth:all，不受顺序放宽影响。"
+}

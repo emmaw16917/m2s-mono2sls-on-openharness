@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r1-1-1",
+  "attempt": 1,
+  "role": "m2s-architect",
+  "status": "done",
+  "time": "2026-11-13T01:36:29+0800",
+  "summary": "在 spec-j3-r1 以 architect 身份下了一条通用裁定 R-ROOM-spec-j3-r1-1-1-a1-1（contract + relaxation=order，层 R，deviates_from_monolith=false）：事实库规定了显式排序键的列表顺序仍是契约（bestsellers 的 salesCount 降序不放宽），只说 scan/存储顺序、无排序键的列表（/api/search 的 hits）顺序属于实现轨迹，R 层按多重集比较；affected_cases 精确到 search-case-insensitive-200#upper-q、search-hits-200#author、search-hits-200#category。同时在房间发言里回答了 verifier 的落地问题：不批准把嵌套 hits 降级成 total+结构断言（过度屏蔽），relaxation=order 本身覆盖嵌套数组路径，集合内容/条目数/total/CORS 继续被检查，不登记残余盲区；并列次序因 relaxation 是步骤粒度而不由本条覆盖，将来需单独立条。",
+  "notes": "本轮只讨论并记录裁定，未改动 blueprint、DECISIONS.md、judge/、output/；工作报告写在 storage/stage_reports/ROOM-spec-j3-r1-1-1.json。两条 search 顺序差异现在可由 R-ROOM-spec-j3-r1-1-1-a1-1 结案，reconcile 的 needs_ruling 分类不需要改成 case_error 或 mask_gap。另外报告里说明了 J2 跨遍不稳定探测为什么没盖住这条顺序（单体逐遍稳定，只在换实现后暴露），以免下一轮被当成屏蔽不全再提。"
+}

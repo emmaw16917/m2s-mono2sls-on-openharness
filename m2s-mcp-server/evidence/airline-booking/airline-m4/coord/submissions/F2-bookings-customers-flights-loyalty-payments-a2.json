@@ -1,0 +1,9 @@
+{
+  "task": "F2-bookings-customers-flights-loyalty-payments",
+  "attempt": 2,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T16:02:11+0800",
+  "summary": "按 J3 差异 release-missing-or-at-max/ghost/body.equals 修正事实库：核实 data/storage.py:163-186（:169 的 raise 位于 try 内，被 :185-186 的 except Exception 包成 'Failed to release seat: ...'；只有 :183-184 的条件失败分支不带前缀），把 POST /flights/&lt;flight_id&gt;/release 的 responses[1]（when + body.description）与 business_rules[3] 的错误文案改为完整串 'Failed to release seat: Flight &lt;flight_id&gt; does not exist'（source 增加 storage.py:186），并在 responses[2]/[3]、business_rules[4] 补上\"哪一臂带前缀\"的区分说明；其他端点与脚本项未动。",
+  "notes": "check_provenance：单端点（POST /flights/&lt;flight_id&gt;/release）PASS，整库 PASS（errors 0、incomplete 0、checked_sources 606、unknown_items 2，均在 identity 包的 /auth/register 与 /auth/login 的 request.body[0].type），第 1 次尝试即通过。给 J1：judge/cases/post-flights-flight-id-release/release-missing-or-at-max.json 的 ghost 步 expected body.error 需更新为完整串 'Failed to release seat: Flight flight-ghost does not exist'（status 400、type ValueError 不变）。另核实 POST /flights/&lt;flight_id&gt;/reserve 的 'Flight &lt;id&gt; is fully booked or does not exist' 在 storage.py:158-159 的 except 分支里 raise，不会被 :160-161 加 'Failed to reserve seat: ' 前缀，reserve 侧现有事实正确，未改。工作报告：storage/stage_reports/F2-bookings-customers-flights-loyalty-payments.json。"
+}

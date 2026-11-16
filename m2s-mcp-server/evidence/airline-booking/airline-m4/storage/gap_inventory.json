@@ -1,0 +1,1086 @@
+{
+ "version": 1,
+ "categories": {
+  "multi_write": "一个请求里有多次写操作，没有事务",
+  "process_state": "进程内状态：模块级变量、内存缓存、session",
+  "fire_and_forget": "即发即忘的副作用：不等待结果的调用",
+  "order_and_consistency": "顺序和一致性：依赖返回顺序的排序、刚写入就读取",
+  "time": "时间相关：当前时间、时区、定时任务",
+  "global_middleware": "全局中间件：CORS、统一错误处理、全局响应头",
+  "auth_semantics": "鉴权语义：应用自己签发和校验令牌",
+  "files_and_connections": "文件系统和长连接：写本地文件、上传、WebSocket、流式响应",
+  "monolith_defect": "单体自身的缺陷：例如 Scan 不翻页（超过 1MB 时结果被静默截断）"
+ },
+ "gaps": [
+  {
+   "id": "GAP-1",
+   "key": "multi_write:POST /bookings",
+   "category": "multi_write",
+   "summary": "POST /bookings 一次请求写 6 次，没有事务：update_item Airline-Flight-{stage}, put_item Airline-Booking-{stage}, update_item Airline-Booking-{stage}, update_item Airline-Flight-{stage}, put_item Airline-Loyalty-{stage}, update_item Airline-Booking-{stage}",
+   "evidence": [
+    {
+     "file": "airline-booking/app.py",
+     "line": 106,
+     "symbol": "reserve_flight_seat"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 119,
+     "symbol": "reserve_booking"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 157,
+     "symbol": "confirm_booking"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 123,
+     "symbol": "release_flight_seat"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 190,
+     "symbol": "process_booking_loyalty"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 139,
+     "symbol": "cancel_booking"
+    }
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G1",
+   "status": "decided",
+   "decision": {
+    "choice": "bookings-create 里六步 Saga 全部同步内联、顺序与单体一致（条件更新扣座 -> PutItem UNCONFIRMED 预订 -> 写 PaymentTable 收款 -> 条件 UpdateItem 确认 -> PutItem 积分 -> 本地拼通知），失败按单体逐步补偿；不用 TransactWriteItems 把这几次写合成一个事务。",
+    "why": "D-6 / D-13 / SI-17 / SI-18：单体的失败语义就是『部分生效 + 尽力补偿 + 仍返回 400/500』（`POST /bookings#business_rules[7]`、`#business_rules[11]`、`#responses[3..5]`、`#responses[7]`），事务化会改掉这些对外结果；GAP-19/GAP-20 同族，规则手册对 monolith_defect 的默认做法是照搬（PIPELINE_REDESIGN_v2.md Q10）。没有异步消费者，所以这条多写不引入幂等机制（m2s-async-patterns-kb 的强制规则无适用对象）。",
+    "test": "judge",
+    "judge_cases": [
+     "booking-happy-path",
+     "booking-body-and-field-failures",
+     "booking-same-charge-twice",
+     "booking-missing-outbound-key"
+    ]
+   }
+  },
+  {
+   "id": "GAP-2",
+   "key": "multi_write:POST /bookings/<booking_id>/cancel",
+   "category": "multi_write",
+   "summary": "POST /bookings/<booking_id>/cancel 一次请求写 2 次，没有事务：update_item Airline-Booking-{stage}, update_item Airline-Flight-{stage}",
+   "evidence": [
+    {
+     "file": "airline-booking/app.py",
+     "line": 279,
+     "symbol": "cancel_booking"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 283,
+     "symbol": "release_flight_seat"
+    }
+   ],
+   "endpoints": [
+    "POST /bookings/<booking_id>/cancel"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G1",
+   "status": "decided",
+   "decision": {
+    "choice": "bookings-cancel 保持『先无条件把预订写成 CANCELLED，再尽力放座、再尽力退款』的次序与失败语义：放座失败只记日志、退款失败把 refund 顶成 {'refundId': 'N/A', 'status': 'failed'}，整体仍 200；不合并成事务、不加部分失败标记。",
+    "why": "SI-18 / D-6：`POST /bookings/<booking_id>/cancel#business_rules[3]`/`#business_rules[4]`/`#business_rules[7]` 把这三段失败的外部效果（仍 200、预订 CANCELLED、座位可能没回来）明确列为契约；GAP-20 也是同一处代码。裁判用故障注入直接验这条臂（judge/faults/booking-cancel-release-seat-fails.json）。",
+    "test": "judge",
+    "judge_cases": [
+     "booking-cancel-and-read",
+     "booking-cancel-twice",
+     "booking-cancel-releases-stored-flight",
+     "booking-cancel-guards"
+    ]
+   }
+  },
+  {
+   "id": "GAP-3",
+   "key": "monolith_defect:scan_no_pagination:airline-booking/data/storage.py",
+   "category": "monolith_defect",
+   "summary": "Scan 没有处理 LastEvaluatedKey（不翻页）：airline-booking/data/storage.py 第 61, 131, 257, 287, 318, 355 行",
+   "evidence": [
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 61,
+     "symbol": "response = self.flight_table.scan(Limit=1)"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 131,
+     "symbol": "response = self.flight_table.scan("
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 257,
+     "symbol": "response = self.booking_table.scan(FilterExpression=filter_expr)"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 287,
+     "symbol": "response = self.loyalty_table.scan("
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 318,
+     "symbol": "response = self.users_table.scan("
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 355,
+     "symbol": "response = self.users_table.scan()"
+    }
+   ],
+   "endpoints": [
+    "GET /auth/me",
+    "GET /auth/users",
+    "GET /bookings/<booking_id>",
+    "GET /customers/<customer_id>/bookings",
+    "GET /flights/<flight_id>",
+    "GET /flights/search",
+    "GET /loyalty/<customer_id>",
+    "POST /auth/login",
+    "POST /auth/register",
+    "POST /bookings",
+    "POST /bookings/<booking_id>/cancel",
+    "POST /bookings/<booking_id>/confirm",
+    "POST /flights/<flight_id>/release",
+    "POST /flights/<flight_id>/reserve",
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "rulebook_rule": "PIPELINE_REDESIGN_v2.md Q10: 默认照搬单体",
+   "default": "默认照搬单体，要偏离须人确认",
+   "source": "G1",
+   "status": "decided",
+   "note": "核对：6 处 Scan 确实都不处理 LastEvaluatedKey。其中 storage.py:61 的 scan(Limit=1) 只是 _init_sample_data 判断表空不空，不翻页是有意的、不构成结果截断；会静默截断的是返回给客户端的 131/257/287/318/355 这几处（超过 1MB 时结果不全，287 那处还会让总积分算少）。endpoints 里 GET /auth/me 只走 users_table.get_item（auth.py:120），不经过 Scan，属于本条多带的一个端点。",
+   "decision": {
+    "choice": "照搬单体：三处返回给客户端的 Scan（flights-search、customers-bookings-list、loyalty-get 的求和）都只取第一次响应的 Items，不处理 LastEvaluatedKey、不加分页参数，也不给航班表加索引。storage.py:61 的 scan(Limit=1) 连同一整段导入期初始化一起删掉（见 GAP-14），不再有『判断表空』的 Scan。",
+    "why": "SI-12 / D-8；条目自带 default『照搬单体，要偏离须人确认』与 rulebook PIPELINE_REDESIGN_v2.md Q10；`GET /flights/search#business_rules[2]` 的 note 要求外部可观察的过滤语义保持一致。test=none 的理由：截断要 >1MB 数据才可见，裁判夹具远小于它（角色说明明确这种只能靠读代码核实）；本条能被核实的是过滤语义与『没有分页参数』，由 S2 代码方向检查与白盒评审覆盖。",
+    "test": "none"
+   }
+  },
+  {
+   "id": "GAP-4",
+   "key": "monolith_defect:scan_no_pagination:airline-booking/fix_admin_user.py",
+   "category": "monolith_defect",
+   "summary": "Scan 没有处理 LastEvaluatedKey（不翻页）：airline-booking/fix_admin_user.py 第 27 行",
+   "evidence": [
+    {
+     "file": "airline-booking/fix_admin_user.py",
+     "line": 27,
+     "symbol": "response = table.scan("
+    }
+   ],
+   "endpoints": [],
+   "rulebook_rule": "PIPELINE_REDESIGN_v2.md Q10: 默认照搬单体",
+   "default": "默认照搬单体，要偏离须人确认",
+   "source": "G1",
+   "status": "decided",
+   "note": "核对：fix_admin_user.py 是独立运维脚本（if __name__ == '__main__' 才执行），不在任何请求路径上，endpoints 为空是对的；它读写的 Airline-Users-{stage} 与 storage.py 用的是同一张表，但应用代码从不执行这段逻辑。",
+   "decision": {
+    "choice": "不需要处理：fix_admin_user.py 整体不迁（进 dropped_functions，type script），它不在任何请求路径上，目标里没有执行这段 Scan 的地方。",
+    "why": "条目 note 已核对：独立运维脚本（只在 __main__ 下执行），它改的是 Users 表的口令散列与 groups——两者在目标里分别归 Cognito（AdminSetUserPassword）与 UserGroupsTable（D-4/D-3）。",
+    "test": "none"
+   }
+  },
+  {
+   "id": "GAP-5",
+   "key": "process_state:module_collection:airline-booking/services/payment.py",
+   "category": "process_state",
+   "summary": "模块级集合（进程内的数据）：airline-booking/services/payment.py 第 21, 22 行",
+   "evidence": [
+    {
+     "file": "airline-booking/services/payment.py",
+     "line": 21,
+     "symbol": "_payments: Dict[str, dict] = {}"
+    },
+    {
+     "file": "airline-booking/services/payment.py",
+     "line": 22,
+     "symbol": "_refunds: Dict[str, dict] = {}"
+    }
+   ],
+   "endpoints": [
+    "GET /payments/<charge_id>",
+    "POST /bookings",
+    "POST /payments/collect",
+    "POST /payments/refund"
+   ],
+   "rulebook_rule": "m2s-basic-serverless-kb: Store user data in global state between invocations -> Keep state in DynamoDB / S3",
+   "default": "状态放进 DynamoDB 或 S3，不留在函数实例里",
+   "source": "G1",
+   "status": "decided",
+   "note": "核对：_payments/_refunds 是支付记录唯一的存放处，除此之外没有任何持久化，所以跨请求能否读到某笔收款取决于两次请求是否落在同一个进程里（连带后果见 GAP-21）。",
+   "decision": {
+    "choice": "状态迁出函数实例：新建 PaymentTable(chargeId S)，payments-collect 用 PutItem 写整条 {chargeId, receiptUrl, price, status, mode}，payments-refund 用条件 UpdateItem 把已存在那条的 status 改成 'refunded'（条目不存在就什么都不做、绝不新建），payments-get 用 GetItem 读。`PaymentService._refunds` 没有任何读取方，不建表。",
+    "why": "条目自带 rulebook_rule：m2s-basic-serverless-kb『跨调用共享的数据放 DynamoDB/S3』；SI-6 把『放内存字典』判为实现轨迹并钉住四条可观察结果（D-11）。Lambda 实例之间不共享内存，照搬字典会让收款读回变成随机结果。",
+    "test": "judge",
+    "judge_cases": [
+     "collect-then-read-payment",
+     "refund-then-read-payment",
+     "payment-read-missing"
+    ]
+   }
+  },
+  {
+   "id": "GAP-6",
+   "key": "time:now:airline-booking/data/storage.py",
+   "category": "time",
+   "summary": "用到当前时间：airline-booking/data/storage.py 第 199, 274 行",
+   "evidence": [
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 199,
+     "symbol": "'createdAt': datetime.now().isoformat(),"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 274,
+     "symbol": "'date': datetime.now().isoformat()"
+    }
+   ],
+   "endpoints": [
+    "GET /auth/me",
+    "GET /auth/users",
+    "GET /bookings/<booking_id>",
+    "GET /customers/<customer_id>/bookings",
+    "GET /flights/<flight_id>",
+    "GET /flights/search",
+    "GET /loyalty/<customer_id>",
+    "POST /auth/login",
+    "POST /auth/register",
+    "POST /bookings",
+    "POST /bookings/<booking_id>/cancel",
+    "POST /bookings/<booking_id>/confirm",
+    "POST /flights/<flight_id>/release",
+    "POST /flights/<flight_id>/reserve",
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G1",
+   "status": "decided",
+   "decision": {
+    "choice": "写进条目的时间戳保持单体的形状：不带时区后缀的 ISO-8601 裸串（createdAt、loyalty 流水的 date）。实现照抄 `datetime.now().isoformat()` 这个调用形态，不改成带 +00:00 的串、也不改成 epoch 毫秒；在 Lambda 里本地时区即 UTC，在验证线的本地运行时里与单体取同一个时钟。",
+    "why": "SI-15 / D-16；judge/masks.json 里这两个字段被识别成 class=time 的符号（`<time#2>`、`<time#3>`），说明值本身不做逐字比较、形状必须一致。",
+    "test": "judge",
+    "judge_cases": [
+     "booking-happy-path",
+     "points-add-and-read"
+    ]
+   }
+  },
+  {
+   "id": "GAP-7",
+   "key": "time:now:airline-booking/fix_admin_user.py",
+   "category": "time",
+   "summary": "用到当前时间：airline-booking/fix_admin_user.py 第 44 行",
+   "evidence": [
+    {
+     "file": "airline-booking/fix_admin_user.py",
+     "line": 44,
+     "symbol": "'created_at': datetime.utcnow().isoformat()"
+    }
+   ],
+   "endpoints": [],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G1",
+   "status": "decided",
+   "note": "核对：同 GAP-4，这个 utcnow() 在独立运维脚本 fix_admin_user.py 里，不在任何端点路径上；应用进程写用户记录的时间戳在 services/auth.py:61（见 GAP-8、GAP-22）。",
+   "decision": {
+    "choice": "不需要处理：这段 utcnow() 在被删除的 fix_admin_user.py 里（见 GAP-4），不在任何端点路径上。",
+    "why": "条目 note 已核对；应用侧真正的时间戳在 storage.py:199/274（GAP-6）与 auth.py（GAP-8）。",
+    "test": "none"
+   }
+  },
+  {
+   "id": "GAP-8",
+   "key": "time:now:airline-booking/services/auth.py",
+   "category": "time",
+   "summary": "用到当前时间：airline-booking/services/auth.py 第 87, 96, 61 行",
+   "evidence": [
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 87,
+     "symbol": "expire = datetime.datetime.utcnow() + datetime.timedelta("
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 96,
+     "symbol": "'iat': datetime.datetime.utcnow(),"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 61,
+     "symbol": "'created_at': datetime.datetime.utcnow().isoformat()"
+    }
+   ],
+   "endpoints": [
+    "GET /auth/me",
+    "GET /auth/users",
+    "GET /bookings/<booking_id>",
+    "GET /customers/<customer_id>/bookings",
+    "GET /loyalty/<customer_id>",
+    "POST /auth/login",
+    "POST /auth/register",
+    "POST /bookings",
+    "POST /bookings/<booking_id>/cancel",
+    "POST /bookings/<booking_id>/confirm",
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G1",
+   "status": "decided",
+   "note": "核对：auth.py:87/96 的 utcnow 决定令牌 exp = 签发时刻 + 60 分钟（ACCESS_TOKEN_EXPIRE_MINUTES=60），过期后 decode_token 返回 None → 401；签名密钥本身在未设 JWT_SECRET_KEY 时是每进程随机值，见 GAP-12。",
+   "decision": {
+    "choice": "随认证迁到 Cognito：目标不自己签发令牌，也没有 iat/exp/created_at 要写。60 分钟的有效期由用户池的 token_validity（access/id 1h）对齐单体的 expires_in=3600；user.created_at 不迁（Cognito 自带 userCreateDate，见 adapter_map 的 drop）。",
+    "why": "SI-8 / SI-10 / D-3 / D-4；GAP-12 说明单体的密钥在未设 JWT_SECRET_KEY 时是每进程随机值，这套签发机制本身不可迁。test=none 的理由：/auth/* 四个端点不提供（dropped_endpoints），裁判不在目标上运行这些步骤；令牌时长是 Cognito 配置项，由 gate C14 与模板核对，没有函数行为可测。",
+    "test": "none"
+   }
+  },
+  {
+   "id": "GAP-9",
+   "key": "global_middleware:cors:0",
+   "category": "global_middleware",
+   "summary": "全局中间件 flask-cors（global_middleware[0]）：Access-Control-Allow-Origin",
+   "evidence": [
+    {
+     "file": "airline-booking/app.py",
+     "line": 24,
+     "symbol": "CORS("
+    }
+   ],
+   "endpoints": [
+    "GET /auth/me",
+    "GET /auth/users",
+    "GET /bookings/<booking_id>",
+    "GET /customers/<customer_id>/bookings",
+    "GET /flights/<flight_id>",
+    "GET /flights/search",
+    "GET /loyalty/<customer_id>",
+    "GET /payments/<charge_id>",
+    "POST /auth/login",
+    "POST /auth/register",
+    "POST /bookings",
+    "POST /bookings/<booking_id>/cancel",
+    "POST /bookings/<booking_id>/confirm",
+    "POST /flights/<flight_id>/release",
+    "POST /flights/<flight_id>/reserve",
+    "POST /loyalty/<customer_id>/points",
+    "POST /payments/collect",
+    "POST /payments/refund"
+   ],
+   "rulebook_rule": "gate GM1-GM3: every function's response carries the headers; GatewayResponses for what API Gateway answers",
+   "default": "每个函数的响应带上这些头，网关自己的响应用 GatewayResponses",
+   "source": "G1",
+   "status": "decided",
+   "decision": {
+    "choice": "Access-Control-Allow-Origin: * 由每个函数自己的响应带上（共用 layer 的响应/错误助手统一构造，连 4xx/5xx 也一样）；预检 OPTIONS 与网关自答的 401/429/5xx 由 HTTP API 的 CorsConfiguration(allow_origins ['*']) 负责；不配 GatewayResponses。",
+    "why": "条目自带 default（GM1-GM3）与 SI-14 / D-9。Lambda 代理集成下网关不会给真实响应补头，模板的 Cors 只生成预检——只写 api_gateway.cors 是不够的（角色说明引 airline 2026-10-04 E2E 的教训）。",
+    "test": "judge",
+    "judge_cases": [
+     "search-route-match",
+     "booking-happy-path",
+     "customer-bookings-status-filter",
+     "payment-read-missing"
+    ]
+   }
+  },
+  {
+   "id": "GAP-10",
+   "key": "auth_semantics:app",
+   "category": "auth_semantics",
+   "summary": "应用自己签发和校验令牌，9 个端点要求身份",
+   "evidence": [
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 100,
+     "symbol": "return jwt.encode(payload, AuthService.SECRET_KEY, algorithm=AuthService.ALGORITHM)"
+    }
+   ],
+   "endpoints": [
+    "GET /auth/me",
+    "GET /auth/users",
+    "GET /bookings/<booking_id>",
+    "GET /customers/<customer_id>/bookings",
+    "GET /loyalty/<customer_id>",
+    "POST /bookings",
+    "POST /bookings/<booking_id>/cancel",
+    "POST /bookings/<booking_id>/confirm",
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "rulebook_rule": "m2s-basic-serverless-kb: Cognito User Pool (if auth exists in monolith)",
+   "default": "Cognito + API Gateway 授权器，认证端点删除",
+   "source": "G1",
+   "status": "decided",
+   "note": "核对：除签发之外，鉴权判定也不看令牌里的 claims，而是每次回 Users 表读当前记录（见 GAP-13）；密钥来源与有效期语义见 GAP-12。",
+   "decision": {
+    "choice": "认证基建化：Cognito 用户池 + HTTP API 的 JWT 授权器（默认授权器指向用户池 issuer / 应用客户端 audience），7 个受保护函数只读 event.requestContext.authorizer.claims.sub；4 个 /auth/* 端点与 services/auth.py 的签发/验签代码删除。owner/admin 判定作为业务规则保留在函数里（读 UserGroupsTable）。",
+    "why": "条目自带 default『Cognito + API Gateway 授权器，认证端点删除』与 rulebook m2s-basic-serverless-kb；D-3/D-4/D-5、SI-8/SI-9/SI-10。auth 字段逐端点采用 `entry_points[].auth.classification`，没有一处偏离规格。",
+    "test": "judge",
+    "judge_cases": [
+     "points-guards",
+     "booking-cancel-guards",
+     "customer-bookings-owner-only"
+    ]
+   }
+  },
+  {
+   "id": "GAP-11",
+   "key": "g2:global_middleware:flask_errorhandler",
+   "category": "global_middleware",
+   "summary": "统一异常处理器 @app.errorhandler(Exception) 把路由里没被捕获的异常变成 JSON 响应 {'error': str(异常), 'type': 异常类名}，ValueError 给 400、其余异常给 500；也就是说 GET /flights/<flight_id> 查不到航班、GET /bookings/<booking_id> 查不到预订这类「不存在」走的是 400+ValueError 而不是 404，而 request.get_json() 在非 JSON 请求体上抛出的 werkzeug 异常会变成 500。",
+   "evidence": [
+    {
+     "file": "airline-booking/app.py",
+     "line": 28,
+     "symbol": "@app.errorhandler(Exception)"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 32,
+     "symbol": "'error': str(error),"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 34,
+     "symbol": "400 if isinstance(error, ValueError) else 500"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 89,
+     "symbol": "data = request.get_json()"
+    }
+   ],
+   "endpoints": [
+    "GET /flights/<flight_id>",
+    "POST /flights/<flight_id>/reserve",
+    "POST /flights/<flight_id>/release",
+    "GET /bookings/<booking_id>",
+    "POST /bookings/<booking_id>/confirm",
+    "POST /bookings",
+    "POST /payments/collect",
+    "POST /payments/refund",
+    "GET /payments/<charge_id>",
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G2",
+   "status": "decided",
+   "decision": {
+    "choice": "Flask 的全局 errorhandler 不作为中间件迁移，但它的映射是契约，逐函数内联：ValueError -> 400 {'error': str(e), 'type': 'ValueError'}；其它异常 -> 500 {'error','type'}。因此『不存在』仍然走 400 而不是 404（flights-get、payments-get、loyalty-add-points 的取值/写失败臂），只有预订的存在性检查是 404。",
+    "why": "D-10；`GET /flights/<flight_id>#business_rules[2]`、`GET /payments/<charge_id>#business_rules[2]`、`POST /loyalty/<customer_id>/points#responses[4..5]`、`GET /bookings/<booking_id>#business_rules[2]`、SI-3（缺 outboundFlightId 的 500 臂保持）。",
+    "test": "judge",
+    "judge_cases": [
+     "get-flight-found-and-missing",
+     "payment-read-missing",
+     "points-guards",
+     "booking-missing-outbound-key"
+    ]
+   }
+  },
+  {
+   "id": "GAP-12",
+   "key": "g2:auth_semantics:jwt_secret_per_process",
+   "category": "auth_semantics",
+   "summary": "JWT 用 HS256 对称密钥签发：SECRET_KEY 取环境变量 JWT_SECRET_KEY，未设置时回落到 secrets.token_urlsafe(32)，即每个进程启动时随机生成（config.py 的自检明确写 sessions won't persist across restarts）；令牌有效期 ACCESS_TOKEN_EXPIRE_MINUTES=60 分钟，没有刷新或吊销端点，过期或签名不符都只表现为 401。",
+   "evidence": [
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 19,
+     "symbol": "SECRET_KEY = os.environ.get('JWT_SECRET_KEY', secrets.token_urlsafe(32))"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 20,
+     "symbol": "ALGORITHM = 'HS256'"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 21,
+     "symbol": "ACCESS_TOKEN_EXPIRE_MINUTES = 60"
+    },
+    {
+     "file": "airline-booking/config.py",
+     "line": 59,
+     "symbol": "A random key will be generated"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 111,
+     "symbol": "except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):"
+    }
+   ],
+   "endpoints": [
+    "POST /auth/login",
+    "GET /auth/me",
+    "GET /auth/users",
+    "GET /bookings/<booking_id>",
+    "GET /customers/<customer_id>/bookings",
+    "GET /loyalty/<customer_id>",
+    "POST /bookings",
+    "POST /bookings/<booking_id>/cancel",
+    "POST /bookings/<booking_id>/confirm",
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G2",
+   "status": "decided",
+   "decision": {
+    "choice": "不自建令牌体系：令牌由 Cognito 用户池签发与校验（HS256 对称密钥 + 每进程随机 SECRET_KEY 的问题随之消失），有效期 1h（cognito.token_validity）；过期/伪造/缺头统一由授权器答 401，『没有刷新端点』这一对外形状保持（刷新是 Cognito SDK 的事，不再是本 API 的契约）。",
+    "why": "SI-8 / SI-9 / D-3；GAP-8 与 `POST /auth/login#business_rules[5]`（被 S0 标为 implementation-trace）明确密钥来源是进程状态、不是契约。test=none 的理由：目标没有可测的令牌签发代码；授权器 401 的差异已由 SI-9 + 裁定记录，凭据参数由 gate C14 对模板核对。",
+    "test": "none"
+   }
+  },
+  {
+   "id": "GAP-13",
+   "key": "g2:auth_semantics:identity_from_db_not_claims",
+   "category": "auth_semantics",
+   "summary": "装饰器不信任令牌里的 claims：解出 payload 后用 payload['sub'] 再查一次 Users 表（storage.get_user），查不到就 401；Admin 判定读的是库里该用户当前的 groups，owner 判定拿库里当前的 user['sub'] 和 URL 参数或预订的 customer 字段比较，所以改库里的分组、删库里的用户会立刻影响已签发的令牌；booking_owner_or_admin_required 还在鉴权阶段先读一次 booking，读不到直接 404，因此 404 可能来自鉴权而不是处理逻辑。",
+   "evidence": [
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 120,
+     "symbol": "return storage.get_user(payload['sub'])"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 169,
+     "symbol": "current_user = AuthService.get_user_from_token(token)"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 137,
+     "symbol": "return 'Admin' in user.get('groups', [])"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 213,
+     "symbol": "is_owner = current_user['sub'] == customer_id"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 233,
+     "symbol": "booking = storage.get_booking(booking_id)"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 235,
+     "symbol": "return jsonify({'error': 'Booking not found'}), 404"
+    }
+   ],
+   "endpoints": [
+    "GET /auth/me",
+    "GET /auth/users",
+    "GET /bookings/<booking_id>",
+    "GET /customers/<customer_id>/bookings",
+    "GET /loyalty/<customer_id>",
+    "POST /bookings",
+    "POST /bookings/<booking_id>/cancel",
+    "POST /bookings/<booking_id>/confirm",
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G2",
+   "status": "decided",
+   "decision": {
+    "choice": "拆开处理：(1) 令牌校验移出函数（授权器负责，claims 由网关给）；(2) Admin/owner 判定保留在函数内并继续『每请求查表』（Admin 看 UserGroupsTable.groups 的当前值），改组立刻生效这一半契约不变；(3) booking_owner_or_admin_required 的那次预订读保留，因为它产生对外的 404，读完的条目直接交给业务逻辑（不再读第二次，SI-1）；(4) 『sub 在用户表查不到 -> 401』这一半不复刻（Cognito 令牌在 exp 内始终有效）。",
+    "why": "SI-10 / D-4 / D-5；`POST /loyalty/<customer_id>/points#business_rules[0]` 与 `GET /auth/users#business_rules[1]` 规定判定看库里当前记录；`GET /bookings/<booking_id>#business_rules[2]` 规定 404 是契约；(4) 是 Cognito 替代的直接后果，已按 migration-change 记裁定。",
+    "test": "judge",
+    "judge_cases": [
+     "booking-read-guards",
+     "booking-cancel-guards",
+     "points-guards",
+     "booking-confirm-guards"
+    ]
+   }
+  },
+  {
+   "id": "GAP-14",
+   "key": "g2:files_and_connections:import_time_flight_seed",
+   "category": "files_and_connections",
+   "summary": "data/storage.py 在模块导入时构造全局单例 storage = DataStorage()，构造函数里就建立 boto3 资源与表句柄并调用 _init_sample_data()：scan(Limit=1) 判断航班表是否为空，为空则 put_item 写入 FL001、FL002 两条示例航班；整段包在 try 里，失败只 print 警告。航班目录不是任何端点写进去的，而是进程启动时这段初始化白得的。",
+   "evidence": [
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 363,
+     "symbol": "storage = DataStorage()"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 32,
+     "symbol": "self._init_sample_data()"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 61,
+     "symbol": "response = self.flight_table.scan(Limit=1)"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 108,
+     "symbol": "self.flight_table.put_item(Item=flight_item)"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 111,
+     "symbol": "print(f\"Warning: Could not initialize sample data: {str(e)}\")"
+    }
+   ],
+   "endpoints": [
+    "GET /flights/search",
+    "GET /flights/<flight_id>",
+    "POST /flights/<flight_id>/reserve",
+    "POST /flights/<flight_id>/release",
+    "POST /bookings"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G2",
+   "status": "decided",
+   "decision": {
+    "choice": "去掉导入即写库：目标不在构造函数/模块导入时写 FL001/FL002，也不在冷启动做任何『表空则播种』的判断（storage 单例只保留 boto3 资源与表句柄的构造）。航班目录由部署侧数据导入或测试夹具提供。",
+    "why": "SI-11 / D-12：这是单体作为长进程白得的行为（类别 files_and_connections），角色说明把『去掉导入即写库的种子数据』列为 migration-change 的标准做法。test=none 的理由：裁判在跑每个用例前会清空表再按夹具播种（run_monolith 的机制），单体侧的种子条目在记录时已被清掉，因此目标不播种不会造成用例差异；『函数导入路径不写库』由 S2 代码方向检查与白盒评审核实。",
+    "test": "none"
+   }
+  },
+  {
+   "id": "GAP-15",
+   "key": "g2:files_and_connections:import_time_user_seed",
+   "category": "files_and_connections",
+   "summary": "services/auth.py 在导入时执行 AuthService._init_default_users()：get_all_users() 为空即创建 user@example.com/password123（sub=user123）与 admin@example.com/admin123（sub=admin123），并给 admin123 追加 Admin 组；异常只 print 警告。登录、鉴权与 admin 端点的初始账号来自这段进程启动写入，而不是任何端点。",
+   "evidence": [
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 247,
+     "symbol": "AuthService._init_default_users()"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 32,
+     "symbol": "existing = storage.get_all_users()"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 36,
+     "symbol": "AuthService.register_user('user@example.com', 'password123', 'user123')"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 38,
+     "symbol": "AuthService.add_to_admin_group('admin123')"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 40,
+     "symbol": "print(f\"Warning: Could not initialize default users: {str(e)}\")"
+    }
+   ],
+   "endpoints": [
+    "POST /auth/login",
+    "POST /auth/register",
+    "GET /auth/users",
+    "GET /auth/me",
+    "POST /loyalty/<customer_id>/points"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G2",
+   "status": "decided",
+   "decision": {
+    "choice": "去掉导入即写库 + 认证迁移：不建 user@example.com / admin@example.com 两个默认账号；管理员由 Cognito 侧建立，并在 UserGroupsTable 写一行 groups:['Admin']。 对三个可观察面的影响逐条写明（回应讨论室 spec-j3-r1 里 m2s-verifier 第 4/6 点的衔接请求）：(1) GET /auth/users 的元素数：该端点不提供（D-3），单体『表为空时多 2 行』造成的 users 长度差异在目标上没有对应响应；表内容层面也只有 judge/fixtures/admin-user.json 那一行经映射进 UserGroupsTable，不会因为起进程多出行；register-read-back-by-admin#list 的『等长 + 含重数』断言因此不会因 GAP-15 失配（该项与顺序放宽无关，见 R-ROOM-spec-j3-r1-1-1-a1-1 的边界）。(2) email 唯一性：单体的种子只占掉 user@example.com/admin@example.com 两个邮箱，而注册端点本来就不做唯一校验（`POST /auth/register#business_rules[2]` 的缺陷随端点作废），去掉种子不改变任何对外可观察的唯一性承诺——目标侧的邮箱唯一性由 Cognito 用户池保证，比单体更严，属于 SI-8 的 migration-change。(3) Admin 组判定：种子给的 admin@example.com 带 groups:['Admin']，而裁判用的 admin 身份是夹具里的 cust-admin 那一行（J1 已核对：凡用 admin 别名的用例都声明了 admin-user 夹具，且 seed-admin 步被排除在录制之外），所以去掉种子不影响 403/200 的判定结果；目标里 Admin 判定读 UserGroupsTable（D-4），组归属由部署侧写这一行。",
+    "why": "SI-11 / SI-8 / D-3 / D-4 / D-12；裁判的 admin 身份本来就依赖 judge/fixtures/admin-user.json 这一行（J1 已核对：凡用 admin 别名的用例都声明了该夹具），不依赖这段进程启动副作用。test=none 的理由：同 GAP-14（夹具前清表），且 /auth/login 已不提供，没有可测的端点。",
+    "test": "none"
+   }
+  },
+  {
+   "id": "GAP-16",
+   "key": "g2:monolith_defect:storage_swallows_db_errors",
+   "category": "monolith_defect",
+   "summary": "data/storage.py 的读方法把任何 DynamoDB 异常 print 后返回空值：get_flight/get_booking/get_user/get_user_by_email 返回 None，get_flights_by_schedule/get_bookings_by_customer/get_all_users 返回 []，get_loyalty_points 返回 0；update_user_groups 的写失败同样只 print。库故障因此在 API 上表现为「资源不存在」（上层接着抛 ValueError → 400）或空列表/0 积分的 200，而不是 500，客户端无法区分「没有数据」和「数据库不可用」。",
+   "evidence": [
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 123,
+     "symbol": "return None"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 141,
+     "symbol": "return []"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 219,
+     "symbol": "return None"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 263,
+     "symbol": "return []"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 301,
+     "symbol": "return 0"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 359,
+     "symbol": "return []"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 350,
+     "symbol": "print(f\"Error updating user groups for {sub}: {str(e)}\")"
+    }
+   ],
+   "endpoints": [
+    "GET /flights/search",
+    "GET /flights/<flight_id>",
+    "POST /flights/<flight_id>/release",
+    "GET /bookings/<booking_id>",
+    "GET /customers/<customer_id>/bookings",
+    "GET /loyalty/<customer_id>",
+    "GET /auth/users",
+    "POST /auth/login",
+    "POST /auth/register"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G2",
+   "status": "decided",
+   "decision": {
+    "choice": "照搬『吞异常降级』：读失败按单体的空值语义返回（get_flight/get_booking/get_user 返回 None -> 上层 400/404；列表/求和返回 []/0 -> 200 空结果或 points=0），写失败继续被包成 ValueError -> 400。目标不加重试、不改 5xx、也不在响应里加『数据可能不完整』的标记。",
+    "why": "条目属 monolith_defect，默认照搬（PIPELINE_REDESIGN_v2.md Q10）；SI-13 把每条降级臂钉成具体响应，`GET /flights/<flight_id>#business_rules[3]` 的 note 还说明这个吞异常使得该族端点不可能返回 5xx。",
+    "test": "judge",
+    "judge_cases": [
+     "search-route-match",
+     "search-missing-params",
+     "customer-bookings-status-filter",
+     "loyalty-sum-and-level",
+     "booking-read-guards"
+    ]
+   }
+  },
+  {
+   "id": "GAP-17",
+   "key": "g2:order_and_consistency:put_then_get_in_request",
+   "category": "order_and_consistency",
+   "summary": "POST /bookings 在同一次请求里先 put_item 写入 UNCONFIRMED 预订（storage.create_booking），随后 confirm_booking 又用不带 ConsistentRead 的 get_item 读回同一条记录，读不到就抛 ValueError、走退款+取消+释放座位的回滚并返回 500；cancel 端点里 BookingService.cancel_booking 也是先 get 再 update。整条流程默认「刚写下的立刻读得到」。",
+   "evidence": [
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 205,
+     "symbol": "self.booking_table.put_item(Item=booking_item)"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 213,
+     "symbol": "response = self.booking_table.get_item(Key={'id': booking_id})"
+    },
+    {
+     "file": "airline-booking/services/booking.py",
+     "line": 57,
+     "symbol": "booking = storage.get_booking(booking_id)"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 157,
+     "symbol": "booking_reference = BookingService.confirm_booking(booking_id)"
+    }
+   ],
+   "endpoints": [
+    "POST /bookings",
+    "POST /bookings/<booking_id>/cancel"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G2",
+   "status": "decided",
+   "decision": {
+    "choice": "消除对『刚写的立刻读得到』的依赖：bookings-create 的 Step 4 不再靠一次非一致读来确认条目存在——直接对同一主键做条件 UpdateItem（ConditionExpression='attribute_exists(id)'，单体本来就有这个条件）；需要条目内容时复用 Step 2 已构造的对象或读回时带 ConsistentRead=true。bookings-cancel 把鉴权那一次读的结果递给业务逻辑，不再读第二次。",
+    "why": "D-16 / SI-1：外部契约是『201 时预订已 CONFIRMED』与『404/403/200 的判定结果』，读的次数与一致性是轨迹（`GET /bookings/<booking_id>#business_rules[4]`、`POST /bookings/<booking_id>/confirm#business_rules[5]` 都被标 implementation-trace）；不改成功/失败的可达性：故障场景 booking-confirm-update-fails 注入条件失败仍走 400（SI-2）。",
+    "test": "judge",
+    "judge_cases": [
+     "booking-happy-path",
+     "booking-confirm-unconfirmed",
+     "booking-cancel-and-read"
+    ]
+   }
+  },
+  {
+   "id": "GAP-18",
+   "key": "g2:order_and_consistency:list_order_is_scan_order",
+   "category": "order_and_consistency",
+   "summary": "GET /flights/search、GET /customers/<customer_id>/bookings、GET /auth/users 的数组就是 Scan 返回的 Items 顺序，代码既不排序也不截断；同一份数据在不同 Scan 之间顺序可以不同，所以这些列表响应的元素顺序没有业务含义（预订列表也没有按 createdAt 排序）。",
+   "evidence": [
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 137,
+     "symbol": "items = response.get('Items', [])"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 138,
+     "symbol": "return [self._dynamodb_to_python_obj(item) for item in items]"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 259,
+     "symbol": "items = response.get('Items', [])"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 260,
+     "symbol": "return [self._dynamodb_to_python_obj(item) for item in items]"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 356,
+     "symbol": "return response.get('Items', [])"
+    }
+   ],
+   "endpoints": [
+    "GET /flights/search",
+    "GET /customers/<customer_id>/bookings",
+    "GET /auth/users"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G2",
+   "status": "decided",
+   "decision": {
+    "choice": "保持 Scan 返回顺序、不新增排序，也不为匹配任何字面次序加 sorted()（裁判侧看不出多余排序，这条只能靠代码复核守住，见讨论室 spec-j3-r1 中 m2s-verifier 的第 6 点）。顺序放宽本身不在本条另立：已由裁定 R-ROOM-spec-j3-r1-1-1-a1-1（收尾 R-ROOM-spec-j3-r1-1-2-a1-1）施加，范围只是 register-read-back-by-admin#list 的数组元素次序；其它列表端点不援用本条（它们的嵌套数组断言元素数为 0 或 1，次序本来不参与判定）。",
+    "why": "D-14；`GET /auth/users#business_rules[2]`（顺序不属于对外承诺）与 J3 的 needs_ruling + 讨论室 spec-j3-r1 的一致结论（category=contract、relaxation=order、layers=[R]、deviates=false；predicted 保持原样，由裁判在 R 层生效）。test=judge 的含义是按内容/条数比对的用例仍然跑通这三处列表的过滤语义（search-route-match、customer-bookings-status-filter、register-read-back-by-admin），不是因为它们验证了次序。",
+    "test": "judge",
+    "judge_cases": [
+     "search-route-match",
+     "customer-bookings-status-filter",
+     "register-read-back-by-admin"
+    ]
+   }
+  },
+  {
+   "id": "GAP-19",
+   "key": "g2:monolith_defect:booking_compensation_errors_swallowed",
+   "category": "monolith_defect",
+   "summary": "POST /bookings 的补偿动作失败时只 print，既不重试也不改变响应：reserve_booking 失败回滚 release_flight_seat、collect_payment 失败回滚 cancel_booking+release_flight_seat、confirm_booking 失败回滚 refund_payment+cancel_booking+release_flight_seat、最外层 catch-all 按 payment_result/booking_id/flight_reserved 三个标志补偿，每一步的 except 都只是 print；因此客户端拿到 400/500 时，表里可能仍是已扣减的 seatCapacity、已扣款未退的 paymentToken 或停在 UNCONFIRMED 的预订。Step5 加积分失败与通知失败同样被吞掉（只 print，预订照常 201）。",
+   "evidence": [
+    {
+     "file": "airline-booking/app.py",
+     "line": 125,
+     "symbol": "print(f\"Error during flight seat release rollback: {rollback_error}\")"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 141,
+     "symbol": "print(f\"Error during booking cancellation rollback: {rollback_error}\")"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 167,
+     "symbol": "print(f\"CRITICAL: Payment refund failed during rollback: {rollback_error}\")"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 222,
+     "symbol": "print(f\"UNEXPECTED ERROR in booking workflow: {str(e)}\")"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 196,
+     "symbol": "print(f\"Warning: Failed to add loyalty points: {str(e)}\")"
+    }
+   ],
+   "endpoints": [
+    "POST /bookings"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G2",
+   "status": "decided",
+   "decision": {
+    "choice": "照搬补偿失败的静默语义：bookings-create 的每一段回滚（放座 / 取消预订 / 退款）失败时只记日志，响应状态码与体不变（含确认失败时那句写死的 'Payment has been refunded'）；Step 5 加积分失败、Step 6 通知失败也只记日志，预订仍 201。不加重试队列、不加 DLQ、不把失败上报到响应里。",
+    "why": "SI-18 / SI-5 / D-6 / D-13；`POST /bookings#business_rules[7]`/`#business_rules[8]`/`#business_rules[9]`/`#business_rules[10]`/`#business_rules[11]` 把这些失败粒度逐条列为契约；monolith_defect 默认照搬。因为没有被改成异步投递，所以这里没有 batchItemFailures 可选（角色说明里的失败上报二选一在本设计无适用对象）。",
+    "test": "judge",
+    "judge_cases": [
+     "booking-body-and-field-failures",
+     "booking-happy-path"
+    ]
+   }
+  },
+  {
+   "id": "GAP-20",
+   "key": "g2:monolith_defect:cancel_success_reported_after_failed_effects",
+   "category": "monolith_defect",
+   "summary": "POST /bookings/<booking_id>/cancel 先无条件把预订写成 CANCELLED，之后的释放座位与退款都是尽力而为：release_flight_seat 抛异常只 print（响应里不留任何痕迹），refund_payment 抛异常被降级成 {'refundId': 'N/A', 'status': 'failed'}；两种情况下响应仍是 200 且 status=CANCELLED，座位可能仍被占用、款项可能没退。notify_booking 的调用没有包在 try 里，一旦抛异常会由全局错误处理器变成 500，而预订此时已被写成 CANCELLED。",
+   "evidence": [
+    {
+     "file": "airline-booking/app.py",
+     "line": 279,
+     "symbol": "BookingService.cancel_booking(booking_id)"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 285,
+     "symbol": "print(f\"Warning: Failed to release flight seat: {str(e)}\")"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 291,
+     "symbol": "print(f\"Warning: Failed to refund payment: {str(e)}\")"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 292,
+     "symbol": "refund_result = {'refundId': 'N/A', 'status': 'failed'}"
+    },
+    {
+     "file": "airline-booking/app.py",
+     "line": 295,
+     "symbol": "notification = BookingService.notify_booking("
+    }
+   ],
+   "endpoints": [
+    "POST /bookings/<booking_id>/cancel"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G2",
+   "status": "decided",
+   "decision": {
+    "choice": "照搬：取消先无条件写 CANCELLED，放座失败被吞、退款失败降级成 {'refundId': 'N/A', 'status': 'failed'}，仍返回 200；通知的调用保持『不包 try』的结构（它在单体里就是纯计算，目标里同样不会抛，`#responses[5]` 那条 500 臂仍不可达，已由 J1 记进 judge/uncovered.json）。",
+    "why": "SI-18 / D-6；`POST /bookings/<booking_id>/cancel#business_rules[3]`/`#business_rules[4]`/`#business_rules[5]`/`#business_rules[7]`；GAP-2 同一处代码，monolith_defect 默认照搬。",
+    "test": "judge",
+    "judge_cases": [
+     "booking-cancel-and-read",
+     "booking-cancel-twice"
+    ]
+   }
+  },
+  {
+   "id": "GAP-21",
+   "key": "g2:files_and_connections:stripe_external_mode_switch",
+   "category": "files_and_connections",
+   "summary": "PaymentService 的行为由进程环境决定：stripe 库能否导入 + STRIPE_SECRET_KEY 是否存在，判定结果缓存在模块级 _stripe_configured 上（每个进程只算一次）。模拟模式下 collect_payment 恒返回 price=150 并把记录写进内存字典，refund_payment 恒生成随机 refundId、不校验 chargeId 是否收过款；真实模式下 price 取 Stripe 的 cents/100，失败抛 ValueError。于是 POST /payments/refund 在模拟模式对任意 chargeId 都成功，GET /payments/<charge_id> 却只在本进程收过款时才返回记录。",
+   "evidence": [
+    {
+     "file": "airline-booking/services/payment.py",
+     "line": 37,
+     "symbol": "stripe_secret_key = os.environ.get('STRIPE_SECRET_KEY')"
+    },
+    {
+     "file": "airline-booking/services/payment.py",
+     "line": 30,
+     "symbol": "if PaymentService._stripe_configured:"
+    },
+    {
+     "file": "airline-booking/services/payment.py",
+     "line": 50,
+     "symbol": "return STRIPE_AVAILABLE and PaymentService._stripe_configured"
+    },
+    {
+     "file": "airline-booking/services/payment.py",
+     "line": 167,
+     "symbol": "price = 150  # Simulated price"
+    },
+    {
+     "file": "airline-booking/services/payment.py",
+     "line": 264,
+     "symbol": "refund_id = secrets.token_urlsafe(16)"
+    },
+    {
+     "file": "airline-booking/services/payment.py",
+     "line": 298,
+     "symbol": "payment = PaymentService._payments.get(charge_id)"
+    }
+   ],
+   "endpoints": [
+    "POST /payments/collect",
+    "POST /payments/refund",
+    "GET /payments/<charge_id>",
+    "POST /bookings",
+    "POST /bookings/<booking_id>/cancel"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G2",
+   "status": "decided",
+   "decision": {
+    "choice": "运行态判定整体作废：目标不导入 stripe、不读 STRIPE_SECRET_KEY、不缓存 _stripe_configured，只实现单体默认运行态的模拟分支——收款恒 price=150 并覆盖 PaymentTable 那条，退款恒生成新 refundId 且只把已存在那条改成 refunded，GET 只读 PaymentTable。",
+    "why": "SI-7 / D-11；`POST /payments/collect#business_rules[2]` 的 note 明确『单体的默认运行态就是这个分支』，judge/uncovered.json 已把三条 Stripe 臂判为本运行态不可达；角色说明把『去掉不提供的外部依赖（如 Stripe 分支）』列为 migration-change 的标准例子。",
+    "test": "judge",
+    "judge_cases": [
+     "collect-then-read-payment",
+     "refund-then-read-payment",
+     "payment-read-missing"
+    ]
+   }
+  },
+  {
+   "id": "GAP-22",
+   "key": "g2:time:mixed_clock_sources",
+   "category": "time",
+   "summary": "写进库里的时间戳来自两个不同的时钟：booking.createdAt 与 loyalty 流水的 date 用 datetime.now()（进程本地时区、不带 tzinfo 的裸字符串），而 user.created_at 与 JWT 的 iat/exp 用 datetime.utcnow()；两者相差进程所在机器的 UTC 偏移，同一份数据里的时间字段无法直接比较。",
+   "evidence": [
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 199,
+     "symbol": "'createdAt': datetime.now().isoformat(),"
+    },
+    {
+     "file": "airline-booking/data/storage.py",
+     "line": 274,
+     "symbol": "'date': datetime.now().isoformat()"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 61,
+     "symbol": "'created_at': datetime.datetime.utcnow().isoformat()"
+    },
+    {
+     "file": "airline-booking/services/auth.py",
+     "line": 96,
+     "symbol": "'iat': datetime.datetime.utcnow(),"
+    }
+   ],
+   "endpoints": [
+    "POST /bookings",
+    "POST /loyalty/<customer_id>/points",
+    "GET /loyalty/<customer_id>",
+    "POST /auth/register",
+    "POST /auth/login",
+    "GET /auth/me"
+   ],
+   "rulebook_rule": null,
+   "default": null,
+   "source": "G2",
+   "status": "decided",
+   "decision": {
+    "choice": "统一到单体的两种写法之一：留在请求路径上的两个时间戳（booking.createdAt、loyalty.date）都用 `datetime.now().isoformat()` 的裸串形状（GAP-6/SI-15）；`user.created_at` 与 JWT 的 iat/exp 随 /auth/* 与自建令牌一起删除，不再有第二个时钟写进数据。",
+    "why": "SI-15 / SI-8 / D-16：值按 class=time 的符号掩码比较，不做逐字比较（judge/masks.json），所以本条真正要守的是『字段名 + 裸串形状 + 可解析』；把两个时钟合成一个只是少一处差异面，不改变任何对外断言。",
+    "test": "judge",
+    "judge_cases": [
+     "booking-happy-path",
+     "points-add-and-read"
+    ]
+   }
+  }
+ ]
+}

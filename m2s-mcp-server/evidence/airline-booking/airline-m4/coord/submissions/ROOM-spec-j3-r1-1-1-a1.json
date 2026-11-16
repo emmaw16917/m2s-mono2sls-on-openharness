@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r1-1-1",
+  "attempt": 1,
+  "role": "m2s-architect",
+  "status": "done",
+  "time": "2026-11-13T16:16:45+0800",
+  "summary": "在 spec-j3-r1 以 architect 身份发言并落定裁定 R-ROOM-spec-j3-r1-1-1-a1-1（status=decided）：差异 register-read-back-by-admin/list/body.subset 属顺序放宽——category=contract、relaxation=order、layers=[R]、affected_cases=[register-read-back-by-admin#list]。判定口径：该步骤 users 数组按元素多重集（含重数）比较、次序不判定，而 status=200、长度恰为 2、逐项 {sub,email,groups} 取值逐字相等、脱敏与 read_back 语义全部保持为契约；放宽不外溢到 groups 次序或其它端点的嵌套数组。并回答验证线的问题：relaxation=order 由裁判在 R 层依裁定自动生效，predicted 保持原样，用例不回炉、比较工具不动。否决了 case_error / mask_gap / implementation-trace / 全局无序规则四种备选并写明理由。",
+  "notes": "依据：GET /auth/users#business_rules[2]（class=contract，明写顺序不属于对外承诺）、#responses[2]、#business_rules[4]、POST /auth/register#responses[1]；单体 data/storage.py:352-356、services/auth.py:140-150。deviates_from_monolith=false，因此本裁定不需人确认，可直接进入裁判冻结前的裁定集。本轮为讨论轮：未改 blueprint/用例/事实库/工具，唯一写入是 storage/stage_reports/ROOM-spec-j3-r1-1-1.json；rulings.json 由 record_ruling 在本任务通过检查后承载。下游影响：J1 无需为 register-read-back-by-admin 回炉（与另外两条 fact_error/case_error 的回炉项无关）；实现线只需知道这个列表不必复刻 scan 返回次序，但必须返回全部用户且逐项脱敏。"
+}

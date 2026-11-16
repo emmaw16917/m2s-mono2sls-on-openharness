@@ -663,7 +663,16 @@ v2 的 26 个任务模板（`coord/templates/v2.yaml`，v2 N5 完成）已经在
   - 模板/加载器/展开的测试在 `tests/test_coord_split.py`（domain 展开、shared_after_children、v2-split 可加载）。
   - 暂不拆 J1/D1/G2：裁判资产（`judge/cases/**` 等）与 `delta_assets`、`gap_inventory` 检查都是按整份资产设计的，拆分要先改资产命名与检查（记录为后续项）。
   - F2 的包级子任务都写 `storage/analysis_report.json`，按 scope 冲突串行执行（事实库是单文件）；并行的收益在 I1 的按领域代码编写。
-- 待做：W4.2 的 J1/D1/G2 拆分（需要先定资产约定）、W4.7（AWS 实测）、W4.8（验收运行 bookstore + acmeair）。
+- 待做（2026-11-13 时的口径）：W4.2 的 J1/D1/G2 拆分（需要先定资产约定）、W4.7（AWS 实测）、W4.8（验收运行 bookstore + acmeair）。**W4.8 已于 2026-11-16 完成，见下。**
+
+**M4 验收（2026-11-16）：bookstore-m4 + airline-m4 都跑到 C2**
+- 两个新工作区都用 `v2-split`、3 个 worker、开讨论室，`run done` / `dispatcher exit 0`，C2 分别归档到 `evidence/bookstore/bookstore-m4` 与 `evidence/airline-booking/airline-m4`。
+- **bookstore-m4**：两轮 J3 规格室（spec-j3-r1/r2，共 16+ 回合），裁定 `R-A1-a3-1..4`；两个 HUMAN_J6 决定（未认证超大体按网关 401 先于 413、`wb-cart-x-customer-id-header-ignored#spoof-*` 记账延伸）由人接受；O 的 REQ-1（`update-bestsellers`）由人接受，连同 1 条未覆盖的防御性行；C1 的 `gate(final)`/裁判/delta PASS。
+- **airline-m4**：身份 id 冲突由人定方案 (A)；工具修复 `788d9cf`（`check_adapter` 的 `${id}` 取裁判记录的字面值，回退 register body 的 userId）。V2 首跑败在 3 个按「同一条预订第 n 次读」注入的故障场景；异常处理者按 A1 的 D-20 补裁定 `R-C003-V2-triage-a1-1`（implementation-trace，7 个 `case#step`，`deviates_from_monolith=false`），重跑 PASS。终局裁判 cases `34 pass / 7 migration-change / 14 dropped`、fault runs `21 pass / 4 migration-change / 4 dropped / 2 ruled`；delta 16/16；`gate(final)` PASS；22 条 gap 全 decided；B0 复查 `ok`（C6 的 `SharedUtilsLayer` 未被引用一项交优化线）。O 保留 1 处改动（`bookings-cancel` 两步补偿并发化，`5fe0c7c`；串行深度 5→4，调用数/RRU/WRU 不变）。裁判 v1 冻结后未变（`judge_unchanged` 全程通过）。
+- 运行中发现并修掉的调度器缺陷：`63ab894`（J3/J4 的事实修正按端点路由到 F2 包子任务）、`f286ec3`（门阻塞拆分子任务的整个族，而不是族名）、`8c06d7f`（`br` label 截断到 50 字符；崩溃留下的部分展开可续）、`61e37e3`（一个 action 可能重开任务，ready 列表不能跨 action 复用）、`788d9cf`（身份 id 字面值）。
+- 验收口径：v2 方案 V2P-08 指定的两个应用（bookstore、airline-booking）已覆盖；acmeair/MongoDB 仍是 Q5 扩展，不在 M4 内。
+- 顺带收敛：`_expand_family`/`_expand_domain` 只在真正新建了子任务时才打 "expanded to" 日志（此前每轮都刷一行）。
+- 仍未做：W4.2 的 J1/D1/G2 拆分（需要先定资产约定）、W4.7（AWS 实测，真实运行需人确认费用）。
 
 ### M5 对抗评审室【必做，在第一次升级 harness 时做】
 

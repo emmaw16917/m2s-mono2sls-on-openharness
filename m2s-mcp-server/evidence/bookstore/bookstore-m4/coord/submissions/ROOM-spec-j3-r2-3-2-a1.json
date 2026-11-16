@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r2-3-2",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T03:36:58+0800",
+  "summary": "以 m2s-verifier 身份在 spec 室 spec-j3-r2 发言（seq 8）：同意按六楼第七条关闭本室，两条差异不需要新裁定、不需要第三轮对账。本轮按 R-...2-1-2 第 2 点的新口径（按 oracle 列表路径枚举，不按 predicted）重做全量枚举：oracle 含 ≥2 元素数组的步骤 22 个 = 已放宽 12 + 故意逐位置 10，故障基准另有 3 次未放宽运行（前三楼漏数了 bestsellers-write-fails/order-duplicate-book-id#orders），故 V2 真正逐位置比较的口径是 13 个运行单位；据此更正裁定第 3 点分解两处（订单快照实为 4 步/5 路径，漏 order-element-missing-book-id-500#orders；“cart 3”混用 oracle 与故障口径，总数 12 本身正确），并更正我自己五楼关于 substring-space 的说法。用真实夹具数据验证 (i)-(v) 可机械执行（book-001/002/101=7 键、book-102=6 键无 cover、book-999=3 键），两条 resolved 确属仅顺序不同；check_reconcile_classes 实跑 PASS（differences=0，四类全 0）；确认 R-...2-1-2 两个新步骤条目已在账且即时在效。得到两个否定结果：233 步中响应头无列表值、messages 数组无 ≥2 ⇒ 二者今天都不是 V2 的顺序暴露面。正式撤回我四楼“V2 看不见多加属性”的说法，并把 V2 判据收窄为可机械执行版本；核过 search-hits-200#name 改 equals（7 键全点名）无新 P 差异。对标注员四问给出立场：d 项请选 (b) 追加到 cart/orders、c 项措辞纠正、b 项 note、a 项 note 带裁定编号；另提一个不阻塞的机制问题（步骤条目是否触发按用例折叠 (α)/(β)）与一个范围确认（V2 是否按位置比较表状态，52/74 用例的 tables_after 含 ≥2 数组），我的逐条强制复核在两种答案下都执行。room 模式未改动任何工作区文件，只写本报告。",
+  "notes": "给调度器的落地请求（详情在报告 issues/position 里）：①本室可关闭，两条差异维持 resolved_by_rulings，不需要给 J3 分类枚举加“已裁定”；②需要一次独立规格标注轮做 R-...2-1-2 第 6 点 a/b/c/d，派单描述务必带上 c 项措辞纠正（toLowerCase 不接受区域参数）、b 项 note（并列走 GAP-6/SI-10，不改变比较口径）、d 项范围答复（验证线建议扩到 cart/orders，否则将来那轮没有可引用条款）、append-only 与改后 check_provenance PASS；③需要一次裁判资产轮把 search-hits-200#name 改为 equals 且 7 键全点名；④请 architect 回两句：affected_cases 步骤条目是否发生按用例折叠（(α)/(β)），以及 V2 是否按位置比较 tables_after——两者都不阻塞验证线，因为我对每条 resolved 一律按 (i)-(v) 复核、且纯顺序失败一律记 tool_issues 不退实现线。"
+}

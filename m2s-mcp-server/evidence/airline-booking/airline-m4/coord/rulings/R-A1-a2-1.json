@@ -1,0 +1,33 @@
+{
+  "id": "R-A1-a2-1",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 2,
+  "time": "2026-11-13T16:53:01+0800",
+  "question": "受保护端点的未认证请求（缺 Authorization 头 / 头格式不是 \"Bearer <t>\" / 令牌伪造或过期）在目标上由谁应答、响应体是什么形状",
+  "conclusion": "由 API Gateway 的 Cognito/JWT 授权器应答：状态码仍是 401，响应体是网关默认形状（HTTP API：{\"message\": \"...\"}），不再是单体的 {\"error\": \"Authentication required. Please provide a valid token.\"} / {\"error\": \"Invalid token format. Use: Bearer <token>\"} / {\"error\": \"Invalid or expired token\"} 三句；单体的三态在目标上收敛为「授权器 401」一种，请求不进入函数、不产生任何 DynamoDB 读（这一半契约保持）。",
+  "basis": "规则手册默认做法：blueprint.cognito（GAP-10 自带 default「Cognito + API Gateway 授权器，认证端点删除」）+ blueprint.api_gateway.authorizer/claims_path；blueprint.metadata.spec_resolutions SI-9 逐条列出被替代的 7 个端点的 responses[401]（POST /bookings#responses[0]、GET /bookings/<booking_id>#responses[0]、POST /bookings/<booking_id>/confirm#responses[0]、POST /bookings/<booking_id>/cancel#responses[0]、GET /customers/<customer_id>/bookings#responses[0]、GET /loyalty/<customer_id>#responses[0]、POST /loyalty/<customer_id>/points#responses[0]）；m2s-architect「迁移带来的对外变化」表第一行（网关授权器应答 401，body 是 {message} 而不是单体的 {error}，deviates=false）。",
+  "category": "migration-change",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [
+      "booking-auth-guards#anon",
+      "booking-auth-guards#bad-format",
+      "booking-auth-guards#forged",
+      "booking-read-guards#anon",
+      "booking-confirm-guards#anon",
+      "booking-cancel-guards#anon",
+      "customer-bookings-owner-only#anon",
+      "loyalty-sum-and-level#anon",
+      "points-guards#anon"
+    ],
+    "layers": [
+      "P"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

@@ -1,0 +1,9 @@
+{
+  "task": "F2-bookings-customers-flights-loyalty-payments",
+  "attempt": 3,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T20:34:11+0800",
+  "summary": "J4 回炉的 3 条事实缺漏全部按代码核实并补进事实库：POST /bookings 新增“非空非对象 JSON 体 → try 外下标赋值 TypeError → 全局 500 {error,type:'TypeError'} 且业务表零读写”这条 responses 臂与对应规则（J4-4），把 chargeId 的 type 由 string 纠正为 unknown 并新增“无类型校验 + float→Decimal→int/float 规范化 + receiptUrl 由该值 f-string 拼出”的规则、201 那臂的 description 补上 receiptUrl 来源（J4-1）；POST /bookings/<booking_id>/cancel 新增“第三次读落空 → 400 'Invalid booking ID: <id>'（与第二次读的 'Booking <id> not found' 文案不同），零写入”这条臂（trace_arm）并把双读轨迹规则改写为三读（J4-2）。新增项一律追加在数组末尾，J1 已引用的旧索引与所有 origin=script 项一字未动。check_provenance 单端点与整库均 PASS（errors 0、incomplete 0、checked_sources 628、unknown_items 3：本条 chargeId 刻意保留 unknown + identity 包 2 项）。",
+  "notes": "给 J1：wb-booking-empty-charge-rollback-and-array-body 的 body-array 步骤 fact_ref 目前指向 POST /bookings#responses[7]（catch-all，形状 {error,message}），正确应是新增的 responses[8]；另可补指 POST /bookings#business_rules[15]/[16] 与 cancel#responses[6]/#business_rules[8]。给 architect：responses[8]（J4-4）是需要裁定的输入校验缺陷；cancel 新增臂已标 trace_arm=true（合成一次读就不存在）；business_rules[15] 建议按 contract 保持（对外可见）。另在 issues 里留了一条我没动的可疑事实：POST /bookings#responses[1] 声称“不是 JSON”也返回 400，但 app.py:89 用 request.get_json()（silent 默认 False），畸形 JSON 文本会在到达 if not data 之前抛 BadRequest，很可能对外是 500 {type:'BadRequest'}；现有用例只发过空体，没有实测证据，建议 J4/J1 补一个 raw_body='{not json' 的用例钉死后再由我改这一臂（同样的 get_json 写法还出现在 app.py:325/340/372/388/410）。工作报告：storage/stage_reports/F2-bookings-customers-flights-loyalty-payments.json。"
+}

@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r2-1-2",
+  "attempt": 1,
+  "role": "m2s-architect",
+  "status": "done",
+  "time": "2026-11-13T18:02:46+0800",
+  "summary": "spec-j3-r2 第 2 轮 architect 发言（seq 6）+ 裁定 R-ROOM-spec-j3-r2-1-2-a1-1：判定内容不变（users 数组次序不是契约、contract/order/layers=[R]/case#step/deviates=false），本轮把结室口径钉死——(1) 覆盖匹配在对账侧与裁定门都是用例粒度（split('#')[0]），裁判目标侧按 case#step 收窄，故 J3 重跑后须逐条核对转入项确为 list 步的次序差异，其余一律重开；(2) 纠正一处口径：次序放宽只在目标比较层生效，对账层用等长+逐位置包含、无放宽入口，本差异只能靠裁定覆盖关闭；(3) 实测回答验证线留问：对账动作每跑一次整份清除分类文件，differences=0 且文件缺失时分类自查 PASS，无需人工撤条目。另补一条防外溢硬约束：作废类裁定的裸用例 id 当前因整案 dropped 而无害，若给这类用例新增走保留端点的步骤须先收窄成 case#step。",
+  "notes": "只读核对了裁判实现与本地对账产物（judge.py:1094-1118/1644-1645/1684-1692/1734-1736/1748-1752/2066-2067/2108-2125/2213-2216/2234-2245、verify.py:1174-1178、coord/dispatcher.py:1880-1889/1938-1943），未修改任何工具。未改 blueprint / adapter_map / gap_inventory / analysis_report / judge/，本轮为讨论轮；写的是 storage/rulings.json（经 record_ruling）与本任务 stage report。唯一待办在 J3：重跑规格对账（裁判尚未冻结，judge_manifest.json 不存在，重跑会真的执行）。重跑后的期望：differences=0、本差异转入 resolved_by_rulings 并带裁定编号（同用例被多条在案裁定点名，列表会有多项，属正常）；分类文件由对账动作自行清除，之后按现存差异重新分类。风险提示已写进裁定第 (3) 条：若补强阶段给整案作废的 auth 用例新增走保留端点的步骤，必须先收窄 R-A1-a2-2 的裸用例 id，否则那一步的真实不匹配会被判成迁移变化而掩盖。GAP-18 的「目标不得为凑字面次序新增排序」仍只能靠实现线代码复核守住（次序比较放开后裁判看不见）。"
+}

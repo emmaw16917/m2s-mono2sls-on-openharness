@@ -1,0 +1,9 @@
+{
+  "task": "F2-identity",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-13T15:07:04+0800",
+  "summary": "identity 包 4 个端点（POST /auth/register、POST /auth/login、GET /auth/me、GET /auth/users）标注完成：32 条 business_rules（29 contract / 3 implementation-trace，全部带 class），responses 从脚本 8 项补到 14 项（全部带 when/body 描述，新增 login_required 401、admin_required 401/403、全局 errorhandler 的 500 等脚本按 handler 范围看不到的臂，6 项标 guard_kind），request 补 Authorization 头与 password/userId 类型必填，data_access 补装饰器里按令牌 sub 的 get_item。check_provenance 单查与整库均 PASS（errors 0、incomplete 0），未用修正机会。",
+  "notes": "报告：storage/stage_reports/F2-identity.json。给下游/其它任务的提示：(1) 本包 4 个端点的 login_required/admin_required 规则写成自述形式（analysis_report 里当时还没有 shared_rules，用 ref: 会让 check_provenance 失败）；若 F2:shared 落地的 shared/login-* 条目希望这些端点改为引用，需要重跑本包 request/business_rules。(2) 测试身份依赖 services/auth.py:247 的导入期播种（user@example.com/password123 → sub=user123、admin@example.com/admin123 → sub=admin123 且 groups=['Admin']）；这不是端点行为，已记为 GET /auth/users 的 implementation-trace 规则。(3) 认证判定读用户表实时记录而非 JWT claims，改 groups 立即生效；令牌过期/验签失败/用户不存在都是同一句 401 'Invalid or expired token'。(4) 三处“表读失败被伪装成业务结果”（login→401、me→401、users→200 空列表）与两处单体缺陷（users 不跟 LastEvaluatedKey、email 查重先读后写无事务保护）已在 contract 规则里写明，供 architect 与 J1 出题时按此预期，不要按 5xx 出题。(5) JWT_SECRET_KEY 未设置（单体无 .env，config.py 的 load_dotenv 只被 run.py 用到），密钥来自进程随机数，属 implementation-trace。"
+}

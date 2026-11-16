@@ -1,0 +1,37 @@
+{
+  "id": "R-A1-a2-2",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 2,
+  "time": "2026-11-13T16:53:29+0800",
+  "question": "/auth/register、/auth/login、/auth/me、/auth/users 四个端点在目标上不提供，涉及它们的用例与身份准备怎么算",
+  "conclusion": "四个端点整体作废（迁移决策，不是缺陷）：目标不注册这些路由，裁判不为它们出题、也不在目标上运行以它们为步骤的用例；身份改由 adapter_map.identities 的形状注入（claims.sub = ${id}，${id} 就是单体侧 POST /auth/login 保存的 body.user.sub：cust-u1 / cust-u2 / cust-admin）。连带作废：Airline-Users 的凭据属性（email/password_hash/created_at）不迁（groups 拆到 UserGroupsTable）、单体的同 email 可重复注册缺陷、users 列表的分页不完整缺陷、expires_in/user.groups 响应形状、HS256 每进程随机密钥与「同一进程签发的令牌才能被同一进程校验」的约束、以及 _init_default_users 的种子账号。若这些路径被请求，由网关应答 404 {\"message\": \"Not Found\"}。",
+  "basis": "blueprint.dropped_functions（四条 type=endpoint 条目 + 两条 type=code 的认证中间件/服务条目 + Users 表凭据的 type=table 条目）、storage/adapter_map.json 的 dropped_endpoints/identities、blueprint.metadata.spec_resolutions SI-8、storage/DECISIONS.md D-3/D-4/D-14；GAP-10/GAP-12/GAP-15 的默认做法与 m2s-basic-serverless-kb「Auth endpoints (/register, /login, /logout, /me) are DELETED」。涉及的 12 个用例每一步都只调这四个端点（judge/cases/post-auth-*、get-auth-* 已逐个核对），因此整案作废不会盖住任何对保留端点的断言。",
+  "category": "migration-change",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": null,
+  "affects": {
+    "cases": [
+      "register-new-user",
+      "register-duplicates",
+      "register-validation",
+      "register-bad-json",
+      "register-read-back-by-admin",
+      "login-success",
+      "login-bad-credentials",
+      "login-validation-and-bad-json",
+      "me-returns-table-record",
+      "me-token-of-deleted-or-forged-sub",
+      "users-admin-list",
+      "users-admin-only"
+    ],
+    "layers": [
+      "P",
+      "T"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

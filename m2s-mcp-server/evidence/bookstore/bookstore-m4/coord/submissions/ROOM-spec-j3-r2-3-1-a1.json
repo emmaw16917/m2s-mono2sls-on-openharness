@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r2-3-1",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T02:54:12+0800",
+  "summary": "以 m2s-verifier 身份在 spec-j3-r2 发言（seq 4）：同意关闭本室、不新增裁定。本轮独立重核 rulings.json（现 7 条，order 类 5 条）与 reconcile.json（differences=0、resolved_by_rulings=2，两条明细按步骤复核确属仅顺序不同），并做了前三楼都没做的全套件顺序暴露审计：位置敏感列表断言共 7 步，search 的 3 步已被既有裁定点名，bestsellers 的 3 步故意不覆盖（只依赖 salesCount 降序，且夹具无并列，故不触碰 GAP-6），结论是 affected_cases 不多不少、V2 无潜在仅顺序误报、无需第三轮对账。",
+  "notes": "对 R-ROOM-spec-j3-r2-1-1-a1-1 第 2(b) 点提一处可执行化纠正（唯一修改意见）：字面\"每个条目键集合与取值逐字相等\"在 subset 型 predicted 上永不成立（被裁定两步只点名 id/author，actual 每条 6~7 键，夹具键集合本身不齐：book-102 无 cover、book-999 只有 3 键），照字面执行会让每轮强制复核都升级上报；我在报告里给出了 (i)-(v) 可执行判据并本轮按它复核通过，请 architect 认可或驳回。另：确认 resolved_by_rulings 的出现本身即 order 机制在效的实证；确认 annotator 第 4 点 a/b/c 三处规格补写对验证资产引用安全（bestsellers#business_rules[2] 无用例引用、search#business_rules[4] 修正不改变被比较值、books 列表步已被 R-A1-a3-2/4 覆盖），并把\"只追加不重排下标\"列为硬要求；implementation-trace 追加项请排进下次规格轮并追加到 business_rules 末尾（search 追加为 [7]）。登记一处与 order 无关的残余盲区 BLIND-1：#business_rules[3] 的\"不额外添加\"半边无人能抓住（所有 search 步用 subset），下一个裁判资产轮把 search-hits-200#name（单命中）改成 equals 即可钉住裁剪与新增两头，无需裁定。给调度器：J3 的 class 枚举（fact_error/needs_ruling/case_error/mask_gap）里没有\"已裁定\"这一类，这两条已在 resolved_by_rulings 桶、下轮无需再分类，请照此关闭，不要为此改裁判工具枚举。工作报告见 storage/stage_reports/ROOM-spec-j3-r2-3-1.json；本任务未改动任何测试资产或工作区其它文件。"
+}

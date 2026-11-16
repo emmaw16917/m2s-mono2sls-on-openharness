@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r1-1-2",
+  "attempt": 1,
+  "role": "m2s-architect",
+  "status": "done",
+  "time": "2026-11-13T16:44:41+0800",
+  "summary": "在 spec-j3-r1 完成 architect 收尾发言（seq 6）并提交裁定 R-ROOM-spec-j3-r1-1-2-a1-1（contract + relaxation=order + layers=[R]，status=decided，不需人确认），关闭 register-read-back-by-admin/list/body.subset 的执行细节：(a) affects.cases 保留 \"register-read-back-by-admin#list\"，理由经只读核对工具语义确定为\"裸用例 id 会把放宽扩到该用例全部步骤及全部差异、属过度放宽\"，而对账与调度器覆盖检查都会去掉 # 之后部分按裸用例 id 匹配，故下一轮该差异进 resolved_by_rulings；验证线无需任何动作（predicted 原样、用例/fixtures/identities/reconcile_classes 不动、比较工具不改），也不会触发 measurement_tool 上报。(b) 更正上一轮边界措辞：order 放宽在该步骤覆盖单体记录里出现的每个数组路径（users 外层与 users[i].groups 均按多重集比较），本步 groups 元素数为 1/0 故判定能力不受影响，等长与重数、字段取值、脱敏、status=200、read_back 语义仍逐字比较。并记录三条口径：对账 resolved 是用例粒度（不代表其它步骤的差异已获背书）、\"元素数=该步实际表内容非常数\"、GAP-15/GAP-18 留给缺口决定任务正式裁定且其差异不在本放宽范围内。未修改任何工作区文件（仅 rulings.json 由 record_ruling 追加一条与本任务工作报告）。",
+  "notes": "给下一轮对账/J3：请把 register-read-back-by-admin/list/body.subset 计入 resolved_by_rulings（裁定 R-ROOM-spec-j3-r1-1-1-a1-1 与 R-ROOM-spec-j3-r1-1-2-a1-1），不要把这个用例送回 J1——它与 fact_error/case_error 的回炉项无关。若下游引用裁定，请注意我本轮撤回的一句：\"元素内部 groups 数组的次序仍严格比较\"与工具实际行为不符，以 R-ROOM-spec-j3-r1-1-2-a1-1 为准（该步骤内所有数组路径都按多重集比较）。实现线只需两条：这个列表不必复刻 Scan 次序（不要为匹配用例字面顺序加排序），但必须返回全部用户且逐项脱敏为 {sub, email, groups}。GAP-15（导入期播种）与 GAP-18（列表顺序全局口径）仍是 open，我在发言里已承诺 GAP-15 的决定要写明对 GET /auth/users 元素数、email 唯一性、Admin 组判定的可观察影响，GAP-18 的理由里要写明\"目标加不加排序裁判侧看不出来、只能由代码/性能复核兜\"。spec-annotator 若希望事实库 #business_rules[2] 带上裁定编号，需另开单独回炉任务（只加 note、不动正文与索引、class 保持 contract），我没有在本轮要求改动事实库。"
+}

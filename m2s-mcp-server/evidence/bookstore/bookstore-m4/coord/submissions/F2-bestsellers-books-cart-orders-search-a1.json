@@ -1,0 +1,9 @@
+{
+  "task": "F2-bestsellers-books-cart-orders-search",
+  "attempt": 1,
+  "role": "m2s-spec-annotator",
+  "status": "done",
+  "time": "2026-11-12T23:52:27+0800",
+  "summary": "本工作包 11 个端点全部标注完成：新增 63 条 business_rules（均带 class）、56 项 responses 全部补 when 并新增 authMiddleware 的两个 401 臂（guard_kind=authz）与 4 个 body 端点的 body-parser 400 臂、修正/补全 6 处 request 类型与 books 元素结构、11 个端点补 authorization/x-customer-id 请求头；handler_location/auth/data_access 核对后与脚本一致未改。逐端点 check_provenance 为 PASS（errors=0，checked_sources=551），整体 check_provenance 只剩 identity 包 4 个端点缺 business_rules 与 global_middleware[0] 的 CORS headers 未填，均不属本包范围。",
+  "notes": "需要下游注意的三件事：(1) P0 的 global_middleware 漏了 app 级错误中间件（server.js:50-56，err.status||500 + {error,stack}）和 body-parser 上限（server.js:33-34，解析失败 400、>100kb 413），我用单体自带 body-parser 实测确认过状态码，已按现状写进受影响端点的 responses/business_rules，但全局清单条目要主 Agent 补；(2) 报告里还没有 shared_rules（F2:shared 未跑），所以无法用 ref: shared/auth-middleware，authMiddleware 的后果我在 11 个端点各写了一份，后续会与共享条目重复（不冲突）；(3) 单体缺陷按现状记录未修饰：bestsellers 把 scan 异常吞成 200 []、POST /orders 写订单与清购物车无事务、畅销榜更新未 await、PUT /cart 会 upsert 出没有 price 的条目、所有列表端点不处理 LastEvaluatedKey。另外 POST /cart 的 quantity/price 与 PUT /cart 的 quantity 保持 type=unknown（代码只有真值判断，无法证明类型），这是有意为之而不是漏标。"
+}

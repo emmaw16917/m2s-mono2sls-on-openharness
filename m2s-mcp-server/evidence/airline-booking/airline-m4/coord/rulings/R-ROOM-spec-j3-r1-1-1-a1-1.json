@@ -1,0 +1,30 @@
+{
+  "id": "R-ROOM-spec-j3-r1-1-1-a1-1",
+  "decider": "m2s-architect",
+  "task": "ROOM-spec-j3-r1-1-1",
+  "attempt": 1,
+  "time": "2026-11-13T16:15:44+0800",
+  "question": "规格对账差异 register-read-back-by-admin/list/body.subset：GET /auth/users 响应中 users 数组的元素顺序是否属于对外契约（J1 把 2 个元素按下标钉死，单体返回次序相反）？",
+  "conclusion": "元素顺序不属于契约，其余全部仍是契约。具体判定口径：该步骤的 body.subset 对 `users` 数组按**元素多重集（含重数）**比较，先后顺序不参与判定；除此之外不放宽任何东西——status 仍须 200；`users` 仍须恰含 2 个元素（等长要求保留）；每个元素内部的字段名与取值仍逐字比较（cust-admin / admin@example.com / [\"Admin\"] 与 cust-reg-3 / reg3@example.com / []，两个用户都必须在，缺一不可）；脱敏契约不变（password_hash、created_at 不得出现在列表项里）；read_back 语义不变（注册写入的行必须能被 Admin 的列表读回，Admin 行必须仍在）。执行方式：predicted 保持 J1 现有写法，**不改任何用例、不新增表达方式、不动裁判的比较词汇**；裁判在 R 层依本裁定把这一处数组按无序多重集比较，即可判 predicted 与 actual 一致。放宽范围仅限 register-read-back-by-admin#list 的 `users` 数组元素次序：元素内部 `groups` 数组的次序、其它端点/其它步骤的嵌套数组次序均不在本裁定范围内，不得由本裁定推而广之。",
+  "basis": "事实库 GET /auth/users#business_rules[2]（class=contract）：\"返回用户表里的全部用户，不按调用者过滤、不排序、不分页……条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺\"；GET /auth/users#responses[2] 与 #business_rules[4] 只承诺 users 每项脱敏为 {sub, email, groups} 及空表 200+[]，未承诺次序。单体代码印证：data/storage.py:352-356 只有 self.users_table.scan() 取 Items；services/auth.py:140-150 的脱敏推导式保持原顺序、无 sorted()。用例侧证据：judge/cases/post-auth-register/register-read-back-by-admin.json 的 predicted.list.body.subset.users 含 2 个元素，与 reconcile 的 actual 元素集合完全相同、仅次序相反。机制依据：PIPELINE_REDESIGN_v2.md 对 run_judge 输出的规定——P 层逐项与单体比对，R 层按裁定允许的范围判定（\"顺序不作要求时按集合比较\"），故 relaxation=order 的裁定由裁判在 R 层生效，无需改写用例。",
+  "category": "contract",
+  "raised_by": "J3",
+  "options": [
+    "case_error：改用例（降为 has_fields [users] 或只留 1 个元素）——否决，前者丢掉 read_back 要验的内容，后者在等长要求下必然不匹配，等于为实现能过而削弱规格要求的断言",
+    "mask_gap：加屏蔽规则——否决，屏蔽只处理逐遍变化的值，此处两遍值相同、仅次序不同，加屏蔽会掩盖真实差异",
+    "implementation-trace：整条作废——否决，被裁定的不是单体的内部步骤，元素内容与条数都是契约；且事实库把'顺序不属于对外承诺'写在 class=contract 的条目里，属契约自带的放宽，用 contract + relaxation=order 表达最准确",
+    "全局无序比较规则——否决，全部裁判用例中只有这 1 个步骤钉了 2 个元素，放宽到全局会无谓削弱其它断言"
+  ],
+  "relaxation": "order",
+  "affects": {
+    "cases": [
+      "register-read-back-by-admin#list"
+    ],
+    "layers": [
+      "R"
+    ],
+    "tasks": []
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

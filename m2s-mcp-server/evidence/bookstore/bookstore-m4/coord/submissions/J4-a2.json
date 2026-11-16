@@ -1,0 +1,9 @@
+{
+  "task": "J4",
+  "attempt": 2,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T05:06:13+0800",
+  "summary": "J4 第 2 轮：按回炉信息（J5C 的 gap 变异体 negate:middleware/auth.js:19，取反后任何带 x-customer-id 的请求都会绕过 Bearer token 校验并被当成该头指定的用户）补了 2 个 wb 用例共 11 步——judge/cases/get-api-auth-me/wb-x-customer-id-header-ignored.json（只带头无 token → 401 'Authentication required. Please provide a valid Bearer token.'；u1 有效 token + 头的值=u2 的真实 userId → 仍返回 u1 自己；再用 u1/u2 各自凭证读回作对照）与 judge/cases/get-api-cart/wb-cart-x-customer-id-header-ignored.json（带头无 token 的读/写 → 401 且不写表，有效 token + 别人的 id → 只返回自己的条目，随后 u1/u2 读回证明无部分写入）。两条都引用了变异体的 ref GET /api/auth/me#business_rules[7]，所以 J5 会跑到它们；头的值用身份准备真实注册出的 ${u2.id}，因此“没被冒充”不能归因于主键不存在。未新增 spec_issue（这条规则事实库已写全：me/cart 的 request.headers[1] 与 business_rules[7] 都写明默认配置下该头被忽略），第 1 轮的 5 个 wb 用例、2 个故障场景、books-bad-types fixture 和 J4-1/J4-2/J4-3 一字未改。middleware/auth.js:20-26/37-40 等 27 行在裁判默认配置下仍不可达（不能为补覆盖去开 AUTH_DEV_MODE），逐条写明了原因。check_judge_assets = PASS：86 用例 / 284 步 / 15 故障场景 / required_responses 67/70（14 exempted）/ business_rules 90/111。",
+  "notes": "预期全部来自事实库（401 的两条不同文本有意区分开，用来同时抓“放行”和“放行后 token 校验错位”；email/name 字面量来自 judge/identities.json 的固定注册参数；购物车集合断言沿用已对账的 cart-list-isolation-between-users 的取值），代码只用来确认请求构造正确。若裁判运行器不展开 headers 里的 ${u2.id}，真实单体的结果不变（该头被忽略）、变异体的结果仍与预期不同，用例不会变脆。下一步应重跑 J5：negate:middleware/auth.js:19 预期被抓住；middleware/auth.js:20-26 的 branch_off 类在裁判配置下仍为 equivalent，结论不变。另两条第 1 轮的工具观察仍然有效（行覆盖率把从未调用的函数算作已覆盖，optionalAuthMiddleware 28 行统计口径看不见；judge/uncovered.json 把 POST /api/cart#responses[3] 归给 throttle 场景那条不在本次可写范围，未改）。"
+}

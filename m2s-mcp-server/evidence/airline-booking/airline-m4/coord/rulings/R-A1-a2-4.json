@@ -1,0 +1,27 @@
+{
+  "id": "R-A1-a2-4",
+  "decider": "m2s-architect",
+  "task": "A1",
+  "attempt": 2,
+  "time": "2026-11-13T16:56:26+0800",
+  "question": "A1 自己新落的 R-A1-a2-3（列表顺序放宽）与已在案的 R-ROOM-spec-j3-r1-1-1-a1-1 / R-ROOM-spec-j3-r1-1-2-a1-1 重复，且它的 affected_cases 多写了 customer-bookings-status-filter、search-route-match 两个裸用例 id——放宽范围以哪一条为准",
+  "conclusion": "以在案的两条 ROOM 裁定为准，R-A1-a2-3 不作新增放宽、其 affected_cases 中多出的两项一律作废。准确范围：顺序放宽只施加于 register-read-back-by-admin#list 这一步（按 # 切分，只影响该步骤），判定口径仍是「等长 + 元素多重集（含重数）+ 每个元素字段逐字比较 + status/headers/脱敏不变」。customer-bookings-status-filter、search-route-match（以及其它任何列表步骤）**不因本条获得任何放宽**，仍按现有口径严格逐项比较——它们的嵌套数组断言元素数为 0 或 1，次序本来不参与判定，因此不改变任何结果。今后若有用例在别的列表端点上出现多元素次序差异，属新事实，另开裁定，不得援引本条或 R-A1-a2-3。R-A1-a2-3 的其余内容（GAP-18 的口径：目标不新增排序、也不为匹配字面次序加 sorted()）继续有效，作为实现线约束。",
+  "basis": "R-ROOM-spec-j3-r1-1-1-a1-1（局部放宽、只覆盖该步骤、\"另立全局无序比较也否决\"）、R-ROOM-spec-j3-r1-1-2-a1-1 第 1/2 点（run_judge 按 # 切分 affected_cases，裸用例 id 会把放宽施加到该用例全部步骤与每一条差异，故必须带步骤）；m2s-verifier 在讨论室 spec-j3-r1 的机器核对：46 个用例里\"≥2 个对象元素的嵌套数组\"断言只有 1 处；judge/reconcile.json 的 register-read-back-by-admin/list/body.subset。角色说明「宁可少写」：多写的放宽会盖住缺陷。",
+  "category": "contract",
+  "raised_by": "A1",
+  "options": [],
+  "relaxation": "order",
+  "affects": {
+    "cases": [
+      "register-read-back-by-admin#list"
+    ],
+    "layers": [
+      "R"
+    ],
+    "tasks": [
+      "A1"
+    ]
+  },
+  "deviates_from_monolith": false,
+  "status": "decided"
+}

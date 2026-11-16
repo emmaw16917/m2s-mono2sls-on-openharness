@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r2-0-1",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T16:56:53+0800",
+  "summary": "已在 spec-j3-r2 讨论室提交验证线的一轮发言：该差异仅是 users 数组元素先后不同、两个条目的 {sub,email,groups} 逐项一致，事实库 GET /auth/users#business_rules[2] 明写顺序不属于对外承诺，故建议 architect 裁定为放宽项（category=contract、relaxation=order、layers=[R]、deviates_from_monolith=false），并明确要求放宽只取消位置比较、保留条目数与逐字段值（无序多重集），以免丢掉 read_back 要验证的“注册写入的用户能被 Admin 列表读回”以及单页截断缺陷的可见性。",
+  "notes": "若裁定拒绝放宽，验证线的立场是：该差异须改判 fact_error、由 annotator 修正 business_rules[2]，但等于把 DynamoDB scan 布局写进契约，且会牵连 GET /auth/login#business_rules[1] 与 GET /customers/<customer_id>/bookings#business_rules[3]，我反对。影响范围已核实：整套裁判 46 例 / 162 步中，此类数组放 >=2 元素的断言只有这一处，其余列表断言今天不需返工。另在发言中提了一个需要裁定顺带回答的口子：响应体为对象时的断言词（subset 逐位置、contains 仅对顶层数组、has_fields 位置路径）无法表达“顺序不管”，请裁定明确 R 层由比较器按 order 放宽做多重集比较，否则 V2 会在同一处复现。工作报告见 storage/stage_reports/ROOM-spec-j3-r2-0-1.json；本任务未修改任何工作区其他文件。"
+}

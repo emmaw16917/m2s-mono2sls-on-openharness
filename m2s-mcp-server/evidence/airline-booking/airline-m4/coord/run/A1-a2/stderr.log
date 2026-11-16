@@ -1,0 +1,109 @@
+C:\Users\36029\miniconda3\envs\mono2sls\Lib\site-packages\pydantic_settings\sources\utils.py:47: IncompleteFieldDefinitionWarning: Field 'lifespan' has an incomplete definition: its annotation contains an unresolved forward reference, so settings sources may fail to correctly resolve its value. Call `model_rebuild()` on the model where the field is defined, once all the referenced types are defined.
+  warnings.warn(
+[11/13/26 16:09:31] INFO     Processing request of type           server.py:733
+                             ListToolsRequest                                  
+                    INFO     Processing request of type           server.py:733
+                             ListResourcesRequest                              
+[11/13/26 16:09:42] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:10:13] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+OpenAI API request failed (attempt 1/9), retrying in 1.0s: 
+[11/13/26 16:40:17] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:40:41] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:40:48] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+                    INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+                    INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+                    INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:41:08] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:41:31] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:42:01] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:42:39] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:43:04] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:43:41] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:43:47] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:45:06] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:47:45] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:52:14] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:53:01] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:53:29] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:53:51] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:54:21] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:55:03] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:56:26] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:57:28] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     Negotiated protocol         streamable_http.py:193
+                             version: 2024-11-05                               
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 202 Accepted"                           
+[11/13/26 16:57:29] INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     Negotiated protocol         streamable_http.py:193
+                             version: 2024-11-05                               
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 202 Accepted"                           
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     Negotiated protocol         streamable_http.py:193
+                             version: 2024-11-05                               
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 202 Accepted"                           
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+                    INFO     HTTP Request: POST                 _client.py:1740
+                             http://127.0.0.1:8765/mcp/                        
+                             "HTTP/1.1 200 OK"                                 
+[11/13/26 16:58:15] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:58:25] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+                    INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:59:14] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   
+[11/13/26 16:59:34] INFO     Processing request of type           server.py:733
+                             CallToolRequest                                   

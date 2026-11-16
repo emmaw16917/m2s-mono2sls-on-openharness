@@ -1,0 +1,9 @@
+{
+  "task": "V3",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T12:59:46+0800",
+  "summary": "增量测试（verification/delta，12 用例 / 7 故障场景）在交付代码上跑完：verdict_delta.json = PASS（12/12，rie + dynamodb local），覆盖率已按约定只报告（orders-create 76.7% 语句 / 43.2% 分支，update-bestsellers 91.2% / 79.7%），故障基准 fault_baseline_B0.json 记录 19 次运行且 infra_errors 为空。无用例失败，因此分诊为空、没有退回项；未改动任何测试资产或代码。",
+  "notes": "调度器检查项对应情况：(1) verification/verdict_delta.json 存在、status=PASS、code_state=working tree、assets_digest=47cd218fc0250560；(2) verification/coverage/summary.json 与三个函数级文件存在；(3) verification/fault_baseline_B0.json 存在（label B0, runtime rie, 7 场景 / 19 次运行）。三个产物均在测试资产写出之后生成，测试资产本身（verification/delta/**）与 judge/ 目录未被修改——judge_unchanged 应成立。gap_inventory 中 decision.test==\"delta\" 的缺口只有 GAP-2，已由 update-bestsellers 的 9 条用例（含重复投递、同消息重复 bookId、同批多消息改同一 book、事务冲突、超容量拆批、部分提交后重投、缺 orderId 跳过）覆盖；orders-create 侧另有消息投递、发送失败不回滚 200、重复条目保留 3 条。dry_run 报的 functions_without_cases 是预期范围：其余函数由裁判用例负责。工作报告见 storage/stage_reports/V3.json。"
+}

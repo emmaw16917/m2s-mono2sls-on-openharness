@@ -1,0 +1,151 @@
+{
+  "stage_id": "O (S5, v2 pipeline)",
+  "agent": "m2s-perf-optimizer",
+  "attempt": 2,
+  "baseline_ref": "B0 (16cf4ff), benchmark commit d58df18, kept change 5fe0c7c",
+  "confidence": "normal",
+  "environment": {
+    "docker": true,
+    "mode": "rie",
+    "dynamodb_backend": "ddblocal",
+    "latency_ms": [0, 5, 10, 15],
+    "proxy_latency_assumption_ms": 10,
+    "prices": "run_rie_verdict cost_usd_per_invocation (512 MB, arm64, X-Ray Active); proxy cost_usd = DynamoDB units + Lambda request at perf-rules prices",
+    "data_volume_assumptions": "见 perf/benchmarks/<function>/<id>.json 每个文件的 data_volume 字段（14 个基准，只覆盖正常路径）",
+    "parallelism_model": "RIE/proxy 模拟里并发调用不受限（PERF_OPTIMIZATION_DESIGN §2.1 第 2 项）：并行化的延迟收益只在并发不受限的条件下成立"
+  },
+  "baseline": {
+    "bookings-cancel": {"benchmark": "cancel-own-booking", "calls": 5, "depth": 5, "warm_cpu_ms": 2.68, "rru": 1.0, "wru": 3, "cost_usd": {"units_usd": 2.0e-06, "lambda_request_usd": 2.0e-07}, "rie_warm_p50_ms_at_10ms": 65.84, "rie_init_ms_median": 1317.91, "network_ms_cal": 20.0},
+    "bookings-confirm": {"benchmark": "confirm-own-booking", "calls": 2, "depth": 2, "warm_cpu_ms": 1.067, "rru": 0.5, "wru": 1, "cost_usd": {"units_usd": 6.875e-07, "lambda_request_usd": 2.0e-07}, "network_ms_cal": 7.62},
+    "bookings-create": {"benchmark": "create-booking-saga", "calls": 5, "depth": 5, "warm_cpu_ms": 2.666, "rru": 0, "wru": 5, "cost_usd": {"units_usd": 3.125e-06, "lambda_request_usd": 2.0e-07}, "network_ms_cal": 19.48},
+    "bookings-get": {"benchmark": "get-own-booking", "calls": 1, "depth": 1, "warm_cpu_ms": 0.484, "rru": 0.5, "wru": 0, "cost_usd": {"units_usd": 6.25e-08, "lambda_request_usd": 2.0e-07}, "network_ms_cal": 2.86},
+    "customers-bookings-list": {"benchmark": "list-own-bookings-120", "calls": 1, "depth": 1, "warm_cpu_ms": 1.732, "rru": 3.0, "wru": 0, "cost_usd": {"units_usd": 3.75e-07, "lambda_request_usd": 2.0e-07}, "network_ms_cal": 4.64},
+    "flights-get": {"benchmark": "get-one-flight", "calls": 1, "depth": 1, "warm_cpu_ms": 0.533, "rru": 0.5, "wru": 0, "cost_usd": {"units_usd": 6.25e-08, "lambda_request_usd": 2.0e-07}, "network_ms_cal": 2.86},
+    "flights-release": {"benchmark": "release-one-seat", "calls": 2, "depth": 2, "warm_cpu_ms": 1.119, "rru": 0.5, "wru": 1, "cost_usd": {"units_usd": 6.875e-07, "lambda_request_usd": 2.0e-07}, "network_ms_cal": 7.62},
+    "flights-reserve": {"benchmark": "reserve-one-seat", "calls": 1, "depth": 1, "warm_cpu_ms": 0.696, "rru": 0, "wru": 1, "cost_usd": {"units_usd": 6.25e-07, "lambda_request_usd": 2.0e-07}, "network_ms_cal": 4.76},
+    "flights-search": {"benchmark": "search-200-flights", "calls": 1, "depth": 1, "warm_cpu_ms": 18.481, "rru": 7.0, "wru": 0, "cost_usd": {"units_usd": 8.75e-07, "lambda_request_usd": 2.0e-07}, "network_ms_cal": 4.64},
+    "loyalty-add-points": {"benchmark": "add-points-as-admin", "calls": 2, "depth": 2, "warm_cpu_ms": 0.964, "rru": 0.5, "wru": 1, "cost_usd": {"units_usd": 6.875e-07, "lambda_request_usd": 2.0e-07}, "network_ms_cal": 6.18},
+    "loyalty-get": {"benchmark": "sum-loyalty-100", "calls": 1, "depth": 1, "warm_cpu_ms": 1.229, "rru": 1.5, "wru": 0, "cost_usd": {"units_usd": 1.875e-07, "lambda_request_usd": 2.0e-07}, "network_ms_cal": 4.64},
+    "payments-collect": {"benchmark": "collect-payment", "calls": 1, "depth": 1, "warm_cpu_ms": 0.483, "rru": 0, "wru": 1, "cost_usd": {"units_usd": 6.25e-07, "lambda_request_usd": 2.0e-07}, "network_ms_cal": 3.32},
+    "payments-get": {"benchmark": "get-payment", "calls": 1, "depth": 1, "warm_cpu_ms": 0.491, "rru": 0.5, "wru": 0, "cost_usd": {"units_usd": 6.25e-08, "lambda_request_usd": 2.0e-07}, "network_ms_cal": 2.86},
+    "payments-refund": {"benchmark": "refund-payment", "calls": 1, "depth": 1, "warm_cpu_ms": 0.504, "rru": 0, "wru": 1, "cost_usd": {"units_usd": 6.25e-07, "lambda_request_usd": 2.0e-07}, "network_ms_cal": 4.76}
+  },
+  "baseline_note": "以上为 run_proxy_metrics(ref=\"B0\") 的结果（10ms 固定延迟下的 calls/depth、0 延迟热调用 CPU 中位数、容量与成本）。bookings-cancel 一列另带 run_rie_verdict 的基线 RIE 数（10ms 热调用 p50 与 init 中位数）。",
+  "hotspots": [
+    {"function": "flights-search", "metric": "warm_cpu", "value": 18.481, "note": "全部基准里热调用 CPU 最高（其余 0.5-2.7ms）；一次 Scan 读 200 条航班条目，CPU 花在整页条目的序列化和 Decimal 解码上，深度只有 1。属于数据模型/索引问题，不是代码里的串行调用（见 advisories A1）。"},
+    {"function": "bookings-cancel", "metric": "depth", "value": 5, "note": "串行往返最深之一，且 5 次调用里有 2 次是尽力而为的补偿（放座、退款），互不依赖 → REQ-1 已并行（kept）。"},
+    {"function": "bookings-create", "metric": "depth", "value": 5, "note": "5 次串行写（扣座/写预订/写收款/确认/写积分），每一步失败都要回滚前一步：被提前的操作里有写，§6.2 禁止（见 advisories A3）。"},
+    {"function": "customers-bookings-list + loyalty-get", "metric": "rru", "value": 4.5, "note": "两个 Scan 类端点（3.0 + 1.5 RRU），成本随表大小线性增长（见 advisories A1）。"}
+  ],
+  "rule_scan": {
+    "R1": {
+      "hits": 0,
+      "locations": [],
+      "not_applicable": [
+        "14 个 handler 全是同步 lambda_handler（无 async/await），唯一的两个循环体里没有 IO 调用：bookings-create/handler.py:174 是 all(field in booking_data ...) 的纯计算推导式，loyalty-get/handler.py:65-67 是对 Scan 结果求和的纯计算循环，都没有逐条 await 的独立操作。",
+        "R1 的同一族改写（把互相独立的调用并发化）在 bookings-cancel 上以 analysis 的形式命中一次并保留：见 REQ-1 / changes[0]。"
+      ]
+    },
+    "R2": {"hits": 0, "locations": [], "not_applicable": ["每个 handler 最多解析一次请求体：parse_body 在 bookings-create:351、loyalty-add-points:113、payments-collect:103、payments-refund:84 各调用一次，没有重复的 json.loads(event[\"body\"])。"]},
+    "R3": {"hits": 0, "locations": [], "not_applicable": ["没有 requirements.txt / package.json（output/lambdas 与 output/layers 只有 handler.py + shared_utils.py，依赖只有运行时内置的 boto3/botocore 与标准库，I1 报告与 gate C10 一致），因此没有可删的声明依赖。"]},
+    "R4": {
+      "hits": 0,
+      "locations": [],
+      "not_applicable": [
+        "blueprint.sqs_queues = []、metadata.has_async_flows=false（D-6：整个 Saga 内联在 bookings-create 里），14 个 handler 没有一个读 event['Records']，也没有 batchItemFailures → 不存在批处理消费者，R4 无适用对象。",
+        "全仓无 TransactWriteItems、无 BatchWriteItem，条件写都是单条目（gate/skills 的异步强制规则在 D1 报告里同样判定为无适用对象）。"
+      ]
+    },
+    "R1b": {
+      "hits": 0,
+      "locations": [],
+      "not_applicable": [
+        "规格里 11 条 guard_kind=error_propagation 全部是请求校验臂，发生在任何表访问之前（GET /flights/search 缺参 400、POST /bookings 体缺失 400、POST /payments/collect|refund 缺 chargeId 400、POST /loyalty/<id>/points 缺 points 400、auth 两端 400），它们后面跟的不是第二次读 → 没有『两段串行读中间隔着 error_propagation 提前返回』的形状。",
+        "实际存在的读-读串联都在 authz 守卫两侧，§6.2 明确禁止越过 authz 守卫提前读：bookings-get、bookings-confirm、bookings-cancel 的『GetItem BookingTable →(403 owner/admin)→ GetItem UserGroupsTable』（responses 里那几条 guard_kind=authz）；loyalty-get、customers-bookings-list 的『GetItem UserGroupsTable →(403)→ Scan LoyaltyTable/BookingTable』；loyalty-add-points 的『GetItem UserGroupsTable →(403)→ PutItem LoyaltyTable』(第二次还是写)。",
+        "另外这些配对里后一次读的参数多半依赖前一次读到的条目（booking['bookingOutboundFlightId']、booking['customer']），不满足『参数在前一步之前就能算出来』。",
+        "bookings-cancel 里唯一的 error 型提前返回（条件写失败 → 400 'Booking <id> not found'，analysis_report POST /bookings/<booking_id>/cancel#responses[4]）没有标 guard_kind（只有 trace_arm: true），且它挡在中间的操作是写 → 按 R1b『没标 guard_kind 不适用』不套用。"
+      ]
+    },
+    "R5": {"hits": 0, "locations": [], "not_applicable": ["output/template.yaml:28-31 的 Globals.Function 已经是 Architectures: [arm64]（S3a 按 m2s-sam-kb 默认写好，run_rie_verdict 的 architecture 字段在基线与候选上都报 arm64），没有可加的一行。"]},
+    "R6": {"hits": 0, "locations": [], "not_applicable": ["blueprint.api_gateway.api_type = \"http\"（DECISIONS D-2），模板用的是 AWS::Serverless::HttpApi + Payload 1.0，REST 独有功能不存在 → gate(blueprint) 没有 AT1 WARNING，无需 advisory。"]},
+    "R8": {
+      "hits": 0,
+      "locations": [],
+      "not_applicable": [
+        "storage/blueprint.json 与 storage/rulings.json 里没有任何 bounded_staleness 的 SI 或裁定（grep 'bounded_staleness' 无命中）→ 对任何表做模块级 TTL 缓存都属 §6.2 禁止项，只能写进 advisories（A2）。"
+      ]
+    }
+  },
+  "changes": [
+    {
+      "id": "C1",
+      "request": "REQ-1",
+      "source": "analysis",
+      "functions": ["bookings-cancel"],
+      "based_on": [],
+      "verdict": "kept",
+      "fix_attempts": 0,
+      "commit": "5fe0c7c",
+      "summary": "把取消流程里两步尽力而为的补偿（放座、退款）并发化：退款那次条件写提交到模块级 ThreadPoolExecutor(10)，与本线程的『读航班 + 条件写放座』同时进行，在返回 200 之前 join（future.result()），失败处理、日志文本、refund 降级 dict 和响应体构造全部原地不变。",
+      "why_allowed": "SI-18（storage/blueprint.json，class=contract）+ POST /bookings/<booking_id>/cancel#business_rules[3]/[4]：放座失败只记日志、退款失败只把 refund 顶成 {'refundId':'N/A','status':'failed'}，两步都不改状态码，且两步的键都来自同一次预订读（business_rules[2]），互不依赖 → 属 §6.2 允许的『函数内把互相独立的调用改成并行，失败粒度保持在单条级别』。线程里跑的是 boto3 client（线程安全）而非共享 Table 对象。",
+      "evidence": {
+        "proxies": {
+          "base": {"calls": 5, "depth": 5, "network_ms_cal": 20.0, "warm_cpu_ms": {"median": 2.701, "p90": 5.74}, "rru": 1.0, "wru": 3, "conflicts": 0, "call_ops": ["GetItem:BookingTable", "UpdateItem:BookingTable", "GetItem:FlightTable", "UpdateItem:FlightTable", "UpdateItem:PaymentTable"]},
+          "candidate": {"calls": 5, "depth": 4, "network_ms_cal": 17.14, "warm_cpu_ms": {"median": 5.793, "p90": 9.63}, "rru": 1.0, "wru": 3, "conflicts": 0, "call_ops": ["GetItem:BookingTable", "UpdateItem:BookingTable", "GetItem:FlightTable", "UpdateItem:PaymentTable", "UpdateItem:FlightTable"]},
+          "delta": "调用次数 5→5、容量不变、顺序深度 5→4（关键路径少一次往返，校准估算 20.0ms→17.14ms）；代理的 0 延迟热 CPU 变高（2.70→5.79ms，线程提交/汇合的真实代价，未被'优化掉'）。",
+          "verdict_file": "perf/verdicts/cancel-own-booking-20261116-190411.json"
+        },
+        "rie": {
+          "10ms": {"base_warm_round_medians": [65.74, 64.97, 65.89, 65.96, 65.92], "cand_warm_round_medians": [53.12, 53.16, 53.57, 52.59, 52.58], "direction": "better"},
+          "5ms": {"base_warm_round_medians": [39.77, 39.14, 38.89, 39.49, 41.17], "cand_warm_round_medians": [33.91, 33.45, 33.13, 31.18, 43.13], "direction": "better"},
+          "15ms": {"base_warm_round_medians": [91.4, 92.17, 92.37, 91.89, 91.85], "cand_warm_round_medians": [74.11, 73.92, 73.56, 74.01, 73.2], "direction": "better"},
+          "0ms": {"base_warm_round_medians": [12.81, 11.67, 8.49, 12.4, 11.07], "cand_warm_round_medians": [11.34, 13.21, 12.71, 11.5, 12.12], "direction": "no_diff (reference only; realistic_latency_rule not applied because 5/10/15ms 全部 better)"}
+        },
+        "init": {"direction": "no_diff", "base_samples_ms": [1508.61, 1423.63, 1071.72, 1015.6, 1317.91], "cand_samples_ms": [1121.69, 1576.86, 1405.08, 1233.2, 1165.02], "note": "run_rie_verdict dimensions.init = no_diff（区间重叠）"},
+        "cost": {"direction": "better", "base_usd_per_invocation": [2.6383e-06, 2.6331e-06, 2.6393e-06, 2.6397e-06, 2.6395e-06], "cand_usd_per_invocation": [2.5541e-06, 2.5544e-06, 2.5571e-06, 2.5506e-06, 2.5505e-06], "note": "10ms 延迟下 Duration 变短带来的费用下降；DynamoDB 容量不变（rru 1.0 / wru 3）"},
+        "rss_guard": {"candidate_max_rss_mb": 43, "memory_mb": 512, "veto": false},
+        "conflicts": {"proxy_10ms": {"base": 0, "cand": 0}, "rie": {"10ms": {"base": 0, "cand": 0}, "0ms": {"base": 0, "cand": 0}, "5ms": {"base": 0, "cand": 0}, "15ms": {"base": 0, "cand": 0}}},
+        "equivalence": "run_equivalence(mode=diff, functions=[bookings-cancel], assets=verification/delta) = EQUIVALENT（与 B0 比 H1 (a)(b)(c)，0 differences）；unstable_in_baseline=[delta-bookings-cancel-side-effects-on-tables]（该用例在基线自己两跑之间也不同，按规则从等价判定里排除，未据此改判）",
+        "coverage_of_changed_lines": "run_coverage(functions=[bookings-cancel], changed_since=B0, with_judge=true, assets=verification/delta) = all_covered，9 条改动行全覆盖（judge_cases 7 + delta）",
+        "judge": "run_judge(functions=[bookings-cancel]) = PASS（6 pass + 1 migration-change，1 fault pass + 1 fault ruled，0 failures）",
+        "delta_validate": "run_validate(functions=[bookings-cancel], assets=verification/delta) = PASS (1/1)",
+        "gate": "run_gate(phase=final) = PASS",
+        "regression": "收尾全量回归在保留本改动后：run_judge() = PASS（34 cases pass + 7 migration-change + 14 dropped；21 fault pass + 2 ruled + 4 dropped，0 failures，verification/verdict_judge.json）、run_validate(assets=verification/delta) = PASS（16/16，verification/verdict_delta.json）",
+        "limits": "结论只在并发不受限的模拟下成立（§2.1 第 2 项）：真实 DynamoDB 的并发连接与分区键热点未被建模；本改动的两步不触碰同一条目（FlightTable 与 PaymentTable 各一条），无事务/条件写重叠，故热点风险为零（conflicts 全 0）。线程数上限 10。"
+      }
+    }
+  ],
+  "pending_human": [],
+  "advisories": [
+    {
+      "id": "A1",
+      "diagnosis": "三个端点靠整表 Scan + FilterExpression 回答问题，成本与 CPU 随表大小线性增长：flights-search（Scan FlightTable，200 条 → 7.0 RRU、热 CPU 18.48ms，本应用最高的 CPU）、customers-bookings-list（Scan BookingTable，120 条 → 3.0 RRU）、loyalty-get（Scan LoyaltyTable，100 条 → 1.5 RRU）。若为过滤属性建 GSI（例如 BookingTable 的 customer、LoyaltyTable 的 customerId+flag、FlightTable 的三字段日程组合键），调用次数不变（深度 1）但读容量与整页解码 CPU 会按命中比例下降。",
+      "why_not_v1": "§6.2 把『新增 GSI』列为不允许，只能写申请；而本处连申请的前提都不满足：被改的不是单体的内部轨迹，而是返回集合——SI-12（blueprint，class=contract）规定『只取第一页、不处理 LastEvaluatedKey』，Scan 的第一页与 Query 的全部命中在数据超过 1MB 时返回的条目集合不同，属『写了/返回了哪些条目』这一层契约（CONTRACT_TESTING_PLAN §8 的 data_model_change 也不覆盖契约集合变更）。因此只出 advisory，不提交 REQ。",
+      "evidence": {"baseline": "run_proxy_metrics(ref=B0): search-200-flights {calls:1, depth:1, rru:7.0, warm_cpu_ms:18.481}; list-own-bookings-120 {rru:3.0}; sum-loyalty-100 {rru:1.5}", "monolith": "data/storage.py:131-137（flight scan）、:298（booking scan）、loyalty scan 同形"}
+    },
+    {
+      "id": "A2",
+      "diagnosis": "UserGroupsTable 的 admin 判定每次请求都读一遍（bookings-get / bookings-confirm / bookings-cancel / loyalty-get / customers-bookings-list / loyalty-add-points 六处，基线 add-points-as-admin depth=2）。若允许有界旧数据，模块级 TTL 缓存可把 Admin 调用者的 depth 从 2 降到 1；同理 bookings 详情/列表读侧也可缓存。",
+      "why_not_v1": "R8 要求 blueprint 里有被接受的 bounded_staleness SI 且 applies_to 覆盖该函数；storage/blueprint.json、storage/rulings.json 里 grep 'bounded_staleness' 0 命中，§6.2 对没有该裁定的表做缓存属禁止项（会改变权限判定的新鲜度，权限判定是契约）。需要 architect 先裁定可接受的旧度（含组撤销后的可见延迟），再由后续轮次实施。",
+      "evidence": {"baseline": "run_proxy_metrics(ref=B0): add-points-as-admin {calls:2, depth:2, call_ops:[GetItem:UserGroupsTable, PutItem:LoyaltyTable]}；六个函数的 authz 读各 1 次 GetItem", "cache_key_cardinality": "按 sub 计数，基数 = 管理员用户数（很小），命中率高；但权限撤销的可见延迟 = TTL"}
+    },
+    {
+      "id": "A3",
+      "diagnosis": "bookings-create 的正常路径是关键路径最深的一档：5 次串行写（UpdateItem FlightTable → PutItem BookingTable → PutItem PaymentTable → UpdateItem BookingTable → PutItem LoyaltyTable），depth=5、10ms 模型下 19.48ms 往返、wru=5。",
+      "why_not_v1": "这 5 步是一个 Saga：SI-18/GAP-17/D-16 规定每一步失败都要按原顺序回滚前面的写（Step2 失败放座、Step3 失败取消+放座、Step4 失败退款+取消+放座），把任何一步写提前都会改变『执行的操作集合』与失败粒度，§6.2 明确不允许；改成事务/合并批量写/换异步编排同样是 §6.2 的不允许项（数据模型与异步机制改动）。留给架构层决定，例如把积分与通知挪出关键路径（那是功能语义改动，不是本阶段可做的）。",
+      "evidence": {"baseline": "run_proxy_metrics(ref=B0): create-booking-saga {calls:5, depth:5, wru:5, warm_cpu_ms:2.666, cost_usd:{units_usd:3.125e-06}}"}
+    },
+    {
+      "id": "A4",
+      "diagnosis": "配置类可选项：Globals.Function 是 MemorySize 512 / Tracing Active / Timeout 30（template.yaml:26-31）。X-Ray Active 会给每次调用增加若干 subsegment，512MB 下的 CPU 分配也影响热调用（REQ-1 的候选热 CPU 从 2.70ms 升到 5.79ms，正是并行调度开销的体现）。",
+      "why_not_v1": "§6.2 把 MemorySize、SQS 参数等配置类改动列为不允许（只有架构 arm64 例外，而本模板已是 arm64）。若要评估，请由架构/交付阶段决定后重测；本阶段未做任何模板改动。",
+      "evidence": {"reference": "PERF_OPTIMIZATION_DESIGN §6.2 表格『其他配置类改动』行"}
+    }
+  ],
+  "uncovered_paths": [
+    "delta-bookings-cancel-side-effects-on-tables 在 run_equivalence 的基线自跑之间不稳定（unstable_in_baseline），因此 REQ-1 的等价性在该用例上未被 H1 判定；它由 run_judge（6 个用例 + 1 个故障场景 PASS）与 run_validate(delta 1/1 PASS) 覆盖。",
+    "bookings-cancel 的『条件写预订失败 → 400』臂（responses[4]，trace_arm）在 RIE 判决里没有对应基准（基准只覆盖正常路径），REQ-1 未改动该臂的顺序，但若将来做投机读（R1b）需要新增失败路径基准。",
+    "14 个基准全部是正常路径（工具要求 status 2xx + ≥1 次 SDK 调用），错误分支（400/403/404/500）的性能未被测量；本轮没有改动落在只有错误分支才到达的代码上，除 REQ-1 的退款线程汇合处（其失败路径由 judge 的 booking-cancel-release-seat-fails 故障场景与 refund failed 臂覆盖）。"
+  ],
+  "conclusion": "规则库 R1..R8 在本应用（14 个同步 Python handler、无 SQS 消费者、无事务、依赖只有运行时内置 boto3、模板已是 arm64+HTTP API、无 bounded_staleness 裁定）里只有 1 处可允许的语义保持改动，来自基线热点分析（REQ-1，已保留，commit 5fe0c7c，run_rie_verdict=kept）；其余 4 条诊断因 §6.2 不允许或申请前提不成立，写入 advisories。改动数量不是目标，未保留的改动一个也没有：本轮 0 个 reverted、0 个 pending_human、0 个 blocked_*。"
+}

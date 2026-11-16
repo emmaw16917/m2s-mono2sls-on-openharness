@@ -1,0 +1,9 @@
+{
+  "task": "J4",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T20:20:54+0800",
+  "summary": "J4 白盒补测完成：新增 8 个 wb- 用例、2 个 wb- 夹具、14 个 wb- 故障场景（judge 故障场景 12→26，用例 46→54），针对 coverage_monolith 里 151 行未覆盖代码；4 条“代码里有、事实库没有”的规则登记进 judge/spec_issues.json（J4-1..J4-4）。check_judge_assets PASS（1 轮，无 errors/warnings）。",
+  "notes": "覆盖去向：app.py 124-125/140-141/145-146/158-186/194-196/284-285/290-292；data/storage.py 37/41/50/54/121-123/207-208/245-246/281-282/311-313/323-325/338-339；services/booking.py 59/85/108；services/auth.py 146 的 KeyError 500 臂。剩余未覆盖行逐条写在 storage/stage_reports/J4.json 的 intentionally_uncovered（Stripe 真实模式、模块导入期初始化、defensive print、需要“只让第二次读失败”的 scan 降级臂等）。\n\n两点提请调度器注意：\n1) 新用例的 predicted 一律是无故障时的行为（故障臂的期望由 run_monolith 记进 fault_baseline_monolith.json 后在 V2 比对），所以即使某条注入规则没命中，也不会造成对账假失败，只是对应行仍未覆盖；下轮 run_monolith 后请看 coverage 是否如期上升。\n2) 已有 4 条 J1 故障场景（booking-cancel-release-seat-fails / booking-create-put-fails / loyalty-points-put-fails / register-put-fails）用 kind=error + nth=1，会被 boto3 自动重试掉、实际走不到预期的失败臂（我从 fault_baseline 的 rules_fired 与 coverage 反查确认）；我没有改 J1 的资产，改为新增 wb- 等价场景（validation 或 nth=all）。另外 judge/uncovered.json（本任务不可写）里有 6 条“串行请求造不出来”的豁免现已被新故障场景推翻，建议 J1 回炉时更新。"
+}

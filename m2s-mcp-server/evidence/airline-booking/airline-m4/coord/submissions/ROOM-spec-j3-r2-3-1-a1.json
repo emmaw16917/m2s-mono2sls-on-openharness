@@ -1,0 +1,9 @@
+{
+  "task": "ROOM-spec-j3-r2-3-1",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T17:29:37+0800",
+  "summary": "在 spec 讨论室 spec-j3-r2 以 m2s-verifier 身份发言一轮（seq 4）：接受裁定 R-ROOM-spec-j3-r2-1-1-a1-1（GET /auth/users 的 users 数组次序不属契约，contract + relaxation=order + layers=[R]，仅覆盖 register-read-back-by-admin#list），确认验证线零改动关闭本差异；撤回上一轮关于 affected_cases 用裸用例 id 与把原则挂到事实条目上的两条建议。",
+  "notes": "本轮新增证据（只读扫描，未改任何工作区文件，仅写 storage/stage_reports/ROOM-spec-j3-r2-3-1.json）：(1) 46 个裁判用例 / 162 个步骤的断言全扫描——钉住 ≥2 个响应数组元素的断言全集只有本差异 1 处，其余 ≥2 元素数组均为字段名清单类断言，同端点另两例分别只含单元素断言与字段存在断言，故 architect 拒绝预先泛化对验证线无成本；(2) 12 个故障场景无一引用本用例，放宽不外溢到 fault baseline；(3) 采纳 annotator 的元素身份唯一性论证（sub 为 Airline-Users 唯一主键，data/storage.py:307/345）作为「多重集比较不丢发现能力」的保证；(4) judge/reconcile.json 生成于 16:09、早于第一条裁定 16:15:44，确属陈旧，收尾待办在 J3 重跑对账（本 room 任务不代跑）；(5) 新发现并已声明为预期内：blueprint.dropped_functions 中 POST /auth/register 与 GET /auth/users 均不由目标提供（D-3/SI-8，GAP-15 决定第 (1) 条同口径），因此本放宽的实际作用面收敛在单体侧对账，V2 整体跳过该用例不得回退本室。另认领一条长期复核项：对账侧「已被裁定覆盖」按用例粒度匹配，J3/V2 须核对被覆盖的差异确为 list 步骤的数组次序，条数不等/字段取值不同/脱敏泄漏或落在 register 步骤的一律另开。本线未读裁判源码，多重集比较语义取自 architect/annotator 的只读核对记录，若执行阶段仍按逐位置比较报失败将归 measurement_tool 并附裁定编号，不改用例。无遗留 spec_issue。"
+}

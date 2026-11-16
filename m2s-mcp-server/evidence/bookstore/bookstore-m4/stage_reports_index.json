@@ -1,0 +1,212 @@
+[
+ {
+  "task": "A1",
+  "file": "storage/stage_reports/A1.json",
+  "status": "success",
+  "summary": "按规格设计出 bookstore 的 serverless 架构并写完全部 A1 产出：11 个 api Lambda（一端点一个，规格 auth.classification 全 required → 全部 auth=required）+ 1 个 SQS 消费者（下单后的畅销榜累加，Pattern A 幂等，失败上报 batchItemFailures），4 张业务表照搬 table_schemas + 新增 IdempotencyTable，Bookstore-Users 整表删除交给 Cognito，认证 4 端点与鉴权中间件/JWT/密码工具/建表脚本全部 drop；api_type=rest（唯一理由：global_middleware[0] 除 ACAO:* 还下发 Access-Control-Allow-Credentials: true，网关自己应答的 401/4xx 必"
+ },
+ {
+  "task": "D1",
+  "file": "storage/stage_reports/D1.json",
+  "status": "success",
+  "summary": "按 GAP-2（唯一的 test=delta 缺口）与规则手册的必须规则写了 12 条增量测试（orders-create 生产侧 3 条 + update-bestsellers 消费侧 9 条）和 7 个故障场景，覆盖「消息真的进了队列」「重复投递只加一次」「同 bookId 合并」「缺 orderId 跳过」「同批改同一条目」「TransactionConflict 不吞掉」「超容量拆批与部分提交后重投」；run_validate(dry_run, assets=verification/delta) 第 1 轮 PASS。"
+ },
+ {
+  "task": "F2-bestsellers-books-cart-orders-search",
+  "file": "storage/stage_reports/F2-bestsellers-books-cart-orders-search.json",
+  "status": "success",
+  "summary": "第 3 次尝试（修正模式，按 J4 的 judge/spec_issues.json 回炉）：3 条 spec issue 全部在单体代码里核实为事实缺项/事实不全，用 annotate_entry_point 补进事实库，共 11 次标注调用全部被接受。新增 4 个 413 响应臂（POST/PUT/DELETE /api/cart、POST /api/orders）+ 5 条 body 上限规则，新增 3 条规则（POST /api/orders 2 条：quantity 类型臂 + 后台更新被静默吞掉；GET /api/search 1 条：一条坏数据让整次搜索 500），改写 2 条会让人误读的规则原文（POST /api/orders business_rules[6]、GET /api/search business_rules[2]）、1 个请求字段说明（books[].qu"
+ },
+ {
+  "task": "F2-identity",
+  "file": "storage/stage_reports/F2-identity.json",
+  "status": "success",
+  "summary": "修正模式：核对 J3 报回的两条事实错误（同一根因），按单体代码改写了 POST /api/auth/register 的 #request 与 #responses（3 项）以及同源错误的 login/refresh 的 #request 与 #responses（各 2 项），共 6 次 annotate_entry_point 调用；根因是事实库写成 'Content-Type 不是 JSON 就不解析请求体 → 400'，而 server.js:34 还挂了 bodyParser.urlencoded({extended:true})，表单编码的注册请求会被正常解析并返回 201。check_provenance 第 1 次运行即 PASS（790 条出处全部通过，无 incomplete）。"
+ },
+ {
+  "task": "F2-shared",
+  "file": "storage/stage_reports/F2-shared.json",
+  "status": "success",
+  "summary": "回炉修正：按 recheck 的 check_provenance 报告补齐 global_middleware[0]（app.use(cors({origin:'*',credentials:true}))）的响应头，并补写 work_packages.shared_code 唯一的共享条目 shared/auth-middleware（authMiddleware）；共享部分共 2 项（1 条全局中间件 + 1 条共享规则），事实库端点字段未改动。check_provenance 由 FAIL（1 条 incomplete）变 PASS（errors 0、incomplete 0），本次自查 1 轮（annotate 首次调用因 package.json 引用行号写错被工具拒绝，改正后成功，不算独立一轮）。"
+ },
+ {
+  "task": "G2",
+  "file": "storage/stage_reports/G2.json",
+  "status": "success",
+  "summary": "核对 G1 的 10 条机械信号：全部认得对，无一需要打 note 纠正认错（其中 4 条 GAP-1/2/3/6 只补了精确化 note）；读单体全部 8 个源文件后新增 12 条缺口（GAP-11..GAP-22），分类分布：global_middleware 3（统一错误处理、body-parser 上限与解析、无 catch-all/404）、monolith_defect 3（bestsellers 吞异常返回 200 []、Query 也不翻页、注册判重 check-then-put 竞态）、order_and_consistency 2（六个读端点全是默认最终一致读、下单响应先于畅销榜写入）、auth_semantics 2（AUTH_DEV_MODE 下 x-customer-id 可直接断言任意身份 / default-customer-id 共享身份、无状态 JWT 的"
+ },
+ {
+  "task": "I1-bestsellers-books-cart-orders-search",
+  "file": "storage/stage_reports/I1-bestsellers-books-cart-orders-search.json",
+  "status": "success",
+  "summary": "12 个 handler 全部落地（11 个 api + 1 个 sqs 消费者），每个函数一个目录一个端点，全部复用 I1-shared 的共享层（require('/opt/nodejs/shared')），第三方依赖只有 @aws-sdk/client-dynamodb + @aws-sdk/lib-dynamodb（orders-create 另加 @aws-sdk/client-sqs），每个函数目录一份 package.json 精确声明自己 require 的包（C12 口径）；gate(code) 第 1 次 PASS（scoped 到本包与不带 scope 各跑一次都是 PASS）；run_judge_self_test 全量 68 个用例 0 失败（54 pass + 14 migration-change）+ 22 个故障注入运行 0 失败；裁判跑不到的幂等/拆批/降"
+ },
+ {
+  "task": "I1-identity",
+  "file": "storage/stage_reports/I1-identity.json",
+  "status": "success",
+  "summary": "identity 工作包按规格没有任何可实现的 Lambda 函数：包内 4 个端点（POST /api/auth/register、POST /api/auth/login、POST /api/auth/refresh、GET /api/auth/me）在 blueprint.dropped_functions 里逐条标注 Replaced by Cognito，impl_packages.identity.functions=[]，因此本阶段不生成 handler、不生成 package.json、不创建 output/lambdas/identity/ 或 output/layers/shared/；run_gate(phase=\"code\", package=\"identity\") 第 1 次即 PASS（checks 为空，无 C1/C10 finding），gate(code)"
+ },
+ {
+  "task": "I1-shared",
+  "file": "storage/stage_reports/I1-shared.json",
+  "status": "success",
+  "summary": "共享层只有一处、写了一次：output/layers/shared/nodejs/shared.js（Node 22 层根 = layers/shared/nodejs/，运行时 /opt/nodejs/shared.js，CommonJS，只 require 内置 querystring，因此没有 package.json/node_modules）。它落地 D-9 的全局中间件头（response()/errorResponse() 给每个 200/400/404/413/500 带 Access-Control-Allow-Origin: * 与 Access-Control-Allow-Credentials: true + content-type，并把 global_middleware[0] 的六个头名全部显式写出供 GM1 扫）、D-11/D-30 的统一错误包络 from"
+ },
+ {
+  "task": "I2a",
+  "file": "storage/stage_reports/I2a.json",
+  "status": "success",
+  "summary": "output/template.part1.yaml 已完成并再次逐条对照规格复核（本次未改动模板内容）：AWSTemplateFormatVersion/Transform/Description、Parameters(Environment)、Globals.Function(只有 Runtime nodejs22.x / Timeout 30 / MemorySize 512 / Architectures arm64，无 Handler、无 Environment、无 Tracing)、共享资源 = REST API(BookstoreApi：StageName、EndpointConfiguration REGIONAL、Cors 三字段、AccessLogSetting+CognitoUserPoolArn 与 Cognito DefaultAuthorizer、七类 Gate"
+ },
+ {
+  "task": "I2b",
+  "file": "storage/stage_reports/I2b.json",
+  "status": "success",
+  "summary": "output/template.part2.yaml 写好：12 个 AWS::Serverless::Function 资源块（与 blueprint lambda_functions 一一对应、CodeUri 指向 output/lambdas/bookstore/<name>/ 且以 / 结尾、Handler 按磁盘上真实的 exports.handler 逐个核对=handler.handler）、FUNCTIONS_METADATA 元数据块、Outputs（BookstoreApiUrl/CognitoUserPoolId/CognitoUserPoolClientId，键名与本仓库 e2e_aws.py 的 APPS[\"bookstore\"][\"outputs\"] 逐字对应）。事件：11 个 Type: Api + RestApiId !Ref BookstoreApi（ap"
+ },
+ {
+  "task": "I2c",
+  "file": "storage/stage_reports/I2c.json",
+  "status": "success",
+  "summary": "合并并自查通过：part1(416 行)+part2(446 行) 都在，用 m2s_merge.py template 拼出 output/template.yaml(863 行)；run_gate(phase=\"template\") 第 1 次就 status=PASS、mechanical_failures=[]，validate_sam 第 1 次就 ok=true、errors=[]/warnings=[]。两项检查在第 1 次尝试即同时通过，因此自我修正循环用了 0 次，没有改动任何模板内容（part1/part2 保持原样，template.yaml 就是纯拼接产物）。"
+ },
+ {
+  "task": "I3",
+  "file": "storage/stage_reports/I3.json",
+  "status": "success",
+  "summary": "S4 一致性检查完成：交叉核对 blueprint.json / output/template.yaml / output/lambdas+layers 代码，C1-C12（含 C7b，另加层布局与 Cognito 两项）全部为 INFO（核对过、无问题），findings 里没有 ERROR/WARNING，fixes_applied=0，consistency_report.status=PASS、sam_validation=PASS。"
+ },
+ {
+  "task": "J1",
+  "file": "storage/stage_reports/J1.json",
+  "status": "success",
+  "summary": "第 3 次尝试：按 recheck 指出的 4 条未引用响应（POST/PUT/DELETE /api/cart#responses[6] 与 POST /api/orders#responses[6]，即 413 请求体超限臂）补 5 个裁判用例。这一臂用 HTTP 请求就能走到：server.js:33-34 的 bodyParser.json()/urlencoded() 都没传 limit，默认 100kb=102400 字节，请求体更大时 body-parser 抛 entity.too.large（err.status=413），统一错误中间件给 {'error':'request entity too large'}；因此是出题，而不是写进 uncovered.json。新增 cart-add-oversize-body-413（超限 json / 超限且无凭证 / 超限 u"
+ },
+ {
+  "task": "J3",
+  "file": "storage/stage_reports/J3.json",
+  "status": "success",
+  "summary": "7 条对账差异全部归类：5 条 case_error（表单编码那两步的 predicted 停留在 J1 写用例时的旧事实；事实库已在 F2 修正轮 facts v5 改对并与单体输出一致，所以这次只差 J1 更新 predicted，不需要 annotator 再动事实库）、2 条 needs_ruling（GET /api/search 多命中时 hits 的 scan 顺序，事实库不承诺顺序，storage/rulings.json 仍不存在，裁定未落地）。无 mask_gap，因此不需要新增 judge/mask_rules.json。"
+ },
+ {
+  "task": "J4",
+  "file": "storage/stage_reports/J4.json",
+  "status": "success",
+  "summary": "J4 第 2 次尝试：回炉信息只有一条（J5C 转来的 gap 变异体 negate:middleware/auth.js:19 —— 把 AUTH_DEV_MODE 的判断取反后，任何带 x-customer-id 的请求都会跳过 Bearer token 校验并被当成该头指定的用户，而裁判用例从未发过这个头）。按建议补了 2 个 wb 用例（11 步）把这个鉴权绕过方向钉住：judge/cases/get-api-auth-me/wb-x-customer-id-header-ignored.json（4 步：只带头无 token → 401 'Authentication required. Please provide a valid Bearer token.'；u1 的有效 token + 头的值 = u2 的真实 userId → 仍只返回 u1 自己；再用 u1、u2 各自"
+ },
+ {
+  "task": "J5C",
+  "file": "storage/stage_reports/J5C.json",
+  "status": "success",
+  "summary": "补上回炉点名的两条未分类变异体（middleware/auth.js:19 的 negate 与 branch_off）：negate 判 gap（取反后开发模式的 x-customer-id 快速通道在裁判默认配置下反而生效，可绕过 Bearer 校验，而 judge/cases 里没有任何用例发过这个头），branch_off 判 equivalent（该通道默认 AUTH_DEV_MODE=false 时本就恒不执行，关掉它对外部行为零影响）。check_mutant_classes PASS。"
+ },
+ {
+  "task": "O",
+  "file": "storage/stage_reports/O.json",
+  "status": "success",
+  "summary": "优化线（S5 职责，v2 流水线：基线 B0、检查走 run_judge / run_validate(delta) / run_equivalence(delta) / run_coverage(with_judge)）完成。规则扫描 12 个函数只命中 1 处可做的改动：R4（update-bestsellers 的 SQS 批次按条目键分波次并行）。该改动 judge PASS、validate(delta) 9/9 PASS、equivalence EQUIVALENT（14 次运行、differences=[]、无新增 TransactionConflict），但改动行覆盖 65/66 —— 唯一没被执行的改动行是消息 books 为空时的防御性 `return;`（原 `continue;`），任何用例都无法从 HTTP 侧造出这条消息，因此按分诊表判 blocked_by_c"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-0-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-0-1.json",
+  "status": "success",
+  "summary": "在 spec-j3-r1 发言：两条差异同根因（GET /api/search 多命中列表的 scan 顺序），维持 needs_ruling，请 architect 出一条通用的『列表顺序』裁定（relaxation=order，层 R，并列不比较），并明确放宽后我仍保留集合内容/total/结构/CORS 等契约断言；另提出顺序无关的嵌套数组断言写法这一落地问题。"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-0-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-0-2.json",
+  "status": "success",
+  "summary": "核对裁定 R-ROOM-spec-j3-r1-1-1-a1-1 的落库状态并确认验证线可直接执行；新查出一条会影响裁定耐用性的事实：裁判里位置敏感的列表断言在 search 两个用例里共 6 步，affected_cases 只覆盖 3 步（mixed-name / mixed-target / name 三步同属『无排序键、顺序即 scan 顺序』这一类），请并进 affected_cases 或在结论里写明同类步骤自动继承；另把 annotator 的 B/C 与我 seq 4 的两处请求收敛成三条只改文字的收窄，并给出 V2 对这三步的可证伪判定口径。"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-1-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-1-1.json",
+  "status": "success",
+  "summary": "在 spec-j3-r1 以 architect 身份发言并下了一条通用裁定 R-ROOM-spec-j3-r1-1-1-a1-1（category=contract, relaxation=order, layers=R, deviates_from_monolith=false）：事实库规定了显式排序键的列表，顺序仍是契约；只说 scan/存储顺序、没有排序键的列表（/api/search 的 hits，以及 /api/books 这一类）顺序属于实现轨迹，裁判在 R 层对这些步骤按多重集比较，集合内容、条目数、total、结构断言与 CORS 头全部保持契约地位。同时回答了 verifier 的落地问题：不需要、也不允许把嵌套 hits 降级成 total+结构断言（那会形成过度屏蔽盲区），R 层的无序比较本身就覆盖嵌套数组。并列次序本条不覆盖，并说明了机制原因。"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-1-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-1-2.json",
+  "status": "success",
+  "summary": "spec 房间第 1 轮（architect 发言，收窄既有裁定）：逐条回查单体源码、事实库、裁判用例与 judge.py 的裁定消费机制后，用 record_ruling 落库 R-ROOM-spec-j3-r1-1-2-a1-1（contract + relaxation=order，layers=R，deviates_from_monolith=false），对 R-ROOM-spec-j3-r1-1-1-a1-1 做四处修正：栏 1 判定条件由『有具名排序键』收窄为『应用层按业务字段显式排序』并新增『键序不等于排序契约』；affected_cases 由 3 步扩到两个 search 用例的全部 6 个列表步骤并同时写入两条裸用例条目（机制上取裸用例，同端点新步骤自动继承）；relaxation 限定为只作用于结果集决定的最外层列表、请求体原样快照的内层数组仍逐位置比较（引擎按步骤"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-2-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-2-1.json",
+  "status": "success",
+  "summary": "spec 讨论室 spec-j3-r1 第 2 轮（seq 3）发言：逐行回查单体后确认两条争议差异（GET /api/search 命中列表顺序）事实库无错漏，维持 needs_ruling、规格侧不需 fix；核对 architect 裁定 R-ROOM-spec-j3-r1-1-1-a1-1 的适用范围，指出两分法对“表/索引键序决定的顺序”（GET /api/cart、GET /api/orders）和“category-index Query 那一臂顺序在事实库里没写”（GET /api/books#responses[0]）存在会被再次对账的缝，并指出 relaxation=order 按步骤全列表生效会连带放宽由请求体原样存下的嵌套 books 数组（POST /api/orders#business_rules[1]/[11]），另提一处措辞精度（GET /api/best"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-2-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-2-2.json",
+  "status": "success",
+  "summary": "spec 讨论室 spec-j3-r1 第 2 轮（seq 7）发言：把裁定 R-ROOM-spec-j3-r1-1-2-a1-1 的四条逐条映射回单体与事实库并全部核中（全仓仅 routes/bestsellers.js:25 一处排序调用；Bookstore-Cart/Orders 的键序来自 scripts/init-db.js:119-121 与 :151-153、orders.js:56 的 orderId 每条现生成 uuidv4；category-index 无排序键见 init-db.js:80-94），因此栏 1 改措辞不改变现状判定；为裁定第 4 段补一条结构性理由（没有任何 API 写入 Bookstore-Books，写调用只落 Users/Cart/Orders/Bestsellers，故 search 的 hits 元素不可能含请求体快照数组，零损失不是碰巧）；"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-3-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-3-1.json",
+  "status": "success",
+  "summary": "spec 房间第 3 轮（verifier 发言）：接受 architect 的通用列表顺序裁定 R-ROOM-spec-j3-r1-1-1-a1-1（contract + relaxation=order，layers=R，deviates_from_monolith=false），确认预期一字不改、两条差异登记为已裁定而非残余盲区；同意 annotator 的 B 但把风险方向改为『不得反过来要求给 cart/orders 补位置断言』，orders 的排序键是每单新生成的随机 uuid（GET /api/orders#business_rules[2] 自带 note）故栏1字面读会锁定目标键结构且不可满足；把 annotator 的 C 升级为必须收窄（relaxation 不得覆盖请求体原样快照的内层数组，依据 POST /api/orders#business_rules[1]"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-3-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-3-2.json",
+  "status": "success",
+  "summary": "以 m2s-verifier 身份在 spec-j3-r1 发一轮言：核对 R-ROOM-spec-j3-r1-1-2-a1-1 的落库状态与 reconcile 记账（differences=0、resolved_by_rulings 两条均为纯顺序，无内容差异被吞）；更正我自己上轮『位置敏感写法只在两个 search 用例』的说法——按下标断言畅销榜的有 3 处，这正是 GET /api/bestsellers#business_rules[2] 那句『验证时不应断言同分条目的次序』的实际代价，故支持 class 保持 contract + 删该半句；新报一处与顺序无关的内容盲区（search-no-match-and-absent-fields-200#substring-space 只断 total=2 不断 hits），请求把该用例作为第三条裸用例条目并进 affected_ca"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-0-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-0-1.json",
+  "status": "success",
+  "summary": "以 m2s-verifier 身份在 spec-j3-r2 发一轮言：本室列出的两条差异（GET /api/search 多命中时 hits 的 scan 先后）已被在效裁定 R-ROOM-spec-j3-r1-1-1-a1-1 与其收窄条 R-ROOM-spec-j3-r1-1-2-a1-1 覆盖（两条都是 category=contract + relaxation=order + layers=[R]，affects.cases 已点名 search-case-insensitive-200#upper-q 与 search-hits-200#author，并含裸用例条目），本室无需新裁定；逐项复核 judge/reconcile.json（differences=0、resolved_by_rulings=2）确认两条都是纯顺序差异、无内容差异被折叠；撤回我自己上一轮的两点请求（嵌"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-0-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-0-2.json",
+  "status": "success",
+  "summary": "本室第 5 楼（验证线）：同意关闭、不新增裁定。我这轮独立跑的账：check_reconcile_classes=PASS（differences=0、四类计数全 0）证明关闭无需改裁判工具；纠正我上一楼的位置敏感断言枚举（准确为 6 步 + contains 模板内嵌套数组 4 处）；从 oracle 复核畅销榜之外所有 scan/query 列表步骤都是同一条全局 scan 序的子序列；核实 order 裁定第 4 点（请求体快照数组不放宽）在套件里有活体断言且相关用例不在 affected_cases 内；逐条核了规格标注轮 a/b/c 三处改写的引用命中数（bestsellers#business_rules[2]=0、search#business_rules[4]=1、search#business_rules[3]=2、search#responses[1]=3）。"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-1-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-1-1.json",
+  "status": "success",
+  "summary": "以 m2s-architect 身份在 spec-j3-r2 发言并记录一条确认型裁定 R-ROOM-spec-j3-r2-1-1-a1-1（category=contract, relaxation=order, layers=R, deviates_from_monolith=false, status=decided）：本室两条差异（search-case-insensitive-200/upper-q/body.subset、search-hits-200/author/body.subset）不需要新裁定——已由在效的 R-ROOM-spec-j3-r1-1-1-a1-1 与 R-ROOM-spec-j3-r1-1-2-a1-1 覆盖，本室可关闭、无需第三轮对账。本轮新增的只有两处口径纠正：(1) 纠正 verifier 的记账不变量（differences 与 resolved"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-1-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-1-2.json",
+  "status": "success",
+  "summary": "以 m2s-architect 身份在 spec-j3-r2 发言（seq 6）并记录裁定 R-ROOM-spec-j3-r2-1-2-a1-1（category=contract, relaxation=order, layers=R, deviates_from_monolith=false, status=decided）。本轮三件实事：(1) 批准验证线的 (i)-(v) 可执行判据取代 R-…-2-1-1 第 2 点 (b) 的字面写法（用 verify._subset 的代码证据：字典只比 template 点名的键，故『键集合逐字相等』在本套件永不成立），并限定 (v) 必须对着 judge/fixtures 机械判定；(2) 纠正一条审计口径——predicted 只被 P 层用，V2 的比较模板是 oracle 记录（_judge_results → compare_ta"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-2-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-2-1.json",
+  "status": "success",
+  "summary": "以 m2s-spec-annotator 身份在 spec 室 spec-j3-r2 发言（seq 3）：同意关闭本室、两条差异不需要新裁定。独立读单体源码核实裁定前提（routes/ 全目录 grep .sort(/.slice( 只命中 bestsellers.js:25-26；search.js:26-46 scan→filter→map 无重排），并从 J2 录到的单体实际响应抽出一条全局 scan 序 [book-002, book-999, book-101, book-102, book-001]，证明两条差异是单一根因、没有隐藏重排分支；另报规格线欠账：R-...1-2 第 7 点批准的两处事实库补写（GET /api/books#responses[0] 顺序语义、GET /api/bestsellers#business_rules[2] 并列次序措辞）尚未落地，加一处"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-2-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-2-2.json",
+  "status": "success",
+  "summary": "以 m2s-spec-annotator 身份在 spec-j3-r2 发言（seq 7）：同意关闭本室（两条差异已由 R-ROOM-spec-j3-r1-1-1-a1-1 与 R-ROOM-spec-j3-r1-1-2-a1-1 裁定、并经 R-ROOM-spec-j3-r2-1-1-a1-1 与 R-ROOM-spec-j3-r2-1-2-a1-1 确认，无需第三轮对账），不需要我记裁定。本轮做了四件规格线自己的实事：(1) 把 architect 批准的 append-only 四项欠账逐条做实机可行性核对（宿主条目全部 origin=llm、下标计数对齐 search[7]/books[6]、全部出处行号与 symbol 实测可达、check_provenance 基线 PASS/790 sources/4 unknown）；(2) 对已批准措辞提出一处**事实纠正**——GET "
+ },
+ {
+  "task": "ROOM-spec-j3-r2-3-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-3-1.json",
+  "status": "success",
+  "summary": "同意关闭本室、不新增裁定；本轮独立重核 rulings/reconcile 并做了全套件顺序暴露审计（结论：affected_cases 现在不多不少，V2 无潜在仅顺序误报），提出 1 处对 R-...2-1-1 第 2(b) 点的可执行化纠正、2 条前瞻护栏、1 处与顺序无关的残余盲区及其可判定修法，并确认规格标注欠账 a/b/c 对验证资产的引用安全性。"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-3-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-3-2.json",
+  "status": "success",
+  "summary": "以 m2s-verifier 身份在 spec 室 spec-j3-r2 发言（seq 8）：同意按六楼第七条关闭本室，两条差异不需要新裁定、不需要第三轮对账。本轮按二楼 2(c) 的新口径（按 oracle 的列表路径枚举，不按 predicted）重做了一次完整枚举，得到精确的 22/12/10 加 3 次故障运行，据此更正 R-...2-1-2 第 3 点的两处分解数字（订单快照实为 4 步/5 路径，漏 order-element-missing-book-id-500#orders；cart 3 混用了 oracle 步骤与故障运行），并更正我自己五楼关于 substring-space 的说法；用真实夹具数据验证了 (i)-(v) 可机械执行；给出两个否定结果（233 步中响应头无列表值、messages 数组无 ≥2）；正式撤回我四楼第 5 点（V2 用 oracle 作模板"
+ },
+ {
+  "task": "V3",
+  "file": "storage/stage_reports/V3.json",
+  "status": "success",
+  "summary": "增量测试 12 条用例在交付代码上全部通过（verdict_delta.json = PASS, mode=rie），覆盖率已报告（不设门槛），故障行为基准 fault_baseline_B0.json 已记录 7 个场景 19 次运行，无 infra_errors；无用例失败，因此没有分诊与退回项。"
+ }
+]

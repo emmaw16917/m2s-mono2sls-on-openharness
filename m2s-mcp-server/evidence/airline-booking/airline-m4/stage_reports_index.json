@@ -1,0 +1,200 @@
+[
+ {
+  "task": "A1",
+  "file": "storage/stage_reports/A1.json",
+  "status": "success",
+  "summary": "回炉修 gate(blueprint) 唯一的 B0 级失败（CT3）：事实库 v6（J4-2 之后）新增了 POST /bookings/<booking_id>/cancel#responses[6]『第三次读落空 → 400 'Invalid booking ID: <id>'』这条 trace_arm，而它不在任何 implementation-trace 裁定的 targets 里。把它并入 SI-1（目标每个请求只读一次预订条目，第二/第三次读不存在，对应的 400 也不存在）并按同一口径核对另外四条臂；同时把 v6 里另外三条与本设计有关的新事实补进蓝图：SI-11 收 GET /auth/users#business_rules[8]（导入期种子账号那条臂）、新增 SI-19 钉死 POST /bookings 的两条 TypeError 臂（不可哈希 chargeId 与"
+ },
+ {
+  "task": "D1",
+  "file": "storage/stage_reports/D1.json",
+  "status": "success",
+  "summary": "22 条缺口没有一条 test=delta，规则手册的异步强制规则（消费者幂等、事务冲突处理）按 SI-17 明文在本设计无适用对象（has_async_flows=false、sqs_queues=[]、无 TransactWriteItems）。增量套件因此按 D1 的定义取另一半：钉『单体里没有对应物/迁移后才有的行为』——裁判只比较 HTTP 响应与单体记录，看不到目标侧表状态、表来源、零访问守卫和 ghost-sub 新语义。写 16 个用例 + 4 个只记录故障场景，run_validate(dry_run=true, assets=verification/delta) 第 2 轮 PASS。"
+ },
+ {
+  "task": "F2-bookings-customers-flights-loyalty-payments",
+  "file": "storage/stage_reports/F2-bookings-customers-flights-loyalty-payments.json",
+  "status": "success",
+  "summary": "修正模式（J4 白盒补测回炉，只有 J4-5 一条）：到单体代码核实后确认事实库 POST /bookings#business_rules[11] 写得不完整——catch-all 的补偿条件读的是本次请求自己的局部变量，退款被 app.py:224 的 if payment_result 挡住，而两条已知可达的成因（缺 outboundFlightId 的 KeyError 抛在 app.py:106 取键时、不可哈希 chargeId 的 TypeError 抛在 services/payment.py:177 的记账行）都发生在 app.py:135 给 payment_result 赋值之前，payment_result 恒为 None，所以现实可达路径上 catch-all 一次退款都不会执行；据此重写 business_rules[11]（class 保持 contract，"
+ },
+ {
+  "task": "F2-identity",
+  "file": "storage/stage_reports/F2-identity.json",
+  "status": "success",
+  "summary": "第 2 次尝试：按 J4 回炉修正模式处理 J4-3 一条事实缺口（用户表 GetItem 读失败被伪装成 401 'Invalid or expired token'）。已在 GET /auth/users 补一条 contract 的 error_handling 规则（9 条规则）并把 401 臂的 when/body.description 写清“读表失败也算查不到”，同步把 GET /auth/me 的 401 臂 when 补上同一句（该端点原有的 get_user 吞异常规则保持不变）；本包另外两个端点（register/login）不是需认证端点、login 的读表故障→401 已在第 1 次尝试记录，未改动。check_provenance：整库 PASS（errors 0、incomplete 0、checked_sources 639），第 1 次修正即通过。"
+ },
+ {
+  "task": "G2",
+  "file": "storage/stage_reports/G2.json",
+  "status": "success",
+  "summary": "核对 gap_scan 的 10 条机械信号（全部确认成立，其中 6 条补了 note 说明边界：GAP-3 的 scan(Limit=1) 不属截断风险且多带 GET /auth/me、GAP-4/GAP-7 的 fix_admin_user.py 不在请求路径、GAP-5 指向跨进程可见性后果、GAP-8/GAP-10 指向密钥与库侧鉴权）；另读单体代码补了 12 条信号认不出的缺口 GAP-11..GAP-22（全局异常处理器、每进程随机 JWT 密钥、鉴权回库读当前记录、导入时播种航班/用户、存储层吞掉 DynamoDB 异常、同请求 put 后 get、列表顺序即 Scan 顺序、POST /bookings 补偿失败被吞、cancel 失败仍报 CANCELLED、Stripe 真实/模拟模式切换、datetime.now 与 utcnow 混用）。gap_inventory."
+ },
+ {
+  "task": "I1-bookings-customers-flights-loyalty-payments",
+  "file": "storage/stage_reports/I1-bookings-customers-flights-loyalty-payments.json",
+  "status": "success",
+  "summary": "14 个端点各一个 handler.py（python3.12，同步 lambda_handler），只用运行时内置的 boto3/botocore，因此没有 requirements.txt/package.json，也没有新建 layers 目录；gate(code)（package 作用域）PASS，跑了 3 次均 PASS，0 机械失败、0 嫌疑。契约要点按规格实现：SI-14 两条全局响应头在每个返回（含 400/403/404/500）由各自的 json_response 统一加；D-10 的状态码映射（ValueError→400 {'error','type'}，其余→500 同形）按函数内联；SI-10 身份只读 event.requestContext.authorizer.claims.sub，Admin 判定每次请求读 UserGroupsTable；SI-12 一"
+ },
+ {
+  "task": "I1-identity",
+  "file": "storage/stage_reports/I1-identity.json",
+  "status": "success",
+  "summary": "identity 包的实现工作量是 0 个 handler，本任务按规格确认并记录这一结论。依据：work_packages.json 的 impl_packages.identity = {functions: [], dir: identity}；包内 4 个端点（POST /auth/register、POST /auth/login、GET /auth/me、GET /auth/users）在 blueprint.dropped_functions 里逐条 type=endpoint、replaced_by=Cognito，metadata.spec_resolutions 的 SI-8（class=migration-change）写明『四个端点在目标上不提供（404，由 API 网关应答，因为没有这条路由）』；blueprint.lambda_functions 的 14 个函"
+ },
+ {
+  "task": "I1-shared",
+  "file": "storage/stage_reports/I1-shared.json",
+  "status": "success",
+  "summary": "共享层落地一个文件、一个模块：output/layers/shared/shared_utils.py（导入名 shared_utils，运行时 python3.12，文件放在 ContentUri 根、不套 python/，符合 C13；只用运行时内置 boto3 与标准库，因此没有 requirements.txt，符合 C10）。范围按 work_packages.json.shared_code（services/auth.py 的 admin_required / login_required）与 analysis_report.global_middleware[0]（CORS(app)）：SI-14 的统一响应助手（每个响应带 Content-Type: application/json + Access-Control-Allow-Origin: *）、D-10 的全局错误"
+ },
+ {
+  "task": "I2a",
+  "file": "storage/stage_reports/I2a.json",
+  "status": "success",
+  "summary": "S3a（共享资源分片）：按 storage/blueprint.json + analysis_report.json 写 output/template.part1.yaml（251 行，以第一处 '# --- END METADATA ---' 结尾）——AWSTemplateFormatVersion/Transform/Description、Parameters(Environment)、Globals.Function（python3.12 / Timeout 30 / MemorySize 512 / Tracing Active / arm64，不写 Handler）与共享资源：Api（AWS::Serverless::HttpApi，StageName=$default、CorsConfiguration 三字段按 api_gateway.cors、AccessLogSe"
+ },
+ {
+  "task": "I2b",
+  "file": "storage/stage_reports/I2b.json",
+  "status": "success",
+  "summary": "S3b（函数资源分片）：按 storage/blueprint.json + output/lambdas/ 的真实代码写 output/template.part2.yaml —— 14 个 AWS::Serverless::Function（CodeUri=lambdas/airline-booking/<blueprint name>/、Handler=handler.lambda_handler 全部按磁盘实读，非 blueprint 占位值）、每函数 Layers: !Ref SharedUtilsLayer、Environment.Variables 逐键等于 blueprint.environment_variables（${Table} 解析为 !Ref part1 的表逻辑名）、Policies 按该 handler 实际调用的 DynamoDB 动作给（只读表 Dyna"
+ },
+ {
+  "task": "I2c",
+  "file": "storage/stage_reports/I2c.json",
+  "status": "success",
+  "summary": "S3c（组装 + 自查循环）：用 m2s_merge.py template 把 I2a 的 output/template.part1.yaml（251 行）与 I2b 的 template.part2.yaml（494 行）拼成 output/template.yaml（768 行，未改分片文件）。第 1 轮自查：validate_sam = ok（0 errors/0 warnings），run_gate(phase=\"template\") = WARN，mechanical_failures 只有 GM2 两条（DEFAULT_4XX / DEFAULT_5XX 没有声明全局头 Access-Control-Allow-Origin）。修 1 处：在合并后的 template.yaml 里补 Globals.Api.GatewayResponses（DEFAULT_4XX/DEFA"
+ },
+ {
+  "task": "I3",
+  "file": "storage/stage_reports/I3.json",
+  "status": "success",
+  "summary": "C1-C12（含 C7b 并入 C7，另核对 C13/C14）一致性交叉检查完成：blueprint ↔ template.yaml ↔ output/ 代码三方一致，validate_sam 复验 ok=true（PASS），0 处修改；唯一真实发现是 C6——SharedUtilsLayer 挂在全部 14 个函数上但无 handler import 它（DECISIONS D-22 要求 import shared_utils），不导致部署失败，本任务可写范围仅限两份报告故未改模板/代码。"
+ },
+ {
+  "task": "J1",
+  "file": "storage/stage_reports/J1.json",
+  "status": "success",
+  "summary": "第 4 次尝试（回炉：check_judge_assets 报 POST /bookings/<booking_id>/cancel#responses[6] 未被任何用例引用）。这一条是同一次请求内第三次读同一条预订落空的臂（事实库 business_rules[8] 记录装饰器 / handler 的 BookingService.get_booking / cancel_booking 内部 storage.get_booking 连读三次、同一个 Key）：前两次已经读到，第三次落空只能靠这条目在第 2 读与第 3 读之间被并发删除，或第 3 次 GetItem 抛异常被 storage 吞成 None；串行请求序列内部插不进删除，单体的接口也没有删除预订的能力，因此请求走不到。按检查器给的第二个出口处理：在 judge/uncovered.json 增加该 ref 并写明理由，同"
+ },
+ {
+  "task": "J3",
+  "file": "storage/stage_reports/J3.json",
+  "status": "success",
+  "summary": "本轮 judge/reconcile.json 的 5 条差异全部判为 case_error：上一轮 J3 判为 fact_error 的那条（不可哈希的数组 chargeId 能否走到 201）已经由 annotator 修正进事实库，事实库现在与单体实际输出一致，差异只剩 J4 时代写下的旧 predicted 没跟上，所以按当前事实库应由 J1 回炉重写预期，而不是再改事实库。read-list 两步另有一处请求本身的问题（500 不返回 bookingId，${bidList} 取不到值），一并给了改法。无 needs_ruling、无 mask_gap，未新增 judge/mask_rules.json。check_reconcile_classes = PASS。"
+ },
+ {
+  "task": "J4",
+  "file": "storage/stage_reports/J4.json",
+  "status": "success",
+  "summary": "第 3 次尝试：按 J5C 转来的唯一一条 gap 变异体 negate:app.py:224（catch-all 的退款开关取反后外部可见，现有 3 个到 catch-all 的用例都看不出来）补 1 个白盒用例 wb-booking-catchall-refunds-collected-charge——同进程里先用 chargeId 'pi_shared_catchall' 收款成功，再发一个缺 outboundFlightId 的建单请求落进 catch-all，然后用 GET /payments/<charge_id> 读回那笔收款：单体 status 保持 'captured'（app.py:224 的 if payment_result 为假，不退款），取反后的变异体反倒会 refund_payment(data['chargeId'])（app.py:227 → servic"
+ },
+ {
+  "task": "J5C",
+  "file": "storage/stage_reports/J5C.json",
+  "status": "success",
+  "summary": "给 judge/judge_validation.json 里 6 个没被抓住的变异体补全分类（回炉点名的 6 条全部覆盖）：5 条 equivalent（真 Stripe 死代码 4 条 + catch-all 退款不可达 1 条），1 条 gap（negate:app.py:224，catch-all 误退款能被 GET /payments 读回），check_mutant_classes 已 PASS。"
+ },
+ {
+  "task": "O",
+  "file": "storage/stage_reports/O.json",
+  "status": "success",
+  "summary": "在 B0 上做语义保持的性能优化：规则库 R1/R2/R3/R4/R1b/R5/R6/R8 逐条扫过全部 14 个 handler，可允许的改动只有 1 处，来自基线热点分析（bookings-cancel 的两步尽力而为补偿互不依赖 → 并发化）。该改动在第一次尝试里已完成基准与判决（commit 5fe0c7c，run_rie_verdict=kept），第二次尝试补齐了它的四项检查（本轮全部重跑并 PASS）、收尾全量回归（run_judge 34 cases + 21 fault runs PASS、run_validate(delta) 16/16 PASS）、output/perf_report.json 与规则台账。0 个 reverted、0 个 pending_human、0 个 blocked_*、0 个 spec 放宽申请；另外 4 条诊断（Scan→GSI、User"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-0-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-0-1.json",
+  "status": "success",
+  "summary": "在 spec 讨论室 spec-j3-r1 以 m2s-verifier 身份发言：同意 J3 对 register-read-back-by-admin/list/body.subset 的 needs_ruling 归因，建议 architect 落一条 GET /auth/users users 数组「按元素集合比较、顺序不判定」的放宽裁定（category=contract, relaxation=order, layers=[R], deviates_from_monolith=false），并说明为什么这不能算 case_error 由用例侧自行放宽，以及影响范围只有这 1 个步骤。"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-0-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-0-2.json",
+  "status": "success",
+  "summary": "在 spec 讨论室 spec-j3-r1 以 m2s-verifier 身份第 2 次发言：接受并关闭裁定 R-ROOM-spec-j3-r1-1-1-a1-1，我这侧不改用例/fixtures/identities/reconcile_classes；给出裁定落库字段的核对结果、R 层生效前提（用例 layer=\"R\"、read_back）的核对、口径字符串三种写法互不相等的客观证据（请 architect 二选一确认，否则我以 measurement_tool 上报而不改断言）、GAP-15 与长度断言的衔接，以及局部性/发现能力/检测边界三条边界口径。"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-1-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-1-1.json",
+  "status": "success",
+  "summary": "在 spec 讨论室 spec-j3-r1 以 m2s-architect 身份发言并提交裁定 R-ROOM-spec-j3-r1-1-1-a1-1（status=decided，不需人确认）：差异 register-read-back-by-admin/list/body.subset 属顺序放宽——GET /auth/users 的 users 数组按元素多重集比较、次序不判定，其余（status=200、恰含 2 个元素、逐项 {sub,email,groups} 取值逐字相等、脱敏、read_back 语义）仍是契约；category=contract、relaxation=order、layers=[R]、affected_cases=[register-read-back-by-admin#list]。明确回答验证线问题：裁判在 R 层自动按裁定放宽比较口径，predicted"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-1-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-1-2.json",
+  "status": "success",
+  "summary": "在 spec 讨论室 spec-j3-r1 以 m2s-architect 身份收尾发言，提交裁定 R-ROOM-spec-j3-r1-1-2-a1-1（category=contract、relaxation=order、layers=[R]、status=decided、deviates_from_monolith=false、affected_cases=[register-read-back-by-admin#list]）。它不改变 R-ROOM-spec-j3-r1-1-1-a1-1 的判定口径，只做两件执行收尾：(1) 回答 verifier 的二选一——affects.cases 保留 case#step 形式（裸用例 id 会把放宽扩到该用例全部步骤与全部差异，属过度放宽），并确认对账/调度器匹配时会去掉 # 之后的部分，因此该差异下一轮会进 resolved_by_rul"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-2-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-2-1.json",
+  "status": "success",
+  "summary": "以 spec 身份在讨论室 spec-j3-r1 发言一轮（seq=3）：核对 register-read-back-by-admin#list 的 body.subset 顺序差异所引用的 5 个 fact_ref（GET /auth/users#responses[2]、#business_rules[2]、#business_rules[4]、POST /auth/register#responses[1]、#business_rules[3]）全部与单体源码一致，结论是不是 fact_error、事实库不需要回炉，采纳裁定 R-ROOM-spec-j3-r1-1-1-a1-1（category=contract、relaxation=order、layers=[R]）。代码复核：app.py:447-452、services/auth.py:141-150、data/storage"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-2-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-2-2.json",
+  "status": "success",
+  "summary": "以 m2s-spec-annotator 身份在 spec 讨论室 spec-j3-r1 发言一轮（seq 7）：复核 R-ROOM-spec-j3-r1-1-1-a1-1 与 R-ROOM-spec-j3-r1-1-2-a1-1 两条裁定与事实库的一致性，结论是事实库无需回炉、未对 analysis_report.json 或 gap_inventory.json 做任何改动；新增 1 条缺口清单漏项（POST /auth/login 的 scan 顺序通过 items[0] 外部可观察，GAP-18 的 endpoints 未列）、1 处长度基线口径收紧（承诺的是首次 scan 单页 Items，不是全表用户数）、1 条检测能力补充（scan 异常被吞成 users=[] 在等长口径下仍判失败），并撤回上轮『把裁定编号写进事实库』的可选提议。"
+ },
+ {
+  "task": "ROOM-spec-j3-r1-3-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r1-3-1.json",
+  "status": "success",
+  "summary": "以 m2s-verifier 身份在 spec 讨论室发言一轮：接受裁定 R-ROOM-spec-j3-r1-1-1-a1-1（GET /auth/users 的 users 数组元素顺序不属于契约，contract + relaxation=order + layers=[R]，仅覆盖 register-read-back-by-admin#list），确认验证线不改用例、该用例不进 J1 回炉；机器复核了影响范围与判定口径的发现能力，并提出 1 个执行风险（affected_cases 键写法能否被对账匹配）与 1 个 GAP-15 衔接请求。"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-0-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-0-1.json",
+  "status": "success",
+  "summary": "在 spec 讨论室 spec-j3-r2 以验证线身份发言：差异 register-read-back-by-admin/list 只是 users 数组元素先后不同、内容逐项一致，事实库 GET /auth/users#business_rules[2] 明写顺序不属于对外承诺，建议裁定为 relaxation=order / layers=[R] / deviates_from_monolith=false，并要求放宽只取消位置比较、保留条目数与字段值断言（无序多重集）。"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-0-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-0-2.json",
+  "status": "success",
+  "summary": "以 m2s-verifier 身份在 spec 讨论室 spec-j3-r2 发言一轮（seq 5，结室确认）：机器复核裁定 R-ROOM-spec-j3-r2-1-1-a1-1 的落库字段与正文口径（category=contract、relaxation=order、layers=[R]、affects.cases=[register-read-back-by-admin#list]、deviates_from_monolith=false、status=decided；正文第 (1) 条明写『由裁判在 R 层做无序多重集比较，验证线不重写用例，不允许把 body.subset 降级成 has_fields』，第 (3) 条明写不收窄为裸用例 id），确认本线四项诉求全部落进文字而非口头承诺，撤回裸 id 与『挂事实条目的通用规则』两项建议，声明验证线零改动并给出可复核证据（judge"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-1-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-1-1.json",
+  "status": "success",
+  "summary": "spec 讨论室 spec-j3-r2 的 architect 轮：接受 register-read-back-by-admin#list 的 users 数组顺序放宽（category=contract、relaxation=order、layers=[R]、deviates_from_monolith=false），并回答验证线三个执行口径问题：比较器在 R 层自行做等长多重集比较（用例不改写、不降级为 has_fields）；原则可引用但不写成挂在事实 ref 上的通用规则，新差异须逐 case#step 另开裁定；affected_cases 维持带步骤的 register-read-back-by-admin#list（覆盖检查按用例 id 匹配，带步骤照样认账）。已用 record_ruling 写入裁定并发言。"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-1-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-1-2.json",
+  "status": "success",
+  "summary": "以 m2s-architect 身份在 spec 讨论室 spec-j3-r2 发言一轮（seq 6）并写入裁定 R-ROOM-spec-j3-r2-1-2-a1-1（status=decided）。判定内容不变：GET /auth/users 的 users 数组元素次序不是对外契约，顺序放宽按 case#step 施加、只放开观察层 R、deviates_from_monolith=false。本轮的增量是三件事：(1) 把验证线第 3 轮提的两条验收判据落成机制结论——覆盖匹配在对账侧（judge.py:1689）与调度器裁定门（coord/dispatcher.py:1885）都是 split('#')[0] 的用例粒度，因此『转入已解决后必须逐条核对 step=list 且差异形态仅为次序』写进裁定正文成为强制复核；裁判目标侧则按 case#step 收窄（judge.py:21"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-2-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-2-1.json",
+  "status": "success",
+  "summary": "以 spec 线身份在讨论室 spec-j3-r2 发言一轮（seq 3）：独立复核差异 register-read-back-by-admin/list/body.subset 涉及的三条事实与单体代码（data/storage.py:352-356/307/345/322、services/auth.py:137-150/60/130-132、app.py:443-452，以及全仓无 sorted/sort/order_by），确认 GET /auth/users#business_rules[2] 不是 fact_error、predicted 不需按 scan 字面次序重写，因此本轮 annotate_entry_point 调用 0 次、analysis_report.json 未改动；同时给出两条边界（次序放宽不外溢到 storage.py:322 的 items[0] 即 P"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-2-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-2-2.json",
+  "status": "success",
+  "summary": "在讨论室 spec-j3-r2 以 m2s-spec-annotator 身份发言一轮（seq 7）：规格侧结论不变——GET /auth/users#business_rules[2] 不是 fact_error、保持原文，本轮 annotate_entry_point 调用 0 次、analysis_report.json 未改动。新增三项贡献：(1) 把 architect 的原则句升级为仓库级实测不变量（全仓 .py grep sorted(/.sort(/reverse(/order_by 零命中、LastEvaluatedKey 零命中；6 处业务 scan 逐一归类，只有 users/flights-search/bookings 三处把 scan 原序带进响应体，其中只有 users 被钉了 ≥2 元素断言）；(2) 给『次序即内容』的边界划出可执行判据（scan 次序是否"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-3-1",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-3-1.json",
+  "status": "success",
+  "summary": "以 m2s-verifier 身份在 spec 讨论室 spec-j3-r2 发言一轮（seq 4）：接受裁定 R-ROOM-spec-j3-r2-1-1-a1-1 的三条执行口径，确认验证线零改动（用例/夹具/身份准备一律不动、期望不按单体 scan 原序重写、不降级为只断言字段存在）；本轮重新扫描 46 个裁判用例 / 162 个步骤的断言，确认钉住 ≥2 个响应数组元素的断言全集里只有本差异 1 处（其余 ≥2 元素数组均为字段名清单类断言），同端点另两个列表用例分别只含单元素断言与字段存在断言，12 个故障场景无一引用本用例，因此 architect 拒绝『挂事实条目的通用规则』对验证线无成本、局部放宽已足够。另报一条影响收尾预期的新发现：blueprint.dropped_functions 中 POST /auth/register 与 GET /auth/users 都不由目"
+ },
+ {
+  "task": "ROOM-spec-j3-r2-3-2",
+  "file": "storage/stage_reports/ROOM-spec-j3-r2-3-2.json",
+  "status": "success",
+  "summary": "以 m2s-verifier 身份在 spec 讨论室 spec-j3-r2 发言一轮（seq 8，本线第 4 轮）：接受裁定 R-ROOM-spec-j3-r2-1-1-a1-1 与 R-ROOM-spec-j3-r2-1-2-a1-1 的全部口径，声明验证线维持零改动，并把 annotator 提出的判据 C 做成可重算锚点。本轮三件增量：(1) 按 architect §3 纠正本线分诊口径——次序放宽不在对账层生效，因此『重跑后差异仍在待裁定一侧』属裁定覆盖没认上（按流程/工具问题上报并附裁定编号），只有目标侧同一 case#step 仍按逐位置比较报失败才算测量工具问题；我第 2 轮那句未区分两层的说法据此更正。(2) 给出判据 C 锚点：该用例期望规范化 JSON 的 SHA-1=1f4cb1ac517e0918db7483ecad4b714653b95edb、整文件 SHA-"
+ },
+ {
+  "task": "V3",
+  "file": "storage/stage_reports/V3.json",
+  "status": "success",
+  "summary": "增量套件（verification/delta，16 用例 + 4 故障场景）在当前实现上全绿：run_validate(assets=verification/delta) 16/16 PASS 并写 verification/verdict_delta.json（status=PASS, mode=rie, backend=ddblocal, assets_digest=ddb80a4e6583bdea）；run_coverage 已写 12 个函数的覆盖率报告（仅报告，不设门槛）；run_equivalence(mode=record, label=B0, assets=verification/delta) RECORDED，20 次运行全部落到 verification/fault_baseline_B0.json，infra_errors 为空。没有失败用例，因此没有分诊、没有"
+ }
+]

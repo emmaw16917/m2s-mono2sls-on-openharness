@@ -1,0 +1,9 @@
+{
+  "task": "J1",
+  "attempt": 1,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T15:32:01+0800",
+  "summary": "重新提交（上一次提交时工作报告尚未落盘）：J1 完成。只看事实库写了 46 个裁判用例（judge/cases/<18 个接口 slug>/，24 个带 GET 读回、2 个 layer R）、8 份夹具、3 个身份（u1/u2 经 /auth/register+/auth/login 准备，admin 经 admin-user 夹具预置 SHA-256 口令行后用 /auth/login 取令牌）、12 个故障场景，judge/uncovered.json 记录 13 条写不出的响应臂。check_judge_assets = PASS（errors、warnings 均空）：必需响应 53/63 被引用 + 13 条豁免，业务规则 97/130 被引用。工作报告在 WS/storage/stage_reports/J1.json。",
+  "notes": "给 J2/J3 的提示（同上一次提交，未变）：\n1) admin 身份依赖播种先于身份准备：judge/fixtures/admin-user.json 里 password_hash=SHA-256('Adm1n!Pass')、groups=['Admin']，identities.admin 只调 POST /auth/login。若 run_monolith 的身份准备早于夹具写入，这个别名会准备失败，请在回炉信息里说明（没有第三种取得 Admin 的途径）。\n2) GET /payments/<charge_id> 读进程内存、跨用例残留：相关用例各用唯一 chargeId（pi_collect_read_1 / pi_refund_read_1 / pi_present_later / pi_totally_absent），不要合并，否则 400 not-found 那条会被污染。\n3) POST /bookings 的 chargeId 为空字符串时，事实库在 request.body[2] 与 business_rules[3] 两处对“Step 2 还是 Step 3 被拒”说法不一致；用例 booking-body-and-field-failures 的 empty-charge 步骤只断言 400 + 存在 error，不断言 step/bookingId（两臂都回滚座位，座位读回不受影响）。已记入报告 questions。\n4) 两条 layer R 用例依赖 GET /auth/users 顺序不保证（business_rules[2]）；users-admin-list 在表内只有一条用户时用 P 层逐字比对。\n5) 随机值（bookingReference、refundId、JWT、注册生成的 sub）只断言存在或改用固定 userId 使其确定。\n6) 只写了 judge/** 与 storage/stage_reports/J1.json；未碰 output/、单体的 airline-booking/ 源码与 m2s-mcp-server/。"
+}

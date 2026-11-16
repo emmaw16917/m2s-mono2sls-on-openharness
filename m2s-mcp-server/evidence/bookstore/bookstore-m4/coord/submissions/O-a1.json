@@ -1,0 +1,9 @@
+{
+  "task": "O",
+  "attempt": 1,
+  "role": "m2s-perf-optimizer",
+  "status": "done",
+  "time": "2026-11-13T13:40:17+0800",
+  "summary": "优化线完成：基线 B0，规则扫描 12 个函数只命中 1 处可做的改动（R4：update-bestsellers 的 SQS 批次按条目键分波次并行）。候选版本 judge PASS、validate(delta) 9/9 PASS、equivalence EQUIVALENT（14 次运行、无 differences、无新增 TransactionConflict），代理指标 depth 10→1（互不重叠批次，178.8ms→17.9ms 校准临界路径）、热点守卫批次 depth 10→10 且 conflicts 0；但改动行覆盖 65/66，唯一未执行的改动行是消息 books 为空时的防御分支（原 continue→return；生产者对空 books 先返 400，故裁判用例无法产生该消息）。按 §3.6 分诊判 blocked_by_coverage：补丁已存 perf/patches/REQ-1.patch（可干净应用）并回滚，未进入 RIE 判决。本轮 0 个改动被保留，交付代码与 B0 一致；全量回归 run_judge PASS（54 pass + 14 migration-change，故障 22 pass）、run_validate(delta) 12/12 PASS、gate(final) PASS；4 条不允许的改动写进 advisories（orders-create 提前发消息、消息内分块并行、整表 Scan 改 Query/GSI、BatchWriteItem 聚合）。",
+  "notes": "提交：04622ec（基准，提交后未再修改）、9155c26（perf/requests+patch+output/perf_report.json+回归产物+O.json）。output/ 相对 B0 只多了 perf_report.json。\n\n需要后续动作：blocked 项 REQ-1（coverage）。请验证线补一条 verification/delta/events/update-bestsellers 用例——批次里混一条 {orderId, books:[]} 的 SQS 消息，期望 batch_item_failures=[] 且两张表原封不动；之后用重新判决模式把 REQ-1 交回（git apply perf/patches/REQ-1.patch 已验证可干净应用，其余 65 行改动行都已被现有用例执行）。\n\n工具局限（未修改工具）：run_proxy_metrics 的本地 Node 模式加载不了 require('/opt/nodejs/shared') 的函数，3 个 API 基准（orders-create/order-10-books、bestsellers-list/scan-200-bestsellers、books-list/scan-200-books）valid=false，只给出结构性结论；RIE 侧四项检查不受影响。\n\n其他规则结论：R1/R2/R3/R1b/R5/R6/R8 全 0 命中——R5 已在 B0（Globals Architectures arm64），R6 无 AT1 WARNING（rest_features 在用），R8 无 accepted 的 bounded_staleness SI。judge/ 目录未改动。台账已通过 update_ledger 更新（bookstore：R4 hits 1 / blocked_by_coverage 1 / reviewed 1）。"
+}

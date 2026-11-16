@@ -1,0 +1,9 @@
+{
+  "task": "J1",
+  "attempt": 4,
+  "role": "m2s-verifier",
+  "status": "done",
+  "time": "2026-11-13T20:46:06+0800",
+  "summary": "第 4 次尝试：回炉点名的 POST /bookings/<booking_id>/cancel#responses[6]（同一次请求内第三次读同一条预订落空 → 400 'Invalid booking ID: <id>'）无法用请求序列走到——前两次读（鉴权装饰器、handler 的 get_booking）已成功，第三次落空只能靠条目在第 2、3 读之间被并发删除或第 3 次 GetItem 抛异常被 storage 吞成 None，串行裁判运行插不进删除、单体也没有删除预订的接口。按检查器允许的第二个出口处理：在 judge/uncovered.json 新增该 ref 并写明理由，同时指出同一条臂已由故障场景 wb-booking-cancel-read-fails-in-service（对该条目第 3 次读注入不可重试的 validation 失败）在故障基准中记录单体实际输出，处理方式与结构相同的 responses[4] 一致。只改 judge/uncovered.json 一个文件：用例、请求、predicted、fixtures、identities、faults 一字未动（54 用例 / 18 接口全覆盖 / 10 夹具 / 3 身份 / 26 故障场景 / 14 条 uncovered）。check_judge_assets = PASS（errors 空、warnings 空）。",
+  "notes": "未编造一个\"看似能走到\"的用例：那种用例在 J2/对账里只会变成一条假差异（单体实际回 200），最终仍会被判 case_error。J4 的故障场景描述里\"事实库 cancel#responses[4] 只写了第二次读那条臂，见 J4-2\"保留原样（那是写下时的事实库状态，缺口现已由 annotator 用 responses[6] 补上），以免抹掉 J4 发现的追溯性。若架构线希望这条臂有逐字预期，可行的做法是给 judge/faults/ 的这条场景补一份期望（当前故障场景只记录、不判定），但这超出 J1 的出题范围。"
+}

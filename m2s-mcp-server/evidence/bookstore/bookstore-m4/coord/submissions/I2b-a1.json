@@ -1,0 +1,9 @@
+{
+  "task": "I2b",
+  "attempt": 1,
+  "role": "m2s-sam-engineer",
+  "status": "done",
+  "time": "2026-11-13T12:33:31+0800",
+  "summary": "output/template.part2.yaml 写好了：12 个 AWS::Serverless::Function 资源（CodeUri/Handler 按 output/lambdas/ 磁盘真实文件与 exports.handler 逐个核对）、FUNCTIONS_METADATA 元数据块、Outputs（BookstoreApiUrl/CognitoUserPoolId/CognitoUserPoolClientId，与本仓库 e2e_aws.py 的 bookstore outputs 键名逐字对应）。事件 = 11 个 Type: Api + RestApiId !Ref BookstoreApi（api_type=rest，auth=required 全部继承 part1 的 Cognito DefaultAuthorizer，故无 Auth 块；blueprint 无 auth=none 端点）+ 1 个 SQS 事件（BatchSize 10、FunctionResponseTypes [ReportBatchItemFailures]，对应 sqs_queues[0].report_batch_item_failures=true 与 handler 真的返回 batchItemFailures）。Policies 只用 SAM policy template，按 handler 实际触碰的资源给（消费者 Bestsellers+Idempotency 两张表的 Crud + Poller；orders-create 两表 Crud + SQSSendMessagePolicy）；Environment.Variables 严格等于 blueprint 各函数的 environment_variables（D-39）；Layers 只给确实 require('/opt/nodejs/shared') 的 11 个 API 函数。",
+  "notes": "按角色规定，本阶段没有调用任何 mcp__m2s-server__ 工具、也没有写 output/template.yaml（合并是 S3c 的职责）。自查方式：在系统临时目录用 m2s_merge.merge_template 的同一文本拼接规则合成 part1+part2（并确认与工作区拼接结果逐字节一致），再对真实工作区只读调用 gates.py 的模板期检查：check_c1_template/C2/C3/C7/C7b/C8/C9/GM2/AT2/C13/C14 全部 0 finding，suspects_c4_env={}（没有声明未用/用了未声明的变量），cfn-lint 1.51 零 finding。顶层结构合成后为 AWSTemplateFormatVersion/Transform/Description/Parameters/Globals/Resources/Outputs，Resources 共 24 项（part1 的 12 个共享资源 + 本文件的 12 个函数）。一个软信号给 S3c/验证线：gates.suspects_c6_layers 靠字面量 \"SharedUtilsLayer\" 匹配，本项目的层叫 SharedLayer（part1 定义），所以它报 functions_referencing_shared_layer=[]；这是 LLM 预判项而非机械检查，不产生 ERROR，消掉它需要改工具（不可改），模板本身已正确挂了 11 次 !Ref SharedLayer。写入范围只有 output/template.part2.yaml、storage/DECISIONS.md（追加 I2b 附记）、storage/stage_reports/I2b.json。"
+}

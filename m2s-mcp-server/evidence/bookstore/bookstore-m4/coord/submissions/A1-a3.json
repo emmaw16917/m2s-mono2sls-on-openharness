@@ -1,0 +1,9 @@
+{
+  "task": "A1",
+  "attempt": 3,
+  "role": "m2s-architect",
+  "status": "done",
+  "time": "2026-11-13T02:28:18+0800",
+  "summary": "A1 完成：blueprint.json（10 个顶层字段，11 个 api Lambda + 1 个 SQS 幂等消费者，4 张业务表 + IdempotencyTable，Bookstore-Users 交 Cognito，api_type=rest 只为 GatewayResponses 的 CORS 头）、DECISIONS.md（D-1..D-41，覆盖每个函数、每条跨函数通信、每个 drop、每个 GAP 编号与 18 条 SI）、adapter_map.json（check PASS）、gap_inventory.json（22/22 decided：judge 11 / delta 1 / none 10，我一条都没选择偏离单体）、work_packages.json 的 impl_packages（覆盖全部 12 个函数）、4 条预先写好的裁定（R-A1-a3-1 网关 401、R-A1-a3-2 + R-A1-a3-4 列表顺序作用面、R-A1-a3-3 认证端点与 Users 表交 Cognito）。gate(phase=blueprint) 第 1 次报 CT1（规格实为 contract 2），补 verification_contract=2 与 SI-1..SI-18 后第 2 次 PASS（0 error 0 warning）。",
+  "notes": "要点：1) contract 2 —— 规格 105 条 business_rules 带 class（97 contract / 8 implementation-trace），我逐条复核并纠正两处：POST /api/orders#business_rules[7]（订单响应与榜单更新无因果关系 + 陈旧窗口）判为 contract，只有\"handler 立刻 return、后台 Promise\"是实现方式；GET /api/bestsellers#business_rules[2]（同分次序）用 implementation-trace 作废而不用 relaxation=order，以免把 salesCount 降序这条真契约一起放掉。trace_arm 0 条、perf_intent 0 条、单体无进程内缓存 → 没有 bounded_staleness。\n2) 并行房间在本次运行期间又 decided 了一条 R-ROOM-spec-j3-r1-1-2-a1-1（确立\"表/索引键序不等于排序契约\"），与我 R-A1-a3-2 结论里\"cart/orders 顺序保持严格\"那句冲突；已用 R-A1-a3-4 收窄作用面并把 blueprint 的 SI-12 与 DECISIONS 的 D-8 改成同一口径。后续阶段以 rulings.json 为准。\n3) GAP-2 选 test=delta：需要 D1/I1 写幂等重投的增量测试（同一 orderId 两次投递只累加一次、同 bookId 合并等于逐本累加、缺 orderId 不写标记、>99 条目拆批后各批自己的标记能续跑）。\n4) 交付时要给人看只能靠读代码核实的几条（test=none）：GAP-3/4/5/15 不翻页截断、GAP-12 的 413 那一臂、GAP-13 未匹配路径、GAP-17 最终一致性窗口、GAP-21/22 进程生命周期与 client 复用、GAP-7/16 已删端点上的行为。\n5) 没有做任何需要人确认的偏离：GAP-1 不加事务（缺 bookId 仍 500）、GAP-14 保留 200+[] 降级、GAP-17 不加 ConsistentRead、GAP-12 保留 100KB/413。"
+}

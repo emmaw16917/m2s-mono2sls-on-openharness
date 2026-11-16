@@ -1,0 +1,19 @@
+{
+ "id": "spec-j3-r2",
+ "kind": "spec",
+ "theme": "规格对账（J3）有争议的差异需要裁定：\n[\n {\n  \"id\": \"register-read-back-by-admin/list/body.subset\",\n  \"case\": \"register-read-back-by-admin\",\n  \"step\": \"list\",\n  \"request\": {\n   \"method\": \"GET\",\n   \"path\": \"/auth/users\"\n  },\n  \"check\": \"body.subset\",\n  \"predicted\": {\n   \"users\": [\n    {\n     \"sub\": \"cust-admin\",\n     \"email\": \"admin@example.com\",\n     \"groups\": [\n      \"Admin\"\n     ]\n    },\n    {\n     \"sub\": \"cust-reg-3\",\n     \"email\": \"reg3@example.com\",\n     \"groups\": []\n    }\n   ]\n  },\n  \"actual\": {\n   \"users\": [\n    {\n     \"email\": \"reg3@example.com\",\n     \"groups\": [],\n     \"sub\": \"cust-reg-3\"\n    },\n    {\n     \"email\": \"admin@example.com\",\n     \"groups\": [\n      \"Admin\"\n     ],\n     \"sub\": \"cust-admin\"\n    }\n   ]\n  },\n  \"fact_refs\": [\n   \"POST /auth/register#responses[1]\",\n   \"POST /auth/register#business_rules[3]\",\n   \"GET /auth/users#responses[2]\",\n   \"GET /auth/users#business_rules[2]\",\n   \"GET /auth/users#business_rules[4]\"\n  ],\n  \"reason\": \"差异只在 users 数组的元素顺序：predicted 是 [cust-admin, cust-reg-3]，actual 是 [cust-reg-3, cust-admin]，两个元素的 {sub,email,groups} 三键值完全一致（actual 里只是 JSON 键的书写顺序不同，比较时无关）。事实库 GET /auth/users#business_rules[2] 明确写着『返回全部用户，不排序、不分页、不接受查询参数；条目顺序就是 DynamoDB scan 的返回顺序，代码没有排序步骤，因此顺序不属于对外承诺』；单体侧核对：data/storage.py:352-356 的 get_all_users 只有 self.users_table.scan() 并返回 response.get('Items', [])，services/auth.py:139-150 的脱敏推导式逐条映射 {sub,email,groups}、保持原顺序、无 sorted。即顺序由哈希键分布决定，不属于对外契约，迁移后目标（GSI/不同主键布局或不同读法）不保证同序也不应算行为不一致。用例本身没有写错：judge/cases/post-auth-register/register-read-back-by-admin.json 已带 layer=\\\"R\\\"（按 J1 规则，事实库明写顺序不保证时标 R），read_back 要验证的正是『注册写入的 cust-reg-3 能被 Admin 列表读回』这一内容。也不能归 case_error：裁判用例的响应体是对象 {\\\"users\\\": [...]}，对象只能 equals / subset / contains / has_fields / length；subset 对数组要求等长且逐位置递归包含，contains 只在响应体本身是数组时生效，has_fields 只能用 users.0.sub 这类位置路径（仍然钉顺序），因此当前格式无法表达『两个用户都在、先后不管』，退化成 has_fields:[\\\"users\\\"] 会丢掉 read_back 的内容。需要 architect 裁定：确认 users 数组顺序为放宽项（类别 contract、relaxation=order、layers=[\\\"R\\\"]、affected_cases=[register-read-back-by-admin]），裁定后本差异应进入 reconcile.resolved_by_rulings，V2 在 R 层按无序集合比较。若裁定拒绝放宽（即认定顺序属于契约），则事实库 business_rules[2] 与之矛盾，需改为 fact_error 走 annotator 修正，并由 J1 按 scan 顺序更新 predicted。\",\n  \"fact_ref\": \"GET /auth/users#business_rules[2]\"\n }\n]",
+ "status": "closed",
+ "proposer_role": "m2s-verifier",
+ "proposer_task": "J3",
+ "participants": [
+  "m2s-verifier",
+  "m2s-architect",
+  "m2s-spec-annotator",
+  "m2s-verifier"
+ ],
+ "turn": 4,
+ "round": 2,
+ "max_rounds": 2,
+ "created": "2026-11-13T16:12:47+0800",
+ "ruling_gate": "RULE_J3_2"
+}
