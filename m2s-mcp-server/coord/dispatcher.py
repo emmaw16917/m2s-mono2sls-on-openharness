@@ -107,6 +107,31 @@ def stream_end_error(run_dir: Path) -> str | None:
     return None
 
 
+def task_usage(coord: Path, task_id: str) -> tuple[int, int]:
+    """The input/output tokens the worker streams reported for one task (W2.10).
+
+    OpenHarness writes one assistant_complete event per turn with the usage of
+    that turn; older streams have no usage and simply contribute 0."""
+    total_in = total_out = 0
+    for path in sorted((coord / "run").glob(f"{task_id}-a*/stream.jsonl")):
+        try:
+            with path.open(encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    if '"usage"' not in line:
+                        continue
+                    try:
+                        event = json.loads(line)
+                    except ValueError:
+                        continue
+                    usage = event.get("usage") if isinstance(event, dict) else None
+                    if isinstance(usage, dict):
+                        total_in += int(usage.get("input_tokens") or 0)
+                        total_out += int(usage.get("output_tokens") or 0)
+        except OSError:
+            continue
+    return total_in, total_out
+
+
 def is_infra_error(message: str | None) -> bool:
     """OpenHarness ends a session with 'Network error: ...' or 'API error: ...' once its retries run out."""
     if not message or is_content_refusal(message):
@@ -2220,15 +2245,23 @@ class Dispatcher:
                 lines.append(f"- harness（{event['ts'][:16]} 起）：{text}" if "ts" in event else f"- harness：{text}")
         if seen:
             lines.append("")
-        lines += ["| 任务 | 状态 | 启动次数 | 崩溃 | API 中断 | 用时（分钟） | 最后一次检查 |", "|---|---|---|---|---|---|---|"]
+        lines += ["| 任务 | 状态 | 启动次数 | 崩溃 | API 中断 | 用时（分钟） | token（入/出） | 最后一次检查 |",
+                  "|---|---|---|---|---|---|---|---|"]
+        usage_total = [0, 0]
         for task_id, info in sorted(tasks.items(), key=lambda kv: self.template.order(kv[0])):
             exits = self.events.of_task(task_id, "worker_exit")
             minutes = round(sum(e.get("duration_s") or 0 for e in exits) / 60, 1)
             last = self.events.last(task_id, "checks")
             last_text = "；".join(f"{r['name']}{'✓' if r['ok'] else '✗'}" for r in (last or {}).get("results", []))
+            tok_in, tok_out = task_usage(self.coord, task_id)
+            usage_total[0] += tok_in
+            usage_total[1] += tok_out
             lines.append(f"| {task_id} | {info['status']} | {self.events.count('spawn', task_id)} | "
                          f"{sum(1 for e in exits if e.get('crashed') and not e.get('infra'))} | "
-                         f"{sum(1 for e in exits if e.get('infra'))} | {minutes} | {last_text} |")
+                         f"{sum(1 for e in exits if e.get('infra'))} | {minutes} | "
+                         f"{tok_in}/{tok_out} | {last_text} |")
+        if any(usage_total):
+            lines.append(f"| 合计 | | | | | | {usage_total[0]}/{usage_total[1]} | |")
         cases = [e for e in self.events.all() if e["type"] == "case_decision"]
         if cases:
             lines += ["", "## 异常处理", ""] + [f"- {e['case']}：{(e.get('decision') or {}).get('action')} → {e['applied']}" for e in cases]

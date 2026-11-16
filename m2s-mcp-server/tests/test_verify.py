@@ -286,6 +286,28 @@ def test_judge(ws):
     assert verify.judge(m, _case(expect={"batch_item_failures": []}), sqs)
 
 
+def test_raw_equals_compares_the_body_character_by_character(ws):
+    """T-1 (M3 -> M4): a text body is compared as text, not as a parsed number.
+
+    json.loads would make 10000, 10000.0, 1e4 and a JSON-quoted "10000" the
+    same value; an SI-26 style ruling says the characters are the contract.
+    """
+    m = verify.Model(ws)
+    raw = {"result": {"statusCode": 200, "body": "10000"}}
+    assert verify.judge(m, _case(expect={"status": 200, "body": {"raw_equals": "10000"}}), raw) == []
+    for other in ("10000.0", "1e4", "10000\n", '"10000"', " 10000", "10,000"):
+        mism = verify.judge(m, _case(expect={"status": 200, "body": {"raw_equals": other}}), raw)
+        assert mism and "raw" in mism[0]
+    # schema: only a string, and the key is allowed next to the others
+    assert verify._check_expect(m, "x", {"status": 200, "body": {"raw_equals": 10000}}, "api", False)
+    assert verify._check_expect(m, "x", {"status": 200, "body": {"raw_equals": "10000"}}, "api", False) == []
+    # a base64 response never matches a text contract
+    b64 = {"result": {"statusCode": 200, "body": "MTAwMDA=", "isBase64Encoded": True}}
+    assert verify.judge(m, _case(expect={"status": 200, "body": {"raw_equals": "10000"}}), b64)
+    # the parsed-value comparisons are untouched
+    assert verify.judge(m, _case(expect={"status": 200, "body": {"equals": 10000}}), raw) == []
+
+
 def test_observation_normalizes_nondeterminism():
     raw = {"calls": [{"op": "PutItem", "table": "T", "item": {"id": "123e4567-e89b-12d3-a456-426614174000"}}],
            "result": {"statusCode": 200, "body": json.dumps({"orderId": "123e4567-e89b-12d3-a456-426614174000"})},

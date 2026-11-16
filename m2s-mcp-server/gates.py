@@ -1840,6 +1840,51 @@ def _package_functions(ws: Path, package: str) -> tuple[list[str] | None, str | 
         return None, f"impl_packages[{package!r}] must be a list of function names or {{functions: [...]}}"
     return functions, None
 
+def check_impl_packages(workspace: Path) -> list[dict[str, Any]]:
+    """CG: the architect's impl_packages, when it is filled, must map every
+    blueprint function to exactly one package (v3 M3 open issue -> M4: S1's
+    scope now includes storage/work_packages.json; a null mapping stays legal
+    because the expansion computes one from the blueprint and the packages)."""
+    plan_path = workspace / "storage" / "work_packages.json"
+    blueprint_path = workspace / "storage" / "blueprint.json"
+    if not plan_path.is_file() or not blueprint_path.is_file():
+        return []
+    try:
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        blueprint = json.loads(blueprint_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []  # B0 / the analysis check report the broken file
+    impl = plan.get("impl_packages") if isinstance(plan, dict) else None
+    if not isinstance(impl, dict) or not impl:
+        return []
+    functions = [str(f.get("name")) for f in (blueprint.get("lambda_functions") or [])
+                 if isinstance(f, dict) and f.get("name")]
+    findings: list[dict[str, Any]] = []
+    seen: dict[str, str] = {}
+    for package, entry in impl.items():
+        names = entry.get("functions") if isinstance(entry, dict) else entry
+        if not isinstance(names, list):
+            findings.append(_finding("CG", "ERROR",
+                                     f"impl_packages[{package!r}] must be a list of function names "
+                                     "or {functions: [...]}", str(plan_path)))
+            continue
+        for name in names:
+            name = str(name)
+            if name not in functions:
+                findings.append(_finding("CG", "ERROR",
+                                         f"impl_packages[{package!r}] names {name!r}, which is not a "
+                                         "blueprint lambda function", str(plan_path)))
+            elif name in seen:
+                findings.append(_finding("CG", "ERROR",
+                                         f"function {name!r} is listed in impl_packages[{seen[name]!r}] "
+                                         f"and impl_packages[{package!r}]", str(plan_path)))
+            else:
+                seen[name] = package
+    missing = [f for f in functions if f not in seen]
+    if missing:
+        findings.append(_finding("CG", "ERROR", f"impl_packages does not cover {missing}", str(plan_path)))
+    return findings
+
 
 def run_gate(phase: str, workspace: str, functions: list[str] | None = None,
              package: str | None = None) -> dict[str, Any]:
@@ -1863,7 +1908,8 @@ def run_gate(phase: str, workspace: str, functions: list[str] | None = None,
     severe = False
 
     if phase == "blueprint":
-        checks = check_b0(ws) + check_contract(ws) + check_dm(ws) + check_api_type(ws) + check_adapter_map(ws) + check_gaps(ws)
+        checks = (check_b0(ws) + check_contract(ws) + check_dm(ws) + check_api_type(ws) + check_adapter_map(ws)
+                  + check_gaps(ws) + check_impl_packages(ws))
         severe = any(f["severity"] == "ERROR" for f in checks)
 
     elif phase == "code":

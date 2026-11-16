@@ -730,8 +730,10 @@ def _check_expect(model: Model, where: str, exp: Any, trigger: str | None, with_
                 errs.append(f"{where}: expect.headers.absent must be a list of header names")
     if "body" in exp:
         b = exp["body"]
-        if not isinstance(b, dict) or not b or set(b) - {"equals", "subset", "contains", "not_contains", "has_fields", "types", "length"}:
-            errs.append(f"{where}: expect.body must use equals/subset/contains/not_contains/has_fields/types/length")
+        if not isinstance(b, dict) or not b or set(b) - {"equals", "subset", "contains", "not_contains", "has_fields", "types", "length", "raw_equals"}:
+            errs.append(f"{where}: expect.body must use equals/subset/contains/not_contains/has_fields/types/length/raw_equals")
+        elif "raw_equals" in b and not isinstance(b["raw_equals"], str):
+            errs.append(f"{where}: expect.body.raw_equals must be a string compared character for character")
     if "error" in exp and not isinstance(exp["error"], dict):
         errs.append(f"{where}: expect.error must be an object ({{}} or {{type}})")
     if "batch_item_failures" in exp and not isinstance(exp["batch_item_failures"], list):
@@ -1296,6 +1298,14 @@ def judge(model: Model, case: dict[str, Any], raw: dict[str, Any]) -> list[str]:
                 mism.append(f"header {name}: expected absent, got {got[name.lower()]}")
     if "body" in exp:
         body, spec = _parse_body(result), exp["body"]
+        if "raw_equals" in spec:
+            # A text body compared character for character: json.loads would
+            # fold 10000.0 / 1e4 / trailing whitespace / a JSON-quoted string
+            # into the same value, which is exactly what a text contract must
+            # not do (an SI-26 style ruling: the characters are the contract).
+            got_raw = result.get("body") if isinstance(result, dict) else None
+            if got_raw != spec["raw_equals"]:
+                mism.append(f"body: expected raw {spec['raw_equals']!r} character for character, got {got_raw!r}")
         if "equals" in spec and body != spec["equals"]:
             mism.append(f"body: expected equals {json.dumps(spec['equals'])[:300]}, got {json.dumps(body)[:300]}")
         if "subset" in spec and not _subset(spec["subset"], body):

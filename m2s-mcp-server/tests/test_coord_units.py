@@ -248,3 +248,19 @@ def test_a_content_refusal_is_not_an_outage():
            'contain inappropriate content.","type":"data_inspection_failed"},"id":"chatcmpl-2dd8-500-af05"}')
     assert is_content_refusal(msg) and not is_infra_error(msg)
     assert not is_content_refusal("Network error: Connection error.")
+
+
+def test_task_usage_sums_assistant_complete_usage(tmp_path: Path):
+    from coord.dispatcher import task_usage
+    coord = tmp_path / "coord"
+    for attempt, lines in {
+        "a1": [{"type": "assistant_complete", "text": "", "usage": {"input_tokens": 100, "output_tokens": 20}},
+               {"type": "tool_started", "tool_name": "bash", "tool_input": {}}],
+        "a2": [{"type": "assistant_complete", "text": "", "usage": {"input_tokens": 7, "output_tokens": 3}},
+               {"type": "assistant_complete", "text": ""}],  # an older stream without usage contributes 0
+    }.items():
+        run = coord / "run" / f"O-{attempt}"
+        run.mkdir(parents=True)
+        (run / "stream.jsonl").write_text("\n".join(json.dumps(x) for x in lines) + "\n", encoding="utf-8")
+    assert task_usage(coord, "O") == (107, 23)
+    assert task_usage(coord, "V2") == (0, 0)  # no run directory at all

@@ -412,9 +412,9 @@ v2 流水线里有一个裁判：`judge/` 下的用例按**单体的表结构**�
 - `category: "new"` 的条目（新类别候选）：一样要决定；运行报告会把它们列给人看；
 - 决定和 blueprint 要一致：决定说"用 SQS"，blueprint 里就要有这个队列。
 
-## 工作包与领域目录 `storage/work_packages.json`（v2-split，A1 的第五项产出）
+## 工作包与领域目录 `storage/work_packages.json`（v1-split 的 S1、v2-split 的 A1）
 
-工作区里如果有 `storage/work_packages.json`（v2-split 在 F1 之后生成，`impl_packages` 是 `null`），**你要把 `impl_packages` 填上**：包 → 函数、目录。D1/I1 按它展开成按领域的子任务，后面的包级检查也读它。
+工作区里如果有 `storage/work_packages.json`（v1-split 在 P0 之后、v2-split 在 F1 之后生成，`impl_packages` 是 `null`），**你要把 `impl_packages` 填上**：包 → 函数、目录。S2/I1 按它展开成子任务，包级检查（`run_gate(package=...)`、S5）也读它。
 
 - 形状：
   ```json
