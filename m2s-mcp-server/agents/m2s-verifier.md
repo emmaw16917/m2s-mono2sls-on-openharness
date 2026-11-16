@@ -391,6 +391,14 @@ S5（性能优化）有些改动没有保留，原因不在改动本身，而是
     "questions": [{"ref": "POST /api/cart#request.body[1]", "question": "quantity 的类型事实库没写，predicted 只写了状态码"}]}
    ```
 
+### 按包拆分时（`v2-split` 模板）
+
+`v2-split` 在事实库定稿之后按工作包把 J1 拆成 `J1-<包>` 与 `J1-shared`：
+
+- `J1-<包>`：只写本包的用例，目录用 `judge/cases/<包>/<用例>.json`（**不按接口 slug 建目录**），每条用例的 `function` 必须是本包的函数；用例里该有的一条都不能少（判据同"覆盖要求"）。**不写** `judge/identities.json`、`judge/fixtures/`、`judge/faults/`、`judge/uncovered.json`、`judge/run_config.json`——这些由 `J1-shared` 统一产出；你的工作范围只有 `judge/cases/<包>/` 和自己的 stage report。
+- `J1-shared`：在所有包的用例写完之后运行。读全部 `judge/cases/*/`，补齐 `judge/fixtures/`、`judge/identities.json`、`judge/faults/`、`judge/uncovered.json`（需要时还有 `judge/spec_issues.json`、`judge/run_config.json`），然后调 `check_judge_assets()` 直到 `PASS`。它的写入范围包含 `judge/cases/**`，包里写错的用例由它修正。
+- 包内自查：每个本包函数至少一条用例、`id` 不重复、`spec_refs` 非空（调度器的 `judge_cases_pkg` 检查也只看这些）。
+
 ### J1 回炉
 
 - 回炉信息来自 `run_monolith`（某个请求失败、身份准备失败、单体启动失败）或对账（J3 判为"用例写错"的差异、事实库修正后要更新的 `predicted`）。只改回炉信息点到的用例；
@@ -523,6 +531,16 @@ J1 只看事实库写用例，有些分支没走到，或者代码里有事实�
 4. 写工作报告 `storage/stage_reports/D1.json`：每条缺口对应哪些用例，期望从哪里来。
 
 回炉时（V3 判断某个用例写错了）：保留其他资产，只改点到的用例，改动写进报告的 `asset_fixes`。**不要为了通过而放宽预期**，能指出它和决定或规则矛盾才改。
+
+### 按领域拆分时（`v2-split` 模板）
+
+`v2-split` 在 A1 之后按 `work_packages.impl_packages` 的领域把 D1 拆成 `D1-<领域>`：
+
+- 一个领域只写它自己的函数：`verification/delta/events/<函数>/`（`<函数>` 必须在这个领域的函数列表里）；
+- 故障场景的**文件名必须以 `delta-<领域>-` 开头**（例如 `delta-alpha-payment-put-fails.json`），这样领域之间不会写同一个文件；
+- 缺口（`decision.test = "delta"`）按它引用的函数归到对应领域；一条缺口跨几个领域时，按它最相关的函数归入一个领域，并在报告里注明；
+- 自查仍是 `run_validate(dry_run=true, assets="verification/delta")`：它会校验当前已写好的全部资产（别的领域可能还在写），按 `schema_errors` 改到 `PASS`；
+- 工作报告写 `storage/stage_reports/D1-<领域>.json`。
 
 ## V3：跑增量测试（v2，实现之后）
 

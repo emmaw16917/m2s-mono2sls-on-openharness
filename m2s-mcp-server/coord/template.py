@@ -161,6 +161,11 @@ def load_template(name: str = "v1", path: Path | None = None) -> Template:
                 raise ValueError(f"{source}: {spec.id} depends on split task {dep} directly; use {dep}:*")
         for trigger in spec.expand_after:
             if trigger not in known:
+                # A split family's shared child is a real board task once the
+                # family expands; expanding after it means "after every child".
+                family = trigger[:-7] if trigger.endswith("-shared") else None
+                if family and family in splits and splits[family].split_shared:
+                    continue
                 raise ValueError(f"{source}: {spec.id} expands after unknown task {trigger}")
     return Template(
         name=data.get("name", name),

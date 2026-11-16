@@ -821,3 +821,17 @@ def test_integration_cached_function_isolated_per_case(tmp_path):
                                                     "expect": {"status": 200, "body": {"subset": {"name": name}}}}), encoding="utf-8")
     r = verify.run_validate(str(ws), mode="local")
     assert r["status"] == "PASS", r
+
+
+def test_delta_errors_partial_skips_the_global_gap_coverage(tmp_path):
+    """W4.2: one D1 domain validates its own files; the other domains write
+    theirs in parallel, so "every delta gap is cited" waits for V3."""
+    ws = tmp_path / "ws"
+    (ws / "storage").mkdir(parents=True)
+    (ws / "storage" / "gap_inventory.json").write_text(json.dumps({"version": 1, "gaps": [
+        {"id": "GAP-1", "key": "k", "category": "time", "summary": "s",
+         "evidence": [{"file": "m/a.py", "line": 1, "symbol": "x"}], "endpoints": [],
+         "source": "G1", "status": "decided", "decision": {"choice": "c", "why": "w", "test": "delta"}}]}),
+        encoding="utf-8")
+    assert any("GAP-1" in e for e in verify.delta_errors(ws, []))
+    assert verify.delta_errors(ws, [], require_all_gaps=False) == []

@@ -648,6 +648,50 @@ def _mutation_summary(jd: Path) -> dict[str, Any] | None:
                                   "equivalent", "reverse", "reverse_ok")}
 
 
+def check_cases_package(ws: Path | str, package: str, functions: list[str]) -> dict[str, Any]:
+    """J1:<pkg> (v3 M4/W4.2): one package's cases are well formed and cover its
+    functions. Identities, fixtures, faults and the whole-asset coverage are
+    J1-shared's check_judge_assets (it runs after every package)."""
+    ws = Path(ws)
+    root = judge_dir(ws) / "cases"
+    wanted = {str(f) for f in functions}
+    errs: list[str] = []
+    ids: dict[str, str] = {}
+    count = 0
+    per_fn: dict[str, int] = {}
+    for path in sorted(root.rglob("*.json")):
+        where = path.relative_to(ws).as_posix()
+        try:
+            case = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            errs.append(f"{where}: invalid JSON: {exc}")
+            continue
+        if not isinstance(case, dict):
+            errs.append(f"{where}: a case must be a JSON object")
+            continue
+        cid = case.get("id")
+        if isinstance(cid, str) and cid:
+            if cid in ids:
+                errs.append(f"{where}: id {cid!r} is also used by {ids[cid]}")
+            ids.setdefault(cid, where)
+        fn = case.get("function")
+        mine = path.parent.name == package
+        if fn not in wanted:
+            if mine:
+                errs.append(f"{where}: function {fn!r} is not in this package ({sorted(wanted)})")
+            continue
+        count += 1
+        if not isinstance(cid, str) or not cid:
+            errs.append(f"{where}: id is required")
+        if not isinstance(case.get("spec_refs"), list) or not case.get("spec_refs"):
+            errs.append(f"{where}: spec_refs must be a non-empty list")
+        per_fn[fn] = per_fn.get(fn, 0) + 1
+    missing = sorted(f for f in wanted if not per_fn.get(f))
+    if missing:
+        errs.append(f"no case yet for {missing} (each function of the package needs at least one)")
+    return {"status": "PASS" if not errs else "FAIL", "errors": errs[:60], "cases": count, "package": package}
+
+
 def check_judge_assets(ws: Path | str) -> dict[str, Any]:
     """J1's completion check: format, references, and coverage of the fact base."""
     ws = Path(ws)

@@ -634,10 +634,10 @@ def _expected_from_errors(ws: Path, where: str, case: dict[str, Any], gaps_by_id
     return []
 
 
-def delta_errors(ws: Path, cases: list[dict[str, Any]]) -> list[str]:
+def delta_errors(ws: Path, cases: list[dict[str, Any]], require_all_gaps: bool = True) -> list[str]:
     """The checks of delta tests beyond the v1 case format: every case says which gap or
     rule it tests and where its expectation comes from, and every gap decided with
-    test: "delta" has a case."""
+    test: "delta" has a case (unless require_all_gaps is False: one domain's share)."""
     import gaps
 
     inventory = gaps.load(ws) or {}
@@ -663,9 +663,10 @@ def delta_errors(ws: Path, cases: list[dict[str, Any]]) -> list[str]:
                 if s not in by_id:
                     errs.append(f"{where}: source {s} is not in storage/gap_inventory.json")
         errs += _expected_from_errors(ws, where, case, by_id, oracle, ruling_ids)
-    for g in gaps.delta_gaps(ws):
-        if g.get("id") not in cited:
-            errs.append(f"{g.get('id')} is decided with test: delta, and no delta test cites it as its source")
+    if require_all_gaps:
+        for g in gaps.delta_gaps(ws):
+            if g.get("id") not in cited:
+                errs.append(f"{g.get('id')} is decided with test: delta, and no delta test cites it as its source")
     return errs
 
 
@@ -1594,14 +1595,17 @@ def _code_state(ws: Path, ref: str | None) -> dict[str, Any]:
 @_rie_locked
 def run_validate(workspace: str, functions: list[str] | None = None, cases: list[str] | None = None,
                  dry_run: bool = False, mode: str = "auto", ref: str | None = None,
-                 assets: str | None = None) -> dict[str, Any]:
+                 assets: str | None = None, partial: bool = False) -> dict[str, Any]:
     """ref: run the working tree's test assets against the code of this git
     ref of the workspace repo (e.g. "v0" after the tests were revised)
     instead of the working tree's code.
 
     assets: a directory of test assets other than verification/, namely
     verification/delta (v2 D1, V3): the cases also need source and expected_from,
-    and a full run writes verification/verdict_delta.json."""
+    and a full run writes verification/verdict_delta.json.
+
+    partial: one domain's share (v3 M4/W4.2): do not require every delta gap to
+    be cited yet -- the other domains write their cases in parallel."""
     ws = Path(workspace)
     model = Model(ws, need_template=not dry_run)
     all_cases = load_cases(ws, assets)
@@ -1616,7 +1620,7 @@ def run_validate(workspace: str, functions: list[str] | None = None, cases: list
     for f in faults:
         schema_errors += check_fault(model, f, set(ids), with_template=not dry_run)
     if assets:
-        schema_errors += delta_errors(ws, all_cases)
+        schema_errors += delta_errors(ws, all_cases, require_all_gaps=not partial)
     # GM3: headers the monolith adds to every response (app-wide middleware,
     # analysis_report.global_middleware) must be asserted on every API function.
     # Not on delta tests: they cover the gaps, and the judge covers the responses.

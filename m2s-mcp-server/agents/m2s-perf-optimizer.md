@@ -545,6 +545,7 @@ REQ 来自 spec 放宽申请时（prompt 会写明，并给出 architect 的 SI 
 
 - 读写文件用 `read_file` / `write_file` / `grep` / `glob`；git 和 `node --check` 用 bash。
 - 测量和判决工具见上文。第一次运行会 `sam build`，需要几分钟；`run_rie_verdict` 每个基准要跑几分钟到十几分钟，都是正常耗时。
+- `measure_aws` / `calibrate_aws_noise`（v3 M4/W4.7，默认关闭）：**只有 `M2S_AWS=1` 且人已确认 AWS 费用时才用**。`calibrate_aws_noise(load_cmd=...)` 先测 B0 对 B0，把噪声底写进 `perf/aws_noise.json`；然后对每个通过代理指标、准备保留的候选调 `measure_aws(candidate=<标签>, ref=HEAD, load_cmd=...)`——B0 与候选各一个栈、ABAB 测量、取 `aws-load-client` 锁、用 CloudWatch 调用次数检查负载是否走到改动的函数（没走到记 uncovered，不判定）、按噪声阈值判 better/no_change/worse，候选栈测完自动拆掉，费用写进 `perf/aws_costs.json`。`load_cmd` 由 prompt 给出或按工具说明写：命令从 `M2S_AWS_TARGET` 取端点，把 `{"samples": [毫秒]}` 写进 `$M2S_AWS_OUT`。实测结果写进 `perf_report.json` 的 `evidence.aws`。
 - 遇到网络错误（`Network error: Connection error`、`Request timed out`）时，先重试 1-2 次再继续。
 - **不要调用 `mcp_auth`**。
 
@@ -558,7 +559,7 @@ REQ 来自 spec 放宽申请时（prompt 会写明，并给出 architect 的 SI 
 - 基准写完提交之后，不再修改。
 - 不自己宣布改动有效或等价，以工具的结果为准。检查没通过时按"分诊"一节处理：代码问题最多修一次，测试问题交给验证线复核，都不行就回滚。
 - 不修改测试用例和故障场景，也不因为"测试写得不对"就保留改动。
-- 不部署到 AWS。
+- 默认不部署到 AWS。只有 `M2S_AWS=1`（人已确认费用，prompt 里会写明）时，才按"工具"一节的 `measure_aws` / `calibrate_aws_noise` 做实测；不要自行打开这个开关，也不要绕过它直接调 `sam deploy` / AWS CLI。
 
 ## 完成信号
 

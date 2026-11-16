@@ -245,7 +245,8 @@ class Dispatcher:
                         "freeze_judge": self._act_freeze, "check_adapter": self._act_check_adapter,
                         "run_judge": self._act_run_judge, "run_mutants": self._act_run_mutants,
                         "gap_scan": self._act_gap_scan, "tag_b0": self._act_tag_b0, "final_v2": self._act_final_v2,
-                        "archive_run": self._act_archive, **(actions or {})}
+                        "archive_run": self._act_archive, "gap_merge": self._act_gap_merge,
+                        "barrier": self._act_barrier, **(actions or {})}
         self.max_workers = max_workers
         self.poll_s = poll_s
         self.handler_enabled = handler
@@ -1346,6 +1347,9 @@ class Dispatcher:
                 family = dep[:-2]
                 children = sorted(t for t in tasks if t.startswith(family + "-") and t != family)
                 chosen = [f"{family}-{same_package}"] if same_package and f"{family}-{same_package}" in children else children
+            elif dep.endswith(":shared"):
+                shared_id = dep[:-7] + "-shared"
+                chosen = [shared_id] if shared_id in tasks else []
             else:
                 chosen = [dep]
             for child in chosen:
@@ -1985,6 +1989,24 @@ class Dispatcher:
         except gaps.GapError as exc:
             return CheckResult("gap_scan", False, f"gap_scan: {exc}", detail={"status": "ERROR", "error": str(exc)})
         return CheckResult("gap_scan", True, f"gap_scan: {r['gaps']} gaps ({r['added']} new): {r['by_category']}", detail=r)
+
+    def _act_barrier(self, spec: TaskSpec) -> CheckResult:
+        """A named point that closes when every task it depends on closed. A
+        split family's expansion children are not template ids, so a task that
+        expands after all of them needs a static task to name (F2DONE)."""
+        return CheckResult("barrier", True, "all upstream tasks closed")
+
+    def _act_gap_merge(self, spec: TaskSpec) -> CheckResult:
+        """G2M (v3 M4/W4.2): compose storage/gap_inventory.json from the
+        per-package decisions (storage/gaps/*.json). The inventory keeps its
+        ids and decisions; new entries get the next GAP-<n>."""
+        import gaps
+
+        r = gaps.merge_packages(self.ws)
+        ok = r["status"] == "PASS"
+        return CheckResult("gap_merge", ok,
+                           f"gap_merge: {r['gaps']} gaps ({r.get('added', 0)} new, {r.get('updated', 0)} updated)",
+                           detail=r, relay="" if ok else "合并缺口时的问题：\n" + _clip("\n".join(r.get("errors") or [])))
 
     def _act_run_mutants(self, spec: TaskSpec) -> CheckResult:
         """J5 (v2 §4.10): mutants of the monolith against the judge. The reverse check

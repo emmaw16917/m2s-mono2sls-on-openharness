@@ -178,6 +178,16 @@ v2 流水线里，裁判用例先按事实库写预期，再在单体上运行�
 
 写完调 `mcp__m2s-server__check_gap_inventory()`，直到 `PASS`（最多 3 次修改）。工作报告写 `storage/stage_reports/<任务编号>.json`，字段照常，`summary` 写明核对了几条、补了几条、每条补的依据。
 
+### 按包拆分时（`v2-split` 模板）
+
+`v2-split` 把 G2 拆成按工作包的子任务，**子任务不写 `storage/gap_inventory.json`**：
+
+- `G2-<包>`：只处理「`endpoints` 全部属于这个包」的缺口。读 `storage/gap_inventory.json`，把属于本包的既有条目（连同你补的新条目）写进 `storage/gaps/<包>.json`，形状 `{"gaps": [...]}`。**本包拥有的既有条目一条都不能漏**（判据：条目 endpoints 非空且全部在本包端点里）。新条目可以不带 `id`（合并任务分配 `GAP-<n>`），但 `key`、`category`、`summary`、`evidence`、`endpoints` 必须齐，`status` 保持 `open`。不要调用 `check_gap_inventory()`，也不要改 `storage/gap_inventory.json`。
+- `G2-shared`：接收没有 `endpoints`、或端点跨包的缺口，写 `storage/gaps/shared.json`；不重复各包已经拥有的条目。
+- `G2M`（调度器任务）：把所有 `storage/gaps/*.json` 合并回 `storage/gap_inventory.json`——既有条目按 `key` 保留原 id、原决定，新条目按包顺序分配 `GAP-<n>`，然后由 `gap_inventory` 检查收口。
+
+子任务的自查：`storage/gaps/<包>.json` 的每个条目都能通过和事实库一致的端点/证据检查；自己的工作报告照常写 `storage/stage_reports/G2-<包>.json`。
+
 ## 自查循环（标注完之后，不要跳过）
 
 1. 调用 `mcp__m2s-server__check_provenance()`。

@@ -609,6 +609,50 @@ def run_rie_verdict(benchmark: str, baseline: str = "HEAD", latencies: list[int]
 
 
 @mcp.tool()
+def measure_aws(candidate: str, ref: str = "HEAD", baseline_ref: str = "B0", load_cmd: str = "",
+                repeats: int = 2, keep: bool = False) -> str:
+    """O (v3 M4/W4.7): measure one optimization candidate against B0 on real
+    AWS (PIPELINE_V3_PLAN.md §4.13). Off by default: M2S_AWS=1 is required and
+    a real run spends money -- a person approves that first.
+
+    One stack per side (B0 kept, the candidate deleted unless keep), ABAB
+    passes under the aws-load-client lock, CloudWatch invocation counts of the
+    changed functions (a function the load never reached marks the run
+    uncovered), the B0-vs-B0 noise threshold from calibrate_aws_noise, and a
+    cost record in perf/aws_costs.json.
+
+    load_cmd: a command run once per pass; it reads M2S_AWS_TARGET (stack
+    endpoint) and writes {"samples": [milliseconds]} to $M2S_AWS_OUT.
+
+    Returns: JSON string {status, verdict, passes, uncovered, ...}.
+    """
+    from coord import aws as aws_mod
+
+    try:
+        result = aws_mod.measure_aws(_workspace(), candidate, ref=ref, baseline_ref=baseline_ref,
+                                     load_cmd=load_cmd or None, repeats=repeats, keep=keep)
+    except Exception as exc:  # noqa: BLE001 -- a measurement failure must come back as data
+        return json.dumps({"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
+def calibrate_aws_noise(load_cmd: str = "", repeats: int = 3) -> str:
+    """O (v3 M4/W4.7): measure B0 against B0 on AWS and write the observed
+    spread as perf/aws_noise.json (relative_threshold), the noise floor
+    measure_aws uses. M2S_AWS=1 is required; it deploys B0's stack if absent
+    and keeps it. Returns: JSON string {status, relative_threshold, ...}.
+    """
+    from coord import aws as aws_mod
+
+    try:
+        result = aws_mod.calibrate_noise(_workspace(), load_cmd=load_cmd or "", repeats=repeats)
+    except Exception as exc:  # noqa: BLE001
+        return json.dumps({"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}, ensure_ascii=False)
+    return json.dumps(result, ensure_ascii=False)
+
+
+@mcp.tool()
 def update_ledger() -> str:
     """Fold output/perf_report.json (its rule_scan and changes) into the
     cross-application rule ledger m2s-mcp-server/perf-rules/ledger.json.

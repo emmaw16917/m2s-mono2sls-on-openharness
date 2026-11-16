@@ -343,6 +343,162 @@ def judge_case_problems(ws: Path | str, verdict: dict[str, Any]) -> list[str]:
     return out
 
 
+def _package_endpoints(ws: Path) -> dict[str, set[str]]:
+    """work_packages.packages -> {id: endpoints}, when the plan exists."""
+    path = ws / "storage" / "work_packages.json"
+    if not path.is_file():
+        return {}
+    try:
+        plan = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    out = {}
+    for p in (plan.get("packages") or []) if isinstance(plan, dict) else []:
+        if isinstance(p, dict) and p.get("id") is not None:
+            out[str(p["id"])] = {f"{e.get('method')} {e.get('path')}" for e in p.get("endpoints") or []
+                                 if isinstance(e, dict)}
+    return out
+
+
+def _gap_entry_errors(where: str, g: Any, root: Path | None, endpoints: set[str]) -> list[str]:
+    """The per-gap checks shared by the inventory and a package file."""
+    if not isinstance(g, dict):
+        return [f"{where}: must be an object"]
+    errs: list[str] = []
+    if set(g) - ENTRY_KEYS:
+        errs.append(f"{where}: unknown keys {sorted(set(g) - ENTRY_KEYS)}")
+    if g.get("category") == "new":
+        if not str(g.get("candidate_name") or "").strip():
+            errs.append(f"{where}: category new (a new category candidate) needs candidate_name")
+    elif g.get("category") not in CATEGORIES:
+        errs.append(f"{where}: category must be one of {sorted(CATEGORIES)} or new")
+    if not str(g.get("summary") or "").strip():
+        errs.append(f"{where}: summary is required")
+    if g.get("source") not in ("G1", "G2"):
+        errs.append(f"{where}: source is G1 or G2")
+    errs += _evidence_errors(where, g.get("evidence"), root) if not g.get("no_longer_detected") else []
+    errs += [f"{where}: endpoint {e!r} is not in the fact base" for e in g.get("endpoints") or [] if e not in endpoints]
+    if g.get("status") not in ("open", "decided"):
+        errs.append(f"{where}: status is open or decided")
+    return errs
+
+
+def package_path(ws: Path | str, package: str) -> Path:
+    return Path(ws) / "storage" / "gaps" / f"{package}.json"
+
+
+def check_package(ws: Path | str, package: str, endpoints: list[str] | None = None) -> dict[str, Any]:
+    """G2:<pkg> (v3 M4/W4.2): one package's share of the gap inventory.
+
+    The package file holds the gaps whose endpoints all belong to this package
+    (the shared file holds the ones without endpoints or spanning packages).
+    Ids may be omitted for new gaps; the merge assigns them."""
+    ws = Path(ws)
+    where = f"storage/gaps/{package}.json"
+    path = package_path(ws, package)
+    if not path.is_file():
+        return {"status": "FAIL", "errors": [f"{where} not found"], "gaps": 0}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return {"status": "FAIL", "errors": [f"{where}: invalid JSON: {exc}"], "gaps": 0}
+    gaps = data.get("gaps") if isinstance(data, dict) else None
+    if not isinstance(gaps, list):
+        return {"status": "FAIL", "errors": [f"{where}: must be a JSON object {{gaps: [...]}}"], "gaps": 0}
+    report = _report(ws)
+    root_s = (report.get("spec_meta") or {}).get("monolith_root")
+    root = Path(root_s) if root_s and Path(root_s).is_dir() else None
+    all_endpoints = {_name(e) for e in report.get("entry_points") or [] if isinstance(e, dict)}
+    inventory = load(ws) or {}
+    inv_gaps = [g for g in inventory.get("gaps") or [] if isinstance(g, dict)]
+    inv_by_id = {str(g.get("id")): g for g in inv_gaps if g.get("id")}
+    own = set(endpoints or [])
+    errs: list[str] = []
+    seen_ids: set[str] = set()
+    covered: set[str] = set()
+    for i, g in enumerate(gaps):
+        w = f"{where}: gaps[{i}]"
+        errs += _gap_entry_errors(w, g, root, all_endpoints)
+        if not isinstance(g, dict):
+            continue
+        if g.get("status") == "decided":
+            errs.append(f"{w}: G2 writes the inventory, not decisions (status stays open)")
+        gid = g.get("id")
+        if gid is not None:
+            if not re.fullmatch(r"GAP-\d+", str(gid)) or str(gid) in seen_ids:
+                errs.append(f"{w}: id must be a unique GAP-<n> or omitted (the merge assigns one)")
+            seen_ids.add(str(gid))
+            if str(gid) not in inv_by_id:
+                errs.append(f"{w}: id {gid!r} is not in storage/gap_inventory.json")
+            covered.add(str(gid))
+        eps = [str(e) for e in g.get("endpoints") or []]
+        if package == "shared":
+            inside = [pid for pid, peps in _package_endpoints(ws).items() if eps and set(eps) <= peps]
+            if eps and inside:
+                errs.append(f"{w}: endpoints {eps} all belong to package(s) {inside}; this gap is theirs, not shared")
+        else:
+            if not eps:
+                errs.append(f"{w}: a package gap needs endpoints (gaps without endpoints go to the shared file)")
+            errs += [f"{w}: endpoint {e!r} is not in this package ({sorted(own)})" for e in eps if e not in own]
+    if package != "shared":
+        for g in inv_gaps:
+            eps = [str(e) for e in g.get("endpoints") or []]
+            if g.get("id") and eps and set(eps) <= own and str(g.get("id")) not in covered:
+                errs.append(f"{where}: inventory gap {g['id']} belongs to this package but is missing from the file")
+    return {"status": "PASS" if not errs else "FAIL", "errors": errs[:60], "gaps": len(gaps)}
+
+
+def merge_packages(ws: Path | str) -> dict[str, Any]:
+    """The merge task (G2M): compose storage/gap_inventory.json from the package
+    files. Parent entries are kept by key (their ids and decisions never move);
+    new entries get the next GAP-<n> ids in package order."""
+    ws = Path(ws)
+    inventory = load(ws)
+    if not isinstance(inventory, dict) or "_load_error" in inventory:
+        return {"status": "FAIL", "errors": ["storage/gap_inventory.json is missing or broken (G1 first)"], "gaps": 0}
+    parent = [g for g in inventory.get("gaps") or [] if isinstance(g, dict)]
+    by_key = {str(g.get("key")): dict(g) for g in parent if g.get("key")}
+    order = [str(g.get("key")) for g in parent if g.get("key")]
+    used = [int(m.group(1)) for g in parent if (m := re.fullmatch(r"GAP-(\d+)", str(g.get("id"))))]
+    next_id = max(used, default=0) + 1
+    files = sorted((ws / "storage" / "gaps").glob("*.json"))
+    if not files:
+        return {"status": "FAIL", "errors": ["storage/gaps/ has no package files"], "gaps": 0}
+    added = updated = 0
+    errs: list[str] = []
+    for path in files:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            errs.append(f"storage/gaps/{path.name}: {exc}")
+            continue
+        for g in (data.get("gaps") or []) if isinstance(data, dict) else []:
+            if not isinstance(g, dict) or not g.get("key"):
+                errs.append(f"storage/gaps/{path.name}: every gap needs a key")
+                continue
+            key = str(g["key"])
+            entry = {k: v for k, v in g.items() if k != "id"}
+            if key in by_key:
+                before = dict(by_key[key])
+                by_key[key].update(entry)
+                by_key[key]["id"] = before.get("id")
+                by_key[key]["status"] = before.get("status", by_key[key].get("status", "open"))
+                by_key[key].setdefault("decision", before.get("decision"))
+                updated += 1
+            else:
+                by_key[key] = {"id": f"GAP-{next_id}", **entry}
+                order.append(key)
+                next_id += 1
+                added += 1
+    if errs:
+        return {"status": "FAIL", "errors": errs, "gaps": 0, "added": added, "updated": updated}
+    merged = [by_key[k] for k in order]
+    out = dict(inventory)
+    out["gaps"] = merged
+    inventory_path(ws).write_text(json.dumps(out, ensure_ascii=False, indent=1), encoding="utf-8")
+    return {"status": "PASS", "errors": [], "gaps": len(merged), "added": added, "updated": updated}
+
+
 def check_inventory(ws: Path | str, require_decided: bool = False) -> dict[str, Any]:
     """The inventory's format; with require_decided also that every gap has a decision
     that DECISIONS.md repeats (A2)."""

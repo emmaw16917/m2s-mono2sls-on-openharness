@@ -586,7 +586,7 @@ agent_mail 的 build slot 只是建议性的，也不能计数，所以只用来
 - acmeair-m2-serial（`v1`，1 worker）：FINAL PASS，墙钟 17.1 h，worker 合计 8.9 h。
 - acmeair-m3-split（`v1-split` + 讨论室，3 worker）：FINAL PASS，墙钟 27.4 h，worker 合计 32.0 h，并发峰值 3，动过 37 个任务（含 14 个展开子任务）；墙钟偏长来自 M3 本身更大的工作量（按包展开、两个规格讨论室、模型 403 中断、两次阶段复查与按裁定的重跑），不是并行变慢。
 - 并发证据：同一时刻最多 3 个 worker（不同包的 S0/V1/S2），scope 冲突的任务自动串行，`workers` 计数锁未触发；每次尝试的 `write_scope` 全绿，没有越界写入被判。
-- token 统计：runner 的 `stream.jsonl` 不记录 usage，W2.10 的 token 对比未交付；以 worker 墙钟合计代替。补 token 统计需要 OpenHarness 输出 usage（列入 M4 待办）。
+- token 统计：W2.10 当时 runner 的 `stream.jsonl` 不记录 usage，以 worker 墙钟合计代替。**M4 补齐（2026-11-16）**：OpenHarness 的 `assistant_complete` 事件带 `usage`（提交 `e4eb3f0`），`task_usage` 按任务汇总，运行报告带 token（入/出）列与合计。
 
 ### M3 公告板、讨论室和可见性【必做】
 
@@ -618,6 +618,7 @@ agent_mail 的 build slot 只是建议性的，也不能计数，所以只用来
 - 泄漏：运行后扫描 `coord/mail/`（公告板 + 两个讨论室）为 0；`tests/test_coord_leak.py` 4 项通过。
 - Web UI：发现镜像静默失败——m2s-server 在事件循环线程上调用 `mail.call_sync`，`asyncio.run` 在运行中的循环里抛错且异常被吞，agent_mail 里一条讨论室消息都没有。已修：`call_sync` 在已有事件循环时改用独立线程；失败写 `coord/mail/mirror_errors.jsonl`。本运行的 35 条消息已用工作区文件回填，`room-spec-16250` / `room-spec-70814` 与公告板线程可在 agent_mail（Web UI）中检索到。
 - 人工节点：第一次阶段复查把 5 件事交人（装载臂 A/B/C、5 项 migration-change 偏离、T-1/T-2 工具盲区、两件机械欠账）。人的决定：装载臂选 B（零写入仍 200）、5 项偏离全部确认、接受 T-1/T-2 过渡形态（工具改动排期 M4）、两件欠账接受并记录——记录为 R-human-1/2/3 与两条 open issue；第二次阶段复查自动接受，进入 S5。
+- **M4 收口（2026-11-16）**：T-1 已实现（`verify.py` 的 `expect.body.raw_equals`，正文逐字符比较）；T-2 在共享 `verify.py` 已具备（`repeat` 字段、controller 与 judge 的比较），本轮只记录关闭；`impl_packages` 的 v1 欠账随 `v1-split` 的 S1 scope 与 `gate(blueprint)` 的 CG 检查关闭。
 - 本轮发现并修掉的编排缺陷（`feat/v3-m3`）：3c13470 回炉动态包子任务要沿看板依赖边传播；2dbdc7c 重启后按事件日志识别“下游在旧上游上跑”；6806a7c V2 路由按函数定位到 `S2-<包>`；984f9f3 `_collect` 跳过同一轮被取消的 worker；b016fb1 `_downstream` 只走看板边且裁定可写族名；f7b33fb 镜像修复（事件循环线程 + 失败可见）。
 
 ### M4 接入 v2 模块【必做，前提是 v2 模块已经实现】
@@ -634,7 +635,7 @@ v2 的 26 个任务模板（`coord/templates/v2.yaml`，v2 N5 完成）已经在
 | W4.4 | J3 争议进规格讨论室：`_after_j3` 的 `needs_ruling` 不再起孤立裁定任务，改开 spec 房间（proposer=J3）；房间结束接受 architect 的 `record_ruling`，并把被阻塞的任务放行；没有一致结论时交异常处理者 | 调度器 + 假 worker 测试 | 一致时按裁定继续，不一致交处理者 | M |
 | W4.5 | J6 的裁判版本进下游输入：spawn 事件与任务上下文记录 judge_version，最终报告列出 | 调度器 | 事件日志与报告 | S |
 | W4.6 | 规则 7 可行性探针：J2 能否按用例分别记录覆盖率（Node inspector 的 `takePreciseCoverage`，Python coverage.py 的 `switch_context`） | 探针脚本 + 结论 | **2026-11-13 结论：已具备**——`run_monolith` 已经在 `judge/coverage_monolith/units/<用例>.json` 按用例记录每个文件的行号；重新分组的算法并入 W4.2 | M |
-| W4.7 | O 阶段 AWS 实测：工具 `measure_aws`（每个候选一个栈、B0/候选 ABAB、`aws-load-client` 锁、CloudWatch 调用次数覆盖检查、噪声规则、费用记录）；默认关闭，`M2S_AWS=1` 才启用 | `coord/aws.py`、`perf.py` | 未启用时行为不变；真实运行前需人确认费用 | L |
+| W4.7 | O 阶段 AWS 实测：工具 `measure_aws`（每个候选一个栈、B0/候选 ABAB、`aws-load-client` 锁、CloudWatch 调用次数覆盖检查、噪声规则、费用记录）；默认关闭，`M2S_AWS=1` 才启用 | `coord/aws.py`、`perf.py` | 未启用时行为不变；真实运行前需人确认费用。**2026-11-16 完成**：`coord/aws.py` + MCP `measure_aws`/`calibrate_aws_noise`，默认 `DISABLED`，测试 `tests/test_coord_aws.py`；真实 AWS 运行仍待人在确认费用后发起 | L |
 | W4.8 | 验收运行：`v2-split` 在 bookstore 和 acmeair 上跑到 C2，开讨论室 | 两个新工作区 | 见下 | L |
 
 | v2 模块 | 编排侧要补的（原始清单，逐项对应上面的工作项） |
@@ -661,9 +662,17 @@ v2 的 26 个任务模板（`coord/templates/v2.yaml`，v2 N5 完成）已经在
   - F2 按包展开（F2-<包>），另有一个 F2-shared：`shared_after_children: true` 让它在全部子任务之后运行，用完整的 `check_provenance` 汇总校验事实库；G1/J1 等 `F2:*` 与 `F2:shared`。
   - I1 按领域展开：新增 `split: domain`，A1 填 `storage/work_packages.json` 的 `impl_packages` 后，按「包 → 函数、目录」创建 I1-<包>，scope 用 `output/lambdas/{app}/{fn}/**`（每函数目录不重叠，可并行），另有 I1-shared 共享层；I2a 等 `I1:*` 与 `I1:shared`。A1 的 scope 加 `storage/work_packages.json`，角色说明新增"填 impl_packages"一节。若 A1 没填（或某个包缺失），`_expand_domain` 用蓝图的 `lambda_functions[].entry_points` 与工作包的 endpoints 机械补齐并记 `impl_packages_fallback` 事件——M3 遗留的 `impl_packages=null` 不再阻塞。
   - 模板/加载器/展开的测试在 `tests/test_coord_split.py`（domain 展开、shared_after_children、v2-split 可加载）。
-  - 暂不拆 J1/D1/G2：裁判资产（`judge/cases/**` 等）与 `delta_assets`、`gap_inventory` 检查都是按整份资产设计的，拆分要先改资产命名与检查（记录为后续项）。
   - F2 的包级子任务都写 `storage/analysis_report.json`，按 scope 冲突串行执行（事实库是单文件）；并行的收益在 I1 的按领域代码编写。
-- 待做（2026-11-13 时的口径）：W4.2 的 J1/D1/G2 拆分（需要先定资产约定）、W4.7（AWS 实测）、W4.8（验收运行 bookstore + acmeair）。**W4.8 已于 2026-11-16 完成，见下。**
+- **W4.2 补完（2026-11-16）：J1/D1/G2 的拆分与资产约定**
+  - **G2 按包 + G2M 合并**：G2 拆成 `G2-<包>` 与 `G2-shared`（`shared_after_children`）；子任务只写 `storage/gaps/<包>.json`（属于本包、`endpoints` 非空的缺口；新条目可省略 id），shared 收无端点/跨包缺口；`G2M`（调度器 `gap_merge`）把 `storage/gaps/*.json` 合并回 `storage/gap_inventory.json`——既有条目按 `key` 保留原 id 与决定，新条目按包顺序分配 `GAP-<n>`，然后 `gap_inventory` 检查收口。新检查 `gap_package`（`gaps.check_package`）校验端点归属、覆盖本包既有条目、id 与证据格式。测试 `tests/test_gaps_packages.py`。
+  - **D1 按领域**：A1 之后按 `impl_packages` 展开 `D1-<领域>`，每个领域写 `verification/delta/events/{fn}/**`，故障场景文件名必须以 `delta-<领域>-` 开头（scope 用 `delta-{pkg}-*.json`，领域之间不共享文件）；自查仍是整份资产的 `delta_assets` dry run。I1 的依赖改为 `D1:*`（同领域优先）。
+  - **J1 按包 + J1-shared**：`J1-<包>` 只写 `judge/cases/<包>/<用例>.json`（不再按接口 slug 建目录），子任务检查 `judge_cases_pkg`（每个函数至少一条用例、id 唯一、spec_refs 非空、目录内 function 属于本包，`judge.check_cases_package`）；`J1-shared` 在所有包之后写 `judge/fixtures/**`、`judge/identities.json`、`judge/faults/**`、`judge/uncovered.json` 等并跑整份 `judge_assets`。J2/A1 改依赖 `J1:*` 与 `J1:shared`。为了让"在另一个族的 shared 子任务之后展开"能写成静态依赖，新增无操作任务 `F2DONE`（`barrier` 动作）与 `expand_after: [F2DONE]`；`_resolve_deps`/启动依赖现在也解析 `<族>:shared`。
+  - 角色说明补了"按包/按领域拆分时"的小节（`m2s-spec-annotator` G2、`m2s-verifier` J1/D1）。
+  - 全流程假 worker 测试 `tests/test_coord_full_flow.py::test_v2_split_expands_f2_and_i1` 覆盖三族的子任务、G2M/J2/I2a 的顺序。
+- **W4.7 完成（2026-11-16）**：`coord/aws.py` 的 `measure_aws` / `calibrate_noise`（MCP 工具 `measure_aws`、`calibrate_aws_noise`）。默认关闭：`M2S_AWS=1` 才启用，否则直接返回 `DISABLED` 且不触碰 AWS。每个候选一个栈（`m2s-<ws>-b0` 保留、候选测完即拆）、ABAB、`aws-load-client` 锁、CloudWatch 改动函数调用次数覆盖检查（未走到的函数记 uncovered、不参与判定）、B0 对 B0 校准的噪声阈值（`perf/aws_noise.json`）、费用记录（`perf/aws_costs.json`）。真实运行前需人确认费用。测试 `tests/test_coord_aws.py`（假 backend，8 项）。**本机未做真实 AWS 运行**。
+- **W2.10 的 token 统计（M4 待办）完成**：OpenHarness 的 `-p` 流在 `assistant_complete` 上带 `usage`（input/output tokens，提交 `e4eb3f0`）；`coord.dispatcher.task_usage` 按任务汇总 `coord/run/<task>-a*/stream.jsonl`，运行报告的任务表新增 token（入/出）列与合计。测试 `tests/test_coord_units.py::test_task_usage_...`。
+- **M3 排期 M4 的工具欠账**：T-1 完成——`verify.py` 新增 `expect.body.raw_equals`（正文逐字符比较，`10000.0`/`1e4`/引号串/尾随空白都判失败；base64 响应不匹配文本契约）；T-2 已在共享 `verify.py` 具备（`repeat` 字段、controller 的 repeats、judge 的比较），只做记录关闭。v1 侧的 `impl_packages` 欠账：`v1-split.yaml` 的 S1 scope 加入 `storage/work_packages.json`，角色说明覆盖 S1/A1，`gate(blueprint)` 新增 CG 检查 `check_impl_packages`（填了就必须把每个蓝图函数恰好映射到一个包；null 仍合法，展开时有 fallback）。
+- **仍未做**：无（M4 的 W4.1–W4.8 与 M3 排期 M4 的工具欠账全部落地；W4.7 的真实 AWS 运行按设计留在人确认费用之后）。
 
 **M4 验收（2026-11-16）：bookstore-m4 + airline-m4 都跑到 C2**
 - 两个新工作区都用 `v2-split`、3 个 worker、开讨论室，`run done` / `dispatcher exit 0`，C2 分别归档到 `evidence/bookstore/bookstore-m4` 与 `evidence/airline-booking/airline-m4`。

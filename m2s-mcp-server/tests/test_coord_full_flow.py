@@ -368,10 +368,12 @@ def _split_report() -> dict:
 
 @slow
 def test_v2_split_expands_f2_and_i1(tmp_path: Path):
-    """W4.2: F2 runs per package (plus the shared consolidator) and I1 expands by
-    A1's impl_packages; I2a waits for the domains and the shared layer."""
+    """W4.2: F2, G2 and J1 run per package (G2 has a merge task, J1 a shared
+    consolidator), D1 and I1 expand by A1's impl_packages; I2a waits for the
+    domains and the shared layer."""
     actions = {name: ok_action(name) for name in ACTIONS if name != "run_monolith"}
     actions["run_monolith"] = fake_j2(tmp_path / "ws")
+    actions["gap_merge"] = ok_action("gap_merge")  # the real merge needs G1's inventory
 
     def f1(spec) -> CheckResult:
         storage = tmp_path / "ws" / "storage"
@@ -392,14 +394,30 @@ def test_v2_split_expands_f2_and_i1(tmp_path: Path):
     d.checks["check_provenance_pkg"] = lambda ws, spec: CheckResult("check_provenance_pkg", True, "fake")
     d.checks["check_provenance"] = lambda ws: CheckResult("check_provenance", True, "fake")
     d.checks["gate_code_pkg"] = lambda ws, spec: CheckResult("gate_code_pkg", True, "fake")
+    d.checks["gap_package"] = lambda ws, spec: CheckResult("gap_package", True, "fake")
+    d.checks["judge_cases_pkg"] = lambda ws, spec: CheckResult("judge_cases_pkg", True, "fake")
+    d.checks["judge_assets"] = lambda ws: CheckResult("judge_assets", True, "fake")
+    d.checks["delta_assets"] = lambda ws: CheckResult("delta_assets", True, "fake")
+    d.checks["delta_assets_domain"] = lambda ws, spec: CheckResult("delta_assets_domain", True, "fake")
 
     assert d.run() == EXIT_DONE, [(t, i["status"]) for t, i in d.board.tasks().items() if i["status"] != "closed"]
 
     tasks = d.board.tasks()
     assert sorted(t for t in tasks if t.startswith("F2-")) == ["F2-alpha", "F2-beta", "F2-gamma", "F2-shared"]
+    assert sorted(t for t in tasks if t.startswith("G2-")) == ["G2-alpha", "G2-beta", "G2-gamma", "G2-shared"]
+    assert sorted(t for t in tasks if t.startswith("J1-")) == ["J1-alpha", "J1-beta", "J1-gamma", "J1-shared"]
+    assert sorted(t for t in tasks if t.startswith("D1-")) == ["D1-alpha", "D1-beta", "D1-gamma"]
     assert sorted(t for t in tasks if t.startswith("I1-")) == ["I1-alpha", "I1-beta", "I1-gamma", "I1-shared"]
 
-    order = [e.get("task") for e in d.events.all() if e["type"] in ("spawn", "action_start")]
+    # "expand": a J1 child starts in recheck and the fake check passes, so it
+    # closes without a spawn; the expansion event still orders it.
+    order = [e.get("task") for e in d.events.all() if e["type"] in ("spawn", "action_start", "expand")]
+    for child in ("G2-alpha", "G2-beta", "G2-gamma", "G2-shared"):
+        assert order.index(child) < order.index("G2M"), child
+    for child in ("J1-alpha", "J1-beta", "J1-gamma", "J1-shared"):
+        assert order.index(child) < order.index("J2"), child
+    for child in ("D1-alpha", "D1-beta", "D1-gamma"):
+        assert order.index(child) < order.index("I1-alpha"), child
     for child in ("I1-alpha", "I1-beta", "I1-gamma", "I1-shared"):
         assert order.index(child) < order.index("I2a"), child
     # A1 fills impl_packages from the blueprint's domains; the instruction lives

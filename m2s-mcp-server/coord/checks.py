@@ -243,6 +243,22 @@ def judge_assets(ws: Path) -> CheckResult:
                        relay="" if ok else "check_judge_assets 报告的问题：\n" + _clip("\n".join(result["errors"])))
 
 
+def judge_cases_pkg(ws: Path, spec: dict[str, Any]) -> CheckResult:
+    """J1:<pkg> (v3 M4/W4.2): one package's cases; J1-shared runs judge_assets."""
+    import judge
+
+    package = str(spec.get("package") or "")
+    try:
+        result = judge.check_cases_package(ws, package, spec.get("functions") or [])
+    except judge.JudgeError as exc:
+        return CheckResult("judge_cases_pkg", False, f"check_cases_package error: {exc}",
+                           relay=f"check_cases_package 报错：{exc}")
+    ok = result["status"] == "PASS"
+    return CheckResult("judge_cases_pkg", ok, f"{result['cases']} cases for package {package}"
+                       + ("" if ok else f", {len(result['errors'])} problems"), detail=result,
+                       relay="" if ok else f"包 {package} 的裁判用例问题：\n" + _clip("\n".join(result["errors"])))
+
+
 def reconcile_classified(ws: Path) -> CheckResult:
     """J3: every difference of judge/reconcile.json is classified (v2 §4.5)."""
     import judge
@@ -293,6 +309,22 @@ def gap_inventory(ws: Path) -> CheckResult:
                        relay="" if ok else "storage/gap_inventory.json 的问题：\n" + _clip("\n".join(result["errors"])))
 
 
+def gap_package(ws: Path, spec: dict[str, Any]) -> CheckResult:
+    """G2:<pkg> (v3 M4/W4.2): one package's share of the gap inventory."""
+    import gaps
+
+    package = str(spec.get("package") or "")
+    try:
+        result = gaps.check_package(ws, package, spec.get("endpoints") or [])
+    except gaps.GapError as exc:
+        return CheckResult("gap_package", False, f"gap package: {exc}",
+                           relay=f"storage/gaps/{package}.json 的问题：{exc}")
+    ok = result["status"] == "PASS"
+    return CheckResult("gap_package", ok, f"{result['gaps']} gaps for package {package}"
+                       + ("" if ok else f", {len(result['errors'])} problems"), detail=result,
+                       relay="" if ok else f"storage/gaps/{package}.json 的问题：\n" + _clip("\n".join(result["errors"])))
+
+
 def gap_decisions(ws: Path) -> CheckResult:
     """A1/A2: every gap has a decision, and storage/DECISIONS.md mentions it."""
     import gaps
@@ -316,6 +348,27 @@ def delta_assets(ws: Path) -> CheckResult:
         return CheckResult("delta_assets", False, f"delta tests: {exc}", relay=f"run_validate(dry_run, assets) 报错：{exc}")
     ok = result.get("status") == "PASS"
     return CheckResult("delta_assets", ok, f"{result.get('cases')} delta cases, {result.get('fault_scenarios')} fault scenarios"
+                       + ("" if ok else f", {len(result.get('schema_errors') or [])} problems"),
+                       detail={k: v for k, v in result.items() if k != "note"},
+                       relay="" if ok else "增量测试的问题：\n" + _clip("\n".join(result.get("schema_errors") or [])))
+
+
+def delta_assets_domain(ws: Path, spec: dict[str, Any]) -> CheckResult:
+    """D1:<domain> (v3 M4/W4.2): this domain's delta tests pass the dry run.
+    The other domains write theirs in parallel, so the "every delta gap is
+    cited" check waits for V3's full run."""
+    import verify
+
+    functions = spec.get("functions") or None
+    try:
+        result = verify.run_validate(str(ws), functions=functions, dry_run=True,
+                                     assets=verify.DELTA_ASSETS, partial=True)
+    except verify.VerifyError as exc:
+        return CheckResult("delta_assets_domain", False, f"delta tests: {exc}",
+                           relay=f"run_validate(dry_run, assets) 报错：{exc}")
+    ok = result.get("status") == "PASS"
+    return CheckResult("delta_assets_domain", ok,
+                       f"{result.get('cases')} delta cases, {result.get('fault_scenarios')} fault scenarios"
                        + ("" if ok else f", {len(result.get('schema_errors') or [])} problems"),
                        detail={k: v for k, v in result.items() if k != "note"},
                        relay="" if ok else "增量测试的问题：\n" + _clip("\n".join(result.get("schema_errors") or [])))
@@ -385,13 +438,16 @@ def judge_unchanged(ws: Path) -> CheckResult:
 
 CHECKS: dict[str, Callable[[Path], CheckResult]] = {
     "gap_inventory": gap_inventory,
+    "gap_package": gap_package,
     "gap_decisions": gap_decisions,
     "delta_assets": delta_assets,
+    "delta_assets_domain": delta_assets_domain,
     "verdict_delta": verdict_delta,
     "j4_report": j4_report,
     "judge_full": judge_full,
     "delta_full": delta_full,
     "judge_assets": judge_assets,
+    "judge_cases_pkg": judge_cases_pkg,
     "judge_unchanged": judge_unchanged,
     "reconcile_classified": reconcile_classified,
     "adapter_map": adapter_map,
