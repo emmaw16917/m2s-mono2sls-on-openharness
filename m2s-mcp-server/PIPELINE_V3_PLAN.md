@@ -681,7 +681,16 @@ v2 的 26 个任务模板（`coord/templates/v2.yaml`，v2 N5 完成）已经在
 - 运行中发现并修掉的调度器缺陷：`63ab894`（J3/J4 的事实修正按端点路由到 F2 包子任务）、`f286ec3`（门阻塞拆分子任务的整个族，而不是族名）、`8c06d7f`（`br` label 截断到 50 字符；崩溃留下的部分展开可续）、`61e37e3`（一个 action 可能重开任务，ready 列表不能跨 action 复用）、`788d9cf`（身份 id 字面值）。
 - 验收口径：v2 方案 V2P-08 指定的两个应用（bookstore、airline-booking）已覆盖；acmeair/MongoDB 仍是 Q5 扩展，不在 M4 内。
 - 顺带收敛：`_expand_family`/`_expand_domain` 只在真正新建了子任务时才打 "expanded to" 日志（此前每轮都刷一行）。
-- 仍未做：W4.2 的 J1/D1/G2 拆分（需要先定资产约定）、W4.7（AWS 实测，真实运行需人确认费用）。
+- W4.2 的 J1/D1/G2 拆分与 W4.7 的工具均已完成；W4.7 的真实 AWS 运行仍待人确认费用。
+
+**M4 后：O 的 AWS 判决模式（2026-11-19 设计定稿，实现待做）**
+
+- **范围**：只改 O。正确性（裁判、增量、等价、覆盖）保持本地 `mode="local"`（无 Docker、无 AWS 费用）；AWS 只提供性能、成本、覆盖。
+- **判决**：主维度 = Lambda 热调用 Duration（CloudWatch/REPORT，剔除冷启动）+ 边际成本/请求（Lambda Duration/GB-秒 + 请求费 + DynamoDB RRU/WRU + SQS，**不含 API Gateway**）；guard = 端到端 p50、p95、冷启动（Init Duration/次数）；覆盖 = 改动函数调用次数 > 0，否则 `INCONCLUSIVE`。含 API Gateway 的总成本只进报告。
+- **规则**：沿用“没有任何维度 worse 且至少一个 better → kept；一好一坏 → pending_human；无显著差异但代理指标更好 → kept_inconclusive；覆盖不到 → INCONCLUSIVE”；RIE 的 0/5/15ms 模拟延迟扫描和 `realistic_latency_rule` 在 AWS 模式下取消，用 B0 对 B0 校准的噪声 + ABAB 代替。
+- **单改动流程**沿用 Docker 时期的做法：基线 = 当前 HEAD（B0 + 已 kept 的改动）；滚动基线栈 + 一个候选栈，B0 栈只用于噪声校准；`aws-load-client` 锁、`calibrate_aws_noise`、≥3 轮 ABAB、每轮 ≥10 个热样本；互不影响的改动可分别对同一基线测。
+- **待实现**：`perf.py` 的 `run_aws_verdict`；`coord/aws.py` 补 Duration/init/p50/p95/边际成本/总成本/覆盖；O 的 prompt 修正“不部署到 AWS”与 `M2S_AWS=1` 的冲突，并把 `load_cmd`/预算传进去；`s5_report`（或新检查）在 AWS 开启时要求每个 kept 改动有 AWS verdict；报告展示 `evidence.aws` 和 advisories。真实 AWS 冒烟需人确认费用。
+- 依据：`PERF_OPTIMIZATION_DESIGN.md` §2.2。
 
 ### M5 对抗评审室【必做，在第一次升级 harness 时做】
 
