@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
+
+import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
@@ -192,12 +195,32 @@ def test_merge_template_missing_part_raises(tmp_path):
         pass
 
 
+def _m2s_reference_root() -> Path:
+    """Where the real reference artifacts live: M2S_REFERENCE_ROOT, else this
+    repo's Mono2Sls-artifacts/M2S, else the author's original absolute path
+    (for the worktree layout where the artifacts live in the main checkout)."""
+    candidates = []
+    if os.environ.get("M2S_REFERENCE_ROOT"):
+        candidates.append(Path(os.environ["M2S_REFERENCE_ROOT"]))
+    candidates += [Path(__file__).resolve().parents[2] / "Mono2Sls-artifacts" / "M2S",
+                   Path(r"D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\M2S")]
+    for path in candidates:
+        if (path / "storage" / "blueprint.json").is_file():
+            return path
+    return candidates[0]
+
+
 def test_merge_matches_real_m2s_reference(tmp_path):
     """Split the REAL M2S blueprint.json and template.yaml into sections/parts
     the way the plan's agents are meant to, then confirm the merge reproduces
     output that gates.py still judges as PASS -- a real round-trip check, not
-    just synthetic fixtures."""
-    m2s_root = Path(r"D:\Emma\MyLab\Mono2SLs\Mono2Sls-artifacts\M2S")
+    just synthetic fixtures. Skips when the reference snapshot is absent
+    (a clone without Mono2Sls-artifacts/M2S)."""
+    m2s_root = _m2s_reference_root()
+    needed = [m2s_root / "storage" / "blueprint.json", m2s_root / "storage" / "analysis_report.json",
+              m2s_root / "output" / "template.yaml", m2s_root / "output" / "lambdas"]
+    if not all(p.exists() for p in needed):
+        pytest.skip(f"reference M2S artifacts not present under {m2s_root}")
     real_blueprint = json.loads((m2s_root / "storage" / "blueprint.json").read_text(encoding="utf-8"))
     real_template = (m2s_root / "output" / "template.yaml").read_text(encoding="utf-8")
 
