@@ -85,8 +85,15 @@ reference this file summarizes.
    FastMCP's `Tool.inputSchema` attribute was renamed to `input_schema` in 2.x, so
    `mcp==2.x` makes every MCP connection silently fail — zero tools registered, no
    visible error. `pip show mcp` and check if this ever regresses). Install:
-   - [`HKUDS/OpenHarness`](https://github.com/HKUDS/OpenHarness) per its own
-     instructions (gives you `oh`).
+   - OpenHarness: clone [`HKUDS/OpenHarness`](https://github.com/HKUDS/OpenHarness),
+     check out **9b2efd7**, then apply the M2S patch series in
+     [`known-issues/openharness-m2s/`](known-issues/openharness-m2s/README.md)
+     (`git am known-issues/openharness-m2s/*.patch`, in filename order; the
+     series was generated from branch `feat/cli-settings-flags` @ `e4eb3f0`).
+     The upstream release lacks the `--settings` / `--mcp-config` behaviour and
+     the read/write path rules the v3 dispatcher relies on: with a stock `oh`
+     the workers cannot submit their tasks and the per-task permission overlays
+     do not apply. The v1 skill path only needs patch 0001 (the GBK stdin fix).
    - `pip install aws-sam-cli cfn-lint boto3 pyyaml` (server-side tooling — `gates.py`,
      `wrap_m2s.py`'s `validate_sam`/`analyze_project`). `_find_cfn_lint()` in
      `wrap_m2s.py` locates `cfn-lint` next to whichever Python interpreter is running
@@ -121,6 +128,9 @@ cd m2s-mcp-server
 python -m pytest tests/ -q   # the offline suite; some tests are opt-in:
                             # M2S_RUN_SLOW=1 (full flows), M2S_RUN_LLM_TESTS=1 (real workers)
 ```
+
+The real-reference merge test reads `Mono2Sls-artifacts/M2S/` (or the directory named
+by `M2S_REFERENCE_ROOT`) and skips when that snapshot is absent.
 
 ## Wiring up the MCP server
 
@@ -216,6 +226,12 @@ workspace after an interruption. `M2S_MAIL=1` (with the `agent_mail` MCP server
 running) enables the notices board and the discussion rooms; the tool prerequisites
 for the dispatcher (`br`, `agent_mail`) are installed by `python -m coord.toolchain
 install` (see `coord/toolchain.py` for the pinned versions and checksums).
+
+The dispatcher requires the **patched** OpenHarness from
+[`known-issues/openharness-m2s/`](known-issues/openharness-m2s/README.md): it passes a
+per-task `--settings` / `--mcp-config` so each worker sees its own scope and the
+`M2S_TASK_ID` environment that `submit_task` needs. With the stock upstream `oh` those
+flags are inert, and the workers fail before they can submit.
 
 ## Contributing a new sample back
 

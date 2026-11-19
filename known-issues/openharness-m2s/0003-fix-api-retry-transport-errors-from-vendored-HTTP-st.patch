@@ -1,0 +1,97 @@
+From 12389f564f1af221006d8d755a93fac19015c46b Mon Sep 17 00:00:00 2001
+From: Wang Emma <wangzhn>
+Date: Mon, 28 Sep 2026 10:41:36 +0800
+Subject: [PATCH 3/7] fix(api): retry transport errors from vendored HTTP
+ stacks (openai 3.x httpx2/httpcore2)
+
+openai 3.x ships its own copies of the HTTP stack as `httpx2` / `httpcore2`,
+whose exceptions are not httpx/httpcore subclasses. A stream dropped
+mid-response ("peer closed connection without sending complete message
+body (incomplete chunked read)") therefore arrived as
+httpx2.RemoteProtocolError, failed the isinstance checks, and ended a long
+multi-agent run on the first occurrence without a single retry.
+
+_is_retryable now also matches transport errors by class name
+(TransportError, NetworkError, ProtocolError, RemoteProtocolError,
+ReadError, ConnectError, *Timeout, ...) within the httpx / httpcore / h11
+families, whatever the module is called, and walks the cause chain.
+
+Reproduced with a local server that sends one SSE chunk and aborts the
+connection: before, RequestFailure without retries; after, the stream is
+retried with backoff.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/openharness/api/openai_client.py | 28 +++++++++++++++++++++++++++-
+ tests/test_api/test_openai_client.py | 12 ++++++++++++
+ 2 files changed, 39 insertions(+), 1 deletion(-)
+
+diff --git a/src/openharness/api/openai_client.py b/src/openharness/api/openai_client.py
+index 178db3d..76634be 100644
+--- a/src/openharness/api/openai_client.py
++++ b/src/openharness/api/openai_client.py
+@@ -45,6 +45,27 @@ BASE_DELAY = 1.0
+ MAX_DELAY = 60.0
+ _MAX_COMPLETION_TOKEN_MODEL_PREFIXES = ("gpt-5", "o1", "o3", "o4")
+ 
++# Transport-level error classes of the httpx / httpcore / h11 families
++# (including vendored copies such as openai 3.x's httpx2 / httpcore2).
++_TRANSPORT_ERROR_NAMES = {
++    "TransportError", "NetworkError", "ProtocolError", "RemoteProtocolError", "LocalProtocolError",
++    "ConnectError", "ReadError", "WriteError", "CloseError", "TimeoutException", "ConnectTimeout",
++    "ReadTimeout", "WriteTimeout", "PoolTimeout",
++}
++_TRANSPORT_MODULE_PREFIXES = ("httpx", "httpcore", "h11")
++
++
++def _is_transport_error(exc: BaseException) -> bool:
++    """True if exc (or its cause chain) is a transient transport error."""
++    seen = 0
++    while exc is not None and seen < 5:
++        for cls in type(exc).__mro__:
++            if cls.__name__ in _TRANSPORT_ERROR_NAMES and cls.__module__.split(".")[0].startswith(_TRANSPORT_MODULE_PREFIXES):
++                return True
++        exc = exc.__cause__ or exc.__context__
++        seen += 1
++    return False
++
+ 
+ def _token_limit_param_for_model(model: str, max_tokens: int) -> dict[str, int]:
+     """Return the correct token limit field for the target OpenAI model.
+@@ -473,7 +494,12 @@ class OpenAICompatibleClient:
+                 return True
+         except ImportError:
+             pass
+-        return False
++        # openai 3.x ships its own copies of the HTTP stack as `httpx2` /
++        # `httpcore2`, whose exceptions are not httpx/httpcore subclasses: a
++        # dropped stream arrived as httpx2.RemoteProtocolError and ended a run
++        # on the first occurrence. Match transport errors by class name within
++        # the httpx/httpcore/h11 families instead of by module.
++        return _is_transport_error(exc)
+ 
+     @staticmethod
+     def _translate_error(exc: Exception) -> OpenHarnessApiError:
+diff --git a/tests/test_api/test_openai_client.py b/tests/test_api/test_openai_client.py
+index ed51f85..35929af 100644
+--- a/tests/test_api/test_openai_client.py
++++ b/tests/test_api/test_openai_client.py
+@@ -536,3 +536,15 @@ class TestRetryClassification:
+ 
+         err = OpenAICompatibleClient._translate_error(httpcore.ReadError(""))
+         assert "ReadError" in str(err)
++
++    def test_vendored_http_stack_errors_are_retryable(self):
++        """openai 3.x raises httpx2 / httpcore2 exceptions (renamed copies
++        of httpx / httpcore), which are not httpx subclasses; a dropped
++        stream arrived as httpx2.RemoteProtocolError and was not retried."""
++        base = type("ProtocolError", (Exception,), {"__module__": "httpcore2._exceptions"})
++        remote = type("RemoteProtocolError", (base,), {"__module__": "httpcore2._exceptions"})
++        wrapped = type("RemoteProtocolError", (Exception,), {"__module__": "httpx2._exceptions"})
++        exc = wrapped("peer closed connection without sending complete message body (incomplete chunked read)")
++        exc.__cause__ = remote("peer closed connection")
++        assert OpenAICompatibleClient._is_retryable(exc)
++        assert not OpenAICompatibleClient._is_retryable(type("RemoteProtocolError", (Exception,), {"__module__": "myapp"})("x"))
+-- 
+2.54.0.windows.1
+

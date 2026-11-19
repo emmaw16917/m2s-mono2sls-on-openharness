@@ -1,0 +1,243 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Serverless application (auto-generated)
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Timeout: 30
+    MemorySize: 512
+    Tracing: Active
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, staging, prod]
+
+Resources:
+  MyApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Ref Environment
+      Cors:
+        AllowMethods: "GET,POST,PUT,DELETE,OPTIONS"
+        AllowHeaders: "'*'"
+        AllowOrigin: "'*'"
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !GetAtt UserPool.Arn
+
+  UserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub '${Environment}-users'
+      UsernameAttributes: [email]
+      AutoVerifiedAttributes: [email]
+      Schema:
+        - Name: email
+          Required: true
+          Mutable: true
+        - Name: name
+          Required: false
+          Mutable: true
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireUppercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          TemporaryPasswordValidityDays: 7
+
+  UserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub '${Environment}-client'
+      UserPoolId: !Ref UserPool
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - AllowRefreshTokenAuth
+        - AllowUserPasswordAuth
+        - AllowAdminUserPasswordAuth
+
+  TodoItems:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub '${AWS::StackName}-todo-items'
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: userId
+          AttributeType: S
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: userId
+          KeyType: HASH
+        - AttributeName: id
+          KeyType: RANGE
+
+# --- SHARED_RESOURCES_METADATA ---
+# has_authentication: true
+# has_database: true
+# has_file_storage: false
+# has_async_flows: false
+# has_shared_layer: false
+# runtime: nodejs22.x
+# lambda_invoke_permissions: []
+# cognito_user_pool_logical_name: UserPool
+# dynamodb_table_logical_names: TodoItems
+# sqs_queue_logical_names: NONE
+# eventbridge_rule_names: NONE
+# --- END METADATA ---
+  # ----- Domain: todo -----
+  TodoListItemsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-todo-list-items'
+      CodeUri: lambdas/todo/todo-list-items/
+      Handler: handler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /item
+            Method: GET
+
+  TodoGetItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-todo-get-item'
+      CodeUri: lambdas/todo/todo-get-item/
+      Handler: handler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /item/{id}
+            Method: GET
+
+  TodoCreateItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-todo-create-item'
+      CodeUri: lambdas/todo/todo-create-item/
+      Handler: handler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /item
+            Method: POST
+
+  TodoUpdateItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-todo-update-item'
+      CodeUri: lambdas/todo/todo-update-item/
+      Handler: handler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /item/{id}
+            Method: PUT
+
+  TodoMarkDoneFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-todo-mark-done'
+      CodeUri: lambdas/todo/todo-mark-done/
+      Handler: handler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /item/{id}/done
+            Method: POST
+
+  TodoDeleteItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-todo-delete-item'
+      CodeUri: lambdas/todo/todo-delete-item/
+      Handler: handler.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref TodoItems
+      Environment:
+        Variables:
+          TODO_TABLE: !Ref TodoItems
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /item/{id}
+            Method: DELETE
+
+# --- FUNCTIONS_METADATA ---
+# total_functions: 6
+# logical_names: TodoListItemsFunction, TodoGetItemFunction, TodoCreateItemFunction, TodoUpdateItemFunction, TodoMarkDoneFunction, TodoDeleteItemFunction
+# --- END METADATA ---
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref UserPool
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID
+    Value: !Ref UserPoolClient
+
+  TodoItemsTableName:
+    Description: DynamoDB TodoItems table name
+    Value: !Ref TodoItems
+
+  TodoItemsTableArn:
+    Description: DynamoDB TodoItems table ARN
+    Value: !GetAtt TodoItems.Arn

@@ -1,0 +1,13 @@
+{
+  "name": "todo-list-items",
+  "version": "1.0.0",
+  "description": "List all todo items for the authenticated user",
+  "main": "handler.js",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.617.0",
+    "@aws-sdk/lib-dynamodb": "^3.617.0"
+  },
+  "engines": {
+    "node": "22.x"
+  }
+}

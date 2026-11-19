@@ -1,0 +1,59 @@
+From 95500829e1417624c4013f58f3112f87502ee44d Mon Sep 17 00:00:00 2001
+From: Wang Emma <wangzhn>
+Date: Wed, 23 Sep 2026 00:46:34 +0800
+Subject: [PATCH 1/7] fix(ui): decode task-worker stdin as UTF-8, not the OS
+ locale codepage
+
+tasks/manager.py:_encode_task_worker_payload always writes a headless task
+worker's stdin as UTF-8 bytes. run_task_worker's read loop consumed it with
+a plain sys.stdin.readline(), which on Windows decodes using the process
+locale/codepage (e.g. GBK/cp936 on a Chinese-locale machine) instead.
+
+Verified locally (subprocess round-trip test) that this silently corrupts
+non-ASCII text rather than merely raising an error: UTF-8 bytes for a given
+CJK string can decode as a *different*, valid-looking but wrong GBK string
+with no exception at all. Other byte sequences are invalid GBK and produce
+lone surrogates via the implicit surrogateescape handler, which later blow
+up as UnicodeEncodeError whenever that text is re-serialized strictly (e.g.
+json.dumps(...).encode("utf-8")) -- this is the crash a background agent
+task hits whenever its spawn prompt or any tool output flowing back through
+this worker contains non-ASCII content.
+
+Fix: reconfigure this worker's stdin to UTF-8/strict before the read loop.
+run_task_worker is exclusively the headless subprocess entry point (never
+attached to an interactive console per its own docstring), so this cannot
+regress real terminal input.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+---
+ src/openharness/ui/app.py | 14 ++++++++++++++
+ 1 file changed, 14 insertions(+)
+
+diff --git a/src/openharness/ui/app.py b/src/openharness/ui/app.py
+index c89dc04..bdd0e70 100644
+--- a/src/openharness/ui/app.py
++++ b/src/openharness/ui/app.py
+@@ -135,6 +135,20 @@ async def run_task_worker(
+     async def _clear_output() -> None:
+         return None
+ 
++    # The task-manager parent always writes this worker's stdin as UTF-8
++    # bytes (see tasks/manager.py:_encode_task_worker_payload). Python's
++    # default text-mode stdin encoding follows the OS locale/codepage
++    # instead (e.g. GBK/cp936 on a Chinese-locale Windows machine), so a
++    # plain sys.stdin.readline() silently mis-decodes any non-ASCII byte,
++    # producing lone surrogates that later blow up as UnicodeEncodeError
++    # once that text is re-serialized. This worker only ever runs as a
++    # headless subprocess (see docstring above), never attached to a real
++    # interactive console, so forcing UTF-8 here is always correct.
++    try:
++        sys.stdin.reconfigure(encoding="utf-8", errors="strict")
++    except (AttributeError, ValueError):
++        pass
++
+     bundle = await build_runtime(
+         cwd=cwd,
+         model=model,
+-- 
+2.54.0.windows.1
+

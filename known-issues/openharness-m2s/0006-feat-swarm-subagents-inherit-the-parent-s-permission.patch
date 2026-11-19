@@ -1,0 +1,650 @@
+From 07404fad4b4912cdf26a2e3abbcb14030942bb88 Mon Sep 17 00:00:00 2001
+From: Wang Emma <wangzhn>
+Date: Fri, 30 Oct 2026 13:39:14 +0800
+Subject: [PATCH 6/7] feat(swarm): subagents inherit the parent's permission
+ overlay and definition limits
+
+A subagent started by the agent tool runs as a --task-worker process that
+only read the global settings.json. A worker restricted through --settings
+could therefore escape its rules by spawning a subagent. The child now
+gets:
+
+- the parent's SettingsOverlay (rebuilt with SettingsOverlay.to_cli_args):
+  path rules, denied commands, writable paths, tool lists and MCP servers;
+- the parent's permission mode, unless the definition sets one;
+- the definition's own limits. disallowed_tools, plus every available tool
+  missing from a tools allowlist, are denied. permissions are granted as
+  allowed tools.
+
+Built-in definitions use Claude Code tool names (Read, file_edit, ...),
+which never matched the registry, so normalize_tool_name maps them to
+read_file, edit_file, ... first. Definition permission modes map to
+OpenHarness modes: bypassPermissions/dontAsk -> full_auto,
+acceptEdits -> default. Previously acceptEdits would have crashed the
+child.
+
+build_inherited_cli_flags no longer shlex-quotes values. The flags are an
+argv for direct exec, and the quotes ended up inside the values (e.g. the
+subagent system prompt).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ src/openharness/config/settings.py            |  17 ++
+ .../coordinator/agent_definitions.py          |  43 +++
+ src/openharness/swarm/spawn_utils.py          |  84 ++++--
+ src/openharness/swarm/subprocess_backend.py   |   4 +
+ src/openharness/swarm/types.py                |  11 +-
+ src/openharness/tools/agent_tool.py           |  18 +-
+ src/openharness/ui/runtime.py                 |   1 +
+ tests/test_swarm/test_teammate_permissions.py | 256 ++++++++++++++++++
+ 8 files changed, 406 insertions(+), 28 deletions(-)
+ create mode 100644 tests/test_swarm/test_teammate_permissions.py
+
+diff --git a/src/openharness/config/settings.py b/src/openharness/config/settings.py
+index 3df5520..462546b 100644
+--- a/src/openharness/config/settings.py
++++ b/src/openharness/config/settings.py
+@@ -1099,6 +1099,23 @@ class SettingsOverlay:
+     def __bool__(self) -> bool:
+         return not self.is_empty()
+ 
++    def to_cli_args(self) -> list[str]:
++        """The CLI flags that rebuild this overlay in a child process (argv form)."""
++        args: list[str] = []
++        if self.patch:
++            args.extend(["--settings", json.dumps(self.patch)])
++        for name in self.allowed_tools:
++            args.extend(["--allowed-tools", name])
++        for name in self.denied_tools:
++            args.extend(["--disallowed-tools", name])
++        if self.mcp_servers:
++            servers = {
++                name: config.model_dump(mode="json", exclude_none=True)
++                for name, config in self.mcp_servers.items()
++            }
++            args.extend(["--mcp-config", json.dumps({"mcpServers": servers})])
++        return args
++
+     def apply_after_load(self, settings: Settings) -> Settings:
+         """Apply the parts that are not a merge patch: tool lists and MCP servers."""
+         updates: dict[str, Any] = {}
+diff --git a/src/openharness/coordinator/agent_definitions.py b/src/openharness/coordinator/agent_definitions.py
+index 338cf6c..b7fbe2e 100644
+--- a/src/openharness/coordinator/agent_definitions.py
++++ b/src/openharness/coordinator/agent_definitions.py
+@@ -945,6 +945,49 @@ def get_all_agent_definitions() -> list[AgentDefinition]:
+     return list(agent_map.values())
+ 
+ 
++#: Claude Code tool names (and a few legacy snake_case spellings used in the
++#: built-in definitions) -> OpenHarness registry names.
++_TOOL_NAME_ALIASES = {
++    "Read": "read_file",
++    "Write": "write_file",
++    "Edit": "edit_file",
++    "MultiEdit": "edit_file",
++    "Glob": "glob",
++    "Grep": "grep",
++    "Bash": "bash",
++    "WebFetch": "web_fetch",
++    "WebSearch": "web_search",
++    "NotebookEdit": "notebook_edit",
++    "Agent": "agent",
++    "Task": "agent",
++    "TodoWrite": "todo_write",
++    "EnterPlanMode": "enter_plan_mode",
++    "ExitPlanMode": "exit_plan_mode",
++    "AskUserQuestion": "ask_user_question",
++    "Skill": "skill",
++    "ToolSearch": "tool_search",
++    "SendMessage": "send_message",
++    "file_read": "read_file",
++    "file_write": "write_file",
++    "file_edit": "edit_file",
++}
++
++
++def normalize_tool_name(name: str) -> str:
++    """Map an agent-definition tool name to the OpenHarness registry name."""
++    return _TOOL_NAME_ALIASES.get(name, name)
++
++
++def resolve_agent_tool_denials(agent: AgentDefinition, available_tools: list[str]) -> list[str]:
++    """Tool names an agent may not use: its ``disallowed_tools`` plus, when
++    ``tools`` is an allowlist, every available tool not on it."""
++    denied = [normalize_tool_name(name) for name in agent.disallowed_tools or []]
++    if agent.tools is not None and "*" not in agent.tools:
++        allowed = {normalize_tool_name(name) for name in agent.tools}
++        denied.extend(name for name in available_tools if name not in allowed)
++    return list(dict.fromkeys(denied))
++
++
+ def get_agent_definition(name: str) -> AgentDefinition | None:
+     """Return the agent definition for *name*, or ``None`` if not found."""
+     for agent in get_all_agent_definitions():
+diff --git a/src/openharness/swarm/spawn_utils.py b/src/openharness/swarm/spawn_utils.py
+index 5a41d4f..bac907d 100644
+--- a/src/openharness/swarm/spawn_utils.py
++++ b/src/openharness/swarm/spawn_utils.py
+@@ -3,9 +3,12 @@
+ from __future__ import annotations
+ 
+ import os
+-import shlex
+ import shutil
+ import sys
++from typing import TYPE_CHECKING
++
++if TYPE_CHECKING:
++    from openharness.config.settings import SettingsOverlay
+ 
+ 
+ # Environment variable to override the teammate command
+@@ -106,6 +109,26 @@ def get_teammate_command() -> str:
+     return "python"
+ 
+ 
++#: Agent-definition permission modes (Claude Code names) -> OpenHarness modes.
++#: ``acceptEdits`` has no OpenHarness equivalent and maps to the stricter
++#: ``default``; headless task workers approve confirmations themselves.
++_TEAMMATE_PERMISSION_MODES = {
++    "default": "default",
++    "acceptEdits": "default",
++    "plan": "plan",
++    "bypassPermissions": "full_auto",
++    "dontAsk": "full_auto",
++    "full_auto": "full_auto",
++}
++
++
++def to_openharness_permission_mode(mode: str | None) -> str | None:
++    """Map an agent-definition or OpenHarness permission mode; None if unknown."""
++    if not mode:
++        return None
++    return _TEAMMATE_PERMISSION_MODES.get(mode)
++
++
+ def build_inherited_cli_flags(
+     *,
+     model: str | None = None,
+@@ -114,6 +137,9 @@ def build_inherited_cli_flags(
+     permission_mode: str | None = None,
+     plan_mode_required: bool = False,
+     settings_path: str | None = None,
++    settings_overlay: SettingsOverlay | None = None,
++    allowed_tools: list[str] | None = None,
++    disallowed_tools: list[str] | None = None,
+     teammate_mode: str | None = None,
+     plugin_dirs: list[str] | None = None,
+     extra_flags: list[str] | None = None,
+@@ -121,11 +147,10 @@ def build_inherited_cli_flags(
+     """Build CLI flags to propagate from the current session to spawned teammates.
+ 
+     Ensures teammates inherit important settings like permission mode, model
+-    selection, and plugin configuration from their parent.
++    selection, and the parent's process-local permission overlay.
+ 
+-    All flag values are shell-quoted with :func:`shlex.quote` to prevent
+-    command injection when the resulting list is later joined into a shell
+-    command string.
++    The flags are an argv list for direct exec (no shell), so values are passed
++    verbatim; quoting them would leave the quotes inside the values.
+ 
+     Args:
+         model: Model override to forward (e.g. ``"claude-opus-4-6"``).
+@@ -133,11 +158,18 @@ def build_inherited_cli_flags(
+         system_prompt_mode: One of ``"replace"``/``"default"`` or ``"append"``.
+             ``append`` maps to ``--append-system-prompt``; anything else uses
+             ``--system-prompt``.
+-        permission_mode: One of ``"bypassPermissions"``, ``"acceptEdits"``, or None.
+-        plan_mode_required: When True, bypass-permissions flag is suppressed
+-            (plan mode takes precedence over bypass for safety).
++        permission_mode: Agent-definition mode (``"bypassPermissions"``,
++            ``"acceptEdits"``, ``"plan"``, ``"dontAsk"``, ``"default"``) or an
++            OpenHarness mode; unknown values are not forwarded.
++        plan_mode_required: When True the teammate runs in plan mode,
++            whatever ``permission_mode`` says.
+         settings_path: Path to a settings JSON file to propagate via
+-            ``--settings``.  Shell-quoted for safety.
++            ``--settings``. Ignored when ``settings_overlay`` carries a patch,
++            because the CLI takes a single ``--settings``.
++        settings_overlay: The parent's ``--settings`` / tool / MCP overlay, so
++            a teammate cannot escape restrictions its parent runs under.
++        allowed_tools: Tool names granted to the teammate (``--allowed-tools``).
++        disallowed_tools: Tool names denied to the teammate (``--disallowed-tools``).
+         teammate_mode: Teammate execution mode (``"auto"``, ``"in_process"``,
+             ``"tmux"``).  Forwarded as ``--teammate-mode`` so tmux teammates
+             use the same mode as the leader.
+@@ -145,7 +177,6 @@ def build_inherited_cli_flags(
+             separate ``--plugin-dir <path>`` flag so inline plugins are
+             visible inside teammate processes.
+         extra_flags: Additional pre-built flag strings to append verbatim.
+-            Callers are responsible for quoting any values in these strings.
+ 
+     Returns:
+         List of CLI flag strings ready to be passed to :mod:`subprocess`.
+@@ -153,41 +184,44 @@ def build_inherited_cli_flags(
+     flags: list[str] = []
+ 
+     # --- Permission mode ---------------------------------------------------
+-    # Plan mode takes precedence over bypass permissions for safety.
+-    if not plan_mode_required:
+-        if permission_mode == "bypassPermissions":
+-            flags.append("--dangerously-skip-permissions")
+-        elif permission_mode == "acceptEdits":
+-            flags.extend(["--permission-mode", "acceptEdits"])
++    # Plan mode takes precedence over any other mode for safety.
++    effective_mode = "plan" if plan_mode_required else to_openharness_permission_mode(permission_mode)
++    if effective_mode:
++        flags.extend(["--permission-mode", effective_mode])
+ 
+     # --- Model override ----------------------------------------------------
+     # "inherit" means use the parent's model via the OPENHARNESS_MODEL env var.
+     if model and model != "inherit":
+-        flags.extend(["--model", shlex.quote(model)])
++        flags.extend(["--model", model])
+ 
+     # --- System prompt override ------------------------------------------
+     # Agent definitions can carry a dedicated worker system prompt. Forward it
+     # explicitly so subprocess teammates preserve their role/personality.
+     if system_prompt:
+         prompt_flag = "--append-system-prompt" if system_prompt_mode == "append" else "--system-prompt"
+-        flags.extend([prompt_flag, shlex.quote(system_prompt)])
+-
+-    # --- Settings path propagation ----------------------------------------
+-    # Ensures teammates load the same settings JSON as the leader process.
+-    if settings_path:
+-        flags.extend(["--settings", shlex.quote(settings_path)])
++        flags.extend([prompt_flag, system_prompt])
++
++    # --- Permission overlay and tool lists ---------------------------------
++    if settings_overlay:
++        flags.extend(settings_overlay.to_cli_args())
++    if settings_path and not (settings_overlay and settings_overlay.patch):
++        flags.extend(["--settings", settings_path])
++    for name in allowed_tools or []:
++        flags.extend(["--allowed-tools", name])
++    for name in disallowed_tools or []:
++        flags.extend(["--disallowed-tools", name])
+ 
+     # --- Plugin directories -----------------------------------------------
+     # Each enabled plugin directory is forwarded individually so that inline
+     # plugins (loaded via --plugin-dir) are available inside teammates.
+     for plugin_dir in plugin_dirs or []:
+-        flags.extend(["--plugin-dir", shlex.quote(plugin_dir)])
++        flags.extend(["--plugin-dir", plugin_dir])
+ 
+     # --- Teammate mode propagation ----------------------------------------
+     # Forwards the session-level teammate mode so tmux-spawned teammates do
+     # not re-detect the mode independently and possibly choose a different one.
+     if teammate_mode:
+-        flags.extend(["--teammate-mode", shlex.quote(teammate_mode)])
++        flags.extend(["--teammate-mode", teammate_mode])
+ 
+     if extra_flags:
+         flags.extend(extra_flags)
+diff --git a/src/openharness/swarm/subprocess_backend.py b/src/openharness/swarm/subprocess_backend.py
+index 0d9ac79..55705b7 100644
+--- a/src/openharness/swarm/subprocess_backend.py
++++ b/src/openharness/swarm/subprocess_backend.py
+@@ -56,7 +56,11 @@ class SubprocessBackend:
+             model=config.model,
+             system_prompt=config.system_prompt,
+             system_prompt_mode=config.system_prompt_mode,
++            permission_mode=config.permission_mode,
+             plan_mode_required=config.plan_mode_required,
++            settings_overlay=config.inherited_overlay,
++            allowed_tools=config.permissions,
++            disallowed_tools=config.disallowed_tools,
+         )
+         # Only inject the inherited teammate env vars when we are also
+         # building the command ourselves. If the caller supplied a custom
+diff --git a/src/openharness/swarm/types.py b/src/openharness/swarm/types.py
+index 9b1292c..1cda77a 100644
+--- a/src/openharness/swarm/types.py
++++ b/src/openharness/swarm/types.py
+@@ -3,7 +3,7 @@
+ from __future__ import annotations
+ 
+ from dataclasses import dataclass, field
+-from typing import TYPE_CHECKING, Literal, Protocol, runtime_checkable
++from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
+ 
+ if TYPE_CHECKING:
+     pass
+@@ -294,6 +294,15 @@ class TeammateSpawnConfig:
+     permissions: list[str] = field(default_factory=list)
+     """Tool permissions to grant this teammate."""
+ 
++    disallowed_tools: list[str] = field(default_factory=list)
++    """Tool names denied to this teammate."""
++
++    permission_mode: str | None = None
++    """Permission mode (agent-definition or OpenHarness name); None inherits nothing."""
++
++    inherited_overlay: Any = None
++    """The parent's SettingsOverlay (--settings / tool / MCP flags), re-applied in the teammate."""
++
+     plan_mode_required: bool = False
+     """Whether this teammate must enter plan mode before implementing."""
+ 
+diff --git a/src/openharness/tools/agent_tool.py b/src/openharness/tools/agent_tool.py
+index e4a29fd..8cc36aa 100644
+--- a/src/openharness/tools/agent_tool.py
++++ b/src/openharness/tools/agent_tool.py
+@@ -6,7 +6,11 @@ import logging
+ 
+ from pydantic import BaseModel, Field
+ 
+-from openharness.coordinator.agent_definitions import get_agent_definition
++from openharness.coordinator.agent_definitions import (
++    get_agent_definition,
++    normalize_tool_name,
++    resolve_agent_tool_denials,
++)
+ from openharness.coordinator.coordinator_mode import get_team_registry
+ from openharness.hooks import HookEvent
+ from openharness.swarm.registry import get_backend_registry
+@@ -65,6 +69,12 @@ class AgentTool(BaseTool):
+         registry = get_backend_registry()
+         executor = registry.get_executor("subprocess")
+ 
++        # The child inherits the parent's process-local overlay (--settings and
++        # friends) so it cannot escape the parent's restrictions, then adds the
++        # definition's own tool limits. Without a definition mode it runs in
++        # the parent's mode.
++        tool_registry = context.metadata.get("tool_registry")
++        available_tools = [tool.name for tool in tool_registry.list_tools()] if tool_registry is not None else []
+         config = TeammateSpawnConfig(
+             name=agent_name,
+             team=team,
+@@ -74,7 +84,11 @@ class AgentTool(BaseTool):
+             model=arguments.model or (agent_def.model if agent_def else None),
+             command=arguments.command,
+             system_prompt=agent_def.system_prompt if agent_def else None,
+-            permissions=agent_def.permissions if agent_def else [],
++            permissions=[normalize_tool_name(name) for name in agent_def.permissions] if agent_def else [],
++            disallowed_tools=resolve_agent_tool_denials(agent_def, available_tools) if agent_def else [],
++            permission_mode=(agent_def.permission_mode if agent_def else None)
++            or context.metadata.get("permission_mode"),
++            inherited_overlay=context.metadata.get("settings_overlay"),
+             task_type=arguments.mode,
+         )
+ 
+diff --git a/src/openharness/ui/runtime.py b/src/openharness/ui/runtime.py
+index c502d8c..258dab6 100644
+--- a/src/openharness/ui/runtime.py
++++ b/src/openharness/ui/runtime.py
+@@ -433,6 +433,7 @@ async def build_runtime(
+             "extra_skill_dirs": normalized_skill_dirs,
+             "extra_plugin_roots": normalized_plugin_roots,
+             "session_id": session_id,
++            "settings_overlay": settings_overlay,
+             "edit_approval_prompt": edit_approval_prompt,
+             "vision_model_config": _resolve_vision_config(settings),
+             "image_generation_config": _resolve_image_generation_config(settings),
+diff --git a/tests/test_swarm/test_teammate_permissions.py b/tests/test_swarm/test_teammate_permissions.py
+new file mode 100644
+index 0000000..c9fe4a1
+--- /dev/null
++++ b/tests/test_swarm/test_teammate_permissions.py
+@@ -0,0 +1,256 @@
++"""Subagents inherit the parent's permission overlay and their definition's limits."""
++
++from __future__ import annotations
++
++import asyncio
++import json
++from pathlib import Path
++
++import pytest
++from typer.testing import CliRunner
++
++import openharness.cli as cli
++from openharness.config.cli_overlay import SettingsFlags
++from openharness.config.settings import SettingsOverlay
++from openharness.coordinator.agent_definitions import (
++    AgentDefinition,
++    get_agent_definition,
++    normalize_tool_name,
++    resolve_agent_tool_denials,
++)
++from openharness.mcp.types import McpHttpServerConfig
++from openharness.swarm.spawn_utils import build_inherited_cli_flags, to_openharness_permission_mode
++from openharness.tasks.manager import BackgroundTaskManager
++from openharness.tasks.types import TaskRecord
++from openharness.tools import create_default_tool_registry
++from openharness.tools.agent_tool import AgentTool, AgentToolInput
++from openharness.tools.base import ToolExecutionContext
++
++
++def _parent_overlay() -> SettingsOverlay:
++    return SettingsOverlay(
++        patch={"permission": {"path_rules": [{"pattern": "*/coord/*", "allow": False}], "writable_paths": ["*/out/*"]}},
++        allowed_tools=("read_file",),
++        denied_tools=("web_fetch",),
++        mcp_servers={"m2s": McpHttpServerConfig(url="http://127.0.0.1:9/mcp/", headers={"X": "1"})},
++    )
++
++
++def _value(flags: list[str], flag: str) -> str:
++    return flags[flags.index(flag) + 1]
++
++
++# --- build_inherited_cli_flags ---
++
++
++def test_flag_values_are_passed_verbatim_for_direct_exec():
++    prompt = "You're the 'reviewer'; check $HOME and \"quotes\"."
++    flags = build_inherited_cli_flags(model="qwen-max", system_prompt=prompt)
++
++    assert _value(flags, "--system-prompt") == prompt
++    assert _value(flags, "--model") == "qwen-max"
++
++
++@pytest.mark.parametrize(
++    ("mode", "expected"),
++    [
++        ("bypassPermissions", "full_auto"),
++        ("dontAsk", "full_auto"),
++        ("acceptEdits", "default"),
++        ("default", "default"),
++        ("plan", "plan"),
++        ("full_auto", "full_auto"),
++        ("bogus", None),
++        (None, None),
++    ],
++)
++def test_permission_modes_map_to_openharness_modes(mode, expected):
++    assert to_openharness_permission_mode(mode) == expected
++    flags = build_inherited_cli_flags(permission_mode=mode)
++    if expected is None:
++        assert "--permission-mode" not in flags
++    else:
++        assert _value(flags, "--permission-mode") == expected
++
++
++def test_plan_mode_required_overrides_permission_mode():
++    flags = build_inherited_cli_flags(permission_mode="bypassPermissions", plan_mode_required=True)
++
++    assert _value(flags, "--permission-mode") == "plan"
++    assert "--dangerously-skip-permissions" not in flags
++
++
++def test_overlay_round_trips_through_cli_flags():
++    overlay = _parent_overlay()
++    flags = build_inherited_cli_flags(settings_overlay=overlay, settings_path="/ignored.json")
++
++    reparsed = SettingsFlags.from_cli(
++        settings=_value(flags, "--settings"),
++        allowed_tools=[_value(flags, "--allowed-tools")],
++        disallowed_tools=[_value(flags, "--disallowed-tools")],
++        mcp_config=[_value(flags, "--mcp-config")],
++    ).to_overlay()
++
++    assert flags.count("--settings") == 1
++    assert reparsed.patch == overlay.patch
++    assert reparsed.allowed_tools == overlay.allowed_tools
++    assert reparsed.denied_tools == overlay.denied_tools
++    assert reparsed.mcp_servers == overlay.mcp_servers
++
++
++def test_settings_path_used_when_overlay_has_no_patch():
++    flags = build_inherited_cli_flags(settings_overlay=SettingsOverlay(denied_tools=("bash",)), settings_path="/s.json")
++
++    assert _value(flags, "--settings") == "/s.json"
++    assert _value(flags, "--disallowed-tools") == "bash"
++
++
++# --- agent definition tool limits ---
++
++
++def test_definition_tool_names_are_normalized():
++    assert normalize_tool_name("Read") == "read_file"
++    assert normalize_tool_name("file_edit") == "edit_file"
++    assert normalize_tool_name("mcp__m2s-server__run_gate") == "mcp__m2s-server__run_gate"
++
++
++def test_allowlist_denies_every_other_available_tool():
++    available = [tool.name for tool in create_default_tool_registry().list_tools()]
++    guide = get_agent_definition("claude-code-guide")
++
++    denied = resolve_agent_tool_denials(guide, available)
++
++    assert {"glob", "grep", "read_file", "web_fetch", "web_search"}.isdisjoint(denied)
++    assert {"bash", "write_file", "edit_file", "agent"} <= set(denied)
++
++
++def test_disallowed_list_uses_registry_names():
++    available = [tool.name for tool in create_default_tool_registry().list_tools()]
++
++    denied = resolve_agent_tool_denials(get_agent_definition("Explore"), available)
++
++    assert {"agent", "exit_plan_mode", "edit_file", "write_file", "notebook_edit"} == set(denied)
++
++
++def test_unrestricted_definitions_deny_nothing():
++    available = ["bash", "read_file"]
++
++    assert resolve_agent_tool_denials(get_agent_definition("general-purpose"), available) == []
++    assert resolve_agent_tool_denials(AgentDefinition(name="m2s-architect", description="d"), available) == []
++
++
++# --- agent tool -> subprocess argv -> child CLI ---
++
++
++@pytest.fixture
++def captured_spawn(monkeypatch, tmp_path: Path) -> dict:
++    captured: dict = {}
++
++    async def _fake_create_agent_task(self, **kwargs):
++        captured.update(kwargs)
++        return TaskRecord(
++            id="task_perm",
++            type="local_agent",
++            status="running",
++            description=str(kwargs["description"]),
++            cwd=str(kwargs["cwd"]),
++            output_file=tmp_path / "task_perm.log",
++            argv=list(kwargs.get("argv") or []),
++        )
++
++    monkeypatch.setattr(BackgroundTaskManager, "create_agent_task", _fake_create_agent_task)
++    monkeypatch.setattr("openharness.swarm.subprocess_backend.get_teammate_command", lambda: "/usr/bin/python3")
++    return captured
++
++
++def _context(tmp_path: Path, **metadata) -> ToolExecutionContext:
++    return ToolExecutionContext(
++        cwd=tmp_path,
++        metadata={"tool_registry": create_default_tool_registry(), **metadata},
++    )
++
++
++def _child_cli_args(argv: list[str]) -> list[str]:
++    """The child's CLI arguments, independent of which interpreter path launches it."""
++    return argv[argv.index("--task-worker"):]
++
++
++def _run_child_cli(args: list[str], monkeypatch) -> dict:
++    captured: dict = {}
++
++    async def fake_run_task_worker(**kwargs):
++        captured.update(kwargs)
++
++    monkeypatch.setattr("openharness.ui.app.run_task_worker", fake_run_task_worker)
++    result = CliRunner().invoke(cli.app, args)
++    assert result.exit_code == 0, result.output
++    return captured
++
++
++def test_subagent_inherits_parent_overlay_and_mode(tmp_path: Path, captured_spawn, monkeypatch):
++    overlay = _parent_overlay()
++    context = _context(tmp_path, settings_overlay=overlay, permission_mode="plan")
++
++    result = asyncio.run(AgentTool().execute(AgentToolInput(description="d", prompt="do it"), context))
++
++    assert result.is_error is False
++    child = _run_child_cli(_child_cli_args(captured_spawn["argv"]), monkeypatch)
++    assert child["permission_mode"] == "plan"
++    child_overlay = child["settings_overlay"]
++    assert child_overlay.patch == overlay.patch
++    assert child_overlay.denied_tools == ("web_fetch",)
++    assert set(child_overlay.mcp_servers) == {"m2s"}
++
++
++def test_subagent_applies_definition_limits_on_top(tmp_path: Path, captured_spawn, monkeypatch):
++    context = _context(tmp_path, settings_overlay=_parent_overlay(), permission_mode="default")
++
++    result = asyncio.run(
++        AgentTool().execute(
++            AgentToolInput(description="d", prompt="look around", subagent_type="claude-code-guide"), context
++        )
++    )
++
++    assert result.is_error is False
++    child = _run_child_cli(_child_cli_args(captured_spawn["argv"]), monkeypatch)
++    # The definition's own mode (dontAsk) wins over the parent's.
++    assert child["permission_mode"] == "full_auto"
++    denied = set(child["settings_overlay"].denied_tools)
++    assert {"web_fetch", "bash", "write_file", "edit_file", "agent"} <= denied
++    assert "read_file" not in denied
++    # The parent's path rules still travel with the child.
++    assert child["settings_overlay"].patch["permission"]["path_rules"][0]["pattern"] == "*/coord/*"
++
++
++@pytest.mark.asyncio
++async def test_subagent_without_overlay_spawns_like_before(tmp_path: Path, captured_spawn):
++    result = await AgentTool().execute(AgentToolInput(description="d", prompt="hi"), _context(tmp_path))
++
++    assert result.is_error is False
++    argv = captured_spawn["argv"]
++    for flag in ("--settings", "--mcp-config", "--disallowed-tools", "--permission-mode"):
++        assert flag not in argv
++
++
++@pytest.mark.asyncio
++async def test_runtime_exposes_overlay_and_mode_to_tools(tmp_path: Path, monkeypatch):
++    from openharness.ui.runtime import build_runtime, close_runtime
++
++    class _StaticApiClient:
++        async def stream_message(self, request):
++            del request
++            if False:
++                yield None
++
++    for name in ("CONFIG", "DATA", "LOGS"):
++        monkeypatch.setenv(f"OPENHARNESS_{name}_DIR", str(tmp_path / name.lower()))
++    overlay = _parent_overlay()
++    bundle = await build_runtime(
++        cwd=str(tmp_path), api_client=_StaticApiClient(), settings_overlay=overlay, permission_mode="plan"
++    )
++    try:
++        assert bundle.engine.tool_metadata["settings_overlay"] is overlay
++        assert bundle.engine.tool_metadata["permission_mode"] == "plan"
++    finally:
++        await close_runtime(bundle)
++    assert json.loads(overlay.to_cli_args()[1]) == overlay.patch
+-- 
+2.54.0.windows.1
+
