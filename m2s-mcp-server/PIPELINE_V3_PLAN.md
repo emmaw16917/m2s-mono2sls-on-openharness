@@ -683,13 +683,19 @@ v2 的 26 个任务模板（`coord/templates/v2.yaml`，v2 N5 完成）已经在
 - 顺带收敛：`_expand_family`/`_expand_domain` 只在真正新建了子任务时才打 "expanded to" 日志（此前每轮都刷一行）。
 - W4.2 的 J1/D1/G2 拆分与 W4.7 的工具均已完成；W4.7 的真实 AWS 运行仍待人确认费用。
 
-**M4 后：O 的 AWS 判决模式（2026-11-19 设计定稿，实现待做）**
+**M4 后：O 的 AWS 判决模式（2026-11-19 设计定稿并实现）**
 
 - **范围**：只改 O。正确性（裁判、增量、等价、覆盖）保持本地 `mode="local"`（无 Docker、无 AWS 费用）；AWS 只提供性能、成本、覆盖。
 - **判决**：主维度 = Lambda 热调用 Duration（CloudWatch/REPORT，剔除冷启动）+ 边际成本/请求（Lambda Duration/GB-秒 + 请求费 + DynamoDB RRU/WRU + SQS，**不含 API Gateway**）；guard = 端到端 p50、p95、冷启动（Init Duration/次数）；覆盖 = 改动函数调用次数 > 0，否则 `INCONCLUSIVE`。含 API Gateway 的总成本只进报告。
 - **规则**：沿用“没有任何维度 worse 且至少一个 better → kept；一好一坏 → pending_human；无显著差异但代理指标更好 → kept_inconclusive；覆盖不到 → INCONCLUSIVE”；RIE 的 0/5/15ms 模拟延迟扫描和 `realistic_latency_rule` 在 AWS 模式下取消，用 B0 对 B0 校准的噪声 + ABAB 代替。
 - **单改动流程**沿用 Docker 时期的做法：基线 = 当前 HEAD（B0 + 已 kept 的改动）；滚动基线栈 + 一个候选栈，B0 栈只用于噪声校准；`aws-load-client` 锁、`calibrate_aws_noise`、≥3 轮 ABAB、每轮 ≥10 个热样本；互不影响的改动可分别对同一基线测。
-- **待实现**：`perf.py` 的 `run_aws_verdict`；`coord/aws.py` 补 Duration/init/p50/p95/边际成本/总成本/覆盖；O 的 prompt 修正“不部署到 AWS”与 `M2S_AWS=1` 的冲突，并把 `load_cmd`/预算传进去；`s5_report`（或新检查）在 AWS 开启时要求每个 kept 改动有 AWS verdict；报告展示 `evidence.aws` 和 advisories。真实 AWS 冒烟需人确认费用。
+- **实现（2026-11-19）**：
+  - `coord/aws.py`：`measure_aws(ref=None)` 直接部署工作树（临时拷贝，不污染 `.aws-sam`）；`Backend` 新增 `pass_metrics`（Lambda 日志 REPORT：调用次数、热 Duration、billed ms、init；DynamoDB RRU/WRU，含 GSI；SQS 请求估算）、`resource_tables`/`resource_queues`、`api_type`、`stack_tags`；结果新增每 pass 的 `lambda`/`units`/`uncovered`、两侧汇总 `sides` 和 `api_type`。测量窗口沿用 §10.1 的纪律：每个 pass 用 `minute_gap` 独占整分钟，REPORT 按 RequestId 去重并以 `until=下一个 pass 开始` 截断，负载结束后统一等 90 秒再读指标。滚动基线：基线栈打 `M2SBaseline=<HEAD sha>` 标签，HEAD 变了就重部署，同一 HEAD 的重复测量才复用。
+  - `perf.py`：新增 `run_aws_verdict`（MCP 工具同名）。主维度 Lambda 热 Duration + 每请求边际成本；guard 端到端 p50/p95 + 冷启动；覆盖不到或热样本 <10 → `INCONCLUSIVE`；含 API Gateway 的总成本只进报告；`budget_usd` 超预算 → `pending_human`；结果写 `perf/verdicts/`。
+  - O 的 prompt：静态的“不部署到 AWS”去掉，按 `M2S_AWS` 生成两段之一；开启时带上 `M2S_AWS_LOAD_CMD` 和 `M2S_AWS_BUDGET_USD`，并要求把 `run_aws_verdict` 结果写进 `evidence.aws`。
+  - `s5_report`：`M2S_AWS=1` 且本次 O 的 spawn 事件记录 `aws: true`（或报告标注 `judged_with: "aws"`、已有改动带 AWS 判决）时，每个本次判过的 kept/kept_inconclusive 改动必须有 `evidence.aws.verdict` 且为 kept/kept_inconclusive；spawn 事件记录启动时的 HEAD，之前已提交的 kept 改动（O-only 重跑旧工作区）不追溯。最终报告展示 `evidence.aws`、advisories 和“哪些层在 AWS 上测”的说明。
+  - 测试：`tests/test_perf_aws.py`（14 项判决映射）、`tests/test_s5_aws.py`（4 项）、`tests/test_coord_aws.py` 的滚动基线用例、`tests/test_coord_units.py` 的 O prompt 条件用例。
+  - **真实 AWS 冒烟仍需人确认费用**（运行方式：`M2S_AWS=1` + `M2S_AWS_LOAD_CMD`，先 `calibrate_aws_noise`）。
 - 依据：`PERF_OPTIMIZATION_DESIGN.md` §2.2。
 
 ### M5 对抗评审室【必做，在第一次升级 harness 时做】

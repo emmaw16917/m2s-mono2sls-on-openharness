@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -209,6 +210,24 @@ def _template_part(n: int) -> Callable[[Path], CheckResult]:
     return check
 
 
+def _o_spawn(ws: Path) -> tuple[bool, str]:
+    """The last O/S5 spawn's AWS flag and the workspace HEAD at that moment.
+    (False, "") when the event log has no such record (an old or copied run)."""
+    path = ws / "coord" / "events.jsonl"
+    last: dict[str, Any] | None = None
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            try:
+                event = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(event, dict) and event.get("type") == "spawn" and event.get("task") in ("O", "S5"):
+                last = event
+    except OSError:
+        return False, ""
+    return (bool(last.get("aws")), str(last.get("head") or "")) if last else (False, "")
+
+
 def s5_report(ws: Path) -> CheckResult:
     """The optimizer's report (v1 S5, v2 O): every kept change has its own commit since the baseline."""
     report = _read_json(ws / "output" / "perf_report.json")
@@ -216,15 +235,47 @@ def s5_report(ws: Path) -> CheckResult:
     if not isinstance(report, dict) or not ((reports / "S5.json").is_file() or (reports / "O.json").is_file()):
         return CheckResult("s5_report", False, "perf_report.json or the stage report missing",
                            relay="output/perf_report.json 或 storage/stage_reports/ 下这个任务的工作报告不存在。")
-    kept = [c.get("id") for c in report.get("changes") or [] if isinstance(c, dict)
-            and c.get("verdict") in ("kept", "kept_inconclusive")]
+    kept_changes = [c for c in report.get("changes") or [] if isinstance(c, dict)
+                    and c.get("verdict") in ("kept", "kept_inconclusive")]
+    kept = [c.get("id") for c in kept_changes]
     has_b0 = subprocess.run(["git", "-C", str(ws), "tag", "--list", "B0"], capture_output=True, text=True).stdout.strip()
     base = "B0" if has_b0 else "v0"
     proc = subprocess.run(["git", "-C", str(ws), "rev-list", "--count", f"{base}..HEAD"], capture_output=True, text=True)
     commits = int(proc.stdout.strip() or 0) if proc.returncode == 0 else 0
-    ok = commits >= len(kept)
-    return CheckResult("s5_report", ok, f"{len(kept)} kept changes, {commits} commits since {base}",
-                       relay="" if ok else f"perf_report.json 里有 {len(kept)} 个保留的改动（{kept}），但 {base} 之后只有 {commits} 个提交；每个保留的改动都要单独提交。")
+    # With AWS judging on (design §2.2) every kept change must carry its AWS verdict;
+    # a kept change whose AWS verdict was revert/pending_human is a mismatch too.
+    # An O-only rerun of an older workspace keeps the changes judged before AWS
+    # mode: the report has neither the marker nor any AWS evidence, and passes.
+    env_aws = os.environ.get("M2S_AWS", "").lower() in ("1", "true", "yes")
+    spawn_aws, spawn_head = _o_spawn(ws)
+    aws_on = env_aws and (spawn_aws or report.get("judged_with") == "aws"
+                          or any(((c.get("evidence") or {}).get("aws") or {}).get("verdict") for c in kept_changes))
+
+    def judged_before_this_attempt(change: dict[str, Any]) -> bool:
+        """A kept change committed before this O worker started is part of its
+        baseline (an O-only rerun of an older workspace): not re-judged."""
+        commit = str(change.get("commit") or "")
+        if not commit or not spawn_head:
+            return False
+        proc = subprocess.run(["git", "-C", str(ws), "merge-base", "--is-ancestor", commit, spawn_head],
+                              capture_output=True, text=True)
+        return proc.returncode == 0
+
+    missing_aws = ([] if not aws_on else
+                   [c.get("id") for c in kept_changes if not judged_before_this_attempt(c)
+                    and (((c.get("evidence") or {}).get("aws") or {}).get("verdict")
+                         not in ("kept", "kept_inconclusive"))])
+    ok = commits >= len(kept) and not missing_aws
+    problems = []
+    if commits < len(kept):
+        problems.append(f"perf_report.json 里有 {len(kept)} 个保留的改动（{kept}），但 {base} 之后只有 {commits} 个提交；每个保留的改动都要单独提交。")
+    if missing_aws:
+        problems.append("M2S_AWS=1 时每个保留的改动都要有 AWS 实测判决：" + "、".join(str(i) for i in missing_aws)
+                        + " 的 evidence.aws 缺失或不是 kept/kept_inconclusive；先跑 run_aws_verdict 再写报告。")
+    summary = f"{len(kept)} kept changes, {commits} commits since {base}"
+    if aws_on:
+        summary += f", {len(kept) - len(missing_aws)} with an AWS verdict"
+    return CheckResult("s5_report", ok, summary, relay="" if ok else "\n".join(problems))
 
 
 def judge_assets(ws: Path) -> CheckResult:

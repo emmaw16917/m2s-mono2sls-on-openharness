@@ -402,7 +402,7 @@ def serverless_config(app: dict, target: str, outputs: dict, resources: dict) ->
 
 
 def collect_metrics(resources: dict, started: float, ended: float, raw_dir: Path | None = None,
-                    until: float | None = None) -> dict:
+                    until: float | None = None, delay: float = 90) -> dict:
     """Lambda REPORT lines from each function's log group, and DynamoDB
     consumed capacity per table and per GSI, for the test window.
 
@@ -411,11 +411,16 @@ def collect_metrics(resources: dict, started: float, ended: float, raw_dir: Path
     pass's invocations get counted twice. DynamoDB metrics only exist per
     minute, so capacity is the sum over the whole minutes [floor(started),
     floor(ended)]: the caller has to keep other traffic (loader, count
-    checks, the next pass) out of those minutes -- see e2e_ec2.minute_gap."""
+    checks, the next pass) out of those minutes -- see e2e_ec2.minute_gap.
+
+    delay: wait before querying (REPORT lines and CloudWatch metrics arrive
+    late); a caller collecting several passes at once can do one wait and
+    pass delay=0 for the rest."""
     until = ended + 60 if until is None else until
     logs = boto3.client("logs", region_name=REGION)
     cw = boto3.client("cloudwatch", region_name=REGION)
-    time.sleep(90)  # REPORT lines and CloudWatch metrics arrive late
+    if delay:
+        time.sleep(delay)
     fns = {}
     rx = re.compile(r"Duration: ([\d.]+) ms\s+Billed Duration: (\d+) ms\s+Memory Size: (\d+) MB\s+Max Memory Used: (\d+) MB(?:\s+Init Duration: ([\d.]+) ms)?")
     for logical, r in resources.items():

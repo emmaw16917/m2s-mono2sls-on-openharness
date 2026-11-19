@@ -8,6 +8,7 @@ itself comes from the agent definition, passed as the system prompt.
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 from typing import Any
 
@@ -52,7 +53,7 @@ TASK_SUMMARIES = {
            "然后自己跑 run_gate(phase=\"template\") 和 validate_sam 自查并修正合并后的模板。",
     "I3": "这一步是角色说明里的 S4：做一致性检查，写 output/consistency_report.json。",
     "O": "在 B0 上做语义保持的性能改动（角色说明里的 S5，先读\"v2 流水线\"一节，它改变了基线和检查）。每个保留的改动单独提交到 WS 的 git；"
-         "写 output/perf_report.json。不部署到 AWS。",
+         "写 output/perf_report.json。",
 }
 
 # v2 role modes (PIPELINE_V2_PLAN.md): the role doc has a section per mode.
@@ -101,6 +102,46 @@ def _feedback_block(feedback: list[dict[str, Any]]) -> str:
     return "\n\n".join(parts)
 
 
+def _o_measurement_note() -> str:
+    """O's measurement section: AWS by default when the run was approved for it."""
+    from coord import aws as aws_mod
+
+    if not aws_mod.enabled():
+        return (
+            "## 性能判决（AWS 实测未开启）\n"
+            "M2S_AWS 不是 1：不要部署到 AWS，也不要调用 measure_aws / run_aws_verdict。"
+            "用 run_rie_verdict（本地 Docker RIE，5 轮：每轮 1 冷 + 30 热）判决；Docker 也不可用时用 "
+            "run_proxy_metrics，并在 perf_report.json 里把它标成低置信度。"
+        )
+    load_cmd = os.environ.get("M2S_AWS_LOAD_CMD", "").strip()
+    budget = os.environ.get("M2S_AWS_BUDGET_USD", "").strip()
+    lines = [
+        "## 性能判决（AWS 实测已开启）",
+        "M2S_AWS=1：O 的每个候选改动用真 AWS 实测判决（PERF_OPTIMIZATION_DESIGN.md §2.2）。",
+        "- 只有性能判决走 AWS。语义保持的检查照旧先在本地做完：run_gate、run_validate、run_equivalence、run_coverage。",
+        "- 先跑一次 calibrate_aws_noise 拿噪声阈值（同一工作区只需一次）。",
+        "- 每个改动单独测：提交前在工作树上调用 run_aws_verdict(benchmark=..., baseline=\"HEAD\")；一个改动一条基准，"
+        "互相有影响的改动分开测。",
+        "- 判据：Lambda 热调用 Duration 和每请求边际成本（Lambda 时长 + 请求 + DynamoDB + SQS，不含 API Gateway）为主；"
+        "端到端 p50、p95 和冷启动是 guard，明显变差就 pending_human；负载没走到的函数判 INCONCLUSIVE，先修负载再判。"
+        "总成本（含 API Gateway）只写报告，不参与判决；不再做 0/5/15ms 的模拟时延扫描。",
+        "- 调用 run_aws_verdict 之前可以先跑 run_proxy_metrics（快、免费）；代理指标更好时传 proxy_better=true，"
+        "AWS 无显著差异才会判 kept_inconclusive。",
+        "- 只有 kept / kept_inconclusive 才提交这个改动；revert 就退回；pending_human 和 INCONCLUSIVE 原样写进 "
+        "perf_report.json 的 evidence 和 stage report，交给人。",
+        "- 把 run_aws_verdict 返回的 verdict、dimensions、guards、cost、saved_to 记进 output/perf_report.json 对应改动的 "
+        "evidence.aws；报告顶层写 \"judged_with\": \"aws\"。",
+        "- 不要自己改 M2S_AWS 或绕过预算；费用只在人批准后产生。",
+    ]
+    if load_cmd:
+        lines.append(f"- 负载命令（直接传给 run_aws_verdict 的 load_cmd）：`{load_cmd}`")
+    else:
+        lines.append("- 环境里没有 M2S_AWS_LOAD_CMD：先用 report_blocked 说明缺少负载命令，不要自己编一个去压测。")
+    if budget:
+        lines.append(f"- 预算（run_aws_verdict 的 budget_usd）：{budget}；估计超过它就判 pending_human。")
+    return "\n".join(lines)
+
+
 def worker_prompt(spec: TaskSpec, ws: Path, monolith: Path, attempt: int,
                   feedback: list[dict[str, Any]], extra: str = "") -> str:
     summary = (MODE_SUMMARIES.get(spec.mode or "") or TASK_SUMMARIES.get(spec.id)
@@ -117,6 +158,8 @@ def worker_prompt(spec: TaskSpec, ws: Path, monolith: Path, attempt: int,
         "## 绝对路径\n" + "\n".join(paths),
         "## 任务\n" + summary + (f"\n\n{extra.strip()}" if extra.strip() else ""),
     ]
+    if spec.id == "O":
+        sections.append(_o_measurement_note())
     if spec.line == "impl":
         sections.append(IMPL_NOTE)
     if spec.extra.get("package") == "shared":

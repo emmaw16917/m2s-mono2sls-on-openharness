@@ -44,12 +44,24 @@ class FakeBackend:
     def invocations(self, functions, start, end):
         return {logical: self.counts.get(logical, 0) for logical in functions}
 
+    def resource_tables(self, stack):
+        return ["stack-table"]
+
+    def pass_metrics(self, functions, tables, queues, start, end, until):
+        counts = {logical: self.counts.get(logical, 0) for logical in functions}
+        lam = {logical: {"invocations": n, "duration_sum_ms": 0.0, "warm_count": n, "warm_duration_sum_ms": 0.0,
+                         "duration_mean_ms": 0.0, "billed_ms": 0, "init_count": 0, "init_mean_ms": 0.0}
+               for logical, n in counts.items()}
+        return {"lambda": lam, "units": {"rru": 0.0, "wru": 0.0, "sqs_requests": 0}, "invocations": counts}
+
 
 @pytest.fixture
 def wired(monkeypatch):
     monkeypatch.setenv("M2S_AWS", "1")
     monkeypatch.setattr(aws, "changed_functions", lambda ws, b, r: ["fn1"])
     monkeypatch.setattr(aws, "logical_names", lambda ws, ref, dirs: {"fn1": "Fn1"})
+    monkeypatch.setattr(aws, "_minute_gap", lambda: None)
+    monkeypatch.setattr(aws, "METRICS_DELAY_S", 0)
 
 
 def test_disabled_by_default_and_touches_nothing(tmp_path: Path, monkeypatch):
@@ -96,6 +108,83 @@ def test_measure_without_a_change_does_not_touch_aws(tmp_path: Path, monkeypatch
     backend = FakeBackend({})
     result = aws.measure_aws(tmp_path, "cand", load_cmd="true", backend=backend)
     assert result["status"] == "NO_CHANGES" and backend.deployed == []
+
+
+def test_the_baseline_stack_follows_head(tmp_path, wired, monkeypatch):
+    """The rolling baseline must be redeployed when HEAD moved since it was
+    deployed; reusing a stale stack would compare the change against old code."""
+    class RollingBackend(FakeBackend):
+        def __init__(self, tag):
+            super().__init__({"b0": [100.0] * 20, "candidate": [80.0] * 20})
+            self.tag = tag
+            self.tags_seen = {}
+
+        def deploy(self, ws, ref, stack, log, variant="opt", tags=None):
+            super().deploy(ws, ref, stack, log, variant)
+            self.tags_seen[stack] = dict(tags or {})
+
+        def stack_tags(self, stack):
+            return {"M2SBaseline": self.tag} if stack in self.tags_seen else {}
+
+    monkeypatch.setattr(aws, "_commit_sha", lambda ws, ref: "sha-new")
+    stale = RollingBackend("sha-old")
+    stale.exists = True
+    aws.measure_aws(tmp_path, "cand", load_cmd="true", repeats=1, backend=stale)
+    baseline_stack = [s for s, _, _ in stale.deployed if s.endswith("-b0")]
+    assert baseline_stack and stale.tags_seen[baseline_stack[0]]["M2SBaseline"] == "sha-new"
+
+    fresh = RollingBackend("sha-new")
+    fresh.exists = True
+    # The baseline stack was already deployed and tagged at the current HEAD.
+    fresh.stack_tags = lambda stack: {"M2SBaseline": "sha-new"} if stack.endswith("-b0") else {}
+    aws.measure_aws(tmp_path, "cand", load_cmd="true", repeats=1, backend=fresh)
+    assert not any(s.endswith("-b0") for s, _, _ in fresh.deployed)
+
+
+def test_measure_aggregates_lambda_duration_units_and_api_type(tmp_path, wired):
+    """The verdict needs more than client samples: Duration/Init from Lambda
+    REPORT lines, DynamoDB units and the API type are aggregated per side."""
+    class MetricsBackend(FakeBackend):
+        def pass_metrics(self, functions, tables, queues, start, end, until):
+            return {"lambda": {"Fn1": {"invocations": 100, "duration_sum_ms": 400.0, "warm_count": 98,
+                                       "warm_duration_sum_ms": 392.0, "duration_mean_ms": 4.0, "billed_ms": 400,
+                                       "init_count": 2, "init_mean_ms": 300.0}},
+                    "units": {"rru": 10.0, "wru": 5.0, "sqs_requests": 3},
+                    "invocations": {"Fn1": 100}}
+
+        def api_type(self, ws, ref):
+            return "http"
+
+    backend = MetricsBackend({"b0": [100.0] * 20, "candidate": [80.0] * 20})
+    result = aws.measure_aws(tmp_path, "cand", load_cmd="true", repeats=2, backend=backend)
+    side = result["sides"]["b0"]
+    assert side["invocations"] == 200 and side["duration_sum_ms"] == 800.0 and side["billed_ms"] == 800.0
+    assert side["warm_count"] == 196 and side["duration_mean_ms"] == 4.0
+    assert side["init_count"] == 4 and side["init_mean_ms"] == 300.0
+    assert side["rru"] == 20.0 and side["wru"] == 10.0 and side["sqs_requests"] == 6
+    assert result["api_type"] == "http"
+    assert result["baseline_sha"] == ""
+
+
+def test_changed_functions_sees_an_untracked_candidate_file(tmp_path):
+    """A change may only add a new file; git diff would miss it, git ls-files
+    --others catches it (otherwise measure_aws says NO_CHANGES)."""
+    import subprocess
+
+    def git(*args):
+        subprocess.run(["git", "-C", str(tmp_path), *args], check=True, capture_output=True, text=True)
+
+    git("init")
+    git("config", "user.email", "t@example.com")
+    git("config", "user.name", "t")
+    fn = tmp_path / "output" / "lambdas" / "bookstore" / "books-get"
+    fn.mkdir(parents=True)
+    (fn / "handler.js").write_text("exports.handler = () => {};\n", encoding="utf-8")
+    git("add", "-A")
+    git("commit", "-m", "b0")
+    git("tag", "B0")
+    (fn / "cache.js").write_text("module.exports = {};\n", encoding="utf-8")
+    assert aws.changed_functions(tmp_path.resolve(), "B0", None) == ["books-get"]
 
 
 def test_compare_drops_cold_samples_and_uses_the_threshold():

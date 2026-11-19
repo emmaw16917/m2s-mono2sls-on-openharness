@@ -68,7 +68,7 @@ class WorkerJob:
         return f"{short}-{self.task_id}-a{self.attempt}"
 
     def env(self) -> dict[str, str]:
-        return {
+        out = {
             "M2S_WORKSPACE": str(self.ws),
             "M2S_COORD_DIR": str(self.coord_dir),
             "M2S_TASK_ID": self.task_id,
@@ -79,6 +79,12 @@ class WorkerJob:
             **self.extra_env,
             "PYTHONUTF8": "1",
         }
+        # The MCP server is started with this env, so the AWS switch and the
+        # O measurement settings have to travel here too (v3, design §2.2).
+        for name in ("M2S_AWS", "M2S_AWS_LOAD_CMD", "M2S_AWS_BUDGET_USD"):
+            if name in os.environ:
+                out[name] = os.environ[name]
+        return out
 
 
 @dataclass

@@ -595,6 +595,10 @@ class Dispatcher:
         self.events.append("spawn", task=spec.id, attempt=attempt, worker=job.worker_name, pid=handle.pid,
                            started=handle.started, timeout_s=job.timeout_s, run_dir=str(handle.run_dir),
                            snapshot=snapshot, feedback_items=len(feedback),
+                           # s5_report reads these: which changes this O attempt judged
+                           # (commits after `head`) and whether AWS judging was on.
+                           head=_git(self.ws, "rev-parse", "HEAD").stdout.strip(),
+                           aws=os.environ.get("M2S_AWS", "").lower() in ("1", "true", "yes"),
                            facts_version=(self._facts_state() or {}).get("version"), judge_version=self._judge_version())
         self.log(f"{spec.id}: started {job.worker_name} (pid {handle.pid})")
 
