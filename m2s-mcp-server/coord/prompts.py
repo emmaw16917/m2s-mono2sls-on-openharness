@@ -120,7 +120,8 @@ def _o_measurement_note() -> str:
         "M2S_AWS=1：O 的每个候选改动用真 AWS 实测判决（PERF_OPTIMIZATION_DESIGN.md §2.2）。",
         "- 只有性能判决走 AWS。语义保持的检查照旧先在本地做完，并且用 `mode=\"local\"`（不需要 Docker、不花钱）："
         "run_judge(mode=\"local\")、run_validate(mode=\"local\")、run_coverage(mode=\"local\")、run_equivalence(mode=\"diff\")。",
-        "- 先跑一次 calibrate_aws_noise 拿噪声阈值（同一工作区只需一次）。",
+        "- 噪声阈值默认 0.10（没有 perf/aws_noise.json 时工具用它）。只有环境变量 M2S_AWS_CALIBRATE=1 时，"
+        "才先跑 calibrate_aws_noise（它会多部署一个 B0 栈并多跑几轮负载；省钱/冒烟时跳过）。",
         "- 每个改动单独测：提交前在工作树上调用 run_aws_verdict(benchmark=..., baseline=\"HEAD\")；一个改动一条基准，"
         "互相有影响的改动分开测。",
         "- 判据：Lambda 热调用 Duration 和每请求边际成本（Lambda 时长 + 请求 + DynamoDB + SQS，不含 API Gateway）为主；"
