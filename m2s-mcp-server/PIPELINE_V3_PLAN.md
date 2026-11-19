@@ -694,7 +694,8 @@ v2 的 26 个任务模板（`coord/templates/v2.yaml`，v2 N5 完成）已经在
   - `perf.py`：新增 `run_aws_verdict`（MCP 工具同名）。主维度 Lambda 热 Duration + 每请求边际成本；guard 端到端 p50/p95 + 冷启动；覆盖不到或热样本 <10 → `INCONCLUSIVE`；含 API Gateway 的总成本只进报告；`budget_usd` 超预算 → `pending_human`；结果写 `perf/verdicts/`。
   - O 的 prompt：静态的“不部署到 AWS”去掉，按 `M2S_AWS` 生成两段之一；开启时带上 `M2S_AWS_LOAD_CMD` 和 `M2S_AWS_BUDGET_USD`，并要求把 `run_aws_verdict` 结果写进 `evidence.aws`。
   - `s5_report`：`M2S_AWS=1` 且本次 O 的 spawn 事件记录 `aws: true`（或报告标注 `judged_with: "aws"`、已有改动带 AWS 判决）时，每个本次判过的 kept/kept_inconclusive 改动必须有 `evidence.aws.verdict` 且为 kept/kept_inconclusive；spawn 事件记录启动时的 HEAD，之前已提交的 kept 改动（O-only 重跑旧工作区）不追溯。最终报告展示 `evidence.aws`、advisories 和“哪些层在 AWS 上测”的说明。
-  - 测试：`tests/test_perf_aws.py`（14 项判决映射）、`tests/test_s5_aws.py`（4 项）、`tests/test_coord_aws.py` 的滚动基线用例、`tests/test_coord_units.py` 的 O prompt 条件用例。
+  - 负载与数据：`measure_aws` 的环境带 `M2S_AWS_OUTPUTS`/`M2S_AWS_RESOURCES`/`M2S_AWS_WS`/`M2S_AWS_BENCHMARK`；`seed_cmd`（`M2S_AWS_SEED_CMD`）在每个栈部署后、测量前运行一次。参考实现 `perf-tools/aws_load.py` 复用 e2e 的 Cognito 会话，HTTP benchmark 重复发请求，SQS benchmark 按轮发送 `sqs.records`（每轮换 orderId）。
+  - 测试：`tests/test_perf_aws.py`（判决映射、benchmark/seed 传递）、`tests/test_s5_aws.py`、`tests/test_coord_aws.py` 的滚动基线与 seed/load 环境、`tests/test_coord_units.py` 的 O prompt 条件用例、`tests/test_aws_load.py`（占位符替换、表名映射、HTTP/SQS 分发）。
   - **真实 AWS 冒烟仍需人确认费用**（运行方式：`M2S_AWS=1` + `M2S_AWS_LOAD_CMD`，先 `calibrate_aws_noise`）。
 - 依据：`PERF_OPTIMIZATION_DESIGN.md` §2.2。
 

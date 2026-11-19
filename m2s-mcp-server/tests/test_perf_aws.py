@@ -132,6 +132,21 @@ def test_a_budget_overrun_needs_a_person(ws, aws_on, monkeypatch):
     assert r["verdict"] == "pending_human" and "budget" in r["reason"]
 
 
+def test_the_benchmark_and_seed_command_reach_measure_aws(ws, aws_on, monkeypatch):
+    seen = {}
+
+    def fake_measure(*args, **kwargs):
+        seen.update(kwargs)
+        return measured(dur=1000.0, cand_dur=500.0)
+
+    monkeypatch.setattr(aws_mod, "measure_aws", fake_measure)
+    monkeypatch.setenv("M2S_AWS_SEED_CMD", "seed-cmd")
+    perf.run_aws_verdict(str(ws), "b1", load_cmd="load")
+    assert seen["seed_cmd"] == "seed-cmd"
+    assert seen["load_env"]["M2S_AWS_BENCHMARK"] == "perf/benchmarks/books-get/b1.json"
+    assert seen["load_env"]["M2S_AWS_WS"] == str(ws.resolve())
+
+
 def test_disabled_without_the_env_flag(ws, monkeypatch):
     monkeypatch.setattr(aws_mod, "enabled", lambda: False)
     r = perf.run_aws_verdict(str(ws), "b1", load_cmd="x")

@@ -359,6 +359,7 @@ def lambda_handler(event, context):
 下面的工作流程仍然适用，只是基线和检查不同：
 
 - **基线是 B0**，不是 v0：下文所有的 `v0` 都读作 `B0`（`git -C WS tag` 里有 `B0`）。工作报告写 `storage/stage_reports/O.json`；
+- **AWS 判决模式下，本地检查用 `mode="local"`**（不需要 Docker、不花钱）：`run_judge(mode="local")`、`run_validate(mode="local")`、`run_coverage(mode="local")`；`run_equivalence(mode="diff")` 的模式参数含义不变。
 - **第 4 节第 3 步的三项检查换成下面四项**，受影响的函数 = 改了代码的函数，都要跑完：
   1. `mcp__m2s-server__run_judge(functions=[...])`：要求 `PASS`。冻结的裁判，比较的是单体的实际行为；
   2. `mcp__m2s-server__run_validate(functions=[...], assets="verification/delta")`：要求 `PASS`。这个函数没有增量测试时返回 `total: 0`，算通过；

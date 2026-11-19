@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import functools
 import json
+import os
 import re
 import shutil
 import statistics
@@ -715,7 +716,7 @@ def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", late
 
 def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load_cmd: str | None = None,
                     repeats: int = 3, budget_usd: float = 0.0, proxy_better: bool = False,
-                    backend: Any = None) -> dict[str, Any]:
+                    seed_cmd: str | None = None, backend: Any = None) -> dict[str, Any]:
     """Judge one O candidate on real AWS. Primary dimensions: Lambda warm
     Duration and marginal cost (Lambda + requests + DynamoDB + SQS); guards:
     end-to-end p50/p95 and cold start. Correctness is the local checks' job;
@@ -732,9 +733,12 @@ def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load
     errs = check_benchmark(model, b)
     if errs:
         return {"status": "FAIL", "schema_errors": errs}
+    seed_cmd = seed_cmd or os.environ.get("M2S_AWS_SEED_CMD") or None
     try:
         res = aws_mod.measure_aws(ws, candidate="candidate", ref=None, baseline_ref=baseline, baseline_label="head",
-                                  load_cmd=load_cmd, repeats=repeats, backend=backend)
+                                  load_cmd=load_cmd, repeats=repeats, seed_cmd=seed_cmd,
+                                  load_env={"M2S_AWS_WS": str(ws), "M2S_AWS_BENCHMARK": str(b.get("_file") or "")},
+                                  backend=backend)
     except Exception as exc:  # noqa: BLE001 -- a measurement failure must come back as data
         return {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}
     if res.get("status") not in ("PASS", "INCONCLUSIVE"):

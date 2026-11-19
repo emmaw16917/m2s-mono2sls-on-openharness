@@ -654,7 +654,7 @@ def calibrate_aws_noise(load_cmd: str = "", repeats: int = 3) -> str:
 
 @mcp.tool()
 def run_aws_verdict(benchmark: str, baseline: str = "HEAD", load_cmd: str = "", repeats: int = 3,
-                    budget_usd: float = 0.0, proxy_better: bool = False) -> str:
+                    budget_usd: float = 0.0, proxy_better: bool = False, seed_cmd: str = "") -> str:
     """O (v3, PERF_OPTIMIZATION_DESIGN.md §2.2): one A/B for the current
     change -- the working tree against <baseline> -- measured on real AWS, and
     the verdict from it. M2S_AWS=1 is required and a run spends money; a person
@@ -674,7 +674,11 @@ def run_aws_verdict(benchmark: str, baseline: str = "HEAD", load_cmd: str = "", 
     deployed baseline.
 
     load_cmd: a command run once per pass; it reads M2S_AWS_TARGET (stack
-    endpoint) and writes {"samples": [milliseconds]} to $M2S_AWS_OUT.
+    endpoint) and writes {"samples": [milliseconds]} to $M2S_AWS_OUT. The
+    environment also carries M2S_AWS_OUTPUTS, M2S_AWS_RESOURCES, M2S_AWS_WS
+    and M2S_AWS_BENCHMARK for a benchmark-aware loader.
+    seed_cmd: run once per stack after deployment and before the passes, with
+    the same environment. Defaults to M2S_AWS_SEED_CMD from the environment.
     budget_usd: >0 turns an estimated measurement cost above it into
     pending_human instead of a mechanical verdict.
     proxy_better: for the local proxy metrics -- with no significant AWS
@@ -685,7 +689,8 @@ def run_aws_verdict(benchmark: str, baseline: str = "HEAD", load_cmd: str = "", 
     """
     try:
         return json.dumps(perf.run_aws_verdict(str(_workspace()), benchmark, baseline, load_cmd or None,
-                                               repeats, budget_usd, proxy_better), ensure_ascii=False)
+                                               repeats, budget_usd, proxy_better, seed_cmd or None),
+                          ensure_ascii=False)
     except verify.VerifyError as exc:
         return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
 

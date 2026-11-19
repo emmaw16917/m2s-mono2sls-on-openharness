@@ -61,6 +61,7 @@ class Backend(Protocol):
     def deploy(self, ws: Path, ref: str | None, stack: str, log: Path, variant: str = "opt",
                tags: dict[str, str] | None = None) -> None: ...
     def outputs(self, stack: str) -> dict[str, str]: ...
+    def stack_resources(self, stack: str) -> dict[str, dict[str, str]]: ...
     def delete(self, stack: str, log: Path) -> None: ...
     def run_load(self, cmd: str, env: dict[str, str], out: Path, timeout_s: int) -> list[float]: ...
     def invocations(self, functions: dict[str, str], start: float, end: float) -> dict[str, int]: ...
@@ -111,6 +112,16 @@ class AwsBackend:
 
         outputs, _ = e2e_aws.stack_info(stack)
         return outputs
+
+    def stack_resources(self, stack: str) -> dict[str, dict[str, str]]:
+        """Logical id -> {type, physical}; the load/seed command maps benchmark
+        table names (CartTable, ...) to the deployed tables."""
+        import e2e_aws
+
+        _, resources = e2e_aws.stack_info(stack)
+        return {logical: {"type": str(r.get("type") or ""), "physical": str(r.get("physical") or "")}
+                for logical, r in resources.items() if isinstance(r, dict)
+                and r.get("type") and r.get("physical")}
 
     def delete(self, stack: str, log: Path) -> None:
         import e2e_aws
@@ -389,6 +400,7 @@ def _minute_gap() -> None:
 
 def measure_aws(ws: Path | str, candidate: str, *, ref: str | None = "HEAD", baseline_ref: str = "B0",
                 baseline_label: str = "b0", load_cmd: str | None = None, repeats: int = 2, keep: bool = False,
+                seed_cmd: str | None = None, load_env: dict[str, str] | None = None,
                 backend: Backend | None = None, out_dir: Path | None = None) -> dict[str, Any]:
     """Measure one candidate against the baseline on AWS (ABAB). Default off:
     without M2S_AWS=1 it returns DISABLED before touching AWS. ref=None deploys
@@ -448,7 +460,10 @@ def measure_aws(ws: Path | str, candidate: str, *, ref: str | None = "HEAD", bas
         pass_of = getattr(backend, "pass_metrics", None)
         tables_of = getattr(backend, "resource_tables", None)
         queues_of = getattr(backend, "resource_queues", None)
+        stack_resources = getattr(backend, "stack_resources", None)
         resource_cache: dict[tuple[str, str], list[str]] = {}
+        resources_cache: dict[str, dict[str, dict[str, str]]] = {}
+        outputs_by_side = {"b0": base_outputs, "candidate": cand_outputs}
 
         def resources_of(stack: str, kind: str) -> list[str]:
             key = (stack, kind)
@@ -460,7 +475,34 @@ def measure_aws(ws: Path | str, candidate: str, *, ref: str | None = "HEAD", bas
                     resource_cache[key] = []
             return resource_cache[key]
 
+        def resources_on_stack(stack: str) -> dict[str, dict[str, str]]:
+            if stack not in resources_cache:
+                try:
+                    resources_cache[stack] = stack_resources(stack) if callable(stack_resources) else {}
+                except Exception:  # noqa: BLE001 -- seeding needs it, so empty is honest
+                    resources_cache[stack] = {}
+            return resources_cache[stack]
+
+        def stack_env(side: str, stack: str, pass_no: str | None = None) -> dict[str, str]:
+            env = {"M2S_AWS_TARGET": target[side], "M2S_AWS_SIDE": side, "M2S_AWS_REGION": REGION,
+                   "M2S_AWS_OUTPUTS": json.dumps(outputs_by_side[side], ensure_ascii=False),
+                   "M2S_AWS_RESOURCES": json.dumps(resources_on_stack(stack), ensure_ascii=False),
+                   **(load_env or {})}
+            if pass_no:
+                env["M2S_AWS_PASS"] = pass_no
+            return env
+
         with coord_locks.hold_count("aws-load-client", owner="measure_aws"):
+            if seed_cmd:
+                # Seed each side once, before its first pass; the pass's minute
+                # gap then keeps these writes out of the measured minutes.
+                for side, stack in order:
+                    proc = subprocess.run(seed_cmd, shell=True, env={**os.environ, **stack_env(side, stack)},
+                                          capture_output=True, text=True, timeout=30 * 60)
+                    if proc.returncode != 0:
+                        raise MeasurementError(f"seed command failed for {side} (exit {proc.returncode}): "
+                                               f"{proc.stderr[-800:]}")
+                    passes.append({"note": f"seeded {side} via {seed_cmd}"})
             for i in range(max(1, repeats)):
                 pair = order if i % 2 == 0 else list(reversed(order))
                 for side, stack in pair:
@@ -468,8 +510,7 @@ def measure_aws(ws: Path | str, candidate: str, *, ref: str | None = "HEAD", bas
                     if callable(pass_of):
                         _minute_gap()  # a pass's DynamoDB minutes belong to it alone
                     t0 = time.time()
-                    samples = backend.run_load(load_cmd, {"M2S_AWS_TARGET": target[side], "M2S_AWS_SIDE": side,
-                                                          "M2S_AWS_PASS": str(i + 1)}, out, 30 * 60)
+                    samples = backend.run_load(load_cmd, stack_env(side, stack, str(i + 1)), out, 30 * 60)
                     t1 = time.time()
                     passes.append({"pass": i + 1, "side": side, "stack": stack, "samples": samples,
                                    "summary": latency_summary(_warm(samples)),
