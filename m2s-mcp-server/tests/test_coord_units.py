@@ -181,6 +181,46 @@ def test_worker_prompt_carries_the_v1_spawn_elements(tmp_path: Path):
     assert IMPL_NOTE not in v2
 
 
+def test_o_prompt_measurement_section_follows_the_aws_flag(tmp_path: Path, monkeypatch):
+    """O judges on AWS only when the run was approved for it; the prompt must
+    not carry a static "no AWS" sentence (design §2.2)."""
+    template = load_template("v2-split")
+    o = template.get("O")
+    monkeypatch.delenv("M2S_AWS", raising=False)
+    local = worker_prompt(o, tmp_path / "ws", tmp_path / "mono", 1, [])
+    assert "不要部署到 AWS" in local and "run_aws_verdict" in local and "run_rie_verdict" in local
+    monkeypatch.setenv("M2S_AWS", "1")
+    monkeypatch.setenv("M2S_AWS_LOAD_CMD", "load.sh --rate 50")
+    monkeypatch.setenv("M2S_AWS_BUDGET_USD", "3.5")
+    aws = worker_prompt(o, tmp_path / "ws", tmp_path / "mono", 1, [])
+    assert "不要部署到 AWS" not in aws
+    assert "run_aws_verdict" in aws and "AWS 实测已开启" in aws
+    assert "load.sh --rate 50" in aws and "3.5" in aws
+    assert "evidence.aws" in aws and "calibrate_aws_noise" in aws
+    other = worker_prompt(template.get("I1"), tmp_path / "ws", tmp_path / "mono", 1, [])
+    assert "run_aws_verdict" not in other
+
+
+def test_an_o_prompt_without_a_load_command_says_to_block(tmp_path: Path, monkeypatch):
+    template = load_template("v2-split")
+    monkeypatch.setenv("M2S_AWS", "1")
+    monkeypatch.delenv("M2S_AWS_LOAD_CMD", raising=False)
+    text = worker_prompt(template.get("O"), tmp_path / "ws", tmp_path / "mono", 1, [])
+    assert "report_blocked" in text and "M2S_AWS_LOAD_CMD" in text
+
+
+def test_worker_env_carries_the_aws_settings(tmp_path: Path, monkeypatch):
+    """The m2s-server process gets job.env(); without these the server would
+    answer DISABLED even though the run is approved for AWS."""
+    monkeypatch.setenv("M2S_AWS", "1")
+    monkeypatch.setenv("M2S_AWS_LOAD_CMD", "load.sh --rate 50")
+    monkeypatch.delenv("M2S_AWS_BUDGET_USD", raising=False)
+    job = WorkerJob("O", 1, "m2s-perf-optimizer", tmp_path / "ws", tmp_path / "ws" / "coord", "R", "p", (), 10, 10.0)
+    env = job.env()
+    assert env["M2S_AWS"] == "1" and env["M2S_AWS_LOAD_CMD"] == "load.sh --rate 50"
+    assert "M2S_AWS_BUDGET_USD" not in env
+
+
 def test_worker_settings_scope_and_isolation(tmp_path: Path):
     template = load_template("v1")
     spec = template.get("S2")

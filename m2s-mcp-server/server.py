@@ -653,6 +653,44 @@ def calibrate_aws_noise(load_cmd: str = "", repeats: int = 3) -> str:
 
 
 @mcp.tool()
+def run_aws_verdict(benchmark: str, baseline: str = "HEAD", load_cmd: str = "", repeats: int = 3,
+                    budget_usd: float = 0.0, proxy_better: bool = False) -> str:
+    """O (v3, PERF_OPTIMIZATION_DESIGN.md §2.2): one A/B for the current
+    change -- the working tree against <baseline> -- measured on real AWS, and
+    the verdict from it. M2S_AWS=1 is required and a run spends money; a person
+    approves that first.
+
+    Primary dimensions: Lambda warm Duration and marginal cost per request
+    (Lambda duration + requests + DynamoDB units + SQS; no API Gateway). Guards:
+    end-to-end p50 and p95 (must not get clearly worse) and cold start. A
+    function the load never invoked makes the run INCONCLUSIVE. No 0/5/15 ms
+    latency sweep -- real AWS supplies the round-trip latency. Total cost
+    including API Gateway is computed and reported, never judged.
+
+    The baseline follows HEAD (stack <ws>-head, tagged with its commit SHA and
+    redeployed when HEAD moves, so each change is compared against the code it
+    is actually based on); the candidate stack is deleted after the ABAB
+    passes unless it is kept for the run. Repeats at the same HEAD reuse the
+    deployed baseline.
+
+    load_cmd: a command run once per pass; it reads M2S_AWS_TARGET (stack
+    endpoint) and writes {"samples": [milliseconds]} to $M2S_AWS_OUT.
+    budget_usd: >0 turns an estimated measurement cost above it into
+    pending_human instead of a mechanical verdict.
+    proxy_better: for the local proxy metrics -- with no significant AWS
+    difference and improving proxies, the verdict is kept_inconclusive.
+
+    Returns: JSON string {status, verdict, reason, dimensions, guards, cost,
+        sides, uncovered, saved_to, ...}.
+    """
+    try:
+        return json.dumps(perf.run_aws_verdict(str(_workspace()), benchmark, baseline, load_cmd or None,
+                                               repeats, budget_usd, proxy_better), ensure_ascii=False)
+    except verify.VerifyError as exc:
+        return json.dumps({"status": "ERROR", "error": str(exc)}, ensure_ascii=False)
+
+
+@mcp.tool()
 def update_ledger() -> str:
     """Fold output/perf_report.json (its rule_scan and changes) into the
     cross-application rule ledger m2s-mcp-server/perf-rules/ledger.json.

@@ -710,6 +710,129 @@ def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", late
 
 
 # ---------------------------------------------------------------------------
+# AWS verdict (PERF_OPTIMIZATION_DESIGN.md §2.2, O only)
+# ---------------------------------------------------------------------------
+
+def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load_cmd: str | None = None,
+                    repeats: int = 3, budget_usd: float = 0.0, proxy_better: bool = False,
+                    backend: Any = None) -> dict[str, Any]:
+    """Judge one O candidate on real AWS. Primary dimensions: Lambda warm
+    Duration and marginal cost (Lambda + requests + DynamoDB + SQS); guards:
+    end-to-end p50/p95 and cold start. Correctness is the local checks' job;
+    this tool only measures. Requires M2S_AWS=1 and a load command."""
+    ws = Path(workspace).resolve()
+    from coord import aws as aws_mod
+
+    if not aws_mod.enabled():
+        return {"status": "DISABLED", "note": "M2S_AWS=1 is required; a real run needs a person to approve the cost"}
+    if not load_cmd:
+        return {"status": "ERROR", "error": "load_cmd is required (reads M2S_AWS_TARGET, writes {'samples': [ms]} to $M2S_AWS_OUT)"}
+    model = Model(ws)
+    b = load_benchmarks(ws, [benchmark])[0]
+    errs = check_benchmark(model, b)
+    if errs:
+        return {"status": "FAIL", "schema_errors": errs}
+    try:
+        res = aws_mod.measure_aws(ws, candidate="candidate", ref=None, baseline_ref=baseline, baseline_label="head",
+                                  load_cmd=load_cmd, repeats=repeats, backend=backend)
+    except Exception as exc:  # noqa: BLE001 -- a measurement failure must come back as data
+        return {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}
+    if res.get("status") not in ("PASS", "INCONCLUSIVE"):
+        return {"status": res.get("status", "ERROR"), "error": res.get("note") or res.get("error"),
+                "measured": res}
+    fn = b["function"]
+    if fn not in model.functions:
+        return {"status": "FAIL", "error": f"benchmark function {fn!r} is not in output/template.yaml"}
+    mem = int(model.functions[fn]["memory"])
+    arch = model.functions[fn].get("architecture", "x86_64")
+    p = _prices()
+    gb = p["lambda_gb_second_arm64"] if arch == "arm64" else p["lambda_gb_second"]
+    api = res.get("api_type", "rest")
+    api_price = p["api_gateway_http_request"] if api == "http" else p["api_gateway_rest_request"]
+
+    def side_cost(side: str) -> dict[str, float]:
+        s = res["sides"][side]
+        inv, req = s.get("invocations", 0), s.get("requests", 0)
+        # Billed ms (REPORT, includes init) is the cost basis; older records only have Duration.
+        lam = float(s.get("billed_ms") or s.get("duration_sum_ms", 0.0)) / 1000.0 * mem / 1024.0 * gb
+        req_fee = inv * p["lambda_request"]
+        ddb = s.get("rru", 0) * p["dynamodb_read_request_unit"] + s.get("wru", 0) * p["dynamodb_write_request_unit"]
+        sqs = s.get("sqs_requests", 0) * p["sqs_request"]
+        marginal = lam + req_fee + ddb + sqs
+        gw = req * api_price
+        return {"marginal_usd": round(marginal, 9), "total_usd": round(marginal + gw, 9),
+                "marginal_per_request": round(marginal / req, 9) if req else 0.0,
+                "total_per_request": round((marginal + gw) / req, 9) if req else 0.0,
+                "api_gateway_usd": round(gw, 9), "requests": req,
+                "lambda_usd": round(lam, 9), "dynamodb_usd": round(ddb, 9), "sqs_usd": round(sqs, 9)}
+
+    cost = {"b0": side_cost("b0"), "candidate": side_cost("candidate")}
+    threshold = float(res.get("noise_threshold", 0.10))
+
+    def direction(base: float, cand: float) -> str:
+        if not base:
+            return "unknown"
+        delta = (cand - base) / base
+        return "better" if delta < -threshold else "worse" if delta > threshold else "no_diff"
+
+    base_s, cand_s = res["sides"]["b0"], res["sides"]["candidate"]
+    dims = {"latency": direction(base_s["duration_mean_ms"], cand_s["duration_mean_ms"]),
+            "cost": direction(cost["b0"]["marginal_per_request"], cost["candidate"]["marginal_per_request"])}
+    v = res.get("verdict") or {}
+    p50_guard = direction((v.get("base") or {}).get("p50", 0), (v.get("candidate") or {}).get("p50", 0))
+    p95_guard = direction((v.get("base") or {}).get("p95", 0), (v.get("candidate") or {}).get("p95", 0))
+    base_init, cand_init = int(base_s.get("init_count", 0)), int(cand_s.get("init_count", 0))
+    if base_init and cand_init:
+        cold_guard = direction(base_s.get("init_mean_ms", 0), cand_s.get("init_mean_ms", 0))
+    elif cand_init:
+        cold_guard = "worse"   # the change introduced cold starts the baseline did not have
+    elif base_init:
+        cold_guard = "better"
+    else:
+        cold_guard = "unknown"
+
+    def warm_samples(side: str) -> int:
+        s = res["sides"][side]
+        return int(s["warm_count"]) if "warm_count" in s else int(s.get("invocations", 0))
+
+    small_aws = any(warm_samples(side) < 10 for side in ("b0", "candidate"))
+    guards = {"p50": p50_guard, "p95": p95_guard, "cold_start": cold_guard,
+              "small_samples": bool(v.get("small_samples")) or small_aws}
+    uncovered = res.get("uncovered") or []
+    if uncovered:
+        verdict, reason = "INCONCLUSIVE", f"the load never reached {uncovered}; fix the load before judging"
+    elif guards["small_samples"]:
+        verdict, reason = "INCONCLUSIVE", "fewer than 10 warm samples on one side"
+    elif any(d == "worse" for d in dims.values()) and any(d == "better" for d in dims.values()):
+        verdict, reason = "pending_human", "trade-off: one primary dimension better, one worse"
+    elif any(d == "worse" for d in dims.values()):
+        verdict, reason = "revert", "a primary dimension got clearly worse"
+    elif any(d == "worse" for d in (guards["p50"], guards["p95"], guards["cold_start"])):
+        verdict, reason = "pending_human", "a guard (p50/p95/cold start) got clearly worse"
+    elif any(d == "better" for d in dims.values()):
+        verdict, reason = "kept", "no primary dimension worse and at least one clearly better"
+    elif proxy_better:
+        verdict, reason = "kept_inconclusive", "AWS shows no significant difference; proxies improve and nothing got worse"
+    else:
+        verdict, reason = "revert", "no primary dimension clearly better"
+    if budget_usd and (cost["b0"]["total_usd"] + cost["candidate"]["total_usd"]) > budget_usd:
+        verdict, reason = "pending_human", (f"measurement cost estimate {cost['b0']['total_usd'] + cost['candidate']['total_usd']:.4f} "
+                                            f"over the budget {budget_usd}; the decision needs a person")
+    result = {"status": "OK", "benchmark": benchmark, "function": fn, "baseline": baseline,
+              "verdict": verdict, "reason": reason, "dimensions": dims, "guards": guards,
+              "cost": cost, "sides": res["sides"], "uncovered": uncovered, "noise_threshold": threshold,
+              "api_type": api, "budget_usd": budget_usd, "measured": res,
+              "method": {"repeats": repeats, "primary": "Lambda warm Duration + marginal cost per request",
+                         "guards": "end-to-end p50/p95 + cold start", "cost": "marginal judged; total incl. API Gateway reported"}}
+    out = ws / "perf" / "verdicts"
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / f"{benchmark}-aws-{time.strftime('%Y%m%d-%H%M%S')}.json"
+    path.write_text(json.dumps(result, indent=2, ensure_ascii=False), encoding="utf-8")
+    result["saved_to"] = str(path.relative_to(ws)).replace("\\", "/")
+    return result
+
+
+# ---------------------------------------------------------------------------
 # Ledger (§8.3)
 # ---------------------------------------------------------------------------
 

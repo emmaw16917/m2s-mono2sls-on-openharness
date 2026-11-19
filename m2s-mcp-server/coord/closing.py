@@ -50,12 +50,18 @@ def _environment_lines(ws: Path) -> list[str]:
     meta = judged.get("meta") or {}
     delta = _read(ws / "verification" / "verdict_delta.json") or {}
     baseline = _read(ws / "verification" / "fault_baseline_B0.json") or {}
-    return [f"- 裁判的预期（单体）：本机进程，DynamoDB 后端 {oracle.get('backend')}。",
-            f"- 裁判（目标）：{meta.get('mode')}，后端 {meta.get('backend')}，判定 {judged.get('status')}，代码 {meta.get('code')}。",
-            f"- 增量测试：{delta.get('mode')}，后端 {delta.get('backend')}，判定 {delta.get('status')}（{delta.get('passed')}/{delta.get('total')}），"
-            f"代码 {delta.get('code_state')}。",
-            f"- 故障行为基准 B0：{baseline.get('runtime')}，{len(baseline.get('observations') or {})} 次运行。",
-            "- 这些都是本机检验：RIE 容器和 DynamoDB Local 或 dynalite，没有部署到 AWS。"]
+    perf = _read(ws / "output" / "perf_report.json") or {}
+    aws = [c for c in perf.get("changes") or [] if isinstance(c, dict)
+           and ((c.get("evidence") or {}).get("aws") or {}).get("verdict")]
+    lines = [f"- 裁判的预期（单体）：本机进程，DynamoDB 后端 {oracle.get('backend')}。",
+             f"- 裁判（目标）：{meta.get('mode')}，后端 {meta.get('backend')}，判定 {judged.get('status')}，代码 {meta.get('code')}。",
+             f"- 增量测试：{delta.get('mode')}，后端 {delta.get('backend')}，判定 {delta.get('status')}（{delta.get('passed')}/{delta.get('total')}），"
+             f"代码 {delta.get('code_state')}。",
+             f"- 故障行为基准 B0：{baseline.get('runtime')}，{len(baseline.get('observations') or {})} 次运行。",
+             "- 正确性检查是本机检验：RIE 容器和 DynamoDB Local 或 dynalite。"]
+    lines.append(f"- 性能判决：{len(aws)} 个改动有 AWS 实测（同一区域部署、B0 与候选交替测量，候选栈测完拆除；"
+                 "正确性检查不在 AWS 上做）。" if aws else "- 性能判决也是本机（RIE / 代理指标），没有部署到 AWS。")
+    return lines
 
 
 def _gap_lines(ws: Path) -> list[str]:
@@ -79,8 +85,22 @@ def _perf_lines(ws: Path) -> list[str]:
     for c in changes:
         counts[str(c.get("verdict"))] = counts.get(str(c.get("verdict")), 0) + 1
     lines = ["- 改动请求 " + (f"{len(changes)} 个：" + "，".join(f"{k} {v}" for k, v in sorted(counts.items())) if changes else "0 个。")]
+
+    def aws_suffix(change: dict[str, Any]) -> str:
+        aws = (change.get("evidence") or {}).get("aws") or {}
+        if not aws.get("verdict"):
+            return ""
+        dims, guards = aws.get("dimensions") or {}, aws.get("guards") or {}
+        return (f"；AWS 实测 {aws['verdict']}：Duration {dims.get('latency', '?')}，边际成本 {dims.get('cost', '?')}"
+                f"，guard p50 {guards.get('p50', '?')} / p95 {guards.get('p95', '?')} / 冷启动 {guards.get('cold_start', '?')}")
+
     lines += [f"- 保留 {c.get('id')}（{c.get('verdict')}）：{str(c.get('summary') or c.get('proposal') or c.get('source') or '')[:200]}"
+              + aws_suffix(c)
               for c in changes if c.get("verdict") in ("kept", "kept_inconclusive")]
+    advisories = [a for a in perf.get("advisories") or [] if isinstance(a, dict)]
+    if advisories:
+        lines.append(f"- 建议（advisories，未实施）{len(advisories)} 条：")
+        lines += [f"  - {str(a.get('diagnosis') or a.get('summary') or a.get('proposal') or '')[:200]}" for a in advisories]
     return lines
 
 

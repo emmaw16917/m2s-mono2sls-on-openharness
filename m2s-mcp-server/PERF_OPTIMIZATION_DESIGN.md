@@ -143,7 +143,8 @@ handler 代码
 
 | 情况 | 判决 |
 |---|---|
-| 本地正确性 / 冲突 / RSS / 预算否决 | `revert` |
+| 本地正确性 / 冲突 / RSS 否决 | `revert` |
+| 测量费用估计超过 `budget_usd` | `pending_human`（钱已经花了，结果交给人判断） |
 | AWS 覆盖不到改动函数 | `INCONCLUSIVE`（先修负载） |
 | Lambda Duration 或边际成本明显 worse（超噪声） | `revert` |
 | 没有任何维度 worse，且 Duration / 边际成本至少一个明显 better | `kept` |
@@ -167,6 +168,10 @@ handler 代码
 - `run_rie_verdict` 保留为无 AWS / 离线模式：Docker 可用时沿用，不可用时按 §3.5 只给代理指标并标低置信度。
 
 **函数内细节的作用**：Duration 只回答“快了多少”。LLM 的改进建议（REQ 的 `diagnosis` 与 `advisories`）还要引用函数内证据——代理指标的调用次数/顺序深度/热 CPU、CloudWatch 的 Duration 分位与 init、DynamoDB 容量、日志，以及 X-Ray 开启时的子段耗时（如果权限允许）——再结合代码阅读。每条建议都要在 `perf_report` 里给出 metric/value/evidence；架构类建议只进 `advisories`，O 不能直接实施。
+
+**实现（2026-11-19）**：`perf.run_aws_verdict`（MCP 工具 `run_aws_verdict`）按上面的判决表和 guard 出结果；`coord.aws.measure_aws(ref=None)` 部署工作树，基线栈以 `M2SBaseline=<HEAD sha>` 标签跟随 HEAD（HEAD 变了自动重部署，同一 HEAD 的重复测量才复用）；O 的 prompt 按 `M2S_AWS` 生成“AWS 实测已开启/未开启”两段之一，并把 `M2S_AWS_LOAD_CMD`、`M2S_AWS_BUDGET_USD` 传下去；`s5_report` 在 `M2S_AWS=1` 且本次 O 的 spawn 事件记录了 `aws: true`（或报告标注 `judged_with: "aws"`、已有改动带 AWS 判决）时，要求本次判过、仍保留的改动都有 `evidence.aws.verdict`；spawn 事件同时记录启动时的 HEAD，本次 O 启动前已提交的 kept 改动（O-only 重跑旧工作区）不追溯。真实 AWS 冒烟要人确认费用后执行。
+
+**测量窗口的纪律**（沿用 `PERF_OPTIMIZATION.md` §10.1 的教训）：每个 pass 先等到下一个整分钟再开始（`minute_gap`），相邻 pass 不共享 DynamoDB 的分钟桶；Lambda 指标取自各函数日志里的 REPORT 行、按 RequestId 去重、以 `until=下一个 pass 开始` 截断；DynamoDB 容量同时统计 GSI；SQS 请求按“发送 + 2×接收”（接收后假设删除一次）估算。判决用的 Duration 只算热调用；成本用 REPORT 的 billed ms（含 init）。所有窗口都在负载结束后统一等待 90 秒再读取。
 
 ---
 

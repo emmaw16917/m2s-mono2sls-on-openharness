@@ -10,7 +10,7 @@ model: inherit
 
 改动由你来做，**判决由工具来做**：
 - 改动有没有破坏行为：`run_validate`、`run_equivalence`、`run_coverage`；
-- 有没有变快：`run_rie_verdict`。
+- 有没有变快：`run_rie_verdict`（`M2S_AWS=1` 时换成 `run_aws_verdict`，见"工具"一节）。
 
 你不能自己声明"有效"或"等价"。证据不足的改动一律回滚，宁可一个都不保留。改动的数量不是目标。
 
@@ -367,7 +367,8 @@ def lambda_handler(event, context):
 - **分诊**：把分诊表里的 `run_validate` 读作"第 1、2 项"，`run_equivalence` 读作第 3 项，`run_coverage` 读作第 4 项。**裁判判失败（第 1 项）一律是代码问题**：裁判的期望是单体的实际行为，不存在"测试写错了"。按"代码问题"处理，修一次，还不行就回滚。第 2 项失败、第 3 项 `EQUIVALENT` 的，才可能是增量测试的问题，判 `blocked_by_test`；
 - **第 5 节收尾的全量回归**换成 `run_judge()` 和 `run_validate(assets="verification/delta")`，两项都要 `PASS`。不通过就回退你的全部提交（`git -C WS checkout B0 -- output` 之后提交），如实报告；
 - `blocked_*` 的改动这个阶段没有人复核，把它们留在报告里，不要自己重试；
-- **不部署到 AWS**，性能判决仍然用本机的 `run_proxy_metrics` 和 `run_rie_verdict`。
+- **第 5 步的性能判决用哪种实测，看 prompt**：`M2S_AWS=1` 时，上文的 `run_rie_verdict` 换成 `run_aws_verdict`（真 AWS，判据见"工具"一节；本地四项检查不变、先做完）；没有开启时**不部署到 AWS**，仍用本机的 `run_proxy_metrics` 和 `run_rie_verdict`。
+- `M2S_AWS=1` 时，报告顶层写 `"judged_with": "aws"`，每个保留的改动必须在 `evidence.aws` 里带上 `run_aws_verdict` 的 `verdict`、`dimensions`、`guards`、`cost` 和结果文件路径；`s5_report` 会检查这一点（O-only 重跑旧工作区时，旧改动不追溯）。
 
 ## 工作流程
 
@@ -481,7 +482,7 @@ v0 是验收过的版本，所以用"和 v0 等不等价"来区分是代码的�
                  "R1b": {"hits": 1, "locations": ["output/lambdas/flights-query/handler.js:31-44"], "not_applicable": []},
                  "R6": {"hits": 0, "locations": []}, "R8": {"hits": 1, "locations": ["output/lambdas/flights-query/handler.js:20-60"]}}
    ```
-   每个 `changes[]` 都写 `fix_attempts`（0 或 1）；经过复核的写 `review`。`evidence` 放入相应工具返回的关键数据：代理指标前后对比、`rie` 各延迟下的结果、`init`、`cost`、`equivalence`、`regression`、`coverage_of_changed_lines`。`run_rie_verdict` 保存的完整结果在 `perf/verdicts/` 下，报告里写出文件路径即可。
+   每个 `changes[]` 都写 `fix_attempts`（0 或 1）；经过复核的写 `review`。`evidence` 放入相应工具返回的关键数据：代理指标前后对比、`rie` 各延迟下的结果、`init`、`cost`、`equivalence`、`regression`、`coverage_of_changed_lines`；`M2S_AWS=1` 时再放 `aws`（`run_aws_verdict` 的 `verdict`、`dimensions`、`guards`、`cost`、`uncovered`）。`run_rie_verdict` / `run_aws_verdict` 保存的完整结果在 `perf/verdicts/` 下，报告里写出文件路径即可。
 3. `mcp__m2s-server__update_ledger()`：它根据 `perf_report.json` 机械地更新仓库里的规则台账，不要手写台账。
 4. `git -C WS add perf output/perf_report.json && git -C WS commit -m "perf: report"`。
 5. 写工作报告 `WS/storage/stage_reports/S5.json`，格式同其他阶段，另外写明 kept / reverted / pending_human / blocked_by_test / blocked_by_coverage 各多少个。有 `blocked_*` 的改动时，把它们列在 `S5.json` 的 `blocked` 里（REQ id、类型、用例或未覆盖的行、补丁路径），主 Agent 靠它安排复核。
@@ -512,7 +513,7 @@ REQ 来自 spec 放宽申请时（prompt 会写明，并给出 architect 的 SI 
 2. **写请求**：照常写 `perf/requests/REQ-n.json`，加上 `spec_relaxation` 字段（格式见设计文档 §9.4），`semantic_class` 写 `semantic`。
 3. **写报告**：在 `perf_report.json` 的 `changes` 里加一条，`verdict: "pending_spec"`，`spec_relaxation: {"ruling": "pending", "targets": [...]}`。本轮**不改代码**，也不提交补丁。
 4. 主 Agent 会把申请交给 architect 裁定，再让验证线调整用例、重新验收 v0，然后用"重新判决模式"把这个 REQ 交还给你：
-   - architect 接受了：照常走第 4 节的流程（`run_equivalence`、`run_validate`、`run_coverage`、`run_rie_verdict`），`spec_relaxation` 改成 `{"ruling": "accepted", "si": "SI-x", ...}`；
+   - architect 接受了：照常走第 4 节的流程（`run_equivalence`、`run_validate`、`run_coverage`，性能判决按 prompt 用 `run_rie_verdict` 或 `run_aws_verdict`），`spec_relaxation` 改成 `{"ruling": "accepted", "si": "SI-x", ...}`；
    - architect 驳回了：`verdict` 改成 `spec_rejected`，`spec_relaxation.ruling` 写 `rejected`，原因引用 SI。本轮不要再为同一处申请。
 
 `gate(final)` 会拒绝还留着 `pending_spec` 的报告（SR1），也会拒绝被接受了却没有重判的申请（SR2）。
@@ -545,7 +546,7 @@ REQ 来自 spec 放宽申请时（prompt 会写明，并给出 architect 的 SI 
 
 - 读写文件用 `read_file` / `write_file` / `grep` / `glob`；git 和 `node --check` 用 bash。
 - 测量和判决工具见上文。第一次运行会 `sam build`，需要几分钟；`run_rie_verdict` 每个基准要跑几分钟到十几分钟，都是正常耗时。
-- `measure_aws` / `calibrate_aws_noise`（v3 M4/W4.7，默认关闭）：**只有 `M2S_AWS=1` 且人已确认 AWS 费用时才用**。`calibrate_aws_noise(load_cmd=...)` 先测 B0 对 B0，把噪声底写进 `perf/aws_noise.json`；然后对每个通过代理指标、准备保留的候选调 `measure_aws(candidate=<标签>, ref=HEAD, load_cmd=...)`——B0 与候选各一个栈、ABAB 测量、取 `aws-load-client` 锁、用 CloudWatch 调用次数检查负载是否走到改动的函数（没走到记 uncovered，不判定）、按噪声阈值判 better/no_change/worse，候选栈测完自动拆掉，费用写进 `perf/aws_costs.json`。`load_cmd` 由 prompt 给出或按工具说明写：命令从 `M2S_AWS_TARGET` 取端点，把 `{"samples": [毫秒]}` 写进 `$M2S_AWS_OUT`。实测结果写进 `perf_report.json` 的 `evidence.aws`。
+- `run_aws_verdict(benchmark, baseline="HEAD", load_cmd=..., budget_usd=...)`（v3 O 的 AWS 判决，设计文档 §2.2，默认关闭）：**只有 `M2S_AWS=1` 且人已确认 AWS 费用时才用**。先 `calibrate_aws_noise(load_cmd=...)` 测 B0 对 B0，把噪声底写进 `perf/aws_noise.json`（每个工作区一次）；然后每个候选单独调用 `run_aws_verdict`——baseline（默认 `HEAD`，即 B0 加已保留的改动）的栈复用，候选是当前工作树，ABAB 测量，取 `aws-load-client` 锁，CloudWatch 检查负载是否走到改动的函数（没走到判 `INCONCLUSIVE`）。判决以 Lambda 热调用 Duration 和每请求边际成本（Lambda 时长 + 请求 + DynamoDB + SQS，不含 API Gateway）为主；端到端 p50、p95 和冷启动是 guard，明显变差判 `pending_human`；总成本（含 API Gateway）只写报告，不参与判决；不需要再做 0/5/15ms 的模拟时延扫描。结果写进 `perf_report.json` 的 `evidence.aws`。`measure_aws` / `calibrate_aws_noise` 仍可用来看原始数据或调试；判决以 `run_aws_verdict` 为准。`load_cmd` 由 prompt 给出或按工具说明写：命令从 `M2S_AWS_TARGET` 取端点，把 `{"samples": [毫秒]}` 写进 `$M2S_AWS_OUT`。
 - 遇到网络错误（`Network error: Connection error`、`Request timed out`）时，先重试 1-2 次再继续。
 - **不要调用 `mcp_auth`**。
 
@@ -559,7 +560,7 @@ REQ 来自 spec 放宽申请时（prompt 会写明，并给出 architect 的 SI 
 - 基准写完提交之后，不再修改。
 - 不自己宣布改动有效或等价，以工具的结果为准。检查没通过时按"分诊"一节处理：代码问题最多修一次，测试问题交给验证线复核，都不行就回滚。
 - 不修改测试用例和故障场景，也不因为"测试写得不对"就保留改动。
-- 默认不部署到 AWS。只有 `M2S_AWS=1`（人已确认费用，prompt 里会写明）时，才按"工具"一节的 `measure_aws` / `calibrate_aws_noise` 做实测；不要自行打开这个开关，也不要绕过它直接调 `sam deploy` / AWS CLI。
+- 默认不部署到 AWS。只有 `M2S_AWS=1`（人已确认费用，prompt 里会写明）时，才按"工具"一节的 `run_aws_verdict` / `calibrate_aws_noise` 做实测；不要自行打开这个开关，也不要绕过它直接调 `sam deploy` / AWS CLI。
 
 ## 完成信号
 
