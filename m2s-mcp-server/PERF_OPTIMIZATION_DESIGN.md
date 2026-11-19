@@ -124,9 +124,55 @@ handler 代码
 
 这些改进要等 L3 有了按操作类型和数据大小区分的真实往返时间之后，再用来校准参数。
 
+### 2.2 AWS 判决模式（O 专用，2026-11-19 定）
+
+**适用范围**：只用于 O（性能优化）。正确性（裁判、增量、等价、覆盖）仍在本地 `mode="local"` 跑——不需要 Docker，也不产生 AWS 费用；AWS 只提供性能、成本、覆盖三类证据。默认关闭：`M2S_AWS=1` 且人确认费用才启用；在接入完成前，RIE 判决仍是默认路径，AWS 模式是可选替换。
+
+**判决指标**
+
+| 角色 | 指标 | 来源 | 判定 |
+|---|---|---|---|
+| 主维度 | Lambda 热调用 Duration | CloudWatch / REPORT，剔除冷启动 | 两版 ABAB，范围不重叠 = 明显 |
+| 主维度 | 边际成本/请求 | Lambda Duration × GB-秒 + 请求费 + DynamoDB RRU/WRU + SQS；**不含 API Gateway** | 同上；报告另列含 API Gateway 的总成本 |
+| guard | 端到端 p50 | 压测客户端（JTL / 样本） | 不得明显变差 |
+| guard | 端到端 p95 | 同上 | 不得明显变差 |
+| guard | 冷启动 | Init Duration、冷启动次数 | 默认 guard；REQ 明确针对冷启动/包体时才升为维度 |
+| 必须 | 覆盖 | 改动函数的 CloudWatch 调用次数 > 0 | 否则 `INCONCLUSIVE`，不判定 |
+
+**判决表**
+
+| 情况 | 判决 |
+|---|---|
+| 本地正确性 / 冲突 / RSS / 预算否决 | `revert` |
+| AWS 覆盖不到改动函数 | `INCONCLUSIVE`（先修负载） |
+| Lambda Duration 或边际成本明显 worse（超噪声） | `revert` |
+| 没有任何维度 worse，且 Duration / 边际成本至少一个明显 better | `kept` |
+| Duration 在噪声内，但代理指标 better 且没有 worse | `kept_inconclusive` |
+| 一好一坏（如 Duration 好、成本差） | `pending_human`（存补丁、回滚） |
+| p50 / p95 / 冷启动 guard 明显 worse | `pending_human`（或按 REQ 升为维度） |
+
+**单改动流程**（沿用 Docker 时期的做法）
+
+- 每个改动单独测；基线是**当前 HEAD**（B0 + 已 kept 的改动），不是永远对 B0；
+- 维护一个滚动基线栈（当前 HEAD）；B0 栈只用于 B0 对 B0 的噪声校准和最终报告；候选一栈，测完拆掉；
+- 所有测量在 `aws-load-client` 锁下 ABAB；阈值来自 `calibrate_aws_noise`（B0 对 B0）；≥3 轮、每轮 ≥10 个热样本；
+- 互不影响的改动（不同函数、无调用关系）可以分别对同一基线测；有交互的按顺序累积测；
+- 判决结果与 RIE 模式同构（kept / kept_inconclusive / pending_human / revert / INCONCLUSIVE），写进 `perf_report.evidence.aws`。
+
+**与 RIE 模式的差异**
+
+- 去掉 0/5/15ms 模拟延迟扫描和 `realistic_latency_rule`（真实 AWS 只有一个往返时间，用噪声校准 + ABAB 代替）；
+- 冷启动从独立维度降为 guard；
+- 成本判决用边际成本，含 API Gateway 的总成本只进报告；
+- `run_rie_verdict` 保留为无 AWS / 离线模式：Docker 可用时沿用，不可用时按 §3.5 只给代理指标并标低置信度。
+
+**函数内细节的作用**：Duration 只回答“快了多少”。LLM 的改进建议（REQ 的 `diagnosis` 与 `advisories`）还要引用函数内证据——代理指标的调用次数/顺序深度/热 CPU、CloudWatch 的 Duration 分位与 init、DynamoDB 容量、日志，以及 X-Ray 开启时的子段耗时（如果权限允许）——再结合代码阅读。每条建议都要在 `perf_report` 里给出 metric/value/evidence；架构类建议只进 `advisories`，O 不能直接实施。
+
 ---
 
 ## 3. 判决规则
+
+本节是 RIE 模式的判决规则（默认 / 离线）。AWS 模式下主维度与 guard 的替换见 §2.2；§3.1 的一票否决、§3.4 的权衡处理和 §3.6 的分诊仍然适用。
 
 ### 3.1 一票否决
 
