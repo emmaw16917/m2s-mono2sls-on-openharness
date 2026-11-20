@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import functools
 import json
+import math
 import os
 import re
 import shutil
@@ -791,20 +792,27 @@ def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load
     p95_guard = "not_applicable" if is_sqs else direction((v.get("base") or {}).get("p95", 0), (v.get("candidate") or {}).get("p95", 0))
 
     def cold_start_guard(base: dict[str, Any], cand: dict[str, Any]) -> str:
-        """Compare cold-start rates (and, when both sides have them, Init
-        Duration). A couple of cold starts in hundreds of invocations is
-        scaling noise, not a regression: the rate must move by >2 points."""
+        """Compare cold-start rates with a two-proportion z-test (a couple of
+        extra cold starts in ~150 invocations is scaling noise, not a
+        regression); when both sides have cold starts, Init Duration must also
+        not be clearly worse."""
         b_inv, c_inv = int(base.get("invocations", 0)), int(cand.get("invocations", 0))
         b_cold, c_cold = int(base.get("init_count", 0)), int(cand.get("init_count", 0))
-        if not b_inv or not c_inv:
+        if not b_inv or not c_inv or (not b_cold and not c_cold):
             return "unknown"
-        b_rate, c_rate = b_cold / b_inv, c_cold / c_inv
-        if abs(c_rate - b_rate) <= 0.02:
-            if b_cold and c_cold:
-                d = direction(base.get("init_mean_ms", 0), cand.get("init_mean_ms", 0))
-                return d if d in ("worse", "better") else "no_diff"
+        pooled = (b_cold + c_cold) / (b_inv + c_inv)
+        se = math.sqrt(pooled * (1 - pooled) * (1 / b_inv + 1 / c_inv))
+        if se == 0:
             return "no_diff"
-        return "worse" if c_rate > b_rate else "better"
+        z = ((c_cold / c_inv) - (b_cold / b_inv)) / se
+        if z > 1.96:
+            return "worse"
+        if z < -1.96:
+            return "better"
+        if b_cold and c_cold:
+            d = direction(base.get("init_mean_ms", 0), cand.get("init_mean_ms", 0))
+            return d if d in ("worse", "better") else "no_diff"
+        return "no_diff"
 
     cold_guard = cold_start_guard(base_s, cand_s)
 

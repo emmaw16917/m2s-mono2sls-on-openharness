@@ -113,8 +113,15 @@ def test_sqs_benchmarks_do_not_guard_enqueue_latency(ws, aws_on, monkeypatch):
 
 
 def test_new_cold_starts_are_a_worse_guard(ws, aws_on, monkeypatch):
-    r = judge(ws, monkeypatch, measured(dur=1000.0, cand_dur=500.0, init_count=0, cand_init_count=1))
+    # half the invocations cold against none: a real regression, not noise
+    r = judge(ws, monkeypatch, measured(dur=1000.0, cand_dur=500.0, init_count=0, cand_init_count=10))
     assert r["guards"]["cold_start"] == "worse" and r["verdict"] == "pending_human"
+
+
+def test_cold_start_counts_are_tested_for_significance(ws, aws_on, monkeypatch):
+    # the real smoke's numbers: 3/129 vs 7/158 is not significant
+    r = judge(ws, monkeypatch, measured(dur=1000.0, cand_dur=500.0, n=129, init_count=3, cand_init_count=7))
+    assert r["guards"]["cold_start"] == "no_diff" and r["verdict"] == "kept"
 
 
 def test_an_uncovered_function_is_inconclusive(ws, aws_on, monkeypatch):
