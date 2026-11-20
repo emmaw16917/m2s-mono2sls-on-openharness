@@ -479,14 +479,18 @@ def measure_aws(ws: Path | str, candidate: str, *, ref: str | None = "HEAD", bas
 
         def resources_on_stack(stack: str) -> dict[str, dict[str, str]]:
             if stack not in resources_cache:
-                try:
-                    resources_cache[stack] = stack_resources(stack) if callable(stack_resources) else {}
-                except Exception:  # noqa: BLE001 -- seeding needs it, so empty is honest
+                if not callable(stack_resources):
                     resources_cache[stack] = {}
+                else:
+                    try:
+                        resources_cache[stack] = stack_resources(stack)
+                    except Exception as exc:  # noqa: BLE001 -- seeding/loading depend on it
+                        raise MeasurementError(f"cannot read the resources of {stack}: {exc}") from exc
             return resources_cache[stack]
 
         def stack_env(side: str, stack: str, pass_no: str | None = None) -> dict[str, str]:
             env = {"M2S_AWS_TARGET": target[side], "M2S_AWS_SIDE": side, "M2S_AWS_REGION": REGION,
+                   "M2S_AWS_STACK": stack,
                    "M2S_AWS_OUTPUTS": json.dumps(outputs_by_side[side], ensure_ascii=False),
                    "M2S_AWS_RESOURCES": json.dumps(resources_on_stack(stack), ensure_ascii=False),
                    **(load_env or {})}

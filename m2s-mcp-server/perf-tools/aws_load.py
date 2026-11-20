@@ -185,16 +185,28 @@ def _load_sqs(bench: dict[str, Any], resources: dict[str, dict[str, str]]) -> di
     import boto3
 
     sqs = boto3.client("sqs", region_name=REGION)
-    queue = ""
-    for resource in resources.values():
-        if resource.get("type") == "AWS::SQS::Queue" and resource.get("physical"):
-            try:
-                queue = sqs.get_queue_url(QueueName=str(resource["physical"]))["QueueUrl"]
-                break
-            except Exception:  # noqa: BLE001 -- try the next queue
-                continue
+
+    def find_queue(resource_map: dict[str, dict[str, str]]) -> str:
+        for resource in resource_map.values():
+            if resource.get("type") == "AWS::SQS::Queue" and resource.get("physical"):
+                physical = str(resource["physical"])
+                if physical.startswith("http"):
+                    return physical  # CloudFormation reports the queue URL itself
+                try:
+                    return sqs.get_queue_url(QueueName=physical)["QueueUrl"]
+                except Exception:  # noqa: BLE001 -- try the next queue
+                    continue
+        return ""
+
+    queue = find_queue(resources)
+    stack = os.environ.get("M2S_AWS_STACK", "")
+    if not queue and stack:
+        # a partial/empty resource map from the caller: read the stack directly
+        _, fresh = e2e_aws.stack_info(stack)
+        queue = find_queue(fresh)
     if not queue:
-        raise SystemExit("aws_load.py: no SQS queue in M2S_AWS_RESOURCES")
+        kinds = Counter(str(r.get("type")) for r in resources.values())
+        raise SystemExit(f"aws_load.py: no SQS queue in M2S_AWS_RESOURCES (stack={stack or '-'}, types={dict(kinds)})")
     records = (bench.get("sqs") or {}).get("records") or []
     if not records:
         raise SystemExit("aws_load.py: the benchmark has no sqs.records")
@@ -277,6 +289,9 @@ def main(argv: list[str] | None = None) -> int:
     bench = json.loads(bench_path.read_text(encoding="utf-8"))
     outputs = _json_env("M2S_AWS_OUTPUTS", {})
     resources = _json_env("M2S_AWS_RESOURCES", {})
+    if not resources and os.environ.get("M2S_AWS_STACK"):
+        # the caller's resource lookup failed or an older caller did not send it
+        outputs, resources = e2e_aws.stack_info(os.environ["M2S_AWS_STACK"])
 
     sub_old = str(((bench.get("request") or {}).get("identity") or {}).get("sub") or "")
     auth, sub_new = _session(ws, outputs) if sub_old else ("", "")

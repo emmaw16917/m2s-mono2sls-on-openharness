@@ -213,7 +213,7 @@ def test_measure_seeds_each_side_and_carries_the_benchmark_env(tmp_path, wired, 
     script = tmp_path / "seed.py"
     script.write_text("import json, os\n"
                       "open(os.environ['SEED_OUT'], 'a', encoding='utf-8').write(json.dumps({k: os.environ.get(k) for k in "
-                      "('M2S_AWS_SIDE', 'M2S_AWS_TARGET', 'M2S_AWS_BENCHMARK', 'M2S_AWS_OUTPUTS', 'M2S_AWS_RESOURCES')}) + '\\n')\n",
+                      "('M2S_AWS_SIDE', 'M2S_AWS_TARGET', 'M2S_AWS_STACK', 'M2S_AWS_BENCHMARK', 'M2S_AWS_OUTPUTS', 'M2S_AWS_RESOURCES')}) + '\\n')\n",
                       encoding="utf-8")
     seed_out = tmp_path / "seed.log"
     monkeypatch.setenv("SEED_OUT", str(seed_out))
@@ -239,6 +239,7 @@ def test_measure_seeds_each_side_and_carries_the_benchmark_env(tmp_path, wired, 
     lines = [json.loads(line) for line in seed_out.read_text(encoding="utf-8").splitlines()]
     assert [line["M2S_AWS_SIDE"] for line in lines] == ["b0", "candidate"]
     assert lines[0]["M2S_AWS_BENCHMARK"] == "perf/benchmarks/orders-create/order.json"
+    assert lines[0]["M2S_AWS_STACK"].startswith("m2s-")
     assert json.loads(lines[0]["M2S_AWS_OUTPUTS"])["UserPoolId"] == "pool-1"
     assert json.loads(lines[0]["M2S_AWS_RESOURCES"])["CartTable"]["physical"] == "tbl-1"
     assert seen["M2S_AWS_BENCHMARK"] == "perf/benchmarks/orders-create/order.json"
