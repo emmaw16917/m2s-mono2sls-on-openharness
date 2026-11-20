@@ -218,8 +218,10 @@ class AwsBackend:
         m0, m1 = int(start // 60 * 60), int(end // 60 * 60) + 60
 
         def total(metric: str, queue: str) -> float:
+            # the resource's physical id is the queue URL; CloudWatch wants the name
+            name = queue.rstrip("/").rsplit("/", 1)[-1]
             pts = cw.get_metric_statistics(Namespace="AWS/SQS", MetricName=metric,
-                                           Dimensions=[{"Name": "QueueName", "Value": queue}],
+                                           Dimensions=[{"Name": "QueueName", "Value": name}],
                                            StartTime=m0, EndTime=m1, Period=60, Statistics=["Sum"])["Datapoints"]
             return sum(p.get("Sum", 0) for p in pts)
 

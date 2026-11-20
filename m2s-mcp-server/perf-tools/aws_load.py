@@ -41,6 +41,7 @@ import sys
 import tempfile
 import threading
 import time
+import uuid
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -211,22 +212,30 @@ def _load_sqs(bench: dict[str, Any], resources: dict[str, dict[str, str]]) -> di
     if not records:
         raise SystemExit("aws_load.py: the benchmark has no sqs.records")
     rounds = max(1, int(os.environ.get("M2S_AWS_LOAD_REQUESTS", "30")))
+    run_nonce = uuid.uuid4().hex[:8]  # reused baseline stacks keep their idempotency rows
     samples: list[float] = []
     sent = 0
     errors: Counter[str] = Counter()
     for round_no in range(rounds):
-        for record in records:
+        entries = []
+        for index, record in enumerate(records):
             body = json.loads(json.dumps(record.get("body") or {}))
             if isinstance(body, dict) and body.get("orderId"):
-                body["orderId"] = f"{body['orderId']}-r{round_no}"
-            started = time.perf_counter()
-            try:
-                sqs.send_message(QueueUrl=queue, MessageBody=json.dumps(body))
-                samples.append(round((time.perf_counter() - started) * 1000, 3))
-                sent += 1
-            except Exception as exc:  # noqa: BLE001 -- report the count, not a stack
-                errors[type(exc).__name__] += 1
-        time.sleep(0.2)  # let the event source collect a batch of 10
+                body["orderId"] = f"{body['orderId']}-{run_nonce}-r{round_no}"
+            entries.append({"Id": f"m{round_no}-{index}", "MessageBody": json.dumps(body)})
+        started = time.perf_counter()
+        try:
+            # one batch per round: the event source then receives a full batch
+            # of 10, which is what the benchmark (and the R4 change) assumes
+            result = sqs.send_message_batch(QueueUrl=queue, Entries=entries[:10])
+            samples.append(round((time.perf_counter() - started) * 1000, 3))
+            failed = result.get("Failed") or []
+            sent += len(entries[:10]) - len(failed)
+            for failure in failed:
+                errors[str(failure.get("Code") or "Failed")] += 1
+        except Exception as exc:  # noqa: BLE001 -- report the count, not a stack
+            errors[type(exc).__name__] += len(entries[:10])
+        time.sleep(0.2)  # let the event source collect the next batch
     if not samples:
         raise SystemExit(f"aws_load.py: no SQS message could be sent ({dict(errors)})")
     return {"samples": samples, "statuses": {"sent": sent, **dict(errors)}, "concurrency": 1,

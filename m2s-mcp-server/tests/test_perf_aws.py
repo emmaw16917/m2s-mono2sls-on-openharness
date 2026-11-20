@@ -92,6 +92,26 @@ def test_a_cold_start_regression_needs_a_person(ws, aws_on, monkeypatch):
     assert r["guards"]["cold_start"] == "worse" and r["verdict"] == "pending_human"
 
 
+def test_a_few_cold_starts_in_hundreds_are_scaling_noise(ws, aws_on, monkeypatch):
+    """3 cold starts in 300 invocations (1%) against 0 is noise, not a guard hit."""
+    r = judge(ws, monkeypatch, measured(dur=1000.0, cand_dur=500.0, n=300, init_count=0, cand_init_count=3))
+    assert r["guards"]["cold_start"] == "no_diff"
+    assert r["verdict"] == "kept"
+
+
+def test_sqs_benchmarks_do_not_guard_enqueue_latency(ws, aws_on, monkeypatch):
+    """The client samples of an SQS benchmark are enqueue latency, not an
+    end-to-end request; p50/p95 must not decide or block."""
+    monkeypatch.setattr(perf, "load_benchmarks", lambda *a, **k: [
+        {"id": "b1", "function": "books-get", "data_volume": "1 batch",
+         "sqs": {"records": [{"message_id": "m1", "body": {"orderId": "o1", "books": []}}]},
+         "_file": "perf/benchmarks/books-get/b1.json"}])
+    monkeypatch.setattr(perf, "check_benchmark", lambda model, bench: [])
+    r = judge(ws, monkeypatch, measured(dur=1000.0, cand_dur=500.0))
+    assert r["guards"]["p50"] == "not_applicable" and r["guards"]["p95"] == "not_applicable"
+    assert r["verdict"] == "kept"
+
+
 def test_new_cold_starts_are_a_worse_guard(ws, aws_on, monkeypatch):
     r = judge(ws, monkeypatch, measured(dur=1000.0, cand_dur=500.0, init_count=0, cand_init_count=1))
     assert r["guards"]["cold_start"] == "worse" and r["verdict"] == "pending_human"

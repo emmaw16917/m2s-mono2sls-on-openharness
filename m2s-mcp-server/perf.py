@@ -783,17 +783,30 @@ def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load
     dims = {"latency": direction(base_s["duration_mean_ms"], cand_s["duration_mean_ms"]),
             "cost": direction(cost["b0"]["marginal_per_request"], cost["candidate"]["marginal_per_request"])}
     v = res.get("verdict") or {}
-    p50_guard = direction((v.get("base") or {}).get("p50", 0), (v.get("candidate") or {}).get("p50", 0))
-    p95_guard = direction((v.get("base") or {}).get("p95", 0), (v.get("candidate") or {}).get("p95", 0))
-    base_init, cand_init = int(base_s.get("init_count", 0)), int(cand_s.get("init_count", 0))
-    if base_init and cand_init:
-        cold_guard = direction(base_s.get("init_mean_ms", 0), cand_s.get("init_mean_ms", 0))
-    elif cand_init:
-        cold_guard = "worse"   # the change introduced cold starts the baseline did not have
-    elif base_init:
-        cold_guard = "better"
-    else:
-        cold_guard = "unknown"
+    # For an SQS benchmark the client samples are enqueue latency, not an
+    # end-to-end request: p50/p95 do not apply (the consumer's Lambda Duration
+    # is the primary metric).
+    is_sqs = bool(b.get("sqs"))
+    p50_guard = "not_applicable" if is_sqs else direction((v.get("base") or {}).get("p50", 0), (v.get("candidate") or {}).get("p50", 0))
+    p95_guard = "not_applicable" if is_sqs else direction((v.get("base") or {}).get("p95", 0), (v.get("candidate") or {}).get("p95", 0))
+
+    def cold_start_guard(base: dict[str, Any], cand: dict[str, Any]) -> str:
+        """Compare cold-start rates (and, when both sides have them, Init
+        Duration). A couple of cold starts in hundreds of invocations is
+        scaling noise, not a regression: the rate must move by >2 points."""
+        b_inv, c_inv = int(base.get("invocations", 0)), int(cand.get("invocations", 0))
+        b_cold, c_cold = int(base.get("init_count", 0)), int(cand.get("init_count", 0))
+        if not b_inv or not c_inv:
+            return "unknown"
+        b_rate, c_rate = b_cold / b_inv, c_cold / c_inv
+        if abs(c_rate - b_rate) <= 0.02:
+            if b_cold and c_cold:
+                d = direction(base.get("init_mean_ms", 0), cand.get("init_mean_ms", 0))
+                return d if d in ("worse", "better") else "no_diff"
+            return "no_diff"
+        return "worse" if c_rate > b_rate else "better"
+
+    cold_guard = cold_start_guard(base_s, cand_s)
 
     def warm_samples(side: str) -> int:
         s = res["sides"][side]
