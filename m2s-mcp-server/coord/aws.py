@@ -643,6 +643,10 @@ def _endpoint(outputs: dict[str, str]) -> str:
     for key in ("ApiEndpoint", "ApiUrl", "Endpoint", "ApiGatewayUrl", "BaseUrl", "HttpApiUrl"):
         if outputs.get(key):
             return outputs[key].rstrip("/")
+    # generated templates prefix the key with the app name (BookstoreApiUrl)
+    for key, value in outputs.items():
+        if value and re.search(r"(ApiUrl|ApiEndpoint|Endpoint|BaseUrl|ApiGatewayUrl|HttpApiUrl)$", key, re.I):
+            return str(value).rstrip("/")
     return ""
 
 

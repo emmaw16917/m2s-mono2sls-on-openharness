@@ -166,6 +166,13 @@ def test_measure_aggregates_lambda_duration_units_and_api_type(tmp_path, wired):
     assert result["baseline_sha"] == ""
 
 
+def test_endpoint_finds_an_app_prefixed_api_url():
+    """Bookstore/SAM templates name the output BookstoreApiUrl, not ApiUrl."""
+    assert aws._endpoint({"BookstoreApiUrl": "https://x/staging/", "CognitoUserPoolId": "p"}) == "https://x/staging"
+    assert aws._endpoint({"ApiUrl": "https://y"}) == "https://y"
+    assert aws._endpoint({"Other": "https://z"}) == ""
+
+
 def test_logical_names_and_api_type_parse_cfn_tags(tmp_path):
     """SAM templates carry !Sub / !Ref / !GetAtt; plain yaml.safe_load dies on
     them (found by the first real AWS smoke)."""
