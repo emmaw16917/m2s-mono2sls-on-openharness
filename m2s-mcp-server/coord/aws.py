@@ -242,8 +242,6 @@ class AwsBackend:
                 if r.get("type") == "AWS::SQS::Queue" and r.get("physical")]
 
     def api_type(self, ws: Path, ref: str | None) -> str:
-        import yaml
-
         if ref is None:
             path = ws / "output" / "template.yaml"
         else:
@@ -252,7 +250,9 @@ class AwsBackend:
             path = verify.export_ref(ws, ref) / "output" / "template.yaml"
         if not path.is_file():
             return "rest"
-        doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        import gates
+
+        doc = gates.load_template(path)
         types = {res.get("Type") for res in (doc.get("Resources") or {}).values() if isinstance(res, dict)}
         return "http" if "AWS::Serverless::HttpApi" in types else "rest"
 
@@ -316,12 +316,14 @@ def logical_names(ws: Path, ref: str | None, function_dirs: list[str]) -> dict[s
     template = (ws / "output" / "template.yaml") if ref is None else (verify.export_ref(ws, ref) / "output" / "template.yaml")
     if not template.is_file():
         return {}
-    import yaml
+    import gates
 
-    doc = yaml.safe_load(template.read_text(encoding="utf-8")) or {}
+    doc = gates.load_template(template)  # CloudFormation tags (!Sub, !Ref, ...) included
     out = {}
     for logical, res in (doc.get("Resources") or {}).items():
-        if not isinstance(res, dict) or res.get("Type") != "AWS::Lambda::Function":
+        # SAM templates declare AWS::Serverless::Function; a hand-written
+        # CloudFormation one may use AWS::Lambda::Function.
+        if not isinstance(res, dict) or res.get("Type") not in ("AWS::Serverless::Function", "AWS::Lambda::Function"):
             continue
         code = str((res.get("Properties") or {}).get("CodeUri") or "")
         for d in function_dirs:

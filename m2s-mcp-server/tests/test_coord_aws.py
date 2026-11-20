@@ -166,6 +166,17 @@ def test_measure_aggregates_lambda_duration_units_and_api_type(tmp_path, wired):
     assert result["baseline_sha"] == ""
 
 
+def test_logical_names_and_api_type_parse_cfn_tags(tmp_path):
+    """SAM templates carry !Sub / !Ref / !GetAtt; plain yaml.safe_load dies on
+    them (found by the first real AWS smoke)."""
+    from test_verify import TEMPLATE
+
+    (tmp_path / "output").mkdir()
+    (tmp_path / "output" / "template.yaml").write_text(TEMPLATE, encoding="utf-8")
+    assert aws.logical_names(tmp_path, None, ["books-get"]) == {"books-get": "GetBook"}
+    assert aws.AwsBackend().api_type(tmp_path, None) == "rest"
+
+
 def test_changed_functions_sees_an_untracked_candidate_file(tmp_path):
     """A change may only add a new file; git diff would miss it, git ls-files
     --others catches it (otherwise measure_aws says NO_CHANGES)."""
