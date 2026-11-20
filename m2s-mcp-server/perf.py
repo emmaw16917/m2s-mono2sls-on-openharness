@@ -755,6 +755,8 @@ def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load
     api = res.get("api_type", "rest")
     api_price = p["api_gateway_http_request"] if api == "http" else p["api_gateway_rest_request"]
 
+    is_sqs = bool(b.get("sqs"))
+
     def side_cost(side: str) -> dict[str, float]:
         s = res["sides"][side]
         inv, req = s.get("invocations", 0), s.get("requests", 0)
@@ -765,10 +767,14 @@ def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load
         sqs = s.get("sqs_requests", 0) * p["sqs_request"]
         marginal = lam + req_fee + ddb + sqs
         gw = req * api_price
+        # an SQS pass sends batches, so the loader's client samples are not the
+        # unit cost; one consumer invocation (one batch of messages) is.
+        divisor = inv if is_sqs else req
         return {"marginal_usd": round(marginal, 9), "total_usd": round(marginal + gw, 9),
-                "marginal_per_request": round(marginal / req, 9) if req else 0.0,
-                "total_per_request": round((marginal + gw) / req, 9) if req else 0.0,
-                "api_gateway_usd": round(gw, 9), "requests": req,
+                "marginal_per_request": round(marginal / divisor, 9) if divisor else 0.0,
+                "total_per_request": round((marginal + gw) / divisor, 9) if divisor else 0.0,
+                "per": "invocation" if is_sqs else "request",
+                "api_gateway_usd": round(gw, 9), "requests": req, "invocations": inv,
                 "lambda_usd": round(lam, 9), "dynamodb_usd": round(ddb, 9), "sqs_usd": round(sqs, 9)}
 
     cost = {"b0": side_cost("b0"), "candidate": side_cost("candidate")}
@@ -787,7 +793,6 @@ def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load
     # For an SQS benchmark the client samples are enqueue latency, not an
     # end-to-end request: p50/p95 do not apply (the consumer's Lambda Duration
     # is the primary metric).
-    is_sqs = bool(b.get("sqs"))
     p50_guard = "not_applicable" if is_sqs else direction((v.get("base") or {}).get("p50", 0), (v.get("candidate") or {}).get("p50", 0))
     p95_guard = "not_applicable" if is_sqs else direction((v.get("base") or {}).get("p95", 0), (v.get("candidate") or {}).get("p95", 0))
 
