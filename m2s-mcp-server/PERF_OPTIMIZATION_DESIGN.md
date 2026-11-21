@@ -173,6 +173,8 @@ handler 代码
 
 **测量窗口的纪律**（沿用 `PERF_OPTIMIZATION.md` §10.1 的教训）：每个 pass 先等到下一个整分钟再开始（`minute_gap`），相邻 pass 不共享 DynamoDB 的分钟桶；Lambda 指标取自各函数日志里的 REPORT 行、按 RequestId 去重、以 `until=下一个 pass 开始` 截断；DynamoDB 容量同时统计 GSI；SQS 请求按“发送 + 2×接收”（接收后假设删除一次）估算。判决用的 Duration 只算热调用；成本用 REPORT 的 billed ms（含 init）。所有窗口都在负载结束后统一等待 90 秒再读取。
 
+**负载与数据**：`run_aws_verdict` 的环境除 `M2S_AWS_TARGET` 外还带 `M2S_AWS_OUTPUTS`（栈输出，含 Cognito pool/client）、`M2S_AWS_RESOURCES`（逻辑 id → 物理名）、`M2S_AWS_WS`、`M2S_AWS_BENCHMARK`；`seed_cmd`（默认取 `M2S_AWS_SEED_CMD`）在每个栈部署后、第一轮测量之前运行一次，负责把 benchmark 的 `fixtures`/`generate` 数据写进该栈的 DynamoDB，并把 identity.sub 占位符换成真实 Cognito sub。仓库里的参考实现是 `perf-tools/aws_load.py`：复用 e2e 的 Cognito 会话；HTTP benchmark 按 request 重复发送，SQS benchmark 把 `sqs.records` 按轮发送（每轮换 orderId，避免幂等表跳过）。只要 `M2S_AWS_LOAD_CMD`/`M2S_AWS_SEED_CMD` 指向它，O 就能在空表的新栈上得到有效测量。
+
 ---
 
 ## 3. 判决规则

@@ -21,6 +21,8 @@ from __future__ import annotations
 
 import functools
 import json
+import math
+import os
 import re
 import shutil
 import statistics
@@ -715,7 +717,7 @@ def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", late
 
 def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load_cmd: str | None = None,
                     repeats: int = 3, budget_usd: float = 0.0, proxy_better: bool = False,
-                    backend: Any = None) -> dict[str, Any]:
+                    seed_cmd: str | None = None, backend: Any = None) -> dict[str, Any]:
     """Judge one O candidate on real AWS. Primary dimensions: Lambda warm
     Duration and marginal cost (Lambda + requests + DynamoDB + SQS); guards:
     end-to-end p50/p95 and cold start. Correctness is the local checks' job;
@@ -732,9 +734,12 @@ def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load
     errs = check_benchmark(model, b)
     if errs:
         return {"status": "FAIL", "schema_errors": errs}
+    seed_cmd = seed_cmd or os.environ.get("M2S_AWS_SEED_CMD") or None
     try:
         res = aws_mod.measure_aws(ws, candidate="candidate", ref=None, baseline_ref=baseline, baseline_label="head",
-                                  load_cmd=load_cmd, repeats=repeats, backend=backend)
+                                  load_cmd=load_cmd, repeats=repeats, seed_cmd=seed_cmd,
+                                  load_env={"M2S_AWS_WS": str(ws), "M2S_AWS_BENCHMARK": str(b.get("_file") or "")},
+                                  backend=backend)
     except Exception as exc:  # noqa: BLE001 -- a measurement failure must come back as data
         return {"status": "ERROR", "error": f"{type(exc).__name__}: {exc}"}
     if res.get("status") not in ("PASS", "INCONCLUSIVE"):
@@ -750,6 +755,8 @@ def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load
     api = res.get("api_type", "rest")
     api_price = p["api_gateway_http_request"] if api == "http" else p["api_gateway_rest_request"]
 
+    is_sqs = bool(b.get("sqs"))
+
     def side_cost(side: str) -> dict[str, float]:
         s = res["sides"][side]
         inv, req = s.get("invocations", 0), s.get("requests", 0)
@@ -760,10 +767,14 @@ def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load
         sqs = s.get("sqs_requests", 0) * p["sqs_request"]
         marginal = lam + req_fee + ddb + sqs
         gw = req * api_price
+        # an SQS pass sends batches, so the loader's client samples are not the
+        # unit cost; one consumer invocation (one batch of messages) is.
+        divisor = inv if is_sqs else req
         return {"marginal_usd": round(marginal, 9), "total_usd": round(marginal + gw, 9),
-                "marginal_per_request": round(marginal / req, 9) if req else 0.0,
-                "total_per_request": round((marginal + gw) / req, 9) if req else 0.0,
-                "api_gateway_usd": round(gw, 9), "requests": req,
+                "marginal_per_request": round(marginal / divisor, 9) if divisor else 0.0,
+                "total_per_request": round((marginal + gw) / divisor, 9) if divisor else 0.0,
+                "per": "invocation" if is_sqs else "request",
+                "api_gateway_usd": round(gw, 9), "requests": req, "invocations": inv,
                 "lambda_usd": round(lam, 9), "dynamodb_usd": round(ddb, 9), "sqs_usd": round(sqs, 9)}
 
     cost = {"b0": side_cost("b0"), "candidate": side_cost("candidate")}
@@ -779,17 +790,36 @@ def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load
     dims = {"latency": direction(base_s["duration_mean_ms"], cand_s["duration_mean_ms"]),
             "cost": direction(cost["b0"]["marginal_per_request"], cost["candidate"]["marginal_per_request"])}
     v = res.get("verdict") or {}
-    p50_guard = direction((v.get("base") or {}).get("p50", 0), (v.get("candidate") or {}).get("p50", 0))
-    p95_guard = direction((v.get("base") or {}).get("p95", 0), (v.get("candidate") or {}).get("p95", 0))
-    base_init, cand_init = int(base_s.get("init_count", 0)), int(cand_s.get("init_count", 0))
-    if base_init and cand_init:
-        cold_guard = direction(base_s.get("init_mean_ms", 0), cand_s.get("init_mean_ms", 0))
-    elif cand_init:
-        cold_guard = "worse"   # the change introduced cold starts the baseline did not have
-    elif base_init:
-        cold_guard = "better"
-    else:
-        cold_guard = "unknown"
+    # For an SQS benchmark the client samples are enqueue latency, not an
+    # end-to-end request: p50/p95 do not apply (the consumer's Lambda Duration
+    # is the primary metric).
+    p50_guard = "not_applicable" if is_sqs else direction((v.get("base") or {}).get("p50", 0), (v.get("candidate") or {}).get("p50", 0))
+    p95_guard = "not_applicable" if is_sqs else direction((v.get("base") or {}).get("p95", 0), (v.get("candidate") or {}).get("p95", 0))
+
+    def cold_start_guard(base: dict[str, Any], cand: dict[str, Any]) -> str:
+        """Compare cold-start rates with a two-proportion z-test (a couple of
+        extra cold starts in ~150 invocations is scaling noise, not a
+        regression); when both sides have cold starts, Init Duration must also
+        not be clearly worse."""
+        b_inv, c_inv = int(base.get("invocations", 0)), int(cand.get("invocations", 0))
+        b_cold, c_cold = int(base.get("init_count", 0)), int(cand.get("init_count", 0))
+        if not b_inv or not c_inv or (not b_cold and not c_cold):
+            return "unknown"
+        pooled = (b_cold + c_cold) / (b_inv + c_inv)
+        se = math.sqrt(pooled * (1 - pooled) * (1 / b_inv + 1 / c_inv))
+        if se == 0:
+            return "no_diff"
+        z = ((c_cold / c_inv) - (b_cold / b_inv)) / se
+        if z > 1.96:
+            return "worse"
+        if z < -1.96:
+            return "better"
+        if b_cold and c_cold:
+            d = direction(base.get("init_mean_ms", 0), cand.get("init_mean_ms", 0))
+            return d if d in ("worse", "better") else "no_diff"
+        return "no_diff"
+
+    cold_guard = cold_start_guard(base_s, cand_s)
 
     def warm_samples(side: str) -> int:
         s = res["sides"][side]

@@ -92,9 +92,36 @@ def test_a_cold_start_regression_needs_a_person(ws, aws_on, monkeypatch):
     assert r["guards"]["cold_start"] == "worse" and r["verdict"] == "pending_human"
 
 
+def test_a_few_cold_starts_in_hundreds_are_scaling_noise(ws, aws_on, monkeypatch):
+    """3 cold starts in 300 invocations (1%) against 0 is noise, not a guard hit."""
+    r = judge(ws, monkeypatch, measured(dur=1000.0, cand_dur=500.0, n=300, init_count=0, cand_init_count=3))
+    assert r["guards"]["cold_start"] == "no_diff"
+    assert r["verdict"] == "kept"
+
+
+def test_sqs_benchmarks_do_not_guard_enqueue_latency(ws, aws_on, monkeypatch):
+    """The client samples of an SQS benchmark are enqueue latency, not an
+    end-to-end request; p50/p95 must not decide or block."""
+    monkeypatch.setattr(perf, "load_benchmarks", lambda *a, **k: [
+        {"id": "b1", "function": "books-get", "data_volume": "1 batch",
+         "sqs": {"records": [{"message_id": "m1", "body": {"orderId": "o1", "books": []}}]},
+         "_file": "perf/benchmarks/books-get/b1.json"}])
+    monkeypatch.setattr(perf, "check_benchmark", lambda model, bench: [])
+    r = judge(ws, monkeypatch, measured(dur=1000.0, cand_dur=500.0))
+    assert r["guards"]["p50"] == "not_applicable" and r["guards"]["p95"] == "not_applicable"
+    assert r["verdict"] == "kept"
+
+
 def test_new_cold_starts_are_a_worse_guard(ws, aws_on, monkeypatch):
-    r = judge(ws, monkeypatch, measured(dur=1000.0, cand_dur=500.0, init_count=0, cand_init_count=1))
+    # half the invocations cold against none: a real regression, not noise
+    r = judge(ws, monkeypatch, measured(dur=1000.0, cand_dur=500.0, init_count=0, cand_init_count=10))
     assert r["guards"]["cold_start"] == "worse" and r["verdict"] == "pending_human"
+
+
+def test_cold_start_counts_are_tested_for_significance(ws, aws_on, monkeypatch):
+    # the real smoke's numbers: 3/129 vs 7/158 is not significant
+    r = judge(ws, monkeypatch, measured(dur=1000.0, cand_dur=500.0, n=129, init_count=3, cand_init_count=7))
+    assert r["guards"]["cold_start"] == "no_diff" and r["verdict"] == "kept"
 
 
 def test_an_uncovered_function_is_inconclusive(ws, aws_on, monkeypatch):
@@ -130,6 +157,21 @@ def test_marginal_cost_is_judged_and_total_cost_reported_with_api_gateway(ws, aw
 def test_a_budget_overrun_needs_a_person(ws, aws_on, monkeypatch):
     r = judge(ws, monkeypatch, measured(dur=1000.0, cand_dur=500.0), budget_usd=1e-9)
     assert r["verdict"] == "pending_human" and "budget" in r["reason"]
+
+
+def test_the_benchmark_and_seed_command_reach_measure_aws(ws, aws_on, monkeypatch):
+    seen = {}
+
+    def fake_measure(*args, **kwargs):
+        seen.update(kwargs)
+        return measured(dur=1000.0, cand_dur=500.0)
+
+    monkeypatch.setattr(aws_mod, "measure_aws", fake_measure)
+    monkeypatch.setenv("M2S_AWS_SEED_CMD", "seed-cmd")
+    perf.run_aws_verdict(str(ws), "b1", load_cmd="load")
+    assert seen["seed_cmd"] == "seed-cmd"
+    assert seen["load_env"]["M2S_AWS_BENCHMARK"] == "perf/benchmarks/books-get/b1.json"
+    assert seen["load_env"]["M2S_AWS_WS"] == str(ws.resolve())
 
 
 def test_disabled_without_the_env_flag(ws, monkeypatch):

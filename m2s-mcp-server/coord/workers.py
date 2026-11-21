@@ -81,7 +81,9 @@ class WorkerJob:
         }
         # The MCP server is started with this env, so the AWS switch and the
         # O measurement settings have to travel here too (v3, design §2.2).
-        for name in ("M2S_AWS", "M2S_AWS_LOAD_CMD", "M2S_AWS_BUDGET_USD"):
+        for name in ("M2S_AWS", "M2S_AWS_LOAD_CMD", "M2S_AWS_SEED_CMD", "M2S_AWS_BUDGET_USD",
+                     "M2S_AWS_LOAD_REQUESTS", "M2S_AWS_LOAD_CONCURRENCY", "M2S_AWS_LOAD_TIMEOUT",
+                     "M2S_AWS_APP", "M2S_E2E_TESTS"):
             if name in os.environ:
                 out[name] = os.environ[name]
         return out

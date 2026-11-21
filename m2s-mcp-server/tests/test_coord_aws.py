@@ -166,6 +166,24 @@ def test_measure_aggregates_lambda_duration_units_and_api_type(tmp_path, wired):
     assert result["baseline_sha"] == ""
 
 
+def test_endpoint_finds_an_app_prefixed_api_url():
+    """Bookstore/SAM templates name the output BookstoreApiUrl, not ApiUrl."""
+    assert aws._endpoint({"BookstoreApiUrl": "https://x/staging/", "CognitoUserPoolId": "p"}) == "https://x/staging"
+    assert aws._endpoint({"ApiUrl": "https://y"}) == "https://y"
+    assert aws._endpoint({"Other": "https://z"}) == ""
+
+
+def test_logical_names_and_api_type_parse_cfn_tags(tmp_path):
+    """SAM templates carry !Sub / !Ref / !GetAtt; plain yaml.safe_load dies on
+    them (found by the first real AWS smoke)."""
+    from test_verify import TEMPLATE
+
+    (tmp_path / "output").mkdir()
+    (tmp_path / "output" / "template.yaml").write_text(TEMPLATE, encoding="utf-8")
+    assert aws.logical_names(tmp_path, None, ["books-get"]) == {"books-get": "GetBook"}
+    assert aws.AwsBackend().api_type(tmp_path, None) == "rest"
+
+
 def test_changed_functions_sees_an_untracked_candidate_file(tmp_path):
     """A change may only add a new file; git diff would miss it, git ls-files
     --others catches it (otherwise measure_aws says NO_CHANGES)."""
@@ -185,6 +203,47 @@ def test_changed_functions_sees_an_untracked_candidate_file(tmp_path):
     git("tag", "B0")
     (fn / "cache.js").write_text("module.exports = {};\n", encoding="utf-8")
     assert aws.changed_functions(tmp_path.resolve(), "B0", None) == ["books-get"]
+
+
+def test_measure_seeds_each_side_and_carries_the_benchmark_env(tmp_path, wired, monkeypatch):
+    """The load command needs the stack's outputs/resources and the benchmark
+    path; the seed command runs once per side, before the passes."""
+    import sys
+
+    script = tmp_path / "seed.py"
+    script.write_text("import json, os\n"
+                      "open(os.environ['SEED_OUT'], 'a', encoding='utf-8').write(json.dumps({k: os.environ.get(k) for k in "
+                      "('M2S_AWS_SIDE', 'M2S_AWS_TARGET', 'M2S_AWS_STACK', 'M2S_AWS_BENCHMARK', 'M2S_AWS_OUTPUTS', 'M2S_AWS_RESOURCES')}) + '\\n')\n",
+                      encoding="utf-8")
+    seed_out = tmp_path / "seed.log"
+    monkeypatch.setenv("SEED_OUT", str(seed_out))
+
+    class EnvBackend(FakeBackend):
+        def outputs(self, stack):
+            return {"ApiEndpoint": f"https://{stack}.example", "UserPoolId": "pool-1"}
+
+        def stack_resources(self, stack):
+            return {"CartTable": {"type": "AWS::DynamoDB::Table", "physical": "tbl-1"}}
+
+    backend = EnvBackend({"b0": [100.0] * 20, "candidate": [80.0] * 20})
+    seen = {}
+
+    def run_load(cmd, env, out, timeout_s):
+        seen.update(env)
+        return backend.samples[env["M2S_AWS_SIDE"]]
+
+    backend.run_load = run_load
+    seed_cmd = f'"{sys.executable}" "{script}"'
+    aws.measure_aws(tmp_path, "cand", load_cmd="true", repeats=1, seed_cmd=seed_cmd,
+                    load_env={"M2S_AWS_BENCHMARK": "perf/benchmarks/orders-create/order.json"}, backend=backend)
+    lines = [json.loads(line) for line in seed_out.read_text(encoding="utf-8").splitlines()]
+    assert [line["M2S_AWS_SIDE"] for line in lines] == ["b0", "candidate"]
+    assert lines[0]["M2S_AWS_BENCHMARK"] == "perf/benchmarks/orders-create/order.json"
+    assert lines[0]["M2S_AWS_STACK"].startswith("m2s-")
+    assert json.loads(lines[0]["M2S_AWS_OUTPUTS"])["UserPoolId"] == "pool-1"
+    assert json.loads(lines[0]["M2S_AWS_RESOURCES"])["CartTable"]["physical"] == "tbl-1"
+    assert seen["M2S_AWS_BENCHMARK"] == "perf/benchmarks/orders-create/order.json"
+    assert json.loads(seen["M2S_AWS_RESOURCES"])["CartTable"]["physical"] == "tbl-1"
 
 
 def test_compare_drops_cold_samples_and_uses_the_threshold():

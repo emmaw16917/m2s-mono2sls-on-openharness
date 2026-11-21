@@ -359,6 +359,7 @@ def lambda_handler(event, context):
 下面的工作流程仍然适用，只是基线和检查不同：
 
 - **基线是 B0**，不是 v0：下文所有的 `v0` 都读作 `B0`（`git -C WS tag` 里有 `B0`）。工作报告写 `storage/stage_reports/O.json`；
+- **AWS 判决模式下，本地检查用 `mode="local"`**（不需要 Docker、不花钱）：`run_judge(mode="local")`、`run_validate(mode="local")`、`run_coverage(mode="local")`；`run_equivalence(mode="diff")` 的模式参数含义不变。
 - **第 4 节第 3 步的三项检查换成下面四项**，受影响的函数 = 改了代码的函数，都要跑完：
   1. `mcp__m2s-server__run_judge(functions=[...])`：要求 `PASS`。冻结的裁判，比较的是单体的实际行为；
   2. `mcp__m2s-server__run_validate(functions=[...], assets="verification/delta")`：要求 `PASS`。这个函数没有增量测试时返回 `total: 0`，算通过；
@@ -546,7 +547,7 @@ REQ 来自 spec 放宽申请时（prompt 会写明，并给出 architect 的 SI 
 
 - 读写文件用 `read_file` / `write_file` / `grep` / `glob`；git 和 `node --check` 用 bash。
 - 测量和判决工具见上文。第一次运行会 `sam build`，需要几分钟；`run_rie_verdict` 每个基准要跑几分钟到十几分钟，都是正常耗时。
-- `run_aws_verdict(benchmark, baseline="HEAD", load_cmd=..., budget_usd=...)`（v3 O 的 AWS 判决，设计文档 §2.2，默认关闭）：**只有 `M2S_AWS=1` 且人已确认 AWS 费用时才用**。先 `calibrate_aws_noise(load_cmd=...)` 测 B0 对 B0，把噪声底写进 `perf/aws_noise.json`（每个工作区一次）；然后每个候选单独调用 `run_aws_verdict`——baseline（默认 `HEAD`，即 B0 加已保留的改动）的栈复用，候选是当前工作树，ABAB 测量，取 `aws-load-client` 锁，CloudWatch 检查负载是否走到改动的函数（没走到判 `INCONCLUSIVE`）。判决以 Lambda 热调用 Duration 和每请求边际成本（Lambda 时长 + 请求 + DynamoDB + SQS，不含 API Gateway）为主；端到端 p50、p95 和冷启动是 guard，明显变差判 `pending_human`；总成本（含 API Gateway）只写报告，不参与判决；不需要再做 0/5/15ms 的模拟时延扫描。结果写进 `perf_report.json` 的 `evidence.aws`。`measure_aws` / `calibrate_aws_noise` 仍可用来看原始数据或调试；判决以 `run_aws_verdict` 为准。`load_cmd` 由 prompt 给出或按工具说明写：命令从 `M2S_AWS_TARGET` 取端点，把 `{"samples": [毫秒]}` 写进 `$M2S_AWS_OUT`。
+- `run_aws_verdict(benchmark, baseline="HEAD", load_cmd=..., budget_usd=...)`（v3 O 的 AWS 判决，设计文档 §2.2，默认关闭）：**只有 `M2S_AWS=1` 且人已确认 AWS 费用时才用**。需要校准噪声时先 `calibrate_aws_noise(load_cmd=...)` 测 B0 对 B0，把噪声底写进 `perf/aws_noise.json`（每个工作区一次；prompt 说 `M2S_AWS_CALIBRATE=1` 才做）；然后每个候选单独调用 `run_aws_verdict`——baseline（默认 `HEAD`，即 B0 加已保留的改动）的栈复用，候选是当前工作树，ABAB 测量，取 `aws-load-client` 锁，CloudWatch 检查负载是否走到改动的函数（没走到判 `INCONCLUSIVE`）。判决以 Lambda 热调用 Duration 和每请求边际成本（Lambda 时长 + 请求 + DynamoDB + SQS，不含 API Gateway）为主；端到端 p50、p95 和冷启动是 guard，明显变差判 `pending_human`；总成本（含 API Gateway）只写报告，不参与判决；不需要再做 0/5/15ms 的模拟时延扫描。结果写进 `perf_report.json` 的 `evidence.aws`。`measure_aws` / `calibrate_aws_noise` 仍可用来看原始数据或调试；判决以 `run_aws_verdict` 为准。`load_cmd` 由 prompt 给出或按工具说明写：命令从 `M2S_AWS_TARGET` 取端点，把 `{"samples": [毫秒]}` 写进 `$M2S_AWS_OUT`。
 - 遇到网络错误（`Network error: Connection error`、`Request timed out`）时，先重试 1-2 次再继续。
 - **不要调用 `mcp_auth`**。
 

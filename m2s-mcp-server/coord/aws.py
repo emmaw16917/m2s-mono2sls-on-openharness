@@ -61,6 +61,7 @@ class Backend(Protocol):
     def deploy(self, ws: Path, ref: str | None, stack: str, log: Path, variant: str = "opt",
                tags: dict[str, str] | None = None) -> None: ...
     def outputs(self, stack: str) -> dict[str, str]: ...
+    def stack_resources(self, stack: str) -> dict[str, dict[str, str]]: ...
     def delete(self, stack: str, log: Path) -> None: ...
     def run_load(self, cmd: str, env: dict[str, str], out: Path, timeout_s: int) -> list[float]: ...
     def invocations(self, functions: dict[str, str], start: float, end: float) -> dict[str, int]: ...
@@ -112,6 +113,16 @@ class AwsBackend:
         outputs, _ = e2e_aws.stack_info(stack)
         return outputs
 
+    def stack_resources(self, stack: str) -> dict[str, dict[str, str]]:
+        """Logical id -> {type, physical}; the load/seed command maps benchmark
+        table names (CartTable, ...) to the deployed tables."""
+        import e2e_aws
+
+        _, resources = e2e_aws.stack_info(stack)
+        return {logical: {"type": str(r.get("type") or ""), "physical": str(r.get("physical") or "")}
+                for logical, r in resources.items() if isinstance(r, dict)
+                and r.get("type") and r.get("physical")}
+
     def delete(self, stack: str, log: Path) -> None:
         import e2e_aws
 
@@ -141,7 +152,8 @@ class AwsBackend:
 
     def run_load(self, cmd: str, env: dict[str, str], out: Path, timeout_s: int) -> list[float]:
         full = {**os.environ, **env, "M2S_AWS_OUT": str(out)}
-        p = subprocess.run(cmd, shell=True, env=full, capture_output=True, text=True, timeout=timeout_s)
+        p = subprocess.run(cmd, shell=True, env=full, capture_output=True, text=True,
+                           stdin=subprocess.DEVNULL, timeout=timeout_s)
         if p.returncode != 0:
             raise MeasurementError(f"load command failed (exit {p.returncode}): {p.stderr[-800:]}")
         try:
@@ -207,8 +219,10 @@ class AwsBackend:
         m0, m1 = int(start // 60 * 60), int(end // 60 * 60) + 60
 
         def total(metric: str, queue: str) -> float:
+            # the resource's physical id is the queue URL; CloudWatch wants the name
+            name = queue.rstrip("/").rsplit("/", 1)[-1]
             pts = cw.get_metric_statistics(Namespace="AWS/SQS", MetricName=metric,
-                                           Dimensions=[{"Name": "QueueName", "Value": queue}],
+                                           Dimensions=[{"Name": "QueueName", "Value": name}],
                                            StartTime=m0, EndTime=m1, Period=60, Statistics=["Sum"])["Datapoints"]
             return sum(p.get("Sum", 0) for p in pts)
 
@@ -231,8 +245,6 @@ class AwsBackend:
                 if r.get("type") == "AWS::SQS::Queue" and r.get("physical")]
 
     def api_type(self, ws: Path, ref: str | None) -> str:
-        import yaml
-
         if ref is None:
             path = ws / "output" / "template.yaml"
         else:
@@ -241,7 +253,9 @@ class AwsBackend:
             path = verify.export_ref(ws, ref) / "output" / "template.yaml"
         if not path.is_file():
             return "rest"
-        doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+        import gates
+
+        doc = gates.load_template(path)
         types = {res.get("Type") for res in (doc.get("Resources") or {}).values() if isinstance(res, dict)}
         return "http" if "AWS::Serverless::HttpApi" in types else "rest"
 
@@ -273,15 +287,18 @@ def changed_functions(ws: Path, baseline_ref: str, ref: str | None) -> list[str]
     """Directories under output/lambdas touched between the baseline and the
     candidate (a ref, or None = the working tree)."""
     diff = [baseline_ref] if ref is None else [f"{baseline_ref}..{ref}"]
-    p = subprocess.run(["git", "diff", "--name-only", *diff, "--", "output/lambdas"],
-                       cwd=ws, capture_output=True, text=True)
+    try:
+        p = subprocess.run(["git", "diff", "--name-only", *diff, "--", "output/lambdas"],
+                           cwd=ws, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=120)
+    except subprocess.TimeoutExpired as exc:
+        raise MeasurementError(f"git diff {baseline_ref}..{ref or 'worktree'} timed out") from exc
     if p.returncode != 0:
         raise MeasurementError(f"git diff {baseline_ref}..{ref or 'worktree'} failed: {p.stderr[-400:]}")
     lines = p.stdout.splitlines()
     if ref is None:
         # a brand-new file is untracked, so git diff does not list it
         untracked = subprocess.run(["git", "ls-files", "--others", "--exclude-standard", "--", "output/lambdas"],
-                                   cwd=ws, capture_output=True, text=True)
+                                   cwd=ws, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=120)
         if untracked.returncode == 0:
             lines += untracked.stdout.splitlines()
     lazy = Path("output/lambdas")
@@ -305,12 +322,14 @@ def logical_names(ws: Path, ref: str | None, function_dirs: list[str]) -> dict[s
     template = (ws / "output" / "template.yaml") if ref is None else (verify.export_ref(ws, ref) / "output" / "template.yaml")
     if not template.is_file():
         return {}
-    import yaml
+    import gates
 
-    doc = yaml.safe_load(template.read_text(encoding="utf-8")) or {}
+    doc = gates.load_template(template)  # CloudFormation tags (!Sub, !Ref, ...) included
     out = {}
     for logical, res in (doc.get("Resources") or {}).items():
-        if not isinstance(res, dict) or res.get("Type") != "AWS::Lambda::Function":
+        # SAM templates declare AWS::Serverless::Function; a hand-written
+        # CloudFormation one may use AWS::Lambda::Function.
+        if not isinstance(res, dict) or res.get("Type") not in ("AWS::Serverless::Function", "AWS::Lambda::Function"):
             continue
         code = str((res.get("Properties") or {}).get("CodeUri") or "")
         for d in function_dirs:
@@ -371,7 +390,8 @@ def _stack_name(ws: Path, label: str) -> str:
 
 def _commit_sha(ws: Path, ref: str) -> str:
     try:
-        p = subprocess.run(["git", "-C", str(ws), "rev-parse", ref], capture_output=True, text=True, timeout=30)
+        p = subprocess.run(["git", "-C", str(ws), "rev-parse", ref], capture_output=True, text=True,
+                           stdin=subprocess.DEVNULL, timeout=30)
     except OSError:
         return ""
     return p.stdout.strip() if p.returncode == 0 else ""
@@ -389,6 +409,7 @@ def _minute_gap() -> None:
 
 def measure_aws(ws: Path | str, candidate: str, *, ref: str | None = "HEAD", baseline_ref: str = "B0",
                 baseline_label: str = "b0", load_cmd: str | None = None, repeats: int = 2, keep: bool = False,
+                seed_cmd: str | None = None, load_env: dict[str, str] | None = None,
                 backend: Backend | None = None, out_dir: Path | None = None) -> dict[str, Any]:
     """Measure one candidate against the baseline on AWS (ABAB). Default off:
     without M2S_AWS=1 it returns DISABLED before touching AWS. ref=None deploys
@@ -448,7 +469,10 @@ def measure_aws(ws: Path | str, candidate: str, *, ref: str | None = "HEAD", bas
         pass_of = getattr(backend, "pass_metrics", None)
         tables_of = getattr(backend, "resource_tables", None)
         queues_of = getattr(backend, "resource_queues", None)
+        stack_resources = getattr(backend, "stack_resources", None)
         resource_cache: dict[tuple[str, str], list[str]] = {}
+        resources_cache: dict[str, dict[str, dict[str, str]]] = {}
+        outputs_by_side = {"b0": base_outputs, "candidate": cand_outputs}
 
         def resources_of(stack: str, kind: str) -> list[str]:
             key = (stack, kind)
@@ -460,7 +484,38 @@ def measure_aws(ws: Path | str, candidate: str, *, ref: str | None = "HEAD", bas
                     resource_cache[key] = []
             return resource_cache[key]
 
+        def resources_on_stack(stack: str) -> dict[str, dict[str, str]]:
+            if stack not in resources_cache:
+                if not callable(stack_resources):
+                    resources_cache[stack] = {}
+                else:
+                    try:
+                        resources_cache[stack] = stack_resources(stack)
+                    except Exception as exc:  # noqa: BLE001 -- seeding/loading depend on it
+                        raise MeasurementError(f"cannot read the resources of {stack}: {exc}") from exc
+            return resources_cache[stack]
+
+        def stack_env(side: str, stack: str, pass_no: str | None = None) -> dict[str, str]:
+            env = {"M2S_AWS_TARGET": target[side], "M2S_AWS_SIDE": side, "M2S_AWS_REGION": REGION,
+                   "M2S_AWS_STACK": stack,
+                   "M2S_AWS_OUTPUTS": json.dumps(outputs_by_side[side], ensure_ascii=False),
+                   "M2S_AWS_RESOURCES": json.dumps(resources_on_stack(stack), ensure_ascii=False),
+                   **(load_env or {})}
+            if pass_no:
+                env["M2S_AWS_PASS"] = pass_no
+            return env
+
         with coord_locks.hold_count("aws-load-client", owner="measure_aws"):
+            if seed_cmd:
+                # Seed each side once, before its first pass; the pass's minute
+                # gap then keeps these writes out of the measured minutes.
+                for side, stack in order:
+                    proc = subprocess.run(seed_cmd, shell=True, env={**os.environ, **stack_env(side, stack)},
+                                          capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=30 * 60)
+                    if proc.returncode != 0:
+                        raise MeasurementError(f"seed command failed for {side} (exit {proc.returncode}): "
+                                               f"{proc.stderr[-800:]}")
+                    passes.append({"note": f"seeded {side} via {seed_cmd}"})
             for i in range(max(1, repeats)):
                 pair = order if i % 2 == 0 else list(reversed(order))
                 for side, stack in pair:
@@ -468,8 +523,7 @@ def measure_aws(ws: Path | str, candidate: str, *, ref: str | None = "HEAD", bas
                     if callable(pass_of):
                         _minute_gap()  # a pass's DynamoDB minutes belong to it alone
                     t0 = time.time()
-                    samples = backend.run_load(load_cmd, {"M2S_AWS_TARGET": target[side], "M2S_AWS_SIDE": side,
-                                                          "M2S_AWS_PASS": str(i + 1)}, out, 30 * 60)
+                    samples = backend.run_load(load_cmd, stack_env(side, stack, str(i + 1)), out, 30 * 60)
                     t1 = time.time()
                     passes.append({"pass": i + 1, "side": side, "stack": stack, "samples": samples,
                                    "summary": latency_summary(_warm(samples)),
@@ -600,6 +654,10 @@ def _endpoint(outputs: dict[str, str]) -> str:
     for key in ("ApiEndpoint", "ApiUrl", "Endpoint", "ApiGatewayUrl", "BaseUrl", "HttpApiUrl"):
         if outputs.get(key):
             return outputs[key].rstrip("/")
+    # generated templates prefix the key with the app name (BookstoreApiUrl)
+    for key, value in outputs.items():
+        if value and re.search(r"(ApiUrl|ApiEndpoint|Endpoint|BaseUrl|ApiGatewayUrl|HttpApiUrl)$", key, re.I):
+            return str(value).rstrip("/")
     return ""
 
 
