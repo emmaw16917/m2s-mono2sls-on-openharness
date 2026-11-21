@@ -119,9 +119,11 @@ def sh(cmd: list[str], cwd: Path | None = None, env: dict | None = None, check: 
     if log:
         with log.open("a", encoding="utf-8") as f:
             f.write(f"\n$ {' '.join(cmd)}\n")
-            p = subprocess.run(cmd, cwd=cwd, env=full_env, stdout=f, stderr=subprocess.STDOUT, text=True, timeout=timeout)
+            p = subprocess.run(cmd, cwd=cwd, env=full_env, stdout=f, stderr=subprocess.STDOUT, text=True,
+                               stdin=subprocess.DEVNULL, timeout=timeout)
     else:
-        p = subprocess.run(cmd, cwd=cwd, env=full_env, capture_output=True, text=True, timeout=timeout)
+        p = subprocess.run(cmd, cwd=cwd, env=full_env, capture_output=True, text=True,
+                           stdin=subprocess.DEVNULL, timeout=timeout)
     if check and p.returncode != 0:
         raise RuntimeError(f"command failed ({p.returncode}): {' '.join(cmd)}" + (f" -- see {log}" if log else f"\n{p.stdout}\n{p.stderr}"))
     return p

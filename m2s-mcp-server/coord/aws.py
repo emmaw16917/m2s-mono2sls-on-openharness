@@ -152,7 +152,8 @@ class AwsBackend:
 
     def run_load(self, cmd: str, env: dict[str, str], out: Path, timeout_s: int) -> list[float]:
         full = {**os.environ, **env, "M2S_AWS_OUT": str(out)}
-        p = subprocess.run(cmd, shell=True, env=full, capture_output=True, text=True, timeout=timeout_s)
+        p = subprocess.run(cmd, shell=True, env=full, capture_output=True, text=True,
+                           stdin=subprocess.DEVNULL, timeout=timeout_s)
         if p.returncode != 0:
             raise MeasurementError(f"load command failed (exit {p.returncode}): {p.stderr[-800:]}")
         try:
@@ -286,15 +287,18 @@ def changed_functions(ws: Path, baseline_ref: str, ref: str | None) -> list[str]
     """Directories under output/lambdas touched between the baseline and the
     candidate (a ref, or None = the working tree)."""
     diff = [baseline_ref] if ref is None else [f"{baseline_ref}..{ref}"]
-    p = subprocess.run(["git", "diff", "--name-only", *diff, "--", "output/lambdas"],
-                       cwd=ws, capture_output=True, text=True)
+    try:
+        p = subprocess.run(["git", "diff", "--name-only", *diff, "--", "output/lambdas"],
+                           cwd=ws, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=120)
+    except subprocess.TimeoutExpired as exc:
+        raise MeasurementError(f"git diff {baseline_ref}..{ref or 'worktree'} timed out") from exc
     if p.returncode != 0:
         raise MeasurementError(f"git diff {baseline_ref}..{ref or 'worktree'} failed: {p.stderr[-400:]}")
     lines = p.stdout.splitlines()
     if ref is None:
         # a brand-new file is untracked, so git diff does not list it
         untracked = subprocess.run(["git", "ls-files", "--others", "--exclude-standard", "--", "output/lambdas"],
-                                   cwd=ws, capture_output=True, text=True)
+                                   cwd=ws, capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=120)
         if untracked.returncode == 0:
             lines += untracked.stdout.splitlines()
     lazy = Path("output/lambdas")
@@ -386,7 +390,8 @@ def _stack_name(ws: Path, label: str) -> str:
 
 def _commit_sha(ws: Path, ref: str) -> str:
     try:
-        p = subprocess.run(["git", "-C", str(ws), "rev-parse", ref], capture_output=True, text=True, timeout=30)
+        p = subprocess.run(["git", "-C", str(ws), "rev-parse", ref], capture_output=True, text=True,
+                           stdin=subprocess.DEVNULL, timeout=30)
     except OSError:
         return ""
     return p.stdout.strip() if p.returncode == 0 else ""
@@ -506,7 +511,7 @@ def measure_aws(ws: Path | str, candidate: str, *, ref: str | None = "HEAD", bas
                 # gap then keeps these writes out of the measured minutes.
                 for side, stack in order:
                     proc = subprocess.run(seed_cmd, shell=True, env={**os.environ, **stack_env(side, stack)},
-                                          capture_output=True, text=True, timeout=30 * 60)
+                                          capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=30 * 60)
                     if proc.returncode != 0:
                         raise MeasurementError(f"seed command failed for {side} (exit {proc.returncode}): "
                                                f"{proc.stderr[-800:]}")
