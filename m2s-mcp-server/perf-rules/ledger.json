@@ -1174,6 +1174,133 @@
         "pending": 0,
         "kept": 0
       }
+    },
+    {
+      "app": "bookstore",
+      "workspace": "D:\\Emma\\MyLab\\Mono2SLs\\Mono2Sls-artifacts\\M2S\\runs\\bookstore-aws-o1",
+      "recorded_at": "2026-11-21T14:41:07",
+      "confidence": "normal",
+      "rules": {
+        "R1": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R2": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R3": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R4": {
+          "hits": 1,
+          "kept": 1,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 1
+        },
+        "R1b": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R5": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R6": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        },
+        "R8": {
+          "hits": 0,
+          "kept": 0,
+          "kept_inconclusive": 0,
+          "reverted": 0,
+          "pending_human": 0,
+          "blocked_by_test": 0,
+          "blocked_by_coverage": 0,
+          "pending_spec": 0,
+          "spec_rejected": 0,
+          "kept_after_fix": 0,
+          "fix_attempted": 0,
+          "reviewed": 0
+        }
+      },
+      "spec_relaxations": {
+        "requested": 0,
+        "accepted": 0,
+        "rejected": 0,
+        "pending": 0,
+        "kept": 0
+      }
     }
   ],
   "candidate_rules": [
@@ -1228,7 +1355,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 12
+      "apps": 13
     },
     "R2": {
       "hits": 0,
@@ -1243,7 +1370,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 12
+      "apps": 13
     },
     "R3": {
       "hits": 0,
@@ -1258,11 +1385,11 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 12
+      "apps": 13
     },
     "R4": {
-      "hits": 5,
-      "kept": 4,
+      "hits": 6,
+      "kept": 5,
       "kept_inconclusive": 0,
       "reverted": 0,
       "pending_human": 0,
@@ -1272,8 +1399,8 @@
       "spec_rejected": 0,
       "kept_after_fix": 1,
       "fix_attempted": 1,
-      "reviewed": 1,
-      "apps": 11
+      "reviewed": 2,
+      "apps": 12
     },
     "R5": {
       "hits": 7,
@@ -1288,7 +1415,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 11
+      "apps": 12
     },
     "R1b": {
       "hits": 0,
@@ -1303,7 +1430,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 5
+      "apps": 6
     },
     "R6": {
       "hits": 0,
@@ -1318,7 +1445,7 @@
       "kept_after_fix": 0,
       "fix_attempted": 0,
       "reviewed": 0,
-      "apps": 5
+      "apps": 6
     },
     "R8": {
       "hits": 1,
@@ -1333,7 +1460,7 @@
       "kept_after_fix": 1,
       "fix_attempted": 1,
       "reviewed": 0,
-      "apps": 5
+      "apps": 6
     }
   },
   "totals_spec_relaxations": {
