@@ -75,7 +75,8 @@ def ok_action(name: str):
 def make_dispatcher(tmp_path: Path, script: dict[str, Any], *, template: Template | None = None,
                     handler: bool = False, phase_review: bool = False, actions: dict[str, Any] | None = None,
                     guard: FakeGuard | None = None, timeouts: dict[str, float] | None = None,
-                    stop_after: str | None = None, checks: dict[str, Any] | None = None) -> Dispatcher:
+                    stop_after: str | None = None, checks: dict[str, Any] | None = None,
+                    max_workers: int = 1) -> Dispatcher:
     template = template or load_template("v1")
     if timeouts:
         template = replace(template, tasks=tuple(replace(t, timeout_min=timeouts.get(t.id, t.timeout_min)) for t in template.tasks))
@@ -91,7 +92,7 @@ def make_dispatcher(tmp_path: Path, script: dict[str, Any], *, template: Templat
                  "final": ok_action("final"), **(actions or {})},
         handler=handler, phase_review=phase_review, role_prompts=lambda role: f"ROLE {role}",
         guard=guard or FakeGuard(), stamp=lambda: {"fake": True}, poll_s=0.05, log=lambda msg: None,
-        stop_after=stop_after,
+        stop_after=stop_after, max_workers=max_workers,
     )
 
 

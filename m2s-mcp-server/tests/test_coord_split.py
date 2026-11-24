@@ -233,6 +233,8 @@ def test_v2_split_template_loads():
     template = load_template("v2-split")
     f2 = template.get("F2")
     assert f2.split == "package" and f2.split_shared and f2.extra.get("shared_after_children")
+    # F2 children annotate one fact base concurrently; the annotate tools lock it.
+    assert f2.shared_write == ("storage/analysis_report.json",)
     i1 = template.get("I1")
     assert i1.split == "domain" and i1.split_shared and "I1:shared" in template.get("I2a").deps
     # W4.2: G2 by package, then G2M composes the inventory
@@ -306,6 +308,7 @@ tasks:
     shared_after_children: true
     expand_after: [F1]
     deps: [F1]
+    shared_write: [storage/analysis_report.json]
     scope: [storage/analysis_report.json, "storage/stage_reports/F2-{pkg}.json"]
     shared_scope: [storage/analysis_report.json, storage/stage_reports/F2-shared.json]
     check: [ok]
@@ -335,6 +338,10 @@ def test_shared_child_waits_for_the_package_children(tmp_path):
     tasks = d.board.tasks()
     children = sorted(t for t in tasks if t.startswith("F2-"))
     assert children == ["F2-alpha", "F2-beta", "F2-gamma", "F2-shared"]
+    # v3 F2 parallel annotation: the expansion copies the shared_write marker,
+    # so the children may run together and the shared child still closes last.
+    for child in children:
+        assert tasks[child]["spec"]["shared_write"] == ["storage/analysis_report.json"]
 
     def board_deps(task):
         show = d.board.br.run("show", tasks[task]["issue"], "--json").json()
@@ -356,6 +363,26 @@ def test_shared_child_waits_for_the_package_children(tmp_path):
     assert targets["F2-alpha"][0]["endpoint"] == "GET /alpha/thing0"
     d._expand_family(template.get("F2"))  # idempotent: a crash may leave a partial family
     assert {t for t in d.board.tasks() if t.startswith("F2-")} == {"F2-alpha", "F2-beta", "F2-gamma", "F2-shared"}
+
+
+def test_stop_after_a_split_family_stops_when_its_children_close(tmp_path):
+    """--stop-after F2: F2 is not a board task (it expands to F2-<pkg> and
+    F2-shared), so 'stopped' means every expanded child closed."""
+    template_path = tmp_path / "shared.yaml"
+    template_path.write_text(SHARED_AFTER_TEMPLATE, encoding="utf-8")
+    template = load_template(path=template_path)
+    ws = tmp_path / "ws" / "storage"
+    ws.mkdir(parents=True)
+    (ws / "analysis_report.json").write_text(json.dumps(_report()), encoding="utf-8")
+
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok}, stop_after="F2")
+    d.setup()
+    assert d.run() == EXIT_STOPPED
+    statuses = {t: i["status"] for t, i in d.board.tasks().items()}
+    family = [t for t in statuses if t.startswith("F2-")]
+    assert family and all(statuses[t] == "closed" for t in family)
+    assert statuses["G1"] == "open"  # nothing past the family started
+    assert not [e for e in d.events.all() if e["type"] == "action_start" and e["task"] == "G1"]
 
 
 def _run_split_ws(tmp_path):

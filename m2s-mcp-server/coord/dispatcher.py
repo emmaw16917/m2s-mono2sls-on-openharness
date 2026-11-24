@@ -56,8 +56,12 @@ from coord.template import Template, TaskSpec, in_scope, load_template, scopes_c
 from coord.tools import submission_path
 from coord.workers import Launcher, OhLauncher, WorkerHandle, WorkerJob, role_prompt
 
-# Changes no task is blamed for: dispatcher state, the v1 orchestrator's TODO, caches.
-ALWAYS_ALLOWED = ("coord/**", "storage/TODO.md", "**/node_modules/**", "**/__pycache__/**")
+# Changes no task is blamed for: dispatcher state, the v1 orchestrator's TODO, caches,
+# and the fact-base lock/temp files the annotate tools create and remove in one call
+# (they belong to no scope; a concurrent task must not have them reverted, which would
+# steal the lock or a live temp file).
+ALWAYS_ALLOWED = ("coord/**", "storage/TODO.md", "storage/.analysis_report.lock",
+                  "storage/analysis_report.json.*.tmp", "**/node_modules/**", "**/__pycache__/**")
 # Workspace files only the dispatcher writes; rebuilt from the event log after every worker.
 DISPATCHER_FILES = (harness.WORKSPACE_FILE.as_posix(), rulings.WORKSPACE_FILE.as_posix(),
                     facts_mod.WORKSPACE_FILE.as_posix())
@@ -500,9 +504,11 @@ class Dispatcher:
             if self._busy_workers() >= self.max_workers:
                 break
             spec = self._spec(task_id)
-            # W2.8: two tasks whose scopes can name the same file never run together.
-            if spec.runner == "agent" and any(scopes_conflict(spec.scope, other.scope)
-                                              for other in [*running_specs, *chosen]):
+            # W2.8: two tasks whose scopes can name the same file never run together,
+            # unless both write it under a lock (F2 parallel annotation).
+            if spec.runner == "agent" and any(
+                    scopes_conflict(spec.scope, other.scope, spec.shared_write, other.shared_write)
+                    for other in [*running_specs, *chosen]):
                 if task_id not in self._scope_wait_logged:
                     self.log(f"{task_id}: waits, its scope overlaps a running task")
                     self._scope_wait_logged.add(task_id)
@@ -2213,8 +2219,15 @@ class Dispatcher:
             return "done"
         if any(s == "needs_human" for s in statuses.values()):
             return "needs_human"
-        if self.stop_after and statuses.get(self.stop_after) == "closed":
-            return "stopped"
+        if self.stop_after:
+            if statuses.get(self.stop_after) == "closed":
+                return "stopped"
+            # --stop-after may name a split family (e.g. F2). The family itself
+            # is not a board task; it is done when every expanded child closed.
+            if self.template.get(self.stop_after).split != "none":
+                family = [t for t in statuses if t.startswith(self.stop_after + "-")]
+                if family and all(statuses[t] == "closed" for t in family):
+                    return "stopped"
         return "stalled"
 
     def _finish(self, outcome: str) -> int:

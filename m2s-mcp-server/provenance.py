@@ -25,8 +25,10 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
+from contextlib import contextmanager
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 PROVENANCE_WINDOW = 2
 SPEC_FIELDS = ("handler_location", "auth", "request", "responses", "data_access", "business_rules")
@@ -284,6 +286,161 @@ def _count_unknown(ep: dict[str, Any]) -> int:
 # Report I/O
 # ---------------------------------------------------------------------------
 
+# F2 package children annotate the same report concurrently (v2-split gives F2
+# `shared_write: [storage/analysis_report.json]`), so every annotate call runs
+# its load-validate-save under this workspace lock. It is one file per fact
+# base (not a machine-wide coord.locks resource: two workspaces never contend).
+LOCK_NAME = ".analysis_report.lock"
+# How long an annotate call waits for the lock, and how long a lock may live
+# before it is stale even when its pid is alive. The critical section is the
+# report read + schema/provenance validation + atomic write (tens of
+# milliseconds on a real report), so both are far above normal.
+LOCK_WAIT_S = 300.0
+LOCK_TTL_S = 600.0
+
+
+def _pid_alive(pid: int) -> bool:
+    """Same probe as coord.locks: a crashed annotator's lock is reclaimable."""
+    if pid <= 0 or pid > 2**31 - 1:  # a real pid fits a C int; debris must not crash us
+        return False
+    if os.name == "nt":
+        import ctypes
+
+        handle = ctypes.windll.kernel32.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if handle:
+            ctypes.windll.kernel32.CloseHandle(handle)
+            return True
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except OSError:
+        return False
+
+
+def _report_lock_path(workspace: str | Path) -> Path:
+    return Path(workspace) / "storage" / LOCK_NAME
+
+
+def _lock_free(path: Path) -> bool:
+    """True when the lock is absent, or its holder died or its TTL passed.
+
+    Only the file that was examined is removed: if another waiter replaced it
+    in the meantime its payload differs and it is left alone. A file whose
+    payload is not written yet (empty/partial JSON) is not reclaimed: its
+    creator is between O_EXCL and the write.
+    """
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return True
+    except (OSError, UnicodeError):
+        return False
+    try:
+        data = json.loads(raw)
+    except ValueError:
+        data = None
+    if isinstance(data, dict):
+        try:
+            pid = int(data.get("pid") or 0)
+            expires = float(data.get("expires") or 0)
+        except (TypeError, ValueError, OverflowError):
+            pid, expires = 0, 0.0
+        expired = bool(expires) and time.time() > expires
+        if not expired and _pid_alive(pid):
+            return False  # held
+    else:
+        try:
+            if time.time() - path.stat().st_mtime < 1.0:
+                return False
+        except OSError:
+            return False
+    try:
+        if path.read_text(encoding="utf-8") != raw:
+            return False  # replaced between our read and the reclaim
+    except FileNotFoundError:
+        return True
+    except (OSError, UnicodeError):
+        return False
+    try:
+        path.unlink()
+    except FileNotFoundError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def _lock_holder(path: Path) -> str:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError):
+        return ""
+    if not isinstance(data, dict) or not data.get("pid"):
+        return ""
+    return f"pid {data['pid']}"
+
+
+def _release_lock(path: Path, owner: str) -> None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, ValueError):
+        return
+    if not isinstance(data, dict) or data.get("owner") != owner:
+        return  # reclaimed by someone else; not ours to remove
+    try:
+        path.unlink()
+    except OSError:
+        pass
+
+
+@contextmanager
+def _report_lock(workspace: str | Path) -> Iterator[None]:
+    """Serialize analysis_report.json read-modify-write across annotator processes.
+
+    The annotate tools (one MCP server process per worker) hold this for the
+    whole `_load -> validate -> _save`, so two F2 package children can run at
+    the same time without losing each other's updates. Readers need no lock:
+    `_save` replaces the file atomically.
+    """
+    path = _report_lock_path(workspace)
+    owner = f"{os.getpid()}-{time.time_ns()}"
+    payload = json.dumps({"pid": os.getpid(), "owner": owner, "task": "annotate",
+                          "expires": time.time() + LOCK_TTL_S}, ensure_ascii=False)
+    deadline = time.time() + LOCK_WAIT_S
+    while True:
+        try:
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        except FileExistsError:
+            pass
+        except FileNotFoundError:
+            raise SpecError(f"{path.parent} not found -- run analyze_project first") from None
+        except OSError as exc:
+            raise SpecError(f"cannot take the analysis_report lock {path}: {exc}") from exc
+        else:
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                    fh.write(payload)
+            except BaseException:
+                try:
+                    path.unlink()  # our freshly created lock, nobody else's
+                except OSError:
+                    pass
+                raise
+            break
+        if _lock_free(path):
+            continue
+        if time.time() >= deadline:
+            holder = _lock_holder(path)
+            raise SpecError(f"timed out after {LOCK_WAIT_S:.0f}s waiting for {path}"
+                            + (f" (held by {holder})" if holder else ""))
+        time.sleep(0.05)
+    try:
+        yield
+    finally:
+        _release_lock(path, owner)
+
+
 def _report_path(workspace: str | Path) -> Path:
     return Path(workspace) / "storage" / "analysis_report.json"
 
@@ -301,9 +458,28 @@ def _load(workspace: str | Path) -> tuple[dict[str, Any], _Files]:
 
 def _save(workspace: str | Path, report: dict[str, Any]) -> None:
     path = _report_path(workspace)
-    tmp = path.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
-    os.replace(tmp, path)
+    # PID-unique temp: the lock already serializes writers, but a killed
+    # annotator must never leave a temp file that the next writer overwrites
+    # while another process still owns it.
+    tmp = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+        # Windows refuses to replace a file another process is reading
+        # (provenance checks need no lock): retry briefly instead of failing
+        # an annotation the shared lock has already serialized.
+        for attempt in range(10):
+            try:
+                os.replace(tmp, path)
+                break
+            except PermissionError:
+                if attempt == 9:
+                    raise
+                time.sleep(0.02)
+    finally:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
 
 
 def _find_ep(report: dict[str, Any], method: str, path: str) -> dict[str, Any]:
@@ -374,23 +550,24 @@ def annotate_shared_entry(workspace: str | Path, entry_json: str) -> dict[str, A
         entry = json.loads(entry_json)
     except json.JSONDecodeError as exc:
         raise SpecError(f"entry_json is not valid JSON: {exc}") from exc
-    report, files = _load(workspace)
-    errors: list[str] = []
-    _validate_shared_entry(files, entry, "shared entry", errors)
-    if errors:
-        return {"ok": False, "errors": errors}
-    entries = report.setdefault("shared_rules", [])
-    if not isinstance(entries, list):
-        return {"ok": False, "errors": ["analysis_report.shared_rules is not a list"]}
-    replaced = False
-    for i, old in enumerate(entries):
-        if isinstance(old, dict) and old.get("id") == entry["id"]:
-            entries[i] = entry
-            replaced = True
-            break
-    if not replaced:
-        entries.append(entry)
-    _save(workspace, report)
+    with _report_lock(workspace):
+        report, files = _load(workspace)
+        errors: list[str] = []
+        _validate_shared_entry(files, entry, "shared entry", errors)
+        if errors:
+            return {"ok": False, "errors": errors}
+        entries = report.setdefault("shared_rules", [])
+        if not isinstance(entries, list):
+            return {"ok": False, "errors": ["analysis_report.shared_rules is not a list"]}
+        replaced = False
+        for i, old in enumerate(entries):
+            if isinstance(old, dict) and old.get("id") == entry["id"]:
+                entries[i] = entry
+                replaced = True
+                break
+        if not replaced:
+            entries.append(entry)
+        _save(workspace, report)
     return {"ok": True, "id": entry["id"], "shared_entries": len(entries), "replaced": replaced}
 
 
@@ -431,25 +608,26 @@ def annotate_global_middleware(workspace: str | Path, index: int, headers_json: 
         extra_sources = json.loads(source_json) if source_json else []
     except json.JSONDecodeError as exc:
         raise SpecError(f"headers_json / source_json is not valid JSON: {exc}") from exc
-    report, files = _load(workspace)
-    items = report.get("global_middleware") or []
-    if not isinstance(index, int) or not 0 <= index < len(items):
-        raise SpecError(f"index must be 0..{len(items) - 1}")
-    item = dict(items[index])
-    item["headers"] = headers
-    item["origin"] = "llm"
-    if note:
-        item["note"] = note
-    if extra_sources:
-        item["source"] = list(item.get("source") or []) + list(extra_sources)
-    errors: list[str] = []
-    _validate_global_middleware(files, [item], errors, [])
-    errors = [e.replace("global_middleware[0]", f"global_middleware[{index}]") for e in errors]
-    if errors:
-        return {"ok": False, "errors": errors}
-    items[index] = item
-    report["global_middleware"] = items
-    _save(workspace, report)
+    with _report_lock(workspace):
+        report, files = _load(workspace)
+        items = report.get("global_middleware") or []
+        if not isinstance(index, int) or not 0 <= index < len(items):
+            raise SpecError(f"index must be 0..{len(items) - 1}")
+        item = dict(items[index])
+        item["headers"] = headers
+        item["origin"] = "llm"
+        if note:
+            item["note"] = note
+        if extra_sources:
+            item["source"] = list(item.get("source") or []) + list(extra_sources)
+        errors: list[str] = []
+        _validate_global_middleware(files, [item], errors, [])
+        errors = [e.replace("global_middleware[0]", f"global_middleware[{index}]") for e in errors]
+        if errors:
+            return {"ok": False, "errors": errors}
+        items[index] = item
+        report["global_middleware"] = items
+        _save(workspace, report)
     return {"ok": True, "index": index, "headers": headers}
 
 
@@ -461,28 +639,29 @@ def annotate_entry_point(workspace: str | Path, method: str, path: str, field: s
     except json.JSONDecodeError as exc:
         raise SpecError(f"value_json is not valid JSON: {exc}") from exc
 
-    report, files = _load(workspace)
-    ep = _find_ep(report, method, path)
-    where = f"{method.upper()} {path}.{field}"
+    with _report_lock(workspace):
+        report, files = _load(workspace)
+        ep = _find_ep(report, method, path)
+        where = f"{method.upper()} {path}.{field}"
 
-    errors: list[str] = []
-    shared_ids = _shared_ids(files, report.get("shared_rules"), errors)
-    _validate_field(files, field, value, where, errors, shared_ids)
-    existing = set(_script_items(field, ep.get(field)))
-    for canon in _script_items(field, value):
-        if canon not in existing:
-            errors.append(
-                f"{where}: an item claims origin \"script\" but is not identical to any script-extracted item "
-                f"already in this field; items you add or change must use origin \"llm\": {canon[:200]}"
-            )
-    if errors:
-        return {"ok": False, "errors": errors}
+        errors: list[str] = []
+        shared_ids = _shared_ids(files, report.get("shared_rules"), errors)
+        _validate_field(files, field, value, where, errors, shared_ids)
+        existing = set(_script_items(field, ep.get(field)))
+        for canon in _script_items(field, value):
+            if canon not in existing:
+                errors.append(
+                    f"{where}: an item claims origin \"script\" but is not identical to any script-extracted item "
+                    f"already in this field; items you add or change must use origin \"llm\": {canon[:200]}"
+                )
+        if errors:
+            return {"ok": False, "errors": errors}
 
-    ep[field] = value
-    status = ep.setdefault("spec_status", {"script": "unknown", "annotated_fields": []})
-    if field not in status.setdefault("annotated_fields", []):
-        status["annotated_fields"].append(field)
-    _save(workspace, report)
+        ep[field] = value
+        status = ep.setdefault("spec_status", {"script": "unknown", "annotated_fields": []})
+        if field not in status.setdefault("annotated_fields", []):
+            status["annotated_fields"].append(field)
+        _save(workspace, report)
     return {"ok": True, "entry_point": f"{method.upper()} {path}", "field": field,
             "annotated_fields": status["annotated_fields"], "unknown_items": _count_unknown(ep)}
 

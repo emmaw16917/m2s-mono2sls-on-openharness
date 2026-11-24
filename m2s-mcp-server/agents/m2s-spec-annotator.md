@@ -113,7 +113,8 @@ model: inherit
   - 工具会先校验结构和出处，任何一项不过就**整次拒绝、什么都不写**，并在 `errors` 里说明是哪一项的哪条出处有问题。按报错改正后重新调用即可；
   - 标记 `origin: "script"` 的项必须和报告里已有的脚本项完全相同，否则会被拒绝——你改过的项一律用 `"llm"`。
   - 只改你需要改的字段，不需要改的字段不用调用。
-- 检查整体：`mcp__m2s-server__check_provenance()`。
+- 检查整体：`mcp__m2s-server__check_provenance()`（可选传 `endpoint="METHOD /path"` 只查一个端点）。
+- 并发写同一份事实库是安全的：`annotate_*` 工具对每次"读-改-写"加了跨进程文件锁，你不需要自己协调写入顺序，也不要用 `write_file` 绕过它。
 - **不要调用 `mcp_auth`**：`m2s-server` 是本地进程，不需要认证。
 
 ## 共享代码（`storage/work_packages.json` 的 `shared_code`）
@@ -148,7 +149,7 @@ v2 流水线里，裁判用例先按事实库写预期，再在单体上运行�
 1. 逐条到单体代码里核实：`actual` 是怎么产生的？事实库里哪一项写错了或者漏了（`responses` 的某一臂、`when`、`body`、`business_rules`、`request` 字段的类型）？
 2. 用 `annotate_entry_point` 改那一项（照常要有出处）。**只改差异点到的事实**，其他事实不要动；
 3. 你核实下来认为事实库没错、是单体的运行结果不对劲（例如请求本身写错了），不要硬改事实库：在工作报告的 `issues` 里写清楚是哪条差异、为什么；
-4. 照常 `check_provenance()` 自查到 `PASS`，工作报告的 `fixes` 列出每条差异改了哪一项。
+4. 照常自查到 `PASS`（按包拆分时只对本包端点用 `check_provenance(endpoint=...)`），工作报告的 `fixes` 列出每条差异改了哪一项。
 
 ## MODE: G2 — 补充缺口清单（v2）
 
@@ -190,7 +191,7 @@ v2 流水线里，裁判用例先按事实库写预期，再在单体上运行�
 
 ## 自查循环（标注完之后，不要跳过）
 
-1. 调用 `mcp__m2s-server__check_provenance()`。
+1. 调用 `mcp__m2s-server__check_provenance()`。**按包拆分的子任务（`F2-<包>`、`S0-<包>`）只查本包的端点**：对每个端点调用 `check_provenance(endpoint="METHOD /path")`；别的包的端点不归你管（v2 的 `F2:shared` 在全部包任务之后做整份检查），也不要去改。
 2. 如果 `status` 不是 `PASS`：
    - `errors` 里是出处或结构问题 → 用 `annotate_entry_point` 传修正后的完整字段值；
    - `incomplete` 里是缺项（最常见是某个端点还没有 `business_rules`）→ 补上。

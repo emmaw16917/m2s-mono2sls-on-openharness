@@ -36,7 +36,12 @@ tasks:
     shared_after_children: true
     expand_after: [F1]
     deps: [F1]
+    # The fact base is one file. The package children may run together: each
+    # annotate call takes storage/.analysis_report.lock for its
+    # load-validate-save (provenance.py), so the file stays in the scope for
+    # write_scope but no longer serializes the whole children.
     scope: [storage/analysis_report.json, "storage/stage_reports/F2-{pkg}.json"]
+    shared_write: [storage/analysis_report.json]
     shared_scope: [storage/analysis_report.json, storage/stage_reports/F2-shared.json]
     check: [check_provenance_pkg]
     shared_check: [check_provenance]

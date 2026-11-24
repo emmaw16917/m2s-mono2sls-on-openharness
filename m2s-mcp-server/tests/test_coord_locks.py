@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from coord_fakes import make_dispatcher  # noqa: E402
+from coord_fakes import make_dispatcher, ok_report  # noqa: E402
 
 from coord.checks import CheckResult  # noqa: E402
 from coord.dispatcher import EXIT_DONE  # noqa: E402
@@ -76,6 +76,16 @@ def test_scopes_conflict():
     assert not scopes_conflict(["storage/analysis_report.json"], ["storage/stage_reports/S0-books.json"])
 
 
+def test_scopes_conflict_honours_shared_write():
+    """F2 parallel annotation: one file is shared when *both* tasks lock it."""
+    report = ["storage/analysis_report.json"]
+    assert not scopes_conflict(report, report, report, report)
+    assert scopes_conflict(report, report, report, [])  # the other side does not lock
+    assert scopes_conflict(report, report, ["storage/other.json"], report)
+    # an unrelated overlap is still a conflict whatever is declared shared
+    assert scopes_conflict(["storage/**"], ["storage/gap_inventory.json"], report, report)
+
+
 TEMPLATE = """\
 name: lock-test
 tasks:
@@ -109,6 +119,27 @@ def _ok(ws: Path, spec: dict) -> CheckResult:
 
 def _order(d) -> list[tuple[str, str]]:
     return [(e["type"], e.get("task")) for e in d.events.all() if e["type"] in ("spawn", "worker_exit")]
+
+
+TEMPLATE_SHARED_WRITE = """\
+name: shared-write-test
+tasks:
+  - id: A
+    role: fake
+    shared_write: [storage/analysis_report.json]
+    scope: [storage/analysis_report.json, storage/stage_reports/A.json]
+    check: [ok]
+  - id: B
+    role: fake
+    shared_write: [storage/analysis_report.json]
+    scope: [storage/analysis_report.json, storage/stage_reports/B.json]
+    check: [ok]
+"""
+
+
+def _slow_script() -> dict:
+    """Both workers stay up long enough for their runs to overlap."""
+    return {"A": [{**ok_report("A"), "sleep": 0.6}], "B": [{**ok_report("B"), "sleep": 0.6}]}
 
 
 def test_overlapping_scopes_do_not_run_together(tmp_path, monkeypatch):
@@ -155,3 +186,54 @@ def test_write_scope_ignores_files_owned_by_another_task(tmp_path):
     # storage/b.json belongs to B's scope: A's window must not revert it
     assert d._write_scope_outside(spec_a, [("??", "storage/b.json")]) == []
     assert d._write_scope_outside(spec_a, [("??", "storage/not-owned.json")]) == [("??", "storage/not-owned.json")]
+
+
+def test_shared_write_overlap_runs_together(tmp_path, monkeypatch):
+    """F2 parallel annotation: both tasks declare the same file shared_write,
+    so the scheduler starts them together instead of serializing on scope."""
+    monkeypatch.setenv("M2S_LOCK_DIR", str(tmp_path / "locks"))
+    path = tmp_path / "shared-write.yaml"
+    path.write_text(TEMPLATE_SHARED_WRITE, encoding="utf-8")
+    template = load_template(path=path)
+    d = make_dispatcher(tmp_path, _slow_script(), template=template, checks={"ok": _ok}, max_workers=2)
+    d.setup()
+    assert d.run() == EXIT_DONE
+
+    order = _order(d)
+    spawns = [i for i, (k, _t) in enumerate(order) if k == "spawn"]
+    exits = [i for i, (k, _t) in enumerate(order) if k == "worker_exit"]
+    assert len(spawns) == len(exits) == 2
+    assert spawns[1] < exits[0]  # both workers were running at the same time
+
+
+def test_without_shared_write_two_workers_still_serialize_the_file(tmp_path, monkeypatch):
+    """The control: max_workers=2 alone must not let two overlapping scopes
+    run together when only one side (or neither) declares the lock."""
+    monkeypatch.setenv("M2S_LOCK_DIR", str(tmp_path / "locks"))
+    path = tmp_path / "overlap.yaml"
+    path.write_text(TEMPLATE, encoding="utf-8")
+    template = load_template(path=path)
+    d = make_dispatcher(tmp_path, _slow_script(), template=template, checks={"ok": _ok}, max_workers=2)
+    d.setup()
+    assert d.run() == EXIT_DONE
+
+    order = _order(d)
+    spawns = [i for i, (k, _t) in enumerate(order) if k == "spawn"]
+    exits = [i for i, (k, _t) in enumerate(order) if k == "worker_exit"]
+    assert len(spawns) == len(exits) == 2
+    assert spawns[1] > exits[0]  # the scope conflict still serializes them
+
+
+def test_report_lock_files_are_not_scope_violations(tmp_path):
+    """The annotate tools create and remove storage/.analysis_report.lock and
+    a PID-unique temp inside one call. A concurrent task's snapshot must not
+    blame or revert them (reverting would steal the other task's lock)."""
+    path = tmp_path / "disjoint.yaml"
+    path.write_text(TEMPLATE_DISJOINT, encoding="utf-8")
+    template = load_template(path=path)
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok})
+    d.setup()
+    spec_a = d._spec("A")
+    assert d._write_scope_outside(spec_a, [("A", "storage/.analysis_report.lock")]) == []
+    assert d._write_scope_outside(spec_a, [("A", "storage/analysis_report.json.4321.tmp")]) == []
+    assert d._write_scope_outside(spec_a, [("A", "storage/not-owned.json")]) == [("A", "storage/not-owned.json")]

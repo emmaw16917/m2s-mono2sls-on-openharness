@@ -21,7 +21,8 @@ TASK_SUMMARIES = {
     "S0": "补全每个端点的请求、响应、业务规则，每条注明出处。规格字段只能经 mcp__m2s-server__annotate_entry_point "
           "和 annotate_global_middleware 写进 storage/analysis_report.json；写完自己用 check_provenance 自查。",
     "F2": "补全每个端点的请求、响应、业务规则，每条注明出处（同 S0）。规格字段只能经 mcp__m2s-server__annotate_entry_point "
-          "和 annotate_global_middleware 写进 storage/analysis_report.json；写完自己用 check_provenance 自查。"
+          "和 annotate_global_middleware 写进 storage/analysis_report.json；写完自己用 check_provenance 自查"
+          "（按包拆分时只查本包的端点：check_provenance(endpoint=\"METHOD /path\")，别的包的端点还没写完，也不要去改）。"
           "回炉信息来自规格对账（J3）时，按你的角色说明里的\"修正模式\"只改点到的事实。",
     "S1": "按规格设计 serverless 架构：用 mcp__m2s-server__merge_blueprint_key 逐个顶层字段写 storage/blueprint.json，"
           "设计决定记进 storage/DECISIONS.md；写完自己跑 run_gate(phase=\"blueprint\") 自查并修正。",

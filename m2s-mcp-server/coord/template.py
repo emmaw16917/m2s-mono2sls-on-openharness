@@ -42,6 +42,11 @@ class TaskSpec:
     split_shared: bool = False       # create "<id>:shared" next to the package children
     shared_scope: tuple[str, ...] = ()  # scope of that shared child (falls back to scope)
     shared_check: tuple[str, ...] = ()  # checks of that shared child (falls back to check)
+    # Paths (literal, workspace-relative) this task writes concurrently with
+    # other tasks and serializes with a cross-process lock (F2 parallel
+    # annotation). scopes_conflict ignores an overlap only when both tasks
+    # declare the same pattern here; the file stays in `scope` for write_scope.
+    shared_write: tuple[str, ...] = ()
     # Dynamic children carry package/endpoints/functions; checks read them from
     # to_json(). Unknown template keys are preserved here too.
     extra: dict[str, Any] = field(default_factory=dict, compare=False, hash=False, repr=False)
@@ -54,6 +59,7 @@ class TaskSpec:
             "mode": self.mode, "deny_read": list(self.deny_read), "start": self.start,
             "split": self.split, "expand_after": list(self.expand_after), "split_shared": self.split_shared,
             "shared_scope": list(self.shared_scope), "shared_check": list(self.shared_check),
+            "shared_write": list(self.shared_write),
             **self.extra,
         }
 
@@ -61,7 +67,7 @@ class TaskSpec:
     def from_json(cls, data: dict[str, Any]) -> TaskSpec:
         known = {"id", "runner", "role", "action", "line", "deps", "scope", "check", "on_stale",
                  "max_turns", "timeout_min", "mode", "deny_read", "start", "split", "expand_after",
-                 "split_shared", "shared_scope", "shared_check", "extra"}
+                 "split_shared", "shared_scope", "shared_check", "shared_write", "extra"}
         return cls(
             id=data["id"], runner=data.get("runner", "agent"), role=data.get("role"), action=data.get("action"),
             line=data.get("line"), deps=tuple(data.get("deps") or ()), scope=tuple(data.get("scope") or ()),
@@ -72,6 +78,7 @@ class TaskSpec:
             split_shared=bool(data.get("split_shared", False)),
             shared_scope=tuple(data.get("shared_scope") or ()),
             shared_check=tuple(data.get("shared_check") or ()),
+            shared_write=tuple(data.get("shared_write") or ()),
             extra={k: v for k, v in data.items() if k not in known},
         )
 
@@ -213,13 +220,21 @@ def _literal_prefix(pattern: str) -> str:
     return p.rstrip("/")
 
 
-def scopes_conflict(a: tuple[str, ...] | list[str], b: tuple[str, ...] | list[str]) -> bool:
+def scopes_conflict(a: tuple[str, ...] | list[str], b: tuple[str, ...] | list[str],
+                    shared_a: tuple[str, ...] | list[str] = (),
+                    shared_b: tuple[str, ...] | list[str] = ()) -> bool:
     """Conservative overlap test for two scopes (v3 M2/W2.8).
 
     Two patterns can name the same file when one literal prefix contains the
     other; a pattern that starts with a wildcard can name anything. This is
     used to keep two workers from editing the same file at once; a false
     positive only serializes them.
+
+    `shared_write` names files a task writes under a cross-process lock
+    (F2 parallel annotation writes one analysis_report.json). An overlapping
+    pair is not a conflict when *both* tasks declare the same pattern as
+    shared_write: they follow the locking protocol. A one-sided declaration
+    still conflicts, because the other task would write without the lock.
     """
     for pa in a:
         for pb in b:
@@ -227,5 +242,7 @@ def scopes_conflict(a: tuple[str, ...] | list[str], b: tuple[str, ...] | list[st
             if not x or not y:
                 return True
             if x == y or x.startswith(y + "/") or y.startswith(x + "/"):
+                if pa in shared_a and pb in shared_b:
+                    continue
                 return True
     return False
