@@ -1800,16 +1800,38 @@ class Dispatcher:
             self._human_gate("HUMAN_RECONCILE", "规格对账的这些差异在模板里没有可以退回的任务：" + show(unrouted), blocks)
         self.log(f"{j3}: reconcile round {rnd}: " + ", ".join(f"{k} {len(v)}" for k, v in groups.items() if v))
 
+    def _fact_family(self) -> str | None:
+        """The spec-annotator split family that owns the judge's fact base.
+
+        v2-split has two m2s-spec-annotator families (F2 for facts, G2 for
+        gaps). The judge line names its family in J1's deps ("<family>:*"), so
+        that relation decides; only templates without it fall back to the last
+        annotator family (the old behaviour).
+        """
+        j1 = next((t for t in self.template.tasks if t.mode == "J1"), None)
+        if j1:
+            for dep in j1.deps:
+                if not dep.endswith(":*"):
+                    continue
+                family = dep[:-2]
+                try:
+                    spec = self.template.get(family)
+                except KeyError:
+                    continue
+                if spec.split in ("package", "domain") and spec.role == "m2s-spec-annotator":
+                    return family
+        families = [t.id for t in self.template.tasks
+                    if t.role == "m2s-spec-annotator" and t.split in ("package", "domain")]
+        return families[-1] if families else None
+
     def _fact_targets(self, items: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
         """The annotator task(s) that own these fact corrections (v3 M4/W4.2).
         In a split template the family (e.g. F2) is not a board task, so each
         difference is routed to the package child that owns its endpoint; a
         difference that maps to no package goes to the shared child."""
-        families = [t.id for t in self.template.tasks
-                    if t.role == "m2s-spec-annotator" and t.split in ("package", "domain")]
-        if not families:
+        family = self._fact_family()
+        if not family:
             return {}
-        family = families[-1]
         tasks = self.board.tasks()
         children = sorted(t for t in tasks if t.startswith(family + "-") and t != family)
         if not children:

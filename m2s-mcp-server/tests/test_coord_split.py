@@ -365,6 +365,92 @@ def test_shared_child_waits_for_the_package_children(tmp_path):
     assert {t for t in d.board.tasks() if t.startswith("F2-")} == {"F2-alpha", "F2-beta", "F2-gamma", "F2-shared"}
 
 
+def test_fact_targets_pick_the_judge_family_not_the_gap_family(tmp_path):
+    """v2-split has two m2s-spec-annotator families: F2 (facts) and G2 (gaps).
+    J3/J4 fact errors must go to F2-<pkg>; picking the last annotator family
+    would send them to the gap tasks."""
+    template = load_template("v2-split")
+    ws = tmp_path / "ws"
+    (ws / "storage").mkdir(parents=True)
+    (ws / "storage" / "analysis_report.json").write_text(json.dumps(_report()), encoding="utf-8")
+    (ws / "storage" / "symbol_table.json").write_text("[]", encoding="utf-8")
+
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok})
+    d.setup()
+    d._expand_family(template.get("F2"))  # as the run does after F1
+    d._expand_family(template.get("G2"))  # and after G1
+    assert {"F2-alpha", "G2-alpha"} <= set(d.board.tasks())
+
+    targets = d._fact_targets([
+        {"endpoint": "GET /alpha/thing0"},
+        {"request": {"method": "GET", "path": "/beta/thing1"}},
+        {"fact_refs": ["GET /gamma/thing2#responses[0]"]},
+        {"endpoint": "GET /unknown"},
+    ])
+    assert sorted(targets) == ["F2-alpha", "F2-beta", "F2-gamma", "F2-shared"], sorted(targets)
+    assert d._fact_family() == "F2"
+
+
+def test_j3_fact_errors_rework_f2_not_the_gap_family(tmp_path):
+    """End to end after J3: a fact_error reworks the F2 child that owns the
+    endpoint; no G2 (gap) task is touched by the routing."""
+    template = load_template("v2-split")
+    ws = tmp_path / "ws"
+    (ws / "storage").mkdir(parents=True)
+    (ws / "storage" / "analysis_report.json").write_text(json.dumps(_report()), encoding="utf-8")
+    (ws / "storage" / "symbol_table.json").write_text("[]", encoding="utf-8")
+    (ws / "judge").mkdir()
+    (ws / "judge" / "reconcile.json").write_text(json.dumps({"differences": [{
+        "id": "case/step/status", "endpoint": "GET /alpha/thing0", "case": "c1", "step": "s1",
+        "check": "status", "predicted": 200, "actual": 400,
+        "fact_refs": ["GET /alpha/thing0#responses[0]"],
+    }]}), encoding="utf-8")
+    (ws / "judge" / "reconcile_classes.json").write_text(json.dumps({
+        "case/step/status": {"class": "fact_error", "reason": "handlers/alpha.js:10 returns 400"},
+    }), encoding="utf-8")
+
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok})
+    d.setup()
+    d._expand_family(template.get("F2"))
+    d._expand_family(template.get("G2"))
+    d._after_j3("J3")
+
+    routed = [e["task"] for e in d.events.all()
+              if e["type"] == "round_start" and e.get("reason") == "reconcile"]
+    assert "F2-alpha" in routed, routed
+    assert not any(t.startswith("G2-") for t in routed), routed
+    feedback = d.events.of_task("F2-alpha", "feedback")[0]["text"]
+    assert "GET /alpha/thing0" in feedback
+
+
+def test_j4_spec_issues_rework_f2_not_the_gap_family(tmp_path):
+    """_after_j4 uses the same fact-family selection: a spec issue found in
+    white-box testing reworks the F2 child, not a G2 gap task."""
+    template = load_template("v2-split")
+    ws = tmp_path / "ws"
+    (ws / "storage").mkdir(parents=True)
+    (ws / "storage" / "analysis_report.json").write_text(json.dumps(_report()), encoding="utf-8")
+    (ws / "storage" / "symbol_table.json").write_text("[]", encoding="utf-8")
+    (ws / "judge").mkdir()
+    (ws / "judge" / "spec_issues.json").write_text(json.dumps([{
+        "id": "J4-1", "endpoint": "GET /beta/thing0", "kind": "missing",
+        "rule": "quantity is written as-is", "evidence": [{"file": "app/server.js", "line": 1}],
+        "cases": ["wb-beta"],
+    }]), encoding="utf-8")
+
+    d = make_dispatcher(tmp_path, {}, template=template, checks={"ok": _ok})
+    d.setup()
+    d._expand_family(template.get("F2"))
+    d._expand_family(template.get("G2"))
+    d._after_j4("J4")
+
+    routed = [e for e in d.events.all() if e["type"] == "spec_issues_routed"]
+    assert routed and routed[-1]["to"] == ["F2-beta"], routed
+    reworked = [e["task"] for e in d.events.all()
+                if e["type"] == "round_start" and e.get("reason") == "spec_issues_j4"]
+    assert reworked == ["F2-beta"], reworked
+
+
 def test_stop_after_a_split_family_stops_when_its_children_close(tmp_path):
     """--stop-after F2: F2 is not a board task (it expands to F2-<pkg> and
     F2-shared), so 'stopped' means every expanded child closed."""
