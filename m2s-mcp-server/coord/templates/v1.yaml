@@ -39,7 +39,7 @@ tasks:
     timeout_min: 150
 
   - id: V1
-    role: m2s-verifier
+    role: m2s-verifier-v1
     line: verify
     deps: [S1]
     scope: [verification/**, storage/stage_reports/V1.json]
@@ -98,7 +98,7 @@ tasks:
     timeout_min: 90
 
   - id: V2
-    role: m2s-verifier
+    role: m2s-verifier-v1
     line: verify
     deps: [S4]
     scope: [verification/**, storage/stage_reports/V2.json]

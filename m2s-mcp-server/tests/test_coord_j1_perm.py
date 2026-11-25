@@ -150,6 +150,48 @@ def test_workers_use_this_repositorys_server_and_role_definitions():
     assert "## J1" in workers.role_prompt("m2s-verifier") and "MODE: ruling" in workers.role_prompt("m2s-architect")
 
 
+def test_verifier_role_split_keeps_v1_out_of_the_v2_prompt():
+    """2026-11-25: m2s-verifier carries only the v2 modes; the V-model content
+    (V1/V2/VR/VS + its test plan) lives in m2s-verifier-v1, and the v1
+    templates use that role."""
+    from coord import workers
+    from coord.template import load_template
+
+    v2 = workers.role_prompt("m2s-verifier")
+    v1 = workers.role_prompt("m2s-verifier-v1")
+    for heading in ("## V1", "## V2", "## VR", "## VS"):
+        assert heading not in v2, heading
+        assert heading in v1, heading
+    for heading in ("## J1", "## J3", "## J4", "## J5", "## D1", "## V3"):
+        assert heading in v2, heading
+        assert heading not in v1, heading
+    # D1 still has the asset format and expectations rules it references.
+    assert "增量测试资产格式" in v2 and "expected_from" in v2 and "怎么写预期" in v2
+
+    # What the dispatcher actually writes into a worker's settings.json.
+    fake_ws = Path("C:/nonexistent-ws")
+    for task_id, role in (("J1", "m2s-verifier"), ("D1", "m2s-verifier"), ("V3", "m2s-verifier"),
+                          ("V1", "m2s-verifier-v1")):
+        job = WorkerJob(task_id, 1, role, fake_ws, fake_ws / "coord", workers.role_prompt(role),
+                        "do it", (), 10, 60.0, mode=task_id)
+        system_prompt = worker_settings(job, [])["system_prompt"]
+        if role == "m2s-verifier":
+            for heading in ("## V1", "## V2", "## VR", "## VS"):
+                assert heading not in system_prompt, (task_id, heading)
+        else:
+            for heading in ("## V1", "## V2", "## VR", "## VS"):
+                assert heading in system_prompt, (task_id, heading)
+
+    v1_template = load_template("v1")
+    v1_split = load_template("v1-split")
+    for template in (v1_template, v1_split):
+        assert template.get("V1").role == template.get("V2").role == "m2s-verifier-v1"
+    for name in ("v2", "v2-split", "v2-judge"):
+        template = load_template(name)
+        roles = {s.role for s in template.tasks if s.id in ("J1", "J3", "J4", "D1", "V3")}
+        assert roles == {"m2s-verifier"}, (name, roles)
+
+
 def test_the_v2_judge_template():
     t = load_template("v2-judge")
     assert [s.id for s in t.tasks] == ["F2", "J1", "J2", "RC", "J3", "J4", "J5", "J5C", "J6"]

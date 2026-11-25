@@ -674,6 +674,7 @@ v2 的 26 个任务模板（`coord/templates/v2.yaml`，v2 N5 完成）已经在
 - **M3 排期 M4 的工具欠账**：T-1 完成——`verify.py` 新增 `expect.body.raw_equals`（正文逐字符比较，`10000.0`/`1e4`/引号串/尾随空白都判失败；base64 响应不匹配文本契约）；T-2 已在共享 `verify.py` 具备（`repeat` 字段、controller 的 repeats、judge 的比较），只做记录关闭。v1 侧的 `impl_packages` 欠账：`v1-split.yaml` 的 S1 scope 加入 `storage/work_packages.json`，角色说明覆盖 S1/A1，`gate(blueprint)` 新增 CG 检查 `check_impl_packages`（填了就必须把每个蓝图函数恰好映射到一个包；null 仍合法，展开时有 fallback）。
 - **仍未做**：无（M4 的 W4.1–W4.8 与 M3 排期 M4 的工具欠账全部落地；W4.7 的真实 AWS 运行按设计留在人确认费用之后）。
 - **F2 并行标注（2026-11-24）**：v2-split 给 F2 声明 `shared_write: [storage/analysis_report.json]`，`scopes_conflict` 只对“双方都声明”的同一路径放行（单方声明仍按冲突处理）；`provenance.py` 的三个 annotate 工具在 `_load → validate → _save` 全程持有 `storage/.analysis_report.lock`（O_EXCL 创建，pid 死亡或 TTL 过期可回收，做法同 `coord/locks.py`），`_save` 改用 PID 唯一 tmp + `os.replace`。锁文件与 `analysis_report.json.*.tmp` 计入调度器 `ALWAYS_ALLOWED`，并发任务的 write_scope 不会误删别人的锁/临时文件。`F2-shared` 仍由 `shared_after_children: true` 排在全部子任务之后。`--stop-after` 现在也接受拆分族：`--stop-after F2` 在全部 F2 子任务（含 shared）关闭后以 `stopped` 收尾。测试：`tests/test_provenance_lock.py`（两进程并发无丢失更新、锁超时、异常释放、死锁回收）、`tests/test_coord_locks.py`（`shared_write` 放行调度、锁文件不算越界）、`tests/test_coord_f2_parallel.py`（F2-only：用 v2-split 原样的 F2 定义只跑 F1→F2→F2DONE，两个 fake worker 进程各自通过真实 `annotate_entry_point` 标注同一份报告；事件日志证明两个 F2 子任务在第一个退出前都已启动，两个 `check_provenance_pkg` 与 F2-shared 的全局 `check_provenance` 均 PASS）。**真 LLM 实跑（2026-11-24，coffee-f2-par-1）**：coffee 的 4 个 F2 包在同一份报告上由 3 个真实 LLM worker 并发标注（第 4 个排队），所有包级检查和全局 `check_provenance` PASS，F2 墙钟 54.6 min（4 个包串行约 117 min，约 2.1×），运行以 `stopped` 结束。
+- **验证角色拆分（2026-11-25）**：`agents/m2s-verifier.md` 只保留 v2 模式（J1/J3/J4/J5/D1/V3 + D1 用的增量资产格式与预期规则）；旧 v1 内容（V1/V2/VR/VS + test plan）迁到新角色 `agents/m2s-verifier-v1.md`，`v1.yaml` / `v1-split.yaml` 的 V1/V2 改用该角色；v2 模板保持 `m2s-verifier`。J1 worker 的 system prompt 从约 32.8k 字符降到 26.4k，且不再包含 `## V1/## V2/## VR/## VS`（v1 角色仍完整保留）。通知/讨论室的角色集合把 `m2s-verifier-v1` 与 `m2s-verifier` 同等对待（v1 不使用讨论室）。测试：`tests/test_coord_j1_perm.py::test_verifier_role_split_keeps_v1_out_of_the_v2_prompt`、`tests/test_coord_harness.py`（harness stamp 记录两份 agent）、`tests/test_coord_leak.py`（v1 verifier 的公告可见性）。
 
 **M4 验收（2026-11-16）：bookstore-m4 + airline-m4 都跑到 C2**
 - 两个新工作区都用 `v2-split`、3 个 worker、开讨论室，`run done` / `dispatcher exit 0`，C2 分别归档到 `evidence/bookstore/bookstore-m4` 与 `evidence/airline-booking/airline-m4`。
@@ -806,11 +807,11 @@ v2 的 26 个任务模板（`coord/templates/v2.yaml`，v2 N5 完成）已经在
 | — | `PKG` | 调度器调用工作包规划 | P0 | `work_packages.json` 通过自检 | M2 起才有 |
 | S0 | `S0`（M2 起为 `S0:<包>` 和 `S0:shared`） | m2s-spec-annotator | P0（M2 起：PKG，以及 S0:shared） | `check_provenance`（M2 起按包的接口过滤） | 是 |
 | S1 | `S1` | m2s-architect | 所有 S0 | `run_gate(blueprint)` | 否 |
-| V1 | `V1`（M2 起为 `V1:<包>`） | m2s-verifier（V1 模式） | S1 | `run_validate(dry_run=true)`（M2 起按函数过滤）；报了阻塞级别的 `spec_issues` 时：M1 重新打开 S1，M3 起开规格讨论室 | 是 |
+| V1 | `V1`（M2 起为 `V1:<包>`） | m2s-verifier-v1（V1 模式） | S1 | `run_validate(dry_run=true)`（M2 起按函数过滤）；报了阻塞级别的 `spec_issues` 时：M1 重新打开 S1，M3 起开规格讨论室 | 是 |
 | S2 | `S2`（M2 起为 `S2:shared` 和 `S2:<包>`） | m2s-code-developer | S1；所有 V1（M2 起：`V1:<包>`，以及 S2:shared） | `run_gate(code)`（M2 起按包过滤） | 是 |
 | S3a、S3b、S3c | `S3a` → `S3b` → `S3c` | m2s-sam-engineer | 所有 S2；三者串行 | S3a：`output/template.part1.yaml` 存在，并且包含 `# --- END METADATA ---`；S3b：`output/template.part2.yaml` 存在；S3c：`output/template.yaml` 存在，`run_gate(template)` 通过（片段本身不是完整模板，不单独跑 `validate_sam`） | 否 |
 | S4 | `S4` | m2s-validator | S3c | `run_gate(final)` | 否 |
-| V2 | `V2` | m2s-verifier（V2 模式） | S4 | `run_validate()`，且 `verdict_A.json` 为 PASS。失败时按路由建回炉任务（S2:<包> 等），下游任务随之失效；路由判断不了的，M3 起进分诊讨论室 | 否 |
+| V2 | `V2` | m2s-verifier-v1（V2 模式） | S4 | `run_validate()`，且 `verdict_A.json` 为 PASS。失败时按路由建回炉任务（S2:<包> 等），下游任务随之失效；路由判断不了的，M3 起进分诊讨论室 | 否 |
 | 打 tag v0 | `TAG_V0` | 调度器 | V2 | 工作区 git 打了 v0 tag；之后做阶段复查 | — |
 | S5 | `S5` | m2s-perf-optimizer | TAG_V0 | `perf_report.json` 里没有 pending_human；`run_gate(final)` 通过 | 否（M4 起按改动拆，见 O2） |
 | 阶段 6 | `FINAL` | 调度器 | S5 | `run_gate(final)` + `run_validate()`（全量回归）；生成运行报告 | — |

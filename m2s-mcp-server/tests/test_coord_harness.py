@@ -74,6 +74,15 @@ def test_stamp_resolves_inherited_models_without_secrets(tmp_path: Path, monkeyp
     assert "sk-secret" not in json.dumps(stamp)
 
 
+def test_agent_definitions_include_the_split_verifier_roles():
+    """2026-11-25: the v1 verifier is a separate agent, so the harness stamp
+    records both role files."""
+    agents = harness._agents(harness.AGENTS_DIR, "model")
+    assert {"m2s-verifier", "m2s-verifier-v1"} <= set(agents)
+    assert agents["m2s-verifier"]["file"] == "m2s-verifier.md"
+    assert agents["m2s-verifier-v1"]["file"] == "m2s-verifier-v1.md"
+
+
 def test_prompt_hash_changes_with_content(tmp_path: Path):
     root = tmp_path / "skills"
     (root / "a").mkdir(parents=True)

@@ -12,7 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from coord import mail, notices  # noqa: E402
 
 IMPL = ["m2s-architect", "m2s-code-developer", "m2s-sam-engineer", "m2s-validator", "m2s-perf-optimizer"]
-VERIFY = ["m2s-verifier", "m2s-spec-annotator"]
+VERIFY = ["m2s-verifier", "m2s-verifier-v1", "m2s-spec-annotator"]
 
 
 def _board(tmp_path: Path) -> None:
@@ -41,10 +41,11 @@ def test_no_canary_reaches_the_implementation_line(tmp_path):
 
 def test_verifier_sees_spec_issues_and_full_rulings(tmp_path):
     _board(tmp_path)
-    seen = notices.read_notices(tmp_path, "m2s-verifier")
-    topics = {e["topic"] for e in seen}
-    assert {"artifact", "ruling", "spec-issue"} <= topics
-    assert "task" not in topics
+    for role in ("m2s-verifier", "m2s-verifier-v1"):
+        seen = notices.read_notices(tmp_path, role)
+        topics = {e["topic"] for e in seen}
+        assert {"artifact", "ruling", "spec-issue"} <= topics, role
+        assert "task" not in topics, role
 
 
 def test_room_canary_never_reaches_a_non_participant(tmp_path):
