@@ -1479,8 +1479,10 @@ class Dispatcher:
             if module and (module in template_ids or module in board_ids):
                 target = module
             elif module:
-                role = ROUTE_ROLES.get(module) or (module if module in ROUTE_ROLES.values() else None)
-                target = next((t.id for t in reversed(self.template.tasks) if t.role == role), None)
+                role = ROUTE_ROLES.get(module)
+                if role is None and module in ROUTE_ROLES.values():
+                    role = self._route_role(module)
+                target = next((t.id for t in reversed(self.template.tasks) if t.role == role), None) if role else None
             if target in template_ids and self.template.get(target).split == "package":
                 # The room named a module whose work is split; the discussion
                 # did not name one package, so every package is reopened.
@@ -1548,6 +1550,11 @@ class Dispatcher:
             self.events.append("spec_issues_carried", task="V1", issues=ids)
             self.log(f"V1: {len(ids)} non-blocking spec issues stay open; they go into the final report")
 
+    def _route_role(self, base: str) -> str:
+        """The template's role for a route target (v1 templates use -v1 roles)."""
+        variants = (base, f"{base}-v1")
+        return next((t.role for t in self.template.tasks if t.role in variants), base)
+
     def _route_target(self, kind: Any, task_id: str, function: str | None = None) -> str | None:
         """The nearest earlier task that fixes what a verification failure points at:
         code, template, spec / blueprint by role; assets (the delta tests) is D1.
@@ -1557,10 +1564,11 @@ class Dispatcher:
         if kind == "assets":
             found = [t.id for t in earlier if t.mode == "D1"]
         else:
-            found = [t.id for t in earlier if kind in ROUTE_ROLES and t.role == ROUTE_ROLES[kind]]
+            role = self._route_role(ROUTE_ROLES[kind]) if kind in ROUTE_ROLES else None
+            found = [t.id for t in earlier if role and t.role == role]
         if found:
             return found[-1]
-        role = ROUTE_ROLES.get(kind) if isinstance(kind, str) else None
+        role = self._route_role(ROUTE_ROLES[kind]) if isinstance(kind, str) and kind in ROUTE_ROLES else None
         if role and function:
             return self._package_child(role, function)
         return None
@@ -1591,7 +1599,7 @@ class Dispatcher:
             self.board.report_gate(spec.id, False)
             if self._rooms_enabled():
                 unknown = [str(r.get("to")) for r in routing]
-                suspect = sorted({ROUTE_ROLES[t] for t in unknown if t in ROUTE_ROLES})
+                suspect = sorted({self._route_role(ROUTE_ROLES[t]) for t in unknown if t in ROUTE_ROLES})
                 room_id = f"triage-{spec.id.lower()}-{self.events.count('room_open') + 1}"
                 rooms.open_triage_room(self.coord, room_id, f"{spec.id} 有无法归因的失败",
                                        suspect or sorted({t.role for t in self.template.tasks if t.role}),

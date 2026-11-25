@@ -32,7 +32,7 @@ tasks:
     timeout_min: 150
 
   - id: S1
-    role: m2s-architect
+    role: m2s-architect-v1
     line: impl
     deps: ["S0:*"]
     # work_packages.json: S1 fills impl_packages from the blueprint (v3 M3

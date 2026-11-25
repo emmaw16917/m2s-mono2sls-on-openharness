@@ -28,7 +28,7 @@ from typing import Any
 
 from coord.locks import Locks
 
-IMPL_ROLES = {"m2s-architect", "m2s-code-developer", "m2s-sam-engineer", "m2s-validator",
+IMPL_ROLES = {"m2s-architect", "m2s-architect-v1", "m2s-code-developer", "m2s-sam-engineer", "m2s-validator",
               "m2s-perf-optimizer"}
 # v1 runs its own verifier role (m2s-verifier-v1); both count as the verify line.
 VERIFY_ROLES = {"m2s-verifier", "m2s-verifier-v1", "m2s-spec-annotator"}
@@ -39,7 +39,7 @@ TOPIC_ROLES: dict[str, set[str] | None] = {
     "artifact": None,  # everyone may read
     "ruling": None,    # everyone, filtered for the implementation line
     "task": {"dispatcher", HANDLER_ROLE},
-    "spec-issue": {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-spec-annotator", "dispatcher"},
+    "spec-issue": {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-architect-v1", "m2s-spec-annotator", "dispatcher"},
 }
 # Who may write a topic. Readers are TOPIC_ROLES; code-developer may raise an
 # issue but does not read the spec room/board topic (§4.6 tool table).
@@ -47,13 +47,13 @@ TOPIC_POST_ROLES: dict[str, set[str] | None] = {
     "artifact": {"dispatcher", "m2s-server"},
     "ruling": {"dispatcher", "m2s-server"},
     "task": {"dispatcher", HANDLER_ROLE},
-    "spec-issue": {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-spec-annotator", "m2s-code-developer"},
+    "spec-issue": {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-architect-v1", "m2s-spec-annotator", "m2s-code-developer"},
 }
 TOPICS = tuple(TOPIC_ROLES)
 
 ROOM_ROLES: dict[str, set[str]] = {
-    "spec": {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-spec-annotator"},
-    "triage": {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-code-developer", "m2s-sam-engineer"},
+    "spec": {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-architect-v1", "m2s-spec-annotator"},
+    "triage": {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-architect-v1", "m2s-code-developer", "m2s-sam-engineer"},
 }
 
 # What the implementation line must not see from the verification side.

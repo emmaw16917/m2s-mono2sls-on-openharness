@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from coord import mail, notices  # noqa: E402
 
-IMPL = ["m2s-architect", "m2s-code-developer", "m2s-sam-engineer", "m2s-validator", "m2s-perf-optimizer"]
+IMPL = ["m2s-architect", "m2s-architect-v1", "m2s-code-developer", "m2s-sam-engineer", "m2s-validator", "m2s-perf-optimizer"]
 VERIFY = ["m2s-verifier", "m2s-verifier-v1", "m2s-spec-annotator"]
 
 
@@ -29,7 +29,7 @@ def test_no_canary_reaches_the_implementation_line(tmp_path):
         seen = notices.read_notices(tmp_path, role)
         text = repr(seen)
         assert "CANARY task" not in text
-        if role == "m2s-architect":
+        if role in ("m2s-architect", "m2s-architect-v1"):
             assert "CANARY spec" in text  # the architect is a spec-room participant
         else:
             assert "CANARY spec" not in text

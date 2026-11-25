@@ -12,10 +12,13 @@ from pathlib import Path
 
 import pytest
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 checker_mod = pytest.importorskip("openharness.permissions.checker")
 settings_mod = pytest.importorskip("openharness.config.settings")
+
+from coord_fakes import make_dispatcher  # noqa: E402
 
 from coord.dispatcher import closed_to  # noqa: E402
 from coord.prompts import worker_prompt  # noqa: E402
@@ -190,6 +193,57 @@ def test_verifier_role_split_keeps_v1_out_of_the_v2_prompt():
         template = load_template(name)
         roles = {s.role for s in template.tasks if s.id in ("J1", "J3", "J4", "D1", "V3")}
         assert roles == {"m2s-verifier"}, (name, roles)
+
+
+def test_architect_role_split_keeps_v1_out_of_the_v2_prompt():
+    """2026-11-25: m2s-architect carries the v2/A1 content only; the v1 S1
+    sections and completion live in m2s-architect-v1, which the v1 templates
+    use (including the spec/blueprint routing target)."""
+    from coord import workers
+
+    v2 = workers.role_prompt("m2s-architect")
+    v1 = workers.role_prompt("m2s-architect-v1")
+    for heading in ("## 回炉：裁定验证线提出的 spec_issues", "## 裁定 S5 的 spec 放宽申请"):
+        assert heading not in v2, heading
+        assert heading in v1, heading
+    assert "STAGE_COMPLETE" not in v2 and "STAGE_BLOCKED" not in v2
+    assert "stage_reports/S1.json" not in v2
+    for heading in ("## MODE: ruling", "## MODE: adapter", "## MODE: gaps"):
+        assert heading in v2, heading
+        assert heading not in v1, heading
+    assert "## 迁移带来的对外变化" in v2 and "adapter_map" in v2 and "gap_inventory" in v2
+    assert "stage_reports/S1.json" in v1 and "STAGE_COMPLETE" in v1
+
+    # What the dispatcher actually writes into each worker's settings.json.
+    fake_ws = Path("C:/nonexistent-ws")
+    for task_id, role in (("A1", "m2s-architect"), ("S1", "m2s-architect-v1")):
+        job = WorkerJob(task_id, 1, role, fake_ws, fake_ws / "coord", workers.role_prompt(role),
+                        "do it", (), 10, 60.0)
+        system_prompt = worker_settings(job, [])["system_prompt"]
+        if role == "m2s-architect":
+            assert "STAGE_COMPLETE" not in system_prompt and "stage_reports/S1.json" not in system_prompt
+            assert "## MODE: ruling" in system_prompt
+        else:
+            assert "STAGE_COMPLETE" in system_prompt and "stage_reports/S1.json" in system_prompt
+            assert "## MODE: ruling" not in system_prompt
+
+    v1_template = load_template("v1")
+    v1_split = load_template("v1-split")
+    for template in (v1_template, v1_split):
+        assert template.get("S1").role == "m2s-architect-v1"
+    for name in ("v2-split", "v2-gaps", "v2-adapter"):
+        template = load_template(name)
+        roles = {t.role for t in template.tasks if t.role and t.role.startswith("m2s-architect")}
+        assert roles == {"m2s-architect"}, (name, roles)
+
+
+def test_v1_spec_routing_resolves_the_v1_architect(tmp_path):
+    """A v1 verification failure routed to "spec" finds S1 even though the v1
+    template now uses m2s-architect-v1."""
+    d = make_dispatcher(tmp_path, {})
+    d.setup()
+    assert d._route_target("spec", "V2") == "S1"
+    assert d._route_target("blueprint", "V2") == "S1"
 
 
 def test_the_v2_judge_template():
