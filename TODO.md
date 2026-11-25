@@ -119,3 +119,74 @@
       - `test_j4_spec_issues_rework_f2_not_the_gap_family`（端到端调用 `_after_j4`，`spec_issues_routed.to == ["F2-beta"]`，rework 目标是 F2-beta）
     - 结果：三项测试通过；既有 `test_shared_child_waits_for_the_package_children` 仍通过。
   - 优先级：高于 ruling 包级精度；如果当前代码真的把 fact_error 送到 G2，会直接造成错误回炉。
+
+## 2026-11-26
+
+- [x] 拆分 `m2s-code-developer` 角色：把 v1 的 S2 完成协议移出 I1 的 system prompt
+  - 背景：`coord/workers.py::role_prompt()` 按 role 读整个文件，不按 mode 过滤；I1 的 prompt 仍含 S2 / `STAGE_COMPLETE/STAGE_BLOCKED` / `stage_reports/S2.json` / `主 Agent`，与 v3 的 `submit_task/report_blocked` 和 I1 scope 冲突（`S2.json` 不在 I1 写入范围，会被 `write_scope` 撤销）。v1 已退役。
+  - 目标：
+    - 新建 `m2s-mcp-server/agents/m2s-code-developer-v1.md` → 旧 v1 内容（S2 阶段、STAGE 完成信号、S2 报告路径、主 Agent 输入契约）。
+    - `m2s-mcp-server/agents/m2s-code-developer.md` → 只保留 v2/I1 内容。
+    - 同步 `~/.openharness/agents/` 两份文件（运行时 `coord/workers.py` 读这里，不读仓库源）。
+    - v2 模板（`v2-split.yaml` 的 I1）保持 `role: m2s-code-developer`。
+    - v1 模板（`v1.yaml`、`v1-split.yaml`）如果还要能跑，`role:` 改为 `m2s-code-developer-v1`；如果确认永远不再跑，v1 文件只作归档，模板保持不动或删除。
+  - `m2s-code-developer.md` 的清理：
+    1. 删掉 `STAGE_COMPLETE/STAGE_BLOCKED`，改成 `submit_task` / `report_blocked`；
+    2. `stage_reports/S2.json` → `storage/stage_reports/<task_id>.json`（I1 子任务实际是 `I1-<pkg>.json` / `I1-shared.json`）；
+    3. S2/S3 阶段名 → I1/I2；
+    4. 更新 frontmatter description（去掉“S2 阶段……由 m2s-migrate 编排 skill spawn”）；
+    5. “blueprint 不清楚/机制没写”时写 `report_blocked(reason, evidence, suspected_module="A1")`，不要 `STAGE_BLOCKED`；
+    6. 保留 v2 judge 自测、`run_gate(phase="code")`、共享层、Cognito、contract 2 等内容。
+  - 完成（2026-11-26）：
+    - `agents/m2s-code-developer.md` 只保留 v2/I1：完成方式 `submit_task`/`report_blocked`，报告 `storage/stage_reports/<task_id>.json`；S2→I1、S3→I2、`S1 合并后的产物/主 Agent`→`A1 写好的产物/调度器`；blueprint 机制没写时 `report_blocked(..., suspected_module="A1")`；保留裁判自测、`run_gate(phase="code")`、共享层、Cognito、contract 2。`role_prompt` 中 `STAGE_COMPLETE/STAGE_BLOCKED`、`stage_reports/S2.json`、`主 Agent` 均为 0。
+    - 新建 `agents/m2s-code-developer-v1.md`：旧 S2 内容（STAGE 完成信号、S2 报告路径、主 Agent 输入契约、S3 阶段引用）完整保留；不含 v2 的裁判自测。
+    - `v1.yaml` / `v1-split.yaml` 的 S2 改为 `role: m2s-code-developer-v1`；`v2.yaml` / `v2-split.yaml` / `v2-gaps.yaml` 的 I1 保持 `m2s-code-developer`。
+    - `coord/notices.py` 把 `m2s-code-developer-v1` 加入 `IMPL_ROLES`、`spec-issue` 可写集合和 `ROOM_ROLES.triage`。
+    - 顺带修正 `coord/prompts.py` 的 v2 摘要：A1 不再写“角色说明里的 S1”，I1 不再写“角色说明里的 S2”，I2a/I2b/I2c 改用 `STAGE_ID=I2a/I2b/I2c`。
+    - 两份文件已同步到 `~/.openharness/agents/`（逐字节一致）。
+  - 兼容性/测试：
+    - `coord/harness.py::_agents()` 扫描 `m2s-mcp-server/agents/*.md`，确认新 agent 进入 harness stamp。
+    - `coord/notices.py` / `rooms.py` 的角色集合按需加入 `m2s-code-developer-v1`（v1 不使用讨论室可跳过）。
+    - 测试断言：`role_prompt("m2s-code-developer")` 不含 `STAGE_COMPLETE/STAGE_BLOCKED` / `stage_reports/S2.json` / `主 Agent`，仍含 `submit_task` / `report_blocked` / `run_judge_self_test`；`role_prompt("m2s-code-developer-v1")` 仍含 v1 段；模板角色正确。
+    - 现有 coord 测试全绿。
+  - 测试：
+    - `tests/test_coord_j1_perm.py::test_code_developer_role_split_keeps_s2_out_of_the_v2_prompt`（含 settings.json system_prompt 与模板角色）
+    - 同一测试文件里的 v1 路由断言扩展为 `code`→S2、`template`→S3c
+    - `tests/test_coord_harness.py`（stamp 记录两份新 agent）、`tests/test_coord_leak.py`（v1 角色公告可见性）
+    - 结果：j1_perm/harness/leak/units 47 passed；notices/rooms/rulings/gates/toolchain/split/full_flow 非 slow 项 135 passed, 8 skipped
+  - 备选：如果 v1 连归档都不需要，直接按 6 条清理 `m2s-code-developer.md`，并删除 v1 模板/角色。
+
+- [x] 拆分 `m2s-sam-engineer` 角色：把 v1 的 S3/SG 和完成协议移出 I2 的 system prompt
+  - 背景：`coord/workers.py::role_prompt()` 按 role 读整个文件，不按 mode 过滤；I2a/I2b/I2c 的 prompt 仍含 S3a/S3b/S3c、`STAGE_COMPLETE/STAGE_BLOCKED`、`stage_reports/<STAGE_ID>.json`、**“S3a/S3b 不调用任何 MCP 工具”**、master 的硬编码 merge 路径和 SG（GSI 修复）模式。后两条最危险：I2a/I2b 不调 `submit_task` 就无法提交；写 `S3a.json` 不在 I2a scope 内，会被 `write_scope` 撤销。v1 已退役。
+  - 目标：
+    - 新建 `m2s-mcp-server/agents/m2s-sam-engineer-v1.md` → 旧 v1 内容（S3a/S3b/S3c、SG、STAGE 完成信号、S3a/S3b/S3c 报告路径）。
+    - `m2s-mcp-server/agents/m2s-sam-engineer.md` → 只保留 v2/I2 内容。
+    - 同步 `~/.openharness/agents/` 两份文件（运行时 `coord/workers.py` 读这里，不读仓库源）。
+    - v2 模板（`v2-split.yaml` 的 I2a/I2b/I2c）保持 `role: m2s-sam-engineer`。
+    - v1 模板（`v1.yaml`、`v1-split.yaml`）如果还要能跑，`role:` 改为 `m2s-sam-engineer-v1`；如果确认永远不再跑，v1 文件只作归档，模板保持不动或删除。
+  - `m2s-sam-engineer.md` 的清理：
+    1. S3a/S3b/S3c → I2a/I2b/I2c；
+    2. `STAGE_COMPLETE/STAGE_BLOCKED` → `submit_task` / `report_blocked`；
+    3. `storage/stage_reports/<STAGE_ID>.json` → `storage/stage_reports/<task_id>.json`，`stage_id` 用 I2a/I2b/I2c；
+    4. 把“S3a/S3b 不调用任何 MCP 工具”改成“I2a/I2b 不调用 `run_gate`/`validate_sam`；完成时必须调用 `submit_task` / `report_blocked`”；
+    5. 合并命令不要硬编码 `D:\Emma\MyLab\Mono2SLs\m2s-mcp-server\m2s_merge.py`，用 prompt 里的 `MERGE`（v3 worktree 路径）；
+    6. S2 → I1，S3 → I2，主 Agent → 调度器；
+    7. SG（GSI 修复）段移到 v1 文件或删除（当前 v2-split 没有 SG 任务/模板）；
+    8. 更新 frontmatter description（去掉 S3 + `m2s-migrate`）；
+    9. 保留 TIER 1/2、API type、PayloadFormatVersion 1.0、全局响应头、幂等表、CodeUri/Handler、merge、`run_gate`/`validate_sam`、`m2s-sam-kb`。
+  - 完成（2026-11-26）：
+    - `agents/m2s-sam-engineer.md` 改为 I2a/I2b/I2c：I2a/I2b 不调用 `run_gate`/`validate_sam`（分片不是完整模板），但每个子阶段结束时必须 `submit_task`、做不下去时 `report_blocked`；I2c 用 prompt 的 `MERGE` 跑 `python "<MERGE>" template "<WS>"`，不再硬编码 `D:\Emma\MyLab\Mono2SLs` 或 `envs\mono2sls`；报告 `storage/stage_reports/<task_id>.json`；SG 段移除；S3a/S3b/S3c/S2/主 Agent/STAGE 在 prompt 中均为 0。
+    - 保留 TIER 1/2、认证规则、API 类型、PayloadFormatVersion 1.0、全局响应头、幂等表、CodeUri/Handler、ReportBatchItemFailures、DynamoDBCrudPolicy、I2c 自查循环与两个常见坑、`m2s-sam-kb`。
+    - 新建 `agents/m2s-sam-engineer-v1.md`：旧 S3a/S3b/S3c + SG + STAGE 协议 + S3 报告路径完整保留（与原文逐字一致，仅 frontmatter 改名），其中的合并命令仍是 v1 的硬编码路径。
+    - `v1.yaml` / `v1-split.yaml` 的 S3a/S3b/S3c 改为 `role: m2s-sam-engineer-v1`；`v2.yaml` / `v2-split.yaml` / `v2-gaps.yaml` 的 I2 角色保持 `m2s-sam-engineer`。
+    - `coord/notices.py` 把 `m2s-sam-engineer-v1` 加入 `IMPL_ROLES` 和 `ROOM_ROLES.triage`。
+    - 两份文件已同步到 `~/.openharness/agents/`（逐字节一致）。
+  - 兼容性/测试：
+    - `coord/harness.py::_agents()` 扫描 `m2s-mcp-server/agents/*.md`，确认新 agent 进入 harness stamp。
+    - `coord/notices.py` / `rooms.py` 的角色集合按需加入 `m2s-sam-engineer-v1`（v1 不使用讨论室可跳过）。
+    - 测试断言：`role_prompt("m2s-sam-engineer")` 不含 `S3a/S3b/S3c` / `STAGE_COMPLETE/STAGE_BLOCKED` / `stage_reports/S3a.json` / `STAGE_ID = SG` / “不调用任何 MCP 工具”，仍含 `I2a/I2b/I2c`、`submit_task`、`report_blocked`、`MERGE`、`m2s-sam-kb`；`role_prompt("m2s-sam-engineer-v1")` 仍含 S3a/S3b/S3c/SG/STAGE 段；模板角色正确。
+    - 现有 coord 测试全绿。
+  - 测试：
+    - `tests/test_coord_j1_perm.py::test_sam_engineer_role_split_keeps_s3_and_sg_out_of_the_v2_prompt`（含 settings.json system_prompt、硬编码路径与模板角色）
+    - 相邻回归与上一项合并运行：47 passed（角色/权限/单元）+ 135 passed, 8 skipped（notices/rooms/rulings/gates/toolchain/split/full_flow 非 slow）
+  - 备选：如果 v1 连归档都不需要，直接按 9 条清理 `m2s-sam-engineer.md`，并删除 v1 模板/角色。

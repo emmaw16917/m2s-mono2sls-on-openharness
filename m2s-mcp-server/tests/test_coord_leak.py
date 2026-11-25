@@ -11,7 +11,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from coord import mail, notices  # noqa: E402
 
-IMPL = ["m2s-architect", "m2s-architect-v1", "m2s-code-developer", "m2s-sam-engineer", "m2s-validator", "m2s-perf-optimizer"]
+IMPL = ["m2s-architect", "m2s-architect-v1", "m2s-code-developer", "m2s-code-developer-v1",
+        "m2s-sam-engineer", "m2s-sam-engineer-v1", "m2s-validator", "m2s-perf-optimizer"]
 VERIFY = ["m2s-verifier", "m2s-verifier-v1", "m2s-spec-annotator"]
 
 

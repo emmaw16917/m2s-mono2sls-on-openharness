@@ -41,16 +41,16 @@ TASK_SUMMARIES = {
           "判定以 verification/verdict_A.json 为准；FAIL 时在工作报告的 routing 里写清退回对象。",
     "S5": "STAGE_ID=S5：在 v0 上做语义保持的性能改动（按你的角色说明）。每个保留的改动单独提交到 WS 的 git；"
           "写 output/perf_report.json。",
-    # v2 (PIPELINE_V2_PLAN.md appendix A). The role docs name the stages by their v1 ids.
-    "A1": "按规格设计 serverless 架构（角色说明里的 S1）：用 mcp__m2s-server__merge_blueprint_key 逐个顶层字段写 storage/blueprint.json，"
+    # v2 (PIPELINE_V2_PLAN.md appendix A); the role docs use the v2 ids (A1/I1/I2a...).
+    "A1": "按规格设计 serverless 架构：用 mcp__m2s-server__merge_blueprint_key 逐个顶层字段写 storage/blueprint.json，"
           "设计决定记进 storage/DECISIONS.md。还有三项：storage/adapter_map.json（\"适配映射\"一节）、storage/gap_inventory.json 的每条决定"
           "（\"缺口决定\"一节）、迁移带来的对外变化写成裁定（\"迁移带来的对外变化\"一节）。写完跑 run_gate(phase=\"blueprint\") 自查并修正。",
-    "I1": "按 blueprint 写 output/lambdas/<domain>/<name>/（角色说明里的 S2）：handler 和依赖声明，需要时写 output/layers/shared/；"
+    "I1": "按 blueprint 写 output/lambdas/<domain>/<name>/：handler 和依赖声明，需要时写 output/layers/shared/；"
           "写完跑 run_gate(phase=\"code\") 自查并修正，再按\"用裁判自测\"一节用 mcp__m2s-server__run_judge_self_test 对自己的函数跑裁判用例。",
-    "I2a": "这一步是角色说明里的 STAGE_ID=S3a：写 output/template.part1.yaml（AWSTemplateFormatVersion 到 Globals、Parameters、共享资源，"
+    "I2a": "这一步是角色说明里的 STAGE_ID=I2a：写 output/template.part1.yaml（AWSTemplateFormatVersion 到 Globals、Parameters、共享资源，"
            "以第一次出现的 \"# --- END METADATA ---\" 结束）。",
-    "I2b": "这一步是角色说明里的 STAGE_ID=S3b：写 output/template.part2.yaml（Function 资源、FUNCTIONS_METADATA 块、Outputs）。",
-    "I2c": "这一步是角色说明里的 STAGE_ID=S3c：用 MERGE 合并 part1 和 part2 生成 output/template.yaml（python \"{merge}\" template \"{ws}\"），"
+    "I2b": "这一步是角色说明里的 STAGE_ID=I2b：写 output/template.part2.yaml（Function 资源、FUNCTIONS_METADATA 块、Outputs）。",
+    "I2c": "这一步是角色说明里的 STAGE_ID=I2c：用 MERGE 合并 part1 和 part2 生成 output/template.yaml（python \"{merge}\" template \"{ws}\"），"
            "然后自己跑 run_gate(phase=\"template\") 和 validate_sam 自查并修正合并后的模板。",
     "I3": "这一步是角色说明里的 S4：做一致性检查，写 output/consistency_report.json。",
     "O": "在 B0 上做语义保持的性能改动（角色说明里的 S5，先读\"v2 流水线\"一节，它改变了基线和检查）。每个保留的改动单独提交到 WS 的 git；"

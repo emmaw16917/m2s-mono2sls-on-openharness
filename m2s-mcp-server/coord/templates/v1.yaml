@@ -48,7 +48,7 @@ tasks:
     timeout_min: 180
 
   - id: S2
-    role: m2s-code-developer
+    role: m2s-code-developer-v1
     line: impl
     deps: [V1]
     scope: [output/lambdas/**, output/layers/**, storage/DECISIONS.md, storage/stage_reports/S2.json]
@@ -57,7 +57,7 @@ tasks:
     timeout_min: 180
 
   - id: S3a
-    role: m2s-sam-engineer
+    role: m2s-sam-engineer-v1
     line: impl
     deps: [S2]
     scope: [output/template.part1.yaml, storage/DECISIONS.md, storage/stage_reports/S3a.json]
@@ -67,7 +67,7 @@ tasks:
     timeout_min: 90
 
   - id: S3b
-    role: m2s-sam-engineer
+    role: m2s-sam-engineer-v1
     line: impl
     deps: [S3a]
     scope: [output/template.part2.yaml, storage/DECISIONS.md, storage/stage_reports/S3b.json]
@@ -77,7 +77,7 @@ tasks:
     timeout_min: 90
 
   - id: S3c
-    role: m2s-sam-engineer
+    role: m2s-sam-engineer-v1
     line: impl
     deps: [S3b]
     scope: [output/template.yaml, output/template.part1.yaml, output/template.part2.yaml,

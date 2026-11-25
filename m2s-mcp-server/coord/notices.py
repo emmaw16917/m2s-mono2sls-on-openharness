@@ -28,8 +28,8 @@ from typing import Any
 
 from coord.locks import Locks
 
-IMPL_ROLES = {"m2s-architect", "m2s-architect-v1", "m2s-code-developer", "m2s-sam-engineer", "m2s-validator",
-              "m2s-perf-optimizer"}
+IMPL_ROLES = {"m2s-architect", "m2s-architect-v1", "m2s-code-developer", "m2s-code-developer-v1",
+              "m2s-sam-engineer", "m2s-sam-engineer-v1", "m2s-validator", "m2s-perf-optimizer"}
 # v1 runs its own verifier role (m2s-verifier-v1); both count as the verify line.
 VERIFY_ROLES = {"m2s-verifier", "m2s-verifier-v1", "m2s-spec-annotator"}
 HANDLER_ROLE = "handler"
@@ -47,13 +47,13 @@ TOPIC_POST_ROLES: dict[str, set[str] | None] = {
     "artifact": {"dispatcher", "m2s-server"},
     "ruling": {"dispatcher", "m2s-server"},
     "task": {"dispatcher", HANDLER_ROLE},
-    "spec-issue": {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-architect-v1", "m2s-spec-annotator", "m2s-code-developer"},
+    "spec-issue": {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-architect-v1", "m2s-spec-annotator", "m2s-code-developer", "m2s-code-developer-v1"},
 }
 TOPICS = tuple(TOPIC_ROLES)
 
 ROOM_ROLES: dict[str, set[str]] = {
     "spec": {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-architect-v1", "m2s-spec-annotator"},
-    "triage": {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-architect-v1", "m2s-code-developer", "m2s-sam-engineer"},
+    "triage": {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-architect-v1", "m2s-code-developer", "m2s-code-developer-v1", "m2s-sam-engineer", "m2s-sam-engineer-v1"},
 }
 
 # What the implementation line must not see from the verification side.

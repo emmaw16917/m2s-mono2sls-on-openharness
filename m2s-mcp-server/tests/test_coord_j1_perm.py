@@ -237,13 +237,83 @@ def test_architect_role_split_keeps_v1_out_of_the_v2_prompt():
         assert roles == {"m2s-architect"}, (name, roles)
 
 
+def test_code_developer_role_split_keeps_s2_out_of_the_v2_prompt():
+    """2026-11-26: m2s-code-developer carries the v2/I1 content (submit_task,
+    report_blocked, the judge self-test); the S2 STAGE protocol and report
+    path live in m2s-code-developer-v1, which the v1 templates use."""
+    from coord import workers
+
+    v2 = workers.role_prompt("m2s-code-developer")
+    v1 = workers.role_prompt("m2s-code-developer-v1")
+    for token in ("STAGE_COMPLETE", "STAGE_BLOCKED", "stage_reports/S2.json", "主 Agent"):
+        assert token not in v2, token
+        assert token in v1, token
+    for token in ("submit_task", "report_blocked", "run_judge_self_test"):
+        assert token in v2, token
+    assert "## 用裁判自测" in v2 and "## 用裁判自测" not in v1
+
+    fake_ws = Path("C:/nonexistent-ws")
+    for task_id, role in (("I1", "m2s-code-developer"), ("S2", "m2s-code-developer-v1")):
+        job = WorkerJob(task_id, 1, role, fake_ws, fake_ws / "coord", workers.role_prompt(role),
+                        "do it", (), 10, 60.0)
+        system_prompt = worker_settings(job, [])["system_prompt"]
+        assert ("STAGE_COMPLETE" in system_prompt) == role.endswith("-v1")
+        assert ("run_judge_self_test" in system_prompt) == (role == "m2s-code-developer")
+
+    for template in (load_template("v1"), load_template("v1-split")):
+        assert template.get("S2").role == "m2s-code-developer-v1"
+    for name in ("v2", "v2-split", "v2-gaps"):
+        template = load_template(name)
+        roles = {t.role for t in template.tasks if t.role and "code-developer" in t.role}
+        assert roles == {"m2s-code-developer"}, (name, roles)
+
+
+def test_sam_engineer_role_split_keeps_s3_and_sg_out_of_the_v2_prompt():
+    """2026-11-26: m2s-sam-engineer carries the v2/I2 content (I2a/I2b/I2c,
+    submit_task/report_blocked, MERGE, m2s-sam-kb); the S3a/S3b/S3c and SG
+    protocol lives in m2s-sam-engineer-v1, which the v1 templates use."""
+    from coord import workers
+
+    v2 = workers.role_prompt("m2s-sam-engineer")
+    v1 = workers.role_prompt("m2s-sam-engineer-v1")
+    for token in ("S3a", "S3b", "S3c", "STAGE_COMPLETE", "STAGE_BLOCKED",
+                  "stage_reports/S3a.json", "STAGE_ID = SG", "不调用任何 MCP 工具"):
+        assert token not in v2, token
+    assert "S3a" in v1 and "S3b" in v1 and "S3c" in v1
+    assert "STAGE_ID = SG" in v1 and "STAGE_COMPLETE" in v1
+    for token in ("I2a", "I2b", "I2c", "submit_task", "report_blocked", "MERGE", "m2s-sam-kb"):
+        assert token in v2, token
+    assert "D:\\Emma\\MyLab\\Mono2SLs" not in v2 and "envs\\mono2sls" not in v2
+
+    fake_ws = Path("C:/nonexistent-ws")
+    for task_id, role in (("I2a", "m2s-sam-engineer"), ("S3a", "m2s-sam-engineer-v1")):
+        job = WorkerJob(task_id, 1, role, fake_ws, fake_ws / "coord", workers.role_prompt(role),
+                        "do it", (), 10, 60.0)
+        system_prompt = worker_settings(job, [])["system_prompt"]
+        assert ("STAGE_COMPLETE" in system_prompt) == role.endswith("-v1")
+        if role == "m2s-sam-engineer":
+            assert "submit_task" in system_prompt and "report_blocked" in system_prompt
+        else:
+            assert "submit_task" not in system_prompt
+
+    for template in (load_template("v1"), load_template("v1-split")):
+        assert template.get("S3a").role == template.get("S3b").role == template.get("S3c").role == "m2s-sam-engineer-v1"
+    for name in ("v2", "v2-split", "v2-gaps"):
+        template = load_template(name)
+        roles = {t.role for t in template.tasks if t.role and "sam-engineer" in t.role}
+        assert roles == {"m2s-sam-engineer"}, (name, roles)
+
+
 def test_v1_spec_routing_resolves_the_v1_architect(tmp_path):
     """A v1 verification failure routed to "spec" finds S1 even though the v1
-    template now uses m2s-architect-v1."""
+    template now uses m2s-architect-v1; the code/template routes find the v1
+    developer/engineer tasks too."""
     d = make_dispatcher(tmp_path, {})
     d.setup()
     assert d._route_target("spec", "V2") == "S1"
     assert d._route_target("blueprint", "V2") == "S1"
+    assert d._route_target("code", "V2") == "S2"
+    assert d._route_target("template", "V2") == "S3c"
 
 
 def test_the_v2_judge_template():
