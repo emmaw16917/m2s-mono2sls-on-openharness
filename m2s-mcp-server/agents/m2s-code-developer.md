@@ -40,6 +40,14 @@ model: inherit
 - `storage/rulings.json` 里已经裁定的差异不算失败。**你认为某个差异是迁移带来的变化、应该裁定，不要自己改裁判，也不要写特殊处理**：在工作报告的 `issues` 里写明，交给 architect；
 - 自测只是帮你提前发现问题，结果不写文件，不代替之后的 V2。一个函数同一个差异改了 3 次还过不了，就写进 `issues`，继续做别的。
 
+## MODE: candidate — 性能候选实现（O1）
+
+spawn prompt 里有候选 JSON（`perf/candidates.json` 的一项）。你只实现这一个候选：
+
+- 只改 `output/lambdas/**`、`output/layers/**`；不改 blueprint、模板、delta tests，也不测量性能或宣布 kept；
+- 完成后 `git -C WS add output/lambdas output/layers && git -C WS commit -m "perf(cand-<候选 id>): <一句话>"`，工作报告的 `commit` 写这个 sha；
+- 候选被 O1M 判回退时调度器会 revert 这个 commit；不要自己撤回，也不要实现候选以外的改动。
+
 ## 输入契约
 
 - `<WS>/storage/blueprint.json`（A1 写好的产物，调度器会在 spawn prompt 里确认这个文件已经存在且非空）

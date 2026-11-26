@@ -84,11 +84,18 @@ CPU_RATIO_LIMIT = 2.0
 
 def load_benchmarks(ws: Path, ids: list[str] | None = None, functions: list[str] | None = None) -> list[dict[str, Any]]:
     out = []
+    seen: dict[str, str] = {}
     for p in sorted((ws / "perf" / "benchmarks").glob("*/*.json")):
         b = json.loads(p.read_text(encoding="utf-8"))
         b.setdefault("id", p.stem)
         b.setdefault("function", p.parent.name)
         b["_file"] = str(p.relative_to(ws)).replace("\\", "/")
+        if b["id"] in seen:
+            # run_proxy_metrics and the RIE/AWS selectors key results by id:
+            # a duplicate would silently overwrite the other benchmark.
+            raise VerifyError(f"duplicate benchmark id {b['id']!r}: {seen[b['id']]} and {b['_file']}; "
+                              "benchmark ids are global, not per function")
+        seen[b["id"]] = b["_file"]
         if (ids and b["id"] not in ids) or (functions and b["function"] not in functions):
             continue
         out.append(b)
@@ -712,7 +719,7 @@ def run_rie_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", late
 
 
 # ---------------------------------------------------------------------------
-# AWS verdict (PERF_OPTIMIZATION_DESIGN.md §2.2, O only)
+# AWS verdict (PERF_OPTIMIZATION_DESIGN.md §2.2, O1M/O2; on by default)
 # ---------------------------------------------------------------------------
 
 def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load_cmd: str | None = None,
@@ -721,12 +728,13 @@ def run_aws_verdict(workspace: str, benchmark: str, baseline: str = "HEAD", load
     """Judge one O candidate on real AWS. Primary dimensions: Lambda warm
     Duration and marginal cost (Lambda + requests + DynamoDB + SQS); guards:
     end-to-end p50/p95 and cold start. Correctness is the local checks' job;
-    this tool only measures. Requires M2S_AWS=1 and a load command."""
+    this tool only measures. AWS is the default; M2S_AWS=0 disables it.
+    A load command is required."""
     ws = Path(workspace).resolve()
     from coord import aws as aws_mod
 
     if not aws_mod.enabled():
-        return {"status": "DISABLED", "note": "M2S_AWS=1 is required; a real run needs a person to approve the cost"}
+        return {"status": "DISABLED", "note": "M2S_AWS=0 disables the default AWS measurement"}
     if not load_cmd:
         return {"status": "ERROR", "error": "load_cmd is required (reads M2S_AWS_TARGET, writes {'samples': [ms]} to $M2S_AWS_OUT)"}
     model = Model(ws)

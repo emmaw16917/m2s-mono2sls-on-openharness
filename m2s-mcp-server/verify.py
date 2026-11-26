@@ -1988,7 +1988,7 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
     tests (v2 V3, label "B0"); they may have cases and no fault scenarios.
 
     diff: H1 check of the working tree against baseline_ref (a git ref of the
-    workspace repo, default v0). The baseline version is rebuilt and run
+    workspace repo; "auto" prefers B0P, then B0, then v0). The baseline version is rebuilt and run
     first; the faults it actually applied are then pinned to the same
     concrete operations in the working-tree run, so a change of call order
     (e.g. parallelization) does not move a fault onto a different item.
@@ -2006,8 +2006,9 @@ def run_equivalence(workspace: str, mode: str = "record", label: str = "v0", fun
         raise VerifyError("mode must be 'record' or 'diff'")
     ws = Path(workspace)
     model = Model(ws)
-    if baseline_ref == "auto":  # v2's accepted version is B0, v1's is v0
-        baseline_ref = "B0" if has_own_repo(ws) and _git(ws, "tag", "--list", "B0") else "v0"
+    if baseline_ref == "auto":  # O2's accepted version is B0P (B0 + O1), before that B0; v1's is v0
+        tags = _git(ws, "tag", "--list").split() if has_own_repo(ws) else []
+        baseline_ref = "B0P" if "B0P" in tags else "B0" if "B0" in tags else "v0"
     cases = load_cases(ws, assets)
     by_id = {c["id"]: c for c in cases if "id" in c}
     faults = [f for f in load_faults(ws, assets) if not functions or f.get("function") in functions]

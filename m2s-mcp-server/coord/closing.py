@@ -104,6 +104,18 @@ def _perf_lines(ws: Path) -> list[str]:
     return lines
 
 
+def _o1_lines(ws: Path) -> list[str]:
+    results = _read(ws / "perf" / "candidate_results.json") or {}
+    candidates = [c for c in results.get("candidates") or [] if isinstance(c, dict)]
+    if not candidates:
+        return ["- 没有 O1 候选（B0P = B0）。"]
+    accepted = [c for c in candidates if c.get("accepted")]
+    lines = [f"- O1 候选 {len(candidates)} 个，接受 {len(accepted)} 个："]
+    lines += [f"  - {c.get('id')}（{c.get('owner')}，{c.get('verdict')}）commit {str(c.get('commit') or '')[:12]}"
+              for c in candidates]
+    return lines
+
+
 def ruling_counts(rulings: list[dict[str, Any]]) -> dict[str, int]:
     """Rulings in the end, and how many a person made or confirmed."""
     human = [r for r in rulings if r.get("decider") == "human" or r.get("status") in ("confirmed", "rejected")]
@@ -112,15 +124,22 @@ def ruling_counts(rulings: list[dict[str, Any]]) -> dict[str, int]:
 
 
 def final_report(ws: Path, *, results: list[Any], rulings: list[dict[str, Any]], open_items: list[str],
-                 reverted: bool) -> str:
+                 reverted: bool, rollback: dict[str, Any] | None = None) -> str:
     counts = ruling_counts(rulings)
     lines = [f"# 最终报告：{ws.name}", "", f"生成时间：{time.strftime('%Y-%m-%d %H:%M')}。由调度器按文件和事件生成。", "",
              "## 最后一次检查", ""]
     lines += [f"- {r.name}：{'通过' if r.ok else '未通过'}。{r.summary}" for r in results]
     if reverted:
-        lines.append("- 优化阶段的改动没有通过最后检查，已经全部退回 B0。")
+        if rollback:
+            commits = rollback.get("commits") or []
+            what = "逐个回退到通过为止" if rollback.get("mode") == "fine" else f"整体退回 {rollback.get('baseline')}"
+            lines.append(f"- 优化阶段的改动没有通过最后检查；{what}（{len(commits)} 个 O2 提交），"
+                         f"回退的改动：{', '.join(rollback.get('reverted') or []) or '没有'}。")
+        else:
+            lines.append("- 优化阶段的改动没有通过最后检查，已经全部退回 B0。")
     lines += ["", "## 每一层在什么环境下检验", "", *_environment_lines(ws), "", "## 裁判和强度", "", *_judge_lines(ws),
-              "", "## 缺口", "", *_gap_lines(ws), "", "## 保留的优化", "", *_perf_lines(ws), "", "## 裁定", "",
+              "", "## 缺口", "", *_gap_lines(ws), "", "## O1 架构级改动（B0 → B0P）", "", *_o1_lines(ws),
+              "", "## O2 局部优化（B0P → final）", "", *_perf_lines(ws), "", "## 裁定", "",
               f"- 共 {counts['total']} 条，其中人工裁定或确认 {counts['human']} 条，还在等人 {counts['waiting']} 条。"]
     lines += [f"- {r.get('id')}（{r.get('category')}，{r.get('status')}）：{str(r.get('question'))[:160]} → {str(r.get('conclusion'))[:160]}"
               for r in rulings]

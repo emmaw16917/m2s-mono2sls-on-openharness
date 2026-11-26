@@ -1,9 +1,9 @@
 # M2S 性能优化设计方案（v2：O 优化线）
 
-> 状态：v3 O 的设计稿。v1 的旧优化线设计（旧基线、模拟延迟与 sam+Docker、复核与重新判决、数据模型扩展、v1 默认配置、prompt 注入与消融实验）归档在 `PERF_OPTIMIZATION_DESIGN_v1.md`；本文不再重复那些流程。
+> 状态：v3 优化线的设计稿（`B0 → O1/P → B0P → O2 → C1`）。v1 的旧优化线设计（旧基线、模拟延迟与 sam+Docker、复核与重新判决、数据模型扩展、v1 默认配置、prompt 注入与消融实验）归档在 `PERF_OPTIMIZATION_DESIGN_v1.md`；本文不再重复那些流程。
 >
 > 配套文档：
-> - `PIPELINE_V3_PLAN.md`：v3 流水线（J1 裁判、D1 增量测试、B0 → O → C1）；
+> - `PIPELINE_V3_PLAN.md`：v3 流水线（J1 裁判、D1 增量测试、B0 → O1/P → B0P → O2 → C1）；
 > - `PERF_OPTIMIZATION.md`：对照官方参考实现，以及支撑优化线的实验数据（测量层级的定义见其 §1）；
 > - `.openharness/skills/m2s-perf-optimizer-kb/`：O 的判决框架摘要，`references/PERF_OPTIMIZATION_DESIGN.md` 是本文的副本。
 
@@ -11,21 +11,39 @@
 
 ### 0.1 v3 O 的位置与目标
 
-v3 的优化线只有一个阶段 **O**，在实现通过裁判和增量测试、并打下 tag `B0` 之后运行。O 对已经验收通过的 B0 只做**语义保持**的性能改动；每个改动都必须通过四项正确性检查和一次性能判决，证据不足就回滚。改动的数量不是目标。
+v3 的优化线分成两轮：**O1/P**（架构级候选，owner 写最终实现）和 **O2**（在 B0P 上做局部、语义保持的改动）。两轮都只在四项正确性检查和一次性能判决都通过后保留改动；证据不足就回滚。改动的数量不是目标。
 
 与旧优化线的关键区别：
 
-| 旧优化线 | v3 O |
+| 旧优化线 | v3 优化线 |
 |---|---|
-| 基线是旧 tag，检查是验证线阶段 B（回归、故障差分、覆盖率） | 基线是 **B0**，检查是 **judge + 增量测试**：`run_judge`、`run_validate(assets="verification/delta")`、`run_equivalence(mode="diff", assets="verification/delta")`、`run_coverage(..., with_judge=true, assets="verification/delta")` |
+| 基线是旧 tag，检查是验证线阶段 B（回归、故障差分、覆盖率） | O1 候选之后打 **B0P**；O2 的基线是 **B0P**。检查是 **judge + 增量测试**：`run_judge`、`run_validate(assets="verification/delta")`、`run_equivalence(mode="diff", assets="verification/delta")`、`run_coverage(..., with_judge=true, assets="verification/delta")` |
 | 测试问题和缺测试由验证线复核后重新判决 | 没有复核和重新判决流程；`blocked_by_test` / `blocked_by_coverage` / `pending_spec` 留在报告里交给人 |
-| 默认用 RIE 的模拟延迟判决 | 默认仍是 RIE；`M2S_AWS=1` 时用真实 AWS 判决（§2.2）。本地四项检查在 AWS 模式下用 `mode="local"` |
-| 允许通过 spec 放宽申请改规格、改数据模型 | O 不改 spec、不新建 GSI；这类需求只写 `advisories` 或 `pending_spec` |
+| 默认用 RIE 的模拟延迟判决 | 默认用真实 AWS 判决（§2.2）；`M2S_AWS=0` 时才退回 RIE/代理。本地四项检查在 AWS 模式下用 `mode="local"` |
+| 允许通过 spec 放宽申请改规格、改数据模型 | O1 的架构候选由 A1 实现；O2 不改 spec、不新建 GSI；不允许的需求只写 `advisories` 或 `pending_spec` |
+
+### 0.3 两条基线与 O1/P（方式 B）
+
+```text
+B0  --O1/P 计划-->  A1 / D1 / I1 / I2 逐个写最终候选
+    --O1M 测量-->  接受或回退
+    --V2P/V3P-->   全量裁判 + 全量增量验证/覆盖率/等价性
+    --tag B0P-->   B0 + 已接受的架构级改动
+    --O2-->        局部、语义保持的改动（默认 RIE，AWS 可选）
+    --C1-->        最终检查；先精细回退 O2，再整体回退 B0P
+```
+
+- **B0** 是纯迁移验收基线（当前 `tag_b0` 的产物），不包含 O1 的架构级性能改动。
+- **O1** 不写生产代码：只写 `perf/benchmarks/**`、`perf/candidates.json`、`perf/triage.json` 和 `storage/stage_reports/O1.json`。候选的 owner 写最终版本：A1（blueprint / adapter_map / 数据模型 / GSI）、D1（delta tests）、I1（代码）、I2（模板）。一个候选一个 owner，owner 提交 `perf(cand-<id>): ...`；需要 blueprint 和模板一起改的 GSI/数据模型候选拆成 A1 → I2 两个候选，后一个从前一个接受后的 HEAD 开始。
+- **O1M** 只测这一个候选：四项正确性检查 + `run_proxy_metrics` / `run_rie_verdict`（或 `run_aws_verdict`），写 `perf/verdicts/<id>.json`。候选相对它的父提交测量（`run_equivalence(..., baseline_ref="<commit>^")`、`run_coverage(changed_since="<commit>^")`），不是永远对 B0。调度器按 verdict 接受或 revert owner 的提交。
+- **B0P** = B0 + 已接受的 O1 候选。打 B0P 之前必须跑 V2P（全量 `run_judge`）和 V3P（全量 delta `run_validate`/`run_coverage`/`run_equivalence`，并记录 `verification/fault_baseline_B0P.json`）。没有候选时 B0P 与 B0 同一 commit。
+- **O2** 从 B0P 开始，直接写 `output/**`，不再经过 owner 重写；它就是原来的局部优化流程（§8）。
+- **C1** 的最终回退基线是 **B0P**，绝不回退 O1 已纳入 B0P 的架构级改动。C1 失败时先从最新 O2 commit 开始逐个回退并重跑三项全量检查，尽量保留前面的 O2 改动；找不到通过状态或超过预算时才整体回退 O2 到 B0P；仍失败升级给人。
 
 ### 0.2 不做什么
 
 - 不做架构级改动（换 API 类型、换异步机制、换表结构）——只写 advisory；
-- 不做真实的 AWS 部署，除非 `M2S_AWS=1` 且人已确认费用（§2.2）；
+- 默认使用真实 AWS 实测（§2.2）；只有显式 `M2S_AWS=0` 时才不部署 AWS；
 - 不修改裁判、增量测试、故障场景，也不修改单体源码；
 - 不追求把单体里的所有性能债都改掉；语义保持是硬约束。
 
@@ -34,12 +52,16 @@ v3 的优化线只有一个阶段 **O**，在实现通过裁判和增量测试�
 ## 1. 在流水线里的位置
 
 ```
-V3 通过 → tag B0 → O（优化线）→ C1（gate(final_v2) + 全量裁判回归）
+V3 通过 → tag B0
+  → O1/P（计划 + 候选 owner + O1M 测量）
+  → V2P（全量裁判）→ V3P（全量 delta + B0P 故障基线）→ tag B0P
+  → O2（局部优化）→ C1（gate(final_v2) + 全量裁判/增量回归）
 ```
 
-- O 的工作区是 B0 之后的提交；每个保留的改动单独提交，回滚就是撤销对应的提交。
-- O 报 `report_blocked` **不会**让流水线失败。它表示优化没有收敛，交付的仍是最后一个通过检查的版本。
-- C1 的 `judge_unchanged` 检查裁判资产没有被改动；O 只能写 `output/`、`perf/` 和自己的工作区报告。
+- O1 的工作区从 B0 开始；每个 accepted 候选由 owner 单独提交，B0P 是这些提交加上 B0。
+- O2 的工作区是 B0P 之后的提交；每个保留的改动单独提交，回滚就是撤销对应的提交。
+- O1/P 或 O2 报 `report_blocked` **不会**让流水线失败。它表示优化没有收敛，交付的仍是最后一个通过检查的版本。
+- C1 的 `judge_unchanged` 检查裁判资产没有被改动；O1/O2 只能写自己的 `perf/` 和工作区报告，O2 另外可以写 `output/`。
 
 ---
 
@@ -56,7 +78,7 @@ V3 通过 → tag B0 → O（优化线）→ C1（gate(final_v2) + 全量裁判�
 | RIE init | `run_rie_verdict` | **冷启动维度的默认判决** |
 | 裁判、增量测试、故障差分、覆盖率 | `run_judge`、`run_validate`、`run_equivalence`、`run_coverage` | 一票否决（§3.1） |
 | RSS | `run_validate` / `run_judge` | 内存护栏，一票否决 |
-| 真实 AWS 的 Duration、成本、端到端 guard | `run_aws_verdict` | `M2S_AWS=1` 时的判决（§2.2） |
+| 真实 AWS 的 Duration、成本、端到端 guard | `run_aws_verdict` | 默认判决（§2.2）；`M2S_AWS=0` 时关闭 |
 
 ### 2.1 RIE 默认路径与模拟延迟
 
@@ -70,9 +92,9 @@ V3 通过 → tag B0 → O（优化线）→ C1（gate(final_v2) + 全量裁判�
 
 没有 Docker 时，`run_rie_verdict` 报 `NO_DOCKER`：O 只能用 `run_proxy_metrics` 的前后对比，把改动标为 `kept_inconclusive`、报告的 `confidence` 设为 `low`；打包和依赖类改动（R3）跳过。这就是"代理降级"（§3.2）。
 
-### 2.2 AWS 判决模式（O 专用，2026-11-19 定）
+### 2.2 AWS 判决模式（O1M / O2 专用，2026-11-19 定）
 
-**适用范围**：只用于 O 的性能判决。正确性（裁判、增量、等价、覆盖）仍在本地 `mode="local"` 跑——不需要 Docker，也不产生 AWS 费用；AWS 只提供性能、成本、覆盖三类证据。默认关闭：`M2S_AWS=1` 且人确认费用才启用；RIE 判决仍是默认路径，AWS 模式是可选替换。
+**适用范围**：只用于 O1M 候选或 O2 局部改动的性能判决。正确性（裁判、增量、等价、覆盖）仍在本地 `mode="local"` 跑——不需要 Docker，也不产生 AWS 费用；AWS 只提供性能、成本、覆盖三类证据。**默认开启**（费用由发起运行的人承担）；显式 `M2S_AWS=0` 才关闭，关闭后用 RIE（Docker 可用时）或代理指标降级。
 
 **判决指标**
 
@@ -100,9 +122,9 @@ V3 通过 → tag B0 → O（优化线）→ C1（gate(final_v2) + 全量裁判�
 
 **单改动流程**
 
-- 每个改动单独测；基线是**当前 HEAD**（B0 + 已 kept 的改动），不是永远对 B0；
-- 维护一个滚动基线栈（当前 HEAD）；B0 栈只用于 B0 对 B0 的噪声校准和最终报告；候选一栈，测完拆掉；
-- 所有测量在 `aws-load-client` 锁下 ABAB；阈值来自 `calibrate_aws_noise`（B0 对 B0）；≥3 轮、每轮 ≥10 个热样本；
+- 每个改动单独测；基线是**当前 HEAD**（B0P + 已 kept 的改动），不是永远对 B0P；
+- 维护一个滚动基线栈（当前 HEAD）；B0P 栈只用于 B0P 对 B0P 的噪声校准和最终报告；候选一栈，测完拆掉；
+- 所有测量在 `aws-load-client` 锁下 ABAB；阈值来自 `calibrate_aws_noise`（B0P 对 B0P）；≥3 轮、每轮 ≥10 个热样本；
 - 互不影响的改动（不同函数、无调用关系）可以分别对同一基线测；有交互的按顺序累积测；
 - 判决结果与 RIE 模式同构（kept / kept_inconclusive / pending_human / revert / INCONCLUSIVE），写进 `perf_report.evidence.aws`。
 
@@ -115,7 +137,7 @@ V3 通过 → tag B0 → O（优化线）→ C1（gate(final_v2) + 全量裁判�
 
 **函数内细节的作用**：Duration 只回答“快了多少”。LLM 的改进建议（REQ 的 `diagnosis` 与 `advisories`）还要引用函数内证据——代理指标的调用次数/顺序深度/热 CPU、CloudWatch 的 Duration 分位与 init、DynamoDB 容量、日志，以及 X-Ray 开启时的子段耗时（如果权限允许）——再结合代码阅读。每条建议都要在 `perf_report` 里给出 metric/value/evidence；架构类建议只进 `advisories`，O 不能直接实施。
 
-**实现（2026-11-19）**：`perf.run_aws_verdict`（MCP 工具 `run_aws_verdict`）按上面的判决表和 guard 出结果；`coord.aws.measure_aws(ref=None)` 部署工作树，基线栈以 `M2SBaseline=<HEAD sha>` 标签跟随 HEAD（HEAD 变了自动重部署，同一 HEAD 的重复测量才复用）；O 的 prompt 按 `M2S_AWS` 生成“AWS 实测已开启/未开启”两段之一，并把 `M2S_AWS_LOAD_CMD`、`M2S_AWS_BUDGET_USD` 传下去；`s5_report` 在 `M2S_AWS=1` 且本次 O 的 spawn 事件记录了 `aws: true`（或报告标注 `judged_with: "aws"`、已有改动带 AWS 判决）时，要求本次判过、仍保留的改动都有 `evidence.aws.verdict`；spawn 事件同时记录启动时的 HEAD，本次 O 启动前已提交的 kept 改动（O-only 重跑旧工作区）不追溯。真实 AWS 冒烟要人确认费用后执行。
+**实现（2026-11-19）**：`perf.run_aws_verdict`（MCP 工具 `run_aws_verdict`）按上面的判决表和 guard 出结果；`coord.aws.measure_aws(ref=None)` 部署工作树，基线栈以 `M2SBaseline=<HEAD sha>` 标签跟随 HEAD（HEAD 变了自动重部署，同一 HEAD 的重复测量才复用）；O 的 prompt 按 `M2S_AWS` 生成“AWS 实测已开启/未开启”两段之一，并把 `M2S_AWS_LOAD_CMD`、`M2S_AWS_BUDGET_USD` 传下去；`s5_report` 在 AWS 模式（默认，`M2S_AWS=0` 关闭）且本次 O 的 spawn 事件记录了 `aws: true`（或报告标注 `judged_with: "aws"`、已有改动带 AWS 判决）时，要求本次判过、仍保留的改动都有 `evidence.aws.verdict`；spawn 事件同时记录启动时的 HEAD，本次 O 启动前已提交的 kept 改动（O-only 重跑旧工作区）不追溯。真实 AWS 冒烟默认执行；不想花钱时显式 `M2S_AWS=0`。
 
 **负载与数据**：`run_aws_verdict` 的环境除 `M2S_AWS_TARGET` 外还带 `M2S_AWS_OUTPUTS`（栈输出，含 Cognito pool/client）、`M2S_AWS_RESOURCES`（逻辑 id → 物理名）、`M2S_AWS_WS`、`M2S_AWS_BENCHMARK`；`seed_cmd`（默认取 `M2S_AWS_SEED_CMD`）在每个栈部署后、第一轮测量之前运行一次，负责把 benchmark 的 `fixtures`/`generate` 数据写进该栈的 DynamoDB，并把 identity.sub 占位符换成真实 Cognito sub。仓库里的参考实现是 `perf-tools/aws_load.py`：复用 e2e 的 Cognito 会话；HTTP benchmark 按 request 重复发送，SQS benchmark 把 `sqs.records` 按轮发送（每轮换 orderId，避免幂等表跳过）。只要 `M2S_AWS_LOAD_CMD`/`M2S_AWS_SEED_CMD` 指向它，O 就能在空表的新栈上得到有效测量。
 
@@ -129,7 +151,7 @@ O 的每个改动，受影响的函数（= 改了代码的函数）都要跑完�
 
 1. **裁判**：`run_judge(functions=[...])` 要求 `PASS`。裁判的期望是单体的实际行为，冻结在 `judge/` 里。
 2. **增量测试**：`run_validate(functions=[...], assets="verification/delta")` 要求 `PASS`。这个函数没有增量测试时返回 `total: 0`，算通过。
-3. **与 B0 的等价性**：`run_equivalence(mode="diff", functions=[...], assets="verification/delta")` 要求 `EQUIVALENT`；没有增量测试时返回 `NOTHING_TO_COMPARE`，算通过，由第 1 项负责。判据是 H1（§5.1）的 (a)(b)(c)。
+3. **与基线的等价性**：`run_equivalence(mode="diff", functions=[...], assets="verification/delta")` 要求 `EQUIVALENT`（O1M 用 B0，O2 用 B0P）；没有增量测试时返回 `NOTHING_TO_COMPARE`，算通过，由第 1 项负责。判据是 H1（§5.1）的 (a)(b)(c)。
 4. **改动行覆盖**：`run_coverage(functions=[...], changed_since="HEAD", with_judge=true, assets="verification/delta")` 要求 `all_covered` 为 true。裁判的用例或增量测试执行到了，都算覆盖。
 
 另外两项仍然生效：
@@ -137,7 +159,7 @@ O 的每个改动，受影响的函数（= 改了代码的函数）都要跑完�
 - **有效性校验**：事件确实走到了预期的代码路径（结果符合预期、SDK 调用次数和预期一致）。
 - **RSS 内存护栏**：实际内存占用接近配置的 MemorySize 时，判定为有风险。
 
-`M2S_AWS=1` 时，第 1、2、4 项加 `mode="local"`（不需要 Docker、不花钱）；第 3 项的模式参数仍是 `mode="diff"`。
+AWS 模式（默认）下，第 1、2、4 项加 `mode="local"`（不需要 Docker、不花钱）；第 3 项的模式参数仍是 `mode="diff"`。`M2S_AWS=0` 时保持工具默认模式。
 
 ### 3.2 性能判决（默认 RIE，AWS 可选）
 
@@ -149,25 +171,25 @@ O 的每个改动，受影响的函数（= 改了代码的函数）都要跑完�
   - 三个维度（热调用 Duration、init、成本）都不变差、且至少一个明显变好 → `kept`；有的变好、有的变差 → `pending_human`；RIE 无显著差异但代理指标改善且 RIE 没有变差 → `kept_inconclusive`；其他 → `revert`。
   - R4 的请求带热点守卫基准（`guard_benchmarks`）：守卫基准在任何维度变差、或出现冲突，工具判 `revert`。候选版本比基线多出冲突时，工具直接判 `revert`，不跑 RIE。
 - **代理降级（没有 Docker）**：`run_rie_verdict` 报 `NO_DOCKER`；O 只能看 `run_proxy_metrics` 的前后对比，改动标 `kept_inconclusive`，`confidence` 设为 `low`。打包和依赖类改动（R3）跳过。
-- **AWS 模式**：`M2S_AWS=1` 时改用 `run_aws_verdict`，判据见 §2.2；本地四项检查先做完，且用 `mode="local"`。
+- **AWS 模式（默认）**：用 `run_aws_verdict`，判据见 §2.2；本地四项检查先做完，且用 `mode="local"`。`M2S_AWS=0` 时退回 RIE/代理。
 
 O 只执行工具返回的 verdict，不自己改判。工具判 `pending_human` 时，存补丁、回滚，并写进报告的 `pending_human`。
 
 ### 3.3 检查没通过时的分诊
 
-B0 是验收过的版本，所以用"和 B0 等不等价"区分问题出在代码还是测试。**分诊按工具结果机械地做，不凭改动者自己判断"测试写错了"**：
+B0/B0P 是验收过的版本，所以用"和基线等不等价"区分问题出在代码还是测试（O1M 用 B0，O2 用 B0P）。**分诊按工具结果机械地做，不凭改动者自己判断"测试写错了"**：
 
 | run_judge | run_validate(delta) | run_equivalence(delta) | run_coverage(delta) | 分类 | 处理 |
 |---|---|---|---|---|---|
 | FAIL | — | — | — | 代码问题：裁判的期望是单体的实际行为，不存在"测试写错了" | 修一次，仍不通过就回滚 |
-| PASS | FAIL | `DIFFERENT`（H1 任何一项） | 任意 | 代码问题：相对 B0 的行为变了，与测试怎么写无关 | 修一次，仍不通过就回滚 |
-| PASS | FAIL | `EQUIVALENT`，基线稳定 | 任意 | 测试问题：候选版本在每个用例上都与 B0 一致，某个增量用例仍失败，说明它依赖规格没有规定的东西（调用顺序、故障落点、列表顺序） | `blocked_by_test` |
+| PASS | FAIL | `DIFFERENT`（H1 任何一项） | 任意 | 代码问题：相对基线的行为变了，与测试怎么写无关 | 修一次，仍不通过就回滚 |
+| PASS | FAIL | `EQUIVALENT`，基线稳定 | 任意 | 测试问题：候选版本在每个用例上都与基线一致，某个增量用例仍失败，说明它依赖规格没有规定的东西（调用顺序、故障落点、列表顺序） | `blocked_by_test` |
 | PASS | FAIL | 失败的用例在 `unstable_in_baseline` 里 | 任意 | 测试问题（不稳定） | `blocked_by_test` |
 | PASS | PASS | `EQUIVALENT` / `NOTHING_TO_COMPARE` | 有没覆盖的改动行 | 缺测试 | `blocked_by_coverage` |
 | PASS | PASS | `EQUIVALENT` / `NOTHING_TO_COMPARE` | `all_covered` | 通过 | 进入性能判决 |
 | — | — | `INFRA_ERROR` | — | 工具问题 | 重跑一次；仍然出错就回滚，原因写 `infra` |
 
-- **代码问题**：`fix_attempts == 0` 时允许修一次，目标是恢复和 B0 一致的行为，不是迎合某个用例；修完从语法检查起重做全部检查。修过一次仍不通过就回滚，判 `revert`。
+- **代码问题**：`fix_attempts == 0` 时允许修一次，目标是恢复和基线一致的行为，不是迎合某个用例；修完从语法检查起重做全部检查。修过一次仍不通过就回滚，判 `revert`。
 - **`blocked_by_test` / `blocked_by_coverage`**：存补丁（`perf/patches/REQ-n.patch`）、回滚，把证据写进报告的 `changes[].review`，继续下一个请求。**这个阶段没有人复核或重新判决这些改动**，它们留在报告里由调度器交给人。
 - **`pending_spec`**：冗余读被 spec 或测试规定成必经步骤时，本轮不改代码；在报告里记 `verdict: "pending_spec"` 和 `spec_relaxation.targets`，附上代理指标测得的收益（临时改动上量完就撤回），交给人。不要自己改 spec、不要改测试、不要申请新建 GSI。
 - **`DIFFERENT` 时不许自己改判**：即使认为差异来自工具局限，也只能判 `pending_human` 并在 `issues` 里写明分析。
@@ -182,6 +204,21 @@ v2 只有两档：
 | **B 只改代码** | R1–R4、R1b、R8、去冗余读等，不改规格 | 只对改过的函数：四项正确性检查 + 一个基准的 `run_rie_verdict`（或 `run_aws_verdict`） | C1：gate(final_v2) + 全量裁判回归 |
 
 旧优化线的 C/D 档（spec 放宽、改数据模型）在 v2 不存在；这类需求只写 `pending_spec` / `advisories`。
+
+### 3.5 C1 的精细回退
+
+C1 的最终回退基线是 **B0P**，绝不回退 O1 已纳入 B0P 的架构级改动。三项全量检查（`gate_final`、`judge_full`、`delta_full`）失败时：
+
+1. 取 `B0P..HEAD` 中**触及 `output/`** 的 O2 提交（subject 以 `perf(` 开头；`perf: report` 和 `C1:` 提交不参与回退），从最新开始；
+2. 逐个 `git revert --no-edit <sha>`，每退一个重跑三项检查；通过就停（最多 3 个）；
+3. 全部尝试仍失败时，`git checkout B0P -- output` 并提交，整体回到 B0P，再跑一次三项检查；
+4. 仍失败则升级给人。`git revert` 冲突时中止并直接走第 3 步。
+
+回退后同步报告，避免"报告说 kept、代码已回退"：
+
+- `output/perf_report.json`：被回退的 `changes[]` 的 `verdict` 改成 `reverted`，加 `reverted_by: "C1"`；
+- `storage/stage_reports/O2.json`：写 `c1_rollback`（baseline、mode、commits、reverted）、`kept_before_c1`、`reverted_by_c1`，并调整 `kept`；
+- `verification/verdict_*` 由重跑的三项检查重新写；`output/final_report.md` 同时记录 `B0 → B0P`（O1）和 `B0P → final`（O2）以及回退原因。
 
 ---
 
@@ -211,12 +248,12 @@ v2 只有两档：
 - **(b) 对外可见的失败结果相同**：返回值、抛出的错误、会被重投的消息范围都要一致；
 - **(c) 基线没有冲突的地方，改动后也不能出现冲突**：冲突由冲突模拟产生（`PERF_OPTIMIZATION_DESIGN_v1.md` §2.1 第 6 项）。即使重试把冲突掩盖了、(a)(b) 都相同，线上的结果仍然取决于时序，比如重试是否会耗尽。
 
-判定方式是增量测试的**故障注入差分**（对照 B0），不由改动者自己声明。
+判定方式是增量测试的**故障注入差分**（O1M 对照 B0，O2 对照 B0P），不由改动者自己声明。
 
 **实现上的两点细化**：
 
 - **(a) 只比较"生效的调用"**：被注入故障的尝试、被后端拒绝的调用，都没有产生效果，不算进操作集合。这样 SDK 的自动重试不会让同一个操作被算两次。
-- **故障固定在"同一个操作"上**：差分时先用当前工具重新运行 B0（从工作区 git 导出），记下每个故障实际落在哪个操作上（操作名、表、条目键、第几次尝试），再把同样的故障注入改动后版本里的同一个操作。
+- **故障固定在"同一个操作"上**：差分时先用当前工具重新运行基线（从工作区 git 导出），记下每个故障实际落在哪个操作上（操作名、表、条目键、第几次尝试），再把同样的故障注入改动后版本里的同一个操作。
   - 原因：故障场景里的 `nth` 规则按调用顺序计数（"第 2 次调用失败"）。改成并行之后调用顺序变了，故障就会落到另一个条目上，结果看起来"不等价"。其实两个版本对同一组失败的反应完全一致。
   - 在 bookstore 的 R1 改动上，按调用顺序计数时报了假的差异；固定到操作之后，结果是 EQUIVALENT。
   - 负对照（每条消息少更新最后一本书）照样被识别出来，H1 (a)(b) 两条都报差异。
@@ -224,7 +261,7 @@ v2 只有两档：
 - **handler 返回之后被放弃的请求也要算进去**：例如 `Promise.all` 失败后，兄弟请求的重试还在路上。
   - 用例结束前，工具保持故障规则生效，直到 1 秒内没有新调用（最多 10 秒），再做表快照。
   - 真实的 Lambda 会冻结这部分工作，它可能在下一次调用时继续执行，所以线上这类行为本来就不确定。这里的目标是让两个版本按同一种方式统计。
-- **基线稳定性检查**：差分把 B0 跑两遍，两遍结果不一致的 run 标为 `unstable_in_baseline`，不参与判决，并且明确列出来（那些路径上的改动**没有**得到验证）。
+- **基线稳定性检查**：差分把基线跑两遍，两遍结果不一致的 run 标为 `unstable_in_baseline`，不参与判决，并且明确列出来（那些路径上的改动**没有**得到验证）。
 - **差分的范围**：除了故障场景，受检函数的**全部增量测试用例**也不带场景故障地跑一遍；用例自带的故障同样固定到操作上。
   - 原因：并发方面的改动往往在普通用例上才暴露，例如一批里两条消息改同一个条目。
   - 只跑故障场景引用的用例时，不安全的全并行消费者会被判为 EQUIVALENT，因为那些用例里没有重叠的消息。
@@ -296,13 +333,13 @@ v2 只有两档：
 
 ---
 
-## 8. O 的定义框架
+## 8. O2 的定义框架
 
-O **自己改代码**。"验"和"判"调用裁判线/测量线的 MCP 工具完成，不由它自己声明。
+O2 **自己改代码**。"验"和"判"调用裁判线/测量线的 MCP 工具完成，不由它自己声明。O1/P 的候选轮见 §0.3 和 §8.7；O1 不写生产代码。
 
 ### 8.1 输入
 
-- 工作区（git tag `B0`）；
+- 工作区（git tag `B0P`；旧工作区用 `B0`）；
 - 冻结的裁判 `judge/`，增量测试 `verification/delta/`；
 - `storage/analysis_report.json`、`storage/blueprint.json`、`storage/adapter_map.json`、`storage/rulings.json`；
 - 规则库（§7.2）、台账（只读，用来参考历史结果）；
@@ -310,13 +347,13 @@ O **自己改代码**。"验"和"判"调用裁判线/测量线的 MCP 工具完�
 
 ### 8.2 工作流程
 
-1. **前置检查**：`WS/.git` 存在、tag `B0` 存在、`output/` 没有未提交的改动。
+1. **前置检查**：`WS/.git` 存在、tag `B0P` 存在（旧工作区用 `B0`）、`output/` 没有未提交的改动。
 2. **写基准**：在 `perf/benchmarks/` 写基准事件，提交；之后不许再改。R4 候选要写正常基准和热点守卫基准。
 3. **测基线**：`run_proxy_metrics`。
 4. **生成候选改动**：规则库扫描 + 数据驱动分析，每个候选写成修改请求（§8.4）。按 §5 分类，不允许的写进 `advisories`；被 spec 规定的冗余读写 `pending_spec`。
 5. **排序**：按代理指标的改善幅度排序。
 6. **逐轮执行**（按 §6 组织）：修改代码 → `gate(final)` → 四项正确性检查 → 分诊（§3.3）→ 性能判决（§3.2）→ 保留则 `git commit`，否则回滚/存补丁。
-7. **收尾**：全量 `run_judge()` + `run_validate(assets="verification/delta")`；更新台账；写 `perf_report.json` 和 `storage/stage_reports/O.json`。
+7. **收尾**：全量 `run_judge()` + `run_validate(assets="verification/delta")`；更新台账；写 `perf_report.json` 和 `storage/stage_reports/O2.json`。
 
 ### 8.3 输出
 
@@ -325,7 +362,7 @@ O **自己改代码**。"验"和"判"调用裁判线/测量线的 MCP 工具完�
 ```json
 {
   "confidence": "normal | low",
-  "judged_with": "aws（仅 M2S_AWS=1 时）",
+  "judged_with": "aws（默认；M2S_AWS=0 时没有）",
   "environment": {"docker": true, "latency_ms": [10], "prices": {"...": "..."}, "data_volume_assumptions": {"...": "..."}},
   "baseline": {"<function>": {"calls": 0, "depth": 0, "warm_cpu_ms": 0, "rie_warm_ms": 0, "init_ms": 0, "cost_usd": 0}},
   "changes": [
@@ -346,7 +383,7 @@ O **自己改代码**。"验"和"判"调用裁判线/测量线的 MCP 工具完�
 }
 ```
 
-另外输出 `storage/stage_reports/O.json`，格式和其他阶段的工作报告一样，另外写明 kept / reverted / pending_human / blocked_by_test / blocked_by_coverage / pending_spec 各多少个，以及 `blocked` 列表（REQ id、类型、用例或未覆盖的行、补丁路径）。
+另外输出 `storage/stage_reports/O2.json`，格式和其他阶段的工作报告一样，另外写明 kept / reverted / pending_human / blocked_by_test / blocked_by_coverage / pending_spec 各多少个，以及 `blocked` 列表（REQ id、类型、用例或未覆盖的行、补丁路径）。
 
 ### 8.4 修改请求的格式
 
@@ -384,7 +421,7 @@ O **自己改代码**。"验"和"判"调用裁判线/测量线的 MCP 工具完�
 - 不做 §5.2 里不允许的改动；
 - 不修改裁判、增量测试和故障场景；
 - 不新建 GSI，不修改 spec，不走 spec 放宽流程；
-- 不做真实 AWS 部署（`M2S_AWS=1` 除外）；
+- 默认做真实 AWS 部署；只有 `M2S_AWS=0` 时不部署；
 - 报告里只写直接测得的量（例如"顺序深度 30→1、调用次数不变、热调用 Duration 从深度 30 组落到深度 1 组"），**不写"预计线上提升 X ms / X%"**。
 
 ### 8.6 Python 函数（`python3.12`）
@@ -410,6 +447,43 @@ O **自己改代码**。"验"和"判"调用裁判线/测量线的 MCP 工具完�
 
 ---
 
+### 8.7 O1/P 的输入与输出
+
+O1 只写 `perf/**` 和 `storage/stage_reports/O1.json`，不写 `output/**`、blueprint、模板、delta tests 或 judge。基准的 `id` 是**全局唯一**的（工具按 id 选择和汇总结果），不是按函数分命名空间；`load_benchmarks` 遇到重名会直接报错。
+
+`perf/candidates.json`：
+
+```json
+{
+  "baseline": {"run_proxy_metrics": "perf/proxy/O1-baseline.json"},
+  "candidates": [
+    {"id": "C1", "owner": "A1 | D1 | I1 | I2", "source": "rule:R1 | analysis",
+     "target": {"kind": "code | blueprint | delta | template", "functions": ["..."], "files": ["..."]},
+     "diagnosis": {"metric": "depth", "value": 30, "evidence": "..."},
+     "proposal": "...", "expected": {"depth": "30→1", "calls": "=", "warm_cpu": "≈"},
+     "constraints": ["H1a", "H1b"], "benchmark": "batch-10x3", "guard_benchmarks": ["hot-batch-10x1"]}
+  ]
+}
+```
+
+最多 5 个候选；一个候选一个 owner；候选计划一旦写出，在本轮内不再改。O1 的 `perf/triage.json` 记录不允许的改动（advisories）和 `pending_spec`。
+
+O1M 的 `perf/verdicts/<id>.json`：
+
+```json
+{
+  "candidate": "C1",
+  "commit": "<owner 的 commit>",
+  "verdict": "kept | kept_inconclusive | pending_human | revert | INCONCLUSIVE | blocked_by_test | blocked_by_coverage | pending_spec",
+  "checks": {"judge": "PASS", "validate": "PASS", "equivalence": "EQUIVALENT", "coverage": "all_covered"},
+  "proxies": {"before": {}, "after": {}},
+  "performance": {"tool": "run_rie_verdict | run_aws_verdict", "result": {}, "saved_to": "perf/verdicts/..."},
+  "reason": "..."
+}
+```
+
+`perf/candidate_results.json` 由调度器在 accept 时维护：每个候选的 `accepted`、`commit`、`verdict`、`reverted`。B0P 的打 tag 条件见 §0.3；C1 的精细回退见 §3 之后的实现说明。
+
 ## 9. 测量窗口的纪律
 
 沿用 `PERF_OPTIMIZATION.md` §10.1 的教训：
@@ -421,7 +495,7 @@ O **自己改代码**。"验"和"判"调用裁判线/测量线的 MCP 工具完�
 - 判决用的 Duration 只算热调用；成本用 REPORT 的 billed ms（含 init）；
 - 所有窗口都在负载结束后统一等待 90 秒再读取。
 
-AWS 判决的 ABAB 测量、`aws-load-client` 锁和 B0 噪声校准见 §2.2。
+AWS 判决的 ABAB 测量、`aws-load-client` 锁和 B0P 噪声校准见 §2.2。
 
 ---
 

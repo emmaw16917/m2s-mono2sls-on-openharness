@@ -132,6 +132,13 @@ def test_freeze_needs_a_ready_judge_and_then_holds_it(tmp_path: Path):
     assert judge.judge_changes(ws) == {"changed": [], "added": [], "removed": []}
     assert gates.check_judge_frozen(ws) == []
 
+    # Windows with core.autocrlf=true checks the LF blob out as CRLF; the
+    # frozen manifest hashes the text, not the checkout's line endings.
+    lf = case.read_bytes()
+    case.write_bytes(lf.replace(b"\n", b"\r\n"))
+    assert judge.judge_changes(ws) == {"changed": [], "added": [], "removed": []}
+    case.write_bytes(lf)
+
     case.write_text(case.read_text(encoding="utf-8").replace('"status": 200', '"status": 201', 1), encoding="utf-8")
     (ws / "judge" / "extra.json").write_text("{}", encoding="utf-8")
     assert judge.judge_changes(ws) == {"changed": ["judge/cases/post-api-cart/cart-add-then-read.json"],

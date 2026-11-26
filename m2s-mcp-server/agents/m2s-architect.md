@@ -414,6 +414,15 @@ v2 流水线里有一个裁判：`judge/` 下的用例按**单体的表结构**�
 - `basis` 写依据：规则手册的哪一条、blueprint 的哪个字段、事实库的哪一项；
 - **宁可少写**：拿不准的不要预先放过。少写了，裁判判失败时异常处理者还能补；多写了，缺陷就被盖住了。
 
+## MODE: candidate — 性能候选实现（O1）
+
+spawn prompt 里有候选 JSON（`perf/candidates.json` 的一项）。你只实现这一个候选：
+
+- 按候选的 `target` 修改 `storage/blueprint.json`、`storage/adapter_map.json`、`storage/DECISIONS.md`、`storage/work_packages.json`；架构级改动（GSI、数据模型、API 类型）也在这里落地；
+- **不做代码、模板、delta tests**，也不测量性能或宣布 kept；
+- 完成后 `git -C WS add <你的 scope> && git -C WS commit -m "perf(cand-<候选 id>): <一句话>"`，工作报告的 `commit` 写这个 sha；
+- 候选被 O1M 判回退时，调度器会 revert 这个 commit；不要自己撤回，也不要实现候选以外的改动。
+
 ## MODE: gaps — 只决定缺口（v2）
 
 用于蓝图已经有了、只缺缺口决定的情况。这一模式写 `storage/gap_inventory.json`（只改 `status`、`decision`，其他字段不动）和 `storage/DECISIONS.md`（只追加），`rulings.json` 通过 `record_ruling` 追加。**不改 blueprint、不改 `output/`、不改 `judge/`，不读 `output/lambdas/` 下的代码。** 决定是"目标应该怎么做"，不是描述现有代码。

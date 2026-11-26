@@ -55,6 +55,11 @@ TASK_SUMMARIES = {
     "I3": "这一步是角色说明里的 S4：做一致性检查，写 output/consistency_report.json。",
     "O": "在 B0 上做语义保持的性能改动（按你的角色说明）。每个保留的改动单独提交到 WS 的 git；"
          "写 output/perf_report.json，最后写 storage/stage_reports/O.json。",
+    "O1": "O1/P 方式 B：写 perf/benchmarks/** 并提交，测基线，写 perf/candidates.json 候选计划"
+          "（A1/D1/I1/I2 各一个 owner，最多 5 个）和 storage/stage_reports/O1.json。"
+          "不写 output/**、blueprint、模板、delta tests 或 judge。",
+    "O2": "在 B0P 上做局部、语义保持的性能改动（按你的角色说明）。每个保留的改动单独提交；"
+          "写 output/perf_report.json 和 storage/stage_reports/O2.json。",
 }
 
 # v2 role modes (PIPELINE_V2_PLAN.md): the role doc has a section per mode.
@@ -88,6 +93,12 @@ MODE_SUMMARIES = {
     "adapter": "MODE: adapter。迁移已经完成（blueprint 和 output/ 都在），只缺适配映射：按你的角色说明里"
                "\"适配映射\"和\"MODE: adapter\"两节，写 storage/adapter_map.json，用 "
                "mcp__m2s-server__check_adapter_map 自查到 PASS。不改 blueprint，不读 output/lambdas/ 下的代码，不改 judge/。",
+    "candidate": "MODE: candidate（性能候选实现）。按下面的候选 JSON 只实现这一个候选，完成并提交后调用 submit_task；"
+                 "不要测量判决，不要实现别的候选。",
+    "O1M": "MODE: O1M（性能候选测量）。只测下面这一个候选：四项正确性检查 + RIE/AWS 判决，"
+           "写 perf/verdicts/<候选 id>.json 和你的工作报告；不改代码、测试、blueprint 或模板。",
+    "V3P": "MODE: V3P（B0P 全量复验）。对 B0P 候选重跑全量 delta 验证、覆盖率和等价性，并记录 "
+           "verification/fault_baseline_B0P.json；写 verification/verdict_delta.json 和 storage/stage_reports/V3P.json。",
 }
 
 IMPL_NOTE = ("需要知道\"要保持哪些行为\"时，只引用规格本身：analysis_report.json 的出处、blueprint.json 的字段"
@@ -104,13 +115,13 @@ def _feedback_block(feedback: list[dict[str, Any]]) -> str:
 
 
 def _o_measurement_note() -> str:
-    """O's measurement section: AWS by default when the run was approved for it."""
+    """O's measurement section: AWS is the default; M2S_AWS=0 opts out."""
     from coord import aws as aws_mod
 
     if not aws_mod.enabled():
         return (
-            "## 性能判决（AWS 实测未开启）\n"
-            "M2S_AWS 不是 1：不要部署到 AWS，也不要调用 measure_aws / run_aws_verdict。"
+            "## 性能判决（AWS 实测已关闭）\n"
+            "M2S_AWS=0：不要部署到 AWS，也不要调用 measure_aws / run_aws_verdict。"
             "用 run_rie_verdict（本地 Docker RIE，5 轮：每轮 1 冷 + 30 热）判决；Docker 也不可用时用 "
             "run_proxy_metrics，并在 perf_report.json 里把它标成低置信度。"
         )
@@ -118,7 +129,8 @@ def _o_measurement_note() -> str:
     budget = os.environ.get("M2S_AWS_BUDGET_USD", "").strip()
     lines = [
         "## 性能判决（AWS 实测已开启）",
-        "M2S_AWS=1：O 的每个候选改动用真 AWS 实测判决（PERF_OPTIMIZATION_DESIGN.md §2.2）。",
+        "AWS 实测默认开启：O1M 候选或 O2 改动用真 AWS 实测判决（PERF_OPTIMIZATION_DESIGN.md §2.2）；"
+        "不想花钱时由发起运行的人设置 M2S_AWS=0。",
         "- 只有性能判决走 AWS。语义保持的检查照旧先在本地做完，并且用 `mode=\"local\"`（不需要 Docker、不花钱）："
         "run_judge(mode=\"local\")、run_validate(mode=\"local\")、run_coverage(mode=\"local\")、run_equivalence(mode=\"diff\")。",
         "- 噪声阈值默认 0.10（没有 perf/aws_noise.json 时工具用它）。只有环境变量 M2S_AWS_CALIBRATE=1 时，"
@@ -134,7 +146,7 @@ def _o_measurement_note() -> str:
         "perf_report.json 的 evidence 和 stage report，交给人。",
         "- 把 run_aws_verdict 返回的 verdict、dimensions、guards、cost、saved_to 记进 output/perf_report.json 对应改动的 "
         "evidence.aws；报告顶层写 \"judged_with\": \"aws\"。",
-        "- 不要自己改 M2S_AWS 或绕过预算；费用只在人批准后产生。",
+        "- 不要自己改 M2S_AWS 或绕过预算；AWS 费用由发起运行的人承担。",
     ]
     if load_cmd:
         lines.append(f"- 负载命令（直接传给 run_aws_verdict 的 load_cmd）：`{load_cmd}`")
@@ -154,7 +166,7 @@ def worker_prompt(spec: TaskSpec, ws: Path, monolith: Path, attempt: int,
                or f"STAGE_ID={spec.id}：按你的角色说明完成这一阶段。").format(merge=MERGE, ws=ws)
     # A task the monolith is closed to (deny_read: monolith) is not told where it is.
     paths = ([] if "monolith" in spec.deny_read else [f"- MONOLITH = {monolith}"]) + [f"- WS = {ws}"]
-    if spec.id in ("S3c", "I2c"):
+    if spec.id in ("S3c", "I2c") or spec.extra.get("candidate_kind") == "I2":
         paths.append(f"- MERGE = {MERGE}")
     scope = "、".join(spec.scope) or "（无）"
     sections = [
@@ -164,8 +176,27 @@ def worker_prompt(spec: TaskSpec, ws: Path, monolith: Path, attempt: int,
         "## 绝对路径\n" + "\n".join(paths),
         "## 任务\n" + summary + (f"\n\n{extra.strip()}" if extra.strip() else ""),
     ]
-    if spec.id == "O":
+    if spec.id in ("O", "O2") or spec.mode in ("O1", "O1M"):
         sections.append(_o_measurement_note())
+    if spec.mode in ("candidate", "O1M"):
+        candidate = spec.extra.get("candidate") or {}
+        cid = spec.extra.get("candidate_id")
+        if spec.mode == "candidate":
+            sections.append(
+                "## 性能候选\n"
+                f"只实现候选 `{cid}`（owner：{spec.extra.get('candidate_owner')}），JSON：\n"
+                f"```json\n{json.dumps(candidate, ensure_ascii=False, indent=1)[:6000]}\n```\n"
+                "写完后用 `git -C WS add <你的 scope> && git -C WS commit -m \"perf(cand-"
+                f"{cid}): <一句话>\"` 提交，报告里的 `commit` 写这个 sha。"
+                "不要自己跑性能判决，也不要实现候选以外的改动。"
+            )
+        else:
+            sections.append(
+                "## 性能候选测量\n"
+                f"测候选 `{cid}`，JSON：\n```json\n{json.dumps(candidate, ensure_ascii=False, indent=1)[:6000]}\n```\n"
+                f"判决写到 `WS/perf/verdicts/{cid}.json`；候选 owner 的 commit 从 "
+                f"`storage/stage_reports/{str(spec.id)[:-len('-measure')]}-owner.json` 的 `commit` 取。"
+            )
     if spec.line == "impl":
         sections.append(IMPL_NOTE)
     if spec.extra.get("package") == "shared":

@@ -69,6 +69,15 @@ def test_check_benchmark_and_fixtures(ws, tmp_path):
         perf._event(m, {**b, "request": {"method": "GET", "path": "/api/books/b1", "identity": None}})
 
 
+def test_duplicate_benchmark_ids_are_rejected(ws):
+    for function in ("books-list", "search-books"):
+        d = ws / "perf" / "benchmarks" / function
+        d.mkdir(parents=True)
+        (d / "scan-1000.json").write_text(json.dumps({"id": "scan-1000", "function": function}), encoding="utf-8")
+    with pytest.raises(verify.VerifyError, match="duplicate benchmark id"):
+        perf.load_benchmarks(ws)
+
+
 def test_cost_uses_prices():
     p = perf._prices()
     c = perf.cost({"rru": 2, "wru": 3, "sqs_requests": 1}, 100.0, 512)

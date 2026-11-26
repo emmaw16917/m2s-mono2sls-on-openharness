@@ -6,7 +6,14 @@
 #
 #   F1 -> F2 -> F2DONE -> G1 -> G2 -> G2M ----> A1 -> D1 -> I1 -> I2a -> I2b -> I2c -> I3
 #                              \-> J1 -> J2 -> RC -> J3 -> J4 -> J5 -> J5C -> J6 ---/    |
-#                                                  V1 -> V2 -> V3 -> B0 -> O -> C1 -> C2
+#                                                  V1 -> V2 -> V3 -> B0 -> O1
+#     O1 -> [owner -> O1M -> accept] x candidates -> O1D -> V2P -> V3P -> B0P -> O2 -> C1 -> C2
+#
+# O1/P (v3, TODO 2026-11-26) is the architectural performance round: O1 only
+# writes perf/** and storage/stage_reports/O1.json; the dispatcher expands one
+# owner task per candidate (A1/D1/I1/I2), the owner writes and commits the final
+# candidate, O1M measures it, and the accept action keeps or reverts that commit.
+# B0P is the new baseline for O2 (the old O role, local changes only).
 #
 # A workspace may start from an earlier run's fact base and frozen judge (copied, with the
 # same facts_sha): F1 keeps the report, F2, J1, J3, J4 and J5C pass their rechecks, and J2,
@@ -280,11 +287,59 @@ tasks:
     action: tag_b0
     deps: [V3]
 
-  - id: O
-    role: m2s-perf-optimizer
+  - id: O1
+    role: m2s-perf-triage
+    mode: O1
     deps: [B0]
+    # O1/P is method B: it plans and measures, but never writes production code,
+    # the blueprint, the template, delta tests or the judge.
+    scope: ["perf/**", storage/stage_reports/O1.json]
+    check: [o1_report]
+    max_turns: 250
+    timeout_min: 180
+
+  - id: O1C
+    # Not a board task: expands after O1 into one owner -> measure -> accept
+    # chain per candidate in perf/candidates.json. The dispatcher owns the loop.
+    runner: dispatcher
+    action: candidate_plan
+    split: candidate
+    expand_after: [O1]
+    deps: [O1]
+
+  - id: O1D
+    runner: dispatcher
+    action: barrier
+    deps: [O1, "O1C:*"]
+
+  - id: V2P
+    runner: dispatcher
+    action: b0p_judge
+    deps: [O1D]
+    scope: [verification/verdict_judge.json]
+
+  - id: V3P
+    role: m2s-verifier
+    mode: V3P
+    line: verify
+    start: recheck
+    deps: [V2P]
+    scope: [verification/verdict_delta.json, "verification/results/**", "verification/coverage/**",
+            verification/fault_baseline_B0P.json, storage/stage_reports/V3P.json]
+    check: [b0p_verify_needed, verdict_delta, judge_unchanged]
+    max_turns: 150
+    timeout_min: 120
+
+  - id: B0P
+    runner: dispatcher
+    action: tag_b0p
+    deps: [V3P]
+
+  - id: O2
+    role: m2s-perf-optimizer
+    deps: [B0P]
     scope: ["output/**", "perf/**", "verification/results/**", "verification/coverage/**", "verification/verdict_*.json",
-            "verification/fault_baseline_*.json", storage/stage_reports/O.json]
+            "verification/fault_baseline_*.json", storage/stage_reports/O2.json]
     check: [s5_report, judge_unchanged]
     max_turns: 400
     timeout_min: 300
@@ -292,8 +347,8 @@ tasks:
   - id: C1
     runner: dispatcher
     action: final_v2
-    deps: [O]
-    scope: ["output/**", "verification/**"]
+    deps: [O2]
+    scope: ["output/**", "verification/**", "storage/**", "perf/**"]
 
   - id: C2
     runner: dispatcher

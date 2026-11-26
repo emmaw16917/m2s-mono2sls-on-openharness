@@ -45,8 +45,8 @@ def _report(ws: Path, change: dict, reported_with: str | None = None) -> None:
     _git(ws, "commit", "-m", "one kept change")
 
 
-def test_without_aws_a_kept_change_needs_only_its_commit(ws, monkeypatch):
-    monkeypatch.delenv("M2S_AWS", raising=False)
+def test_with_aws_off_a_kept_change_needs_only_its_commit(ws, monkeypatch):
+    monkeypatch.setenv("M2S_AWS", "0")
     _report(ws, {"id": "C1", "verdict": "kept"})
     result = s5_report(ws)
     assert result.ok and "commits since B0" in result.summary

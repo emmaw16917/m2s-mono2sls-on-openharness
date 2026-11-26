@@ -305,7 +305,7 @@ def test_sam_engineer_role_split_keeps_s3_and_sg_out_of_the_v2_prompt():
 
 
 def test_perf_optimizer_role_split_keeps_s5_out_of_the_v2_prompt():
-    """2026-11-26: m2s-perf-optimizer carries the v3 O flow (B0, O.json,
+    """2026-11-26: m2s-perf-optimizer carries the v3 O2 flow (B0P, O2.json,
     four correctness checks, submit_task/report_blocked, M2S_AWS); the v1 S5
     protocol (v0, S5.json, STAGE signals, re-judge/review, spec relaxation)
     lives in m2s-perf-optimizer-v1, which the v1 templates use."""
@@ -316,7 +316,7 @@ def test_perf_optimizer_role_split_keeps_s5_out_of_the_v2_prompt():
     for token in ("v0", "S5.json", "STAGE_COMPLETE", "STAGE_BLOCKED", "VR", "VS", "SG", "主 Agent"):
         assert token not in v2, token
         assert token in v1, token
-    for token in ("B0", "O.json", "submit_task", "report_blocked", "M2S_AWS",
+    for token in ("B0P", "O2.json", "submit_task", "report_blocked", "M2S_AWS",
                   "run_judge", "run_equivalence", "run_coverage", "m2s-perf-optimizer-kb"):
         assert token in v2, token
     assert "## 重新判决模式" in v1 and "## 申请放宽 spec" in v1
@@ -332,9 +332,9 @@ def test_perf_optimizer_role_split_keeps_s5_out_of_the_v2_prompt():
 
     for template in (load_template("v1"), load_template("v1-split")):
         assert template.get("S5").role == "m2s-perf-optimizer-v1"
-    for name in ("v2", "v2-split"):
+    for name, task_id in (("v2", "O"), ("v2-split", "O2")):
         template = load_template(name)
-        assert template.get("O").role == "m2s-perf-optimizer", name
+        assert template.get(task_id).role == "m2s-perf-optimizer", (name, task_id)
 
 
 def test_v1_spec_routing_resolves_the_v1_architect(tmp_path):

@@ -221,7 +221,7 @@ def _o_spawn(ws: Path) -> tuple[bool, str]:
                 event = json.loads(line)
             except ValueError:
                 continue
-            if isinstance(event, dict) and event.get("type") == "spawn" and event.get("task") in ("O", "S5"):
+            if isinstance(event, dict) and event.get("type") == "spawn" and event.get("task") in ("O", "O2", "S5"):
                 last = event
     except OSError:
         return False, ""
@@ -232,21 +232,24 @@ def s5_report(ws: Path) -> CheckResult:
     """The optimizer's report (v1 S5, v2 O): every kept change has its own commit since the baseline."""
     report = _read_json(ws / "output" / "perf_report.json")
     reports = ws / "storage" / "stage_reports"
-    if not isinstance(report, dict) or not ((reports / "S5.json").is_file() or (reports / "O.json").is_file()):
+    if not isinstance(report, dict) or not ((reports / "S5.json").is_file() or (reports / "O.json").is_file()
+                                            or (reports / "O2.json").is_file()):
         return CheckResult("s5_report", False, "perf_report.json or the stage report missing",
                            relay="output/perf_report.json 或 storage/stage_reports/ 下这个任务的工作报告不存在。")
     kept_changes = [c for c in report.get("changes") or [] if isinstance(c, dict)
                     and c.get("verdict") in ("kept", "kept_inconclusive")]
     kept = [c.get("id") for c in kept_changes]
-    has_b0 = subprocess.run(["git", "-C", str(ws), "tag", "--list", "B0"], capture_output=True, text=True).stdout.strip()
-    base = "B0" if has_b0 else "v0"
+    tags = set(subprocess.run(["git", "-C", str(ws), "tag", "--list"], capture_output=True, text=True).stdout.split())
+    base = "B0P" if "B0P" in tags else "B0" if "B0" in tags else "v0"
     proc = subprocess.run(["git", "-C", str(ws), "rev-list", "--count", f"{base}..HEAD"], capture_output=True, text=True)
     commits = int(proc.stdout.strip() or 0) if proc.returncode == 0 else 0
     # With AWS judging on (design §2.2) every kept change must carry its AWS verdict;
     # a kept change whose AWS verdict was revert/pending_human is a mismatch too.
     # An O-only rerun of an older workspace keeps the changes judged before AWS
     # mode: the report has neither the marker nor any AWS evidence, and passes.
-    env_aws = os.environ.get("M2S_AWS", "").lower() in ("1", "true", "yes")
+    from coord import aws as aws_mod
+
+    env_aws = aws_mod.enabled()
     spawn_aws, spawn_head = _o_spawn(ws)
     aws_on = env_aws and (spawn_aws or report.get("judged_with") == "aws"
                           or any(((c.get("evidence") or {}).get("aws") or {}).get("verdict") for c in kept_changes))
@@ -270,7 +273,7 @@ def s5_report(ws: Path) -> CheckResult:
     if commits < len(kept):
         problems.append(f"perf_report.json 里有 {len(kept)} 个保留的改动（{kept}），但 {base} 之后只有 {commits} 个提交；每个保留的改动都要单独提交。")
     if missing_aws:
-        problems.append("M2S_AWS=1 时每个保留的改动都要有 AWS 实测判决：" + "、".join(str(i) for i in missing_aws)
+        problems.append("AWS 模式（默认）下每个保留的改动都要有 AWS 实测判决：" + "、".join(str(i) for i in missing_aws)
                         + " 的 evidence.aws 缺失或不是 kept/kept_inconclusive；先跑 run_aws_verdict 再写报告。")
     summary = f"{len(kept)} kept changes, {commits} commits since {base}"
     if aws_on:
@@ -476,6 +479,86 @@ def delta_full(ws: Path) -> CheckResult:
                        relay="" if ok else "增量测试没有通过：\n" + _clip(json.dumps(result.get("failures") or result.get("schema_errors"), ensure_ascii=False)))
 
 
+def _accepted_o1(ws: Path) -> list[dict[str, Any]]:
+    results = _read_json(ws / "perf" / "candidate_results.json") or {}
+    return [c for c in results.get("candidates") or []
+            if isinstance(c, dict) and c.get("accepted")]
+
+
+def candidate_scope(ws: Path, spec: dict[str, Any]) -> CheckResult:
+    """The owner's candidate commit only touches the task's write scope."""
+    from coord.template import in_scope
+
+    cid = str(spec.get("candidate_id") or "")
+    report = _read_json(ws / "storage" / "stage_reports" / f"{spec.get('id')}.json") or {}
+    commit = str(report.get("commit") or "")
+    if not commit:
+        return CheckResult("candidate_scope", False, f"candidate {cid}: the owner report has no commit",
+                           relay="候选实现必须提交，并在工作报告的 commit 字段写 sha。")
+    cp = subprocess.run(["git", "-C", str(ws), "show", "--name-only", "--format=", commit],
+                        capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if cp.returncode != 0:
+        return CheckResult("candidate_scope", False, f"candidate {cid}: cannot read commit {commit}: {cp.stderr.strip()}",
+                           relay="候选提交不存在。")
+    files = [p.strip() for p in cp.stdout.splitlines() if p.strip()]
+    bad = [p for p in files if not in_scope(p, tuple(spec.get("scope") or ()))]
+    return CheckResult("candidate_scope", not bad,
+                       f"candidate {cid}: {len(files)} file(s), all in scope" if not bad
+                       else f"candidate {cid}: out of scope: {bad[:8]}",
+                       relay="" if not bad else f"候选 {cid} 的提交改了范围外的文件：{bad}")
+
+
+def o1_report(ws: Path) -> CheckResult:
+    """O1/P: the plan exists, even when it has zero candidates."""
+    plan = _read_json(ws / "perf" / "candidates.json")
+    problems = []
+    if not isinstance(plan, dict) or not isinstance(plan.get("candidates"), list):
+        problems.append("perf/candidates.json is missing or has no candidates list")
+    if not (ws / "storage" / "stage_reports" / "O1.json").is_file():
+        problems.append("storage/stage_reports/O1.json is missing")
+    return CheckResult("o1_report", not problems,
+                       f"O1 plan: {len((plan or {}).get('candidates') or [])} candidate(s)" if not problems
+                       else "O1 report: " + "; ".join(problems),
+                       relay="" if not problems else "O1/P 的报告或候选计划不存在：\n" + "\n".join(problems))
+
+
+def o1_measure(ws: Path, spec: dict[str, Any]) -> CheckResult:
+    """O1M: this candidate has a verdict and its own stage report."""
+    cid = str(spec.get("candidate_id") or "")
+    verdict = _read_json(ws / "perf" / "verdicts" / f"{cid}.json")
+    valid = ("kept", "kept_inconclusive", "revert", "pending_human", "INCONCLUSIVE",
+             "blocked_by_test", "blocked_by_coverage", "pending_spec")
+    problems = []
+    if not isinstance(verdict, dict) or verdict.get("verdict") not in valid:
+        problems.append(f"perf/verdicts/{cid}.json is missing or has no valid verdict")
+    if not (ws / "storage" / "stage_reports" / f"{spec.get('id')}.json").is_file():
+        problems.append(f"storage/stage_reports/{spec.get('id')}.json is missing")
+    return CheckResult("o1_measure", not problems,
+                       f"candidate {cid}: {verdict.get('verdict') if isinstance(verdict, dict) else 'no verdict'}",
+                       relay="" if not problems else "O1M 的判决或工作报告不存在：\n" + "\n".join(problems))
+
+
+def b0p_verify_needed(ws: Path) -> CheckResult:
+    """V3P: only accepted O1 candidates need the B0P full verification; the
+    fault baseline must be recorded after the delta verdict it accompanies."""
+    if not _accepted_o1(ws):
+        return CheckResult("b0p_verify_needed", True, "no accepted O1 candidates: V3P skipped")
+    verdict = ws / "verification" / "verdict_delta.json"
+    baseline = ws / "verification" / "fault_baseline_B0P.json"
+    problems = []
+    if not verdict.is_file() or (_read_json(verdict) or {}).get("status") != "PASS":
+        problems.append("verification/verdict_delta.json is missing or not PASS")
+    if not baseline.is_file():
+        problems.append("verification/fault_baseline_B0P.json is missing")
+    elif verdict.is_file() and baseline.stat().st_mtime < verdict.stat().st_mtime - 1:
+        problems.append("fault_baseline_B0P.json is older than verdict_delta.json")
+    if not (ws / "verification" / "coverage" / "summary.json").is_file():
+        problems.append("verification/coverage/summary.json is missing")
+    return CheckResult("b0p_verify_needed", not problems,
+                       "B0P full verification is current" if not problems else "B0P verification needed: " + "; ".join(problems),
+                       relay="" if not problems else "B0P 候选还需要 V3P：\n" + "\n".join(problems))
+
+
 def judge_unchanged(ws: Path) -> CheckResult:
     """The frozen judge still has the hashes of its manifest (v2 §4.7)."""
     import judge
@@ -520,6 +603,10 @@ CHECKS: dict[str, Callable[[Path], CheckResult]] = {
     "template_part1": _template_part(1),
     "template_part2": _template_part(2),
     "s5_report": s5_report,
+    "candidate_scope": candidate_scope,
+    "o1_report": o1_report,
+    "o1_measure": o1_measure,
+    "b0p_verify_needed": b0p_verify_needed,
 }
 
 

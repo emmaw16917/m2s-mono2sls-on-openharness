@@ -387,6 +387,26 @@ J1 只看事实库写用例，有些分支没走到，或者代码里有事实�
 - 自查仍是 `run_validate(dry_run=true, assets="verification/delta")`：它会校验当前已写好的全部资产（别的领域可能还在写），按 `schema_errors` 改到 `PASS`；
 - 工作报告写 `storage/stage_reports/D1-<领域>.json`。
 
+## MODE: candidate — 性能候选实现（O1）
+
+spawn prompt 里有候选 JSON（`perf/candidates.json` 的一项）。你只实现这一个候选：
+
+- 只改 `verification/delta/**` 的最终用例和故障场景；不改 `judge/`、代码、blueprint 或模板，也不测量性能或宣布 kept；
+- 完成后 `git -C WS add verification/delta && git -C WS commit -m "perf(cand-<候选 id>): <一句话>"`，工作报告的 `commit` 写这个 sha；
+- 候选被 O1M 判回退时调度器会 revert 这个 commit；不要自己撤回，也不要实现候选以外的改动。
+
+## MODE: V3P — B0P 全量复验
+
+B0P 候选已经由各 owner 提交、O1M 接受。你只做全量复验，不改代码、测试、blueprint 或模板：
+
+1. `run_validate(assets="verification/delta")`：不带 `functions`/`cases`，写 `verification/verdict_delta.json`，必须 `PASS`；
+2. `run_coverage(assets="verification/delta")`：写 `verification/coverage/`；
+3. `run_equivalence(mode="diff", assets="verification/delta")`：以 B0 为 baseline（此时 B0P 还没有 tag，工具自动选 B0），必须 `EQUIVALENT`/`NOTHING_TO_COMPARE`；
+4. `run_equivalence(mode="record", label="B0P", assets="verification/delta")`：写 `verification/fault_baseline_B0P.json`；必须在第 1 步之后运行，让基线晚于 verdict；
+5. 工作报告写 `storage/stage_reports/V3P.json`（`status`、关键数字、`infra_errors`）。
+
+`gate_final`、`judge_unchanged` 和 B0P tag 由调度器检查，不要自己改判。
+
 ## V3：跑增量测试（实现之后）
 
 实现已经有了。三个工具都带 `assets="verification/delta"`：

@@ -37,7 +37,10 @@ class TaskSpec:
     # and directories) instead of the monolith-side work packages. Scope may use
     # {pkg} / {pkg_dir}; deps may use "<family>:*" for every child of a family,
     # and "<family>:shared" for its shared child.
-    split: str = "none"              # none | package | domain
+    # v3 O1: "candidate" expands after the triage worker by perf/candidates.json
+    # (one owner + measure + accept chain per candidate); the dispatcher owns
+    # the loop, O1 only writes the plan.
+    split: str = "none"              # none | package | domain | candidate
     expand_after: tuple[str, ...] = ()
     split_shared: bool = False       # create "<id>:shared" next to the package children
     shared_scope: tuple[str, ...] = ()  # scope of that shared child (falls back to scope)
@@ -125,7 +128,15 @@ class Template:
         frontier = [task_id]
         while frontier:
             for dep in self.get(frontier.pop()).deps:
-                if dep.endswith(":*") or dep.endswith(":shared"):
+                if dep.endswith(":*"):
+                    family = dep[:-2]
+                    # A candidate family is expanded by the dispatcher from
+                    # perf/candidates.json, so --stop-after must keep the family
+                    # (and therefore its dynamic children) in the stop set.
+                    if any(t.id == family and t.split == "candidate" for t in self.tasks):
+                        found.add(family)
+                    continue
+                if dep.endswith(":shared"):
                     continue  # a split family, not a task id
                 if dep not in found:
                     found.add(dep)
@@ -142,7 +153,7 @@ def load_template(name: str = "v1", path: Path | None = None) -> Template:
         spec = TaskSpec.from_json(raw)
         if spec.id in known:
             raise ValueError(f"{source}: duplicate task id {spec.id}")
-        if spec.split not in ("none", "package", "domain"):
+        if spec.split not in ("none", "package", "domain", "candidate"):
             raise ValueError(f"{source}: {spec.id} has unknown split {spec.split!r}")
         if spec.runner == "agent" and not spec.role:
             raise ValueError(f"{source}: agent task {spec.id} has no role")
@@ -158,7 +169,7 @@ def load_template(name: str = "v1", path: Path | None = None) -> Template:
         for dep in spec.deps:
             if dep.endswith(":*"):
                 family = dep[:-2]
-                if family not in splits or splits[family].split not in ("package", "domain"):
+                if family not in splits or splits[family].split not in ("package", "domain", "candidate"):
                     raise ValueError(f"{source}: {spec.id} depends on {dep}, but {family} is not a split task")
             elif dep.endswith(":shared") and dep[:-7] in splits and splits[dep[:-7]].split in ("package", "domain"):
                 continue  # the shared child of a split family, created at expansion

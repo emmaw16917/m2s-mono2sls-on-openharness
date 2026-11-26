@@ -129,6 +129,14 @@ Outputs:
 
 写完报告，再按 spawn prompt 的"完成方式"调用 `submit_task` / `report_blocked`。
 
+## MODE: candidate — 性能候选实现（O1）
+
+spawn prompt 里有候选 JSON（`perf/candidates.json` 的一项）。你只实现这一个候选：
+
+- 只改 `output/template*.yaml`；用 prompt 里的 `MERGE` 合并 part1/part2（`python "<MERGE>" template "<WS>"`），不改代码、blueprint、delta tests，也不测量性能；
+- 完成后 `git -C WS add output/template*.yaml && git -C WS commit -m "perf(cand-<候选 id>): <一句话>"`，工作报告的 `commit` 写这个 sha；
+- 候选被 O1M 判回退时调度器会 revert 这个 commit；不要自己撤回，也不要实现候选以外的改动。
+
 ## 禁止事项（I2c 自查循环相关）
 
 - **不许修改流水线自己的工具**：`m2s-mcp-server/`（gate、验证和测量工具、测试）、`.openharness/`（skill、知识库）、`~/.openharness/`（agent 定义、设置）都不许改。只能写本阶段规定的工作区文件。

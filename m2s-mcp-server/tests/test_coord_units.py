@@ -185,8 +185,8 @@ def test_o_prompt_measurement_section_follows_the_aws_flag(tmp_path: Path, monke
     """O judges on AWS only when the run was approved for it; the prompt must
     not carry a static "no AWS" sentence (design §2.2)."""
     template = load_template("v2-split")
-    o = template.get("O")
-    monkeypatch.delenv("M2S_AWS", raising=False)
+    o = template.get("O2")
+    monkeypatch.setenv("M2S_AWS", "0")
     local = worker_prompt(o, tmp_path / "ws", tmp_path / "mono", 1, [])
     assert "不要部署到 AWS" in local and "run_aws_verdict" in local and "run_rie_verdict" in local
     monkeypatch.setenv("M2S_AWS", "1")
@@ -205,7 +205,7 @@ def test_an_o_prompt_without_a_load_command_says_to_block(tmp_path: Path, monkey
     template = load_template("v2-split")
     monkeypatch.setenv("M2S_AWS", "1")
     monkeypatch.delenv("M2S_AWS_LOAD_CMD", raising=False)
-    text = worker_prompt(template.get("O"), tmp_path / "ws", tmp_path / "mono", 1, [])
+    text = worker_prompt(template.get("O2"), tmp_path / "ws", tmp_path / "mono", 1, [])
     assert "report_blocked" in text and "M2S_AWS_LOAD_CMD" in text
 
 

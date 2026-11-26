@@ -250,7 +250,9 @@ class Dispatcher:
                         "run_judge": self._act_run_judge, "run_mutants": self._act_run_mutants,
                         "gap_scan": self._act_gap_scan, "tag_b0": self._act_tag_b0, "final_v2": self._act_final_v2,
                         "archive_run": self._act_archive, "gap_merge": self._act_gap_merge,
-                        "barrier": self._act_barrier, **(actions or {})}
+                        "barrier": self._act_barrier, "candidate_plan": self._act_candidate_plan,
+                        "perf_accept": self._act_perf_accept, "b0p_judge": self._act_b0p_judge,
+                        "tag_b0p": self._act_tag_b0p, **(actions or {})}
         self.max_workers = max_workers
         self.poll_s = poll_s
         self.handler_enabled = handler
@@ -1202,7 +1204,7 @@ class Dispatcher:
         tasks = self.board.tasks()
         closed = {tid for tid, info in tasks.items() if info["status"] == "closed"}
         for spec in self.template.tasks:
-            if spec.split not in ("package", "domain") or not spec.expand_after:
+            if spec.split not in ("package", "domain", "candidate") or not spec.expand_after:
                 continue
             if not any(trigger in closed for trigger in spec.expand_after):
                 continue
@@ -1210,6 +1212,8 @@ class Dispatcher:
             # children on the board; the next check completes the family.
             if spec.split == "domain":
                 self._expand_domain(spec)
+            elif spec.split == "candidate":
+                self._expand_candidates(spec)
             else:
                 self._expand_family(spec)
 
@@ -1346,6 +1350,123 @@ class Dispatcher:
         self._wire_deps(spec.id, created)
         if new:
             self.log(f"{spec.id}: expanded by domain to {created}")
+
+    # -- O1 candidate loop (v3, B0 -> O1/P -> B0P) ---------------------------
+
+    CANDIDATE_OWNERS = {
+        "A1": ("m2s-architect", "impl"),
+        "D1": ("m2s-verifier", "verify"),
+        "I1": ("m2s-code-developer", "impl"),
+        "I2": ("m2s-sam-engineer", "impl"),
+    }
+    MAX_CANDIDATES = 5
+
+    def _expand_candidates(self, spec: TaskSpec) -> None:
+        """Create one owner -> measure -> accept chain per O1 candidate.
+
+        O1 writes perf/candidates.json only; the dispatcher owns the loop and
+        the scopes. The owner writes and commits the final candidate, O1M
+        measures it, and perf_accept keeps or reverts that commit. Candidates
+        are serialized so a rejected one cannot contaminate the next.
+        """
+        plan = _read_json(self.ws / "perf" / "candidates.json")
+        if not isinstance(plan, dict):
+            # O1's own check (o1_report) enforces the plan. If it closed anyway
+            # (an older workspace or a scripted run), an empty plan is safe:
+            # B0P then points at B0.
+            if not any(e.get("type") == "candidates_missing" and e.get("family") == spec.id for e in self.events.all()):
+                self.events.append("candidates_missing", family=spec.id)
+                self.log(f"{spec.id}: perf/candidates.json is missing; treating it as no candidates")
+            plan = {"candidates": []}
+        candidates = [c for c in plan.get("candidates") or [] if isinstance(c, dict)]
+        if len(candidates) > self.MAX_CANDIDATES:
+            self.events.append("candidates_capped", family=spec.id, total=len(candidates), kept=self.MAX_CANDIDATES)
+            candidates = candidates[:self.MAX_CANDIDATES]
+        existing = set(self.board.tasks())
+        created: list[str] = []
+        previous = "O1"
+        seen: set[str] = set()
+        for index, cand in enumerate(candidates, 1):
+            cid = re.sub(r"[^a-zA-Z0-9_]+", "-", str(cand.get("id") or f"c{index}")).strip("-") or f"c{index}"
+            if cid in seen:
+                cid = f"{cid}-{index}"
+            seen.add(cid)
+            owner_key = str(cand.get("owner") or "").upper()
+            if owner_key.startswith("I2"):
+                owner_key = "I2"
+            if owner_key not in self.CANDIDATE_OWNERS:
+                trigger = spec.expand_after[0] if spec.expand_after else spec.id
+                self._escalate(trigger, f"candidate {cid}: owner must be one of A1/D1/I1/I2, got {cand.get('owner')!r}")
+                return
+            role, line = self.CANDIDATE_OWNERS[owner_key]
+            owner_id = f"{spec.id}-{cid}-owner"
+            measure_id = f"{spec.id}-{cid}-measure"
+            accept_id = f"{spec.id}-{cid}-accept"
+            if owner_id in existing:
+                created += [owner_id, measure_id, accept_id]
+                previous = accept_id
+                continue
+            cand_extra = {"candidate_id": cid, "candidate": cand, "candidate_owner": owner_key}
+            if owner_key == "A1":
+                scope = ["storage/blueprint.json", "storage/adapter_map.json", "storage/DECISIONS.md",
+                         "storage/work_packages.json", f"storage/stage_reports/{owner_id}.json"]
+                checks = ["blueprint_keys", "gate_blueprint", "judge_unchanged"]
+                deny = ["output/**", "verification/**"]
+            elif owner_key == "D1":
+                scope = ["verification/delta/**", f"storage/stage_reports/{owner_id}.json"]
+                checks = ["delta_assets", "judge_unchanged"]
+                deny = ["monolith", "output/**"]
+            elif owner_key == "I1":
+                scope = ["output/lambdas/**", "output/layers/**", f"storage/stage_reports/{owner_id}.json"]
+                checks = ["gate_code", "judge_unchanged"]
+                deny = ["verification/**"]
+            else:
+                scope = ["output/template.part1.yaml", "output/template.part2.yaml", "output/template.yaml",
+                         f"storage/stage_reports/{owner_id}.json"]
+                checks = ["gate_template", "judge_unchanged"]
+                deny = ["verification/**"]
+            checks = [*checks, "candidate_scope"]
+            owner = self._candidate_task(spec, owner_id, role, line, [previous], scope, checks, deny,
+                                         {**cand_extra, "candidate_kind": owner_key})
+            if owner_id not in existing:
+                self.board.add_task(owner, [previous])
+                self.events.append("expand_candidate", family=spec.id, task=owner_id, candidate=cid,
+                                   owner=owner_key, phase="owner")
+            measure_scope = ["perf/**", "verification/results/**", "verification/coverage/**",
+                             "verification/verdict_*.json", "verification/fault_baseline_*.json",
+                             f"storage/stage_reports/{measure_id}.json"]
+            measure = self._candidate_task(spec, measure_id, "m2s-perf-triage", "verify", [owner_id],
+                                           measure_scope, ["o1_measure"], [], {**cand_extra, "candidate_phase": "measure"})
+            measure["mode"] = "O1M"
+            if measure_id not in existing:
+                self.board.add_task(measure, [owner_id])
+                self.events.append("expand_candidate", family=spec.id, task=measure_id, candidate=cid,
+                                   owner=owner_key, phase="measure")
+            accept = self._candidate_task(spec, accept_id, None, None, [measure_id],
+                                          ["perf/**", f"storage/stage_reports/{accept_id}.json"], [], [],
+                                          {**cand_extra, "candidate_phase": "accept"})
+            accept.update({"runner": "dispatcher", "action": "perf_accept"})
+            if accept_id not in existing:
+                self.board.add_task(accept, [measure_id])
+                self.events.append("expand_candidate", family=spec.id, task=accept_id, candidate=cid,
+                                   owner=owner_key, phase="accept")
+            created += [owner_id, measure_id, accept_id]
+            previous = accept_id
+        self._wire_deps(spec.id, created)
+        if not any(e.get("type") == "expand_candidates" and e.get("family") == spec.id for e in self.events.all()):
+            self.events.append("expand_candidates", family=spec.id, candidates=[c.get("id") for c in candidates])
+            self.log(f"{spec.id}: {len(candidates)} performance candidate(s): {[c.get('id') for c in candidates]}")
+
+    def _candidate_task(self, family: TaskSpec, task_id: str, role: str | None, line: str | None,
+                        deps: list[str], scope: list[str], checks: list[str], deny: list[str],
+                        extra: dict[str, Any]) -> dict[str, Any]:
+        data = family.to_json()
+        data.update({"id": task_id, "runner": "agent", "role": role, "line": line, "mode": "candidate",
+                     "action": None, "deps": list(deps), "scope": list(scope), "check": list(checks),
+                     "on_stale": "recheck", "split": "none", "expand_after": [], "split_shared": False,
+                     "shared_scope": [], "shared_check": [], "shared_write": [], "deny_read": list(deny),
+                     "start": "spawn", "max_turns": 200, "timeout_min": 120, **extra})
+        return data
 
     def _resolve_deps(self, spec: TaskSpec, child_id: str, same_package: str | None) -> list[str]:
         """Resolve "<family>:*" to the same package's child when there is one,
@@ -1560,6 +1681,10 @@ class Dispatcher:
         code, template, spec / blueprint by role; assets (the delta tests) is D1.
         v3 M2: with work packages the role resolves to a split family, which is
         not a task; the routing entry's function picks its package child."""
+        # Dynamic candidate children are not in the template; routing their
+        # blocked reports back through template.upstream would raise KeyError.
+        if not any(t.id == task_id for t in self.template.tasks):
+            return None
         earlier = [t for t in self.template.tasks if t.id in self.template.upstream(task_id) and t.id != task_id]
         if kind == "assets":
             found = [t.id for t in earlier if t.mode == "D1"]
@@ -2163,6 +2288,147 @@ class Dispatcher:
         self.events.append("tag_b0", task=spec.id, commit=sha, moved=moved)
         return CheckResult("tag_b0", bool(sha), f"tagged B0 at {sha}" + (" (moved)" if moved else ""))
 
+    # -- O1/P and B0P (v3, B0 -> O1/P -> B0P) --------------------------------
+
+    def _accepted_candidates(self) -> list[dict[str, Any]]:
+        results = _read_json(self.ws / "perf" / "candidate_results.json") or {}
+        return [c for c in results.get("candidates") or []
+                if isinstance(c, dict) and c.get("accepted")]
+
+    def _candidate_results(self) -> dict[str, Any]:
+        data = _read_json(self.ws / "perf" / "candidate_results.json")
+        return data if isinstance(data, dict) else {"candidates": []}
+
+    def _save_candidate_result(self, result: dict[str, Any]) -> None:
+        data = self._candidate_results()
+        rows = [c for c in data.get("candidates") or [] if isinstance(c, dict) and c.get("id") != result.get("id")]
+        rows.append(result)
+        path = self.ws / "perf" / "candidate_results.json"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({"candidates": rows}, ensure_ascii=False, indent=1), encoding="utf-8")
+
+    def _candidate_commit(self, cid: str, owner_id: str) -> str:
+        report = _read_json(self.ws / "storage" / "stage_reports" / f"{owner_id}.json") or {}
+        commit = str(report.get("commit") or "").strip()
+        if commit and _git(self.ws, "rev-parse", "--verify", f"{commit}^{{commit}}").returncode == 0:
+            return commit
+        # The report is advisory: fall back to the candidate's commit subject.
+        log = _git(self.ws, "log", "--format=%H%x00%s", "-n", "80").stdout
+        for line in log.splitlines():
+            sha, _, subject = line.partition("\x00")
+            if subject.startswith(f"perf(cand-{cid})"):
+                return sha.strip()
+        return ""
+
+    def _act_candidate_plan(self, spec: TaskSpec) -> CheckResult:
+        # O1C is a split family: _expand_candidates creates its children and the
+        # family itself is never a board task. Reaching this action is a bug.
+        return CheckResult("candidate_plan", False, f"{spec.id} is a split family; it must expand, not run",
+                           detail={"escalate": True})
+
+    def _act_perf_accept(self, spec: TaskSpec) -> CheckResult:
+        """Accept or revert one O1 candidate after O1M measured it."""
+        cid = str(spec.extra.get("candidate_id") or "")
+        owner_id = spec.id[:-len("-accept")] + "-owner"
+        verdict = _read_json(self.ws / "perf" / "verdicts" / f"{cid}.json")
+        if not isinstance(verdict, dict) or not verdict.get("verdict"):
+            return CheckResult("perf_accept", False, f"candidate {cid}: O1M wrote no result at perf/verdicts/{cid}.json",
+                               detail={"escalate": True})
+        value = str(verdict["verdict"])
+        commit = self._candidate_commit(cid, owner_id)
+        accepted = value in ("kept", "kept_inconclusive")
+        reverted = False
+        if accepted:
+            if not commit:
+                return CheckResult("perf_accept", False, f"candidate {cid}: the owner committed nothing (report has no commit)",
+                                   detail={"escalate": True})
+            if _git(self.ws, "merge-base", "--is-ancestor", commit, "HEAD").returncode != 0:
+                return CheckResult("perf_accept", False, f"candidate {cid}: commit {commit} is not in HEAD",
+                                   detail={"escalate": True})
+        elif commit:
+            cp = _git(self.ws, "revert", "--no-edit", commit)
+            if cp.returncode != 0:
+                _git(self.ws, "revert", "--abort")
+                return CheckResult("perf_accept", False, f"candidate {cid}: could not revert {commit}: {cp.stderr.strip()[:300]}",
+                                   detail={"escalate": True})
+            reverted = True
+        self._save_candidate_result({"id": cid, "owner": spec.extra.get("candidate_owner"),
+                                     "commit": commit, "verdict": value, "accepted": accepted, "reverted": reverted})
+        self.events.append("perf_candidate", task=spec.id, candidate=cid, verdict=value,
+                           accepted=accepted, commit=commit, reverted=reverted)
+        return CheckResult("perf_accept", True,
+                           f"candidate {cid}: {value}; " + ("kept" if accepted else "reverted"),
+                           detail={"candidate": cid, "verdict": value, "accepted": accepted, "reverted": reverted})
+
+    def _act_b0p_judge(self, spec: TaskSpec) -> CheckResult:
+        """V2P: rerun the whole judge on the accepted O1 code; no candidates -> B0P is B0."""
+        if not self._accepted_candidates():
+            return CheckResult("b0p_judge", True, "no accepted O1 candidates: B0P is B0, judge rerun skipped")
+        adapter = self._act_check_adapter(spec)
+        if not adapter.ok:
+            return CheckResult("b0p_judge", False, f"check_adapter failed before the B0P judge: {adapter.summary}",
+                               detail={"escalate": True})
+        import judge
+
+        r = judge.run_judge(self.ws)
+        if r["status"] == "ERROR":
+            return CheckResult("b0p_judge", False, f"run_judge: {r.get('error')}", detail=r)
+        return CheckResult("b0p_judge", r["status"] == "PASS",
+                           f"B0P judge {r['status']}: cases {r['summary']['cases']}, fault runs {r['summary']['fault_runs']}",
+                           detail=r)
+
+    def _act_tag_b0p(self, spec: TaskSpec) -> CheckResult:
+        """B0P: B0 plus the O1 candidates that V2P/V3P accepted. No candidates -> tag B0's commit."""
+        accepted = self._accepted_candidates()
+        if not accepted:
+            b0 = _git(self.ws, "rev-parse", "--verify", "B0^{commit}")
+            if b0.returncode != 0:
+                b0 = _git(self.ws, "rev-parse", "--verify", "HEAD^{commit}")
+            if b0.returncode != 0:
+                # A scripted/empty workspace may have no repo yet; make one so
+                # B0P still names a commit. Real runs always have B0 here.
+                if not (self.ws / ".git").is_dir():
+                    _git(self.ws, "init", "-q")
+                marker = self.ws / "storage" / "stage_reports" / "B0P.json"
+                marker.parent.mkdir(parents=True, exist_ok=True)
+                marker.write_text(json.dumps({"stage_id": "B0P", "status": "empty baseline"}), encoding="utf-8")
+                _git(self.ws, "add", "-A", ".")
+                _git(self.ws, "-c", "user.name=m2s-pipeline", "-c", "user.email=m2s@local",
+                     "commit", "-q", "-m", "B0P: empty baseline")
+                _git(self.ws, "tag", "-f", "B0P")
+                sha = _git(self.ws, "rev-parse", "--short", "B0P").stdout.strip()
+                return CheckResult("tag_b0p", bool(sha), f"no accepted O1 candidates; B0P = {sha}")
+            _git(self.ws, "tag", "-f", "B0P", b0.stdout.strip())
+            self.events.append("tag_b0p", task=spec.id, commit=b0.stdout.strip()[:7], same_as_b0=True)
+            return CheckResult("tag_b0p", True, f"no accepted O1 candidates; B0P = B0 at {b0.stdout.strip()[:7]}")
+        problems: list[str] = []
+        for candidate in accepted:
+            commit = str(candidate.get("commit") or "")
+            if not commit or _git(self.ws, "merge-base", "--is-ancestor", commit, "HEAD").returncode != 0:
+                problems.append(f"accepted candidate {candidate.get('id')} commit {commit!r} is not in HEAD")
+        for name in ("verdict_judge", "verdict_delta"):
+            status = (_read_json(self.ws / "verification" / f"{name}.json") or {}).get("status")
+            if status != "PASS":
+                problems.append(f"{name} {status!r}")
+        if not (self.ws / "verification" / "fault_baseline_B0P.json").is_file():
+            problems.append("verification/fault_baseline_B0P.json is missing")
+        for name in ("gate_final", "gate_blueprint", "gate_template", "judge_unchanged"):
+            check = self.checks.get(name)
+            if check is None:
+                continue
+            result = check(self.ws)
+            if not result.ok:
+                problems.append(f"{name}: {result.summary}")
+        if problems:
+            return CheckResult("tag_b0p", False, "B0P acceptance failed: " + "; ".join(problems),
+                               detail={"escalate": True})
+        sha, moved = self._commit_and_tag("B0P", "B0P: B0 + accepted O1 candidates",
+                                          ("output", "verification", "storage", "perf", "judge"))
+        self.events.append("tag_b0p", task=spec.id, commit=sha, moved=moved,
+                           candidates=[c.get("id") for c in accepted])
+        return CheckResult("tag_b0p", bool(sha), f"tagged B0P at {sha}" + (" (moved)" if moved else ""),
+                           detail={"candidates": [c.get("id") for c in accepted]})
+
     def _act_final(self, spec: TaskSpec) -> CheckResult:
         s5 = _read_json(self.ws / "storage" / "stage_reports" / "S5.json") or {}
         perf = _read_json(self.ws / "output" / "perf_report.json") or {}
@@ -2185,12 +2451,67 @@ class Dispatcher:
         return CheckResult("final", False, "final check failed: " + "; ".join(r.summary for r in results if not r.ok),
                            detail={"escalate": True})
 
+    def _final_base(self) -> str:
+        tags = _git(self.ws, "tag", "--list").stdout.split()
+        if "B0P" in tags:
+            return "B0P"
+        if "B0" in tags:
+            return "B0"
+        return "v0"
+
+    def _o2_commits(self, base: str) -> list[str]:
+        """The O2 commits that touch output/, newest first. Report commits are
+        not rollback candidates: they do not change the delivered code."""
+        log = _git(self.ws, "log", "--format=%H%x00%s", f"{base}..HEAD", "--", "output").stdout
+        found: list[str] = []
+        for line in log.splitlines():
+            sha, _, subject = line.partition("\x00")
+            if not (subject == "perf" or subject.startswith("perf(")):
+                continue
+            found.append(sha.strip())
+        return found
+
+    def _mark_c1_rollback(self, base: str, commits: list[str], mode: str) -> list[str]:
+        """Keep perf_report/O2.json consistent with the code C1 actually delivers."""
+        reverted_ids: list[str] = []
+        perf_path = self.ws / "output" / "perf_report.json"
+        perf = _read_json(perf_path)
+        if isinstance(perf, dict):
+            for change in perf.get("changes") or []:
+                if not isinstance(change, dict):
+                    continue
+                commit = str(change.get("commit") or "")
+                hit = any(commit and (sha.startswith(commit) or commit.startswith(sha)) for sha in commits)
+                if mode == "full" and change.get("verdict") in ("kept", "kept_inconclusive"):
+                    hit = True
+                if hit and change.get("verdict") in ("kept", "kept_inconclusive"):
+                    change["verdict"] = "reverted"
+                    change["reverted_by"] = "C1"
+                    reverted_ids.append(str(change.get("id")))
+            perf_path.parent.mkdir(parents=True, exist_ok=True)
+            perf_path.write_text(json.dumps(perf, ensure_ascii=False, indent=1), encoding="utf-8")
+        report_path = self.ws / "storage" / "stage_reports" / "O2.json"
+        if not report_path.is_file():
+            report_path = self.ws / "storage" / "stage_reports" / "O.json"
+        report = _read_json(report_path)
+        if isinstance(report, dict):
+            report["c1_rollback"] = {"baseline": base, "mode": mode, "commits": commits, "reverted": reverted_ids}
+            report["kept_before_c1"] = report.get("kept")
+            report["kept"] = max(0, int(report.get("kept") or 0) - len(reverted_ids))
+            report["reverted_by_c1"] = len(reverted_ids)
+            report_path.write_text(json.dumps(report, ensure_ascii=False, indent=1), encoding="utf-8")
+        return reverted_ids
+
     def _act_final_v2(self, spec: TaskSpec) -> CheckResult:
         """C1 (v2 §4.15): gate(final), the whole judge and all delta tests on the code to deliver.
-        If the optimizer's changes broke them, back to B0 once. Then output/final_report.md."""
+        Prefer keeping the O2 changes that pass: roll back the newest O2 commit
+        at a time; only if none works, fall back to B0P as a whole. Then
+        output/final_report.md."""
         from coord import closing
 
-        report = _read_json(self.ws / "storage" / "stage_reports" / "O.json") or {}
+        report = _read_json(self.ws / "storage" / "stage_reports" / "O2.json")
+        if not isinstance(report, dict):
+            report = _read_json(self.ws / "storage" / "stage_reports" / "O.json") or {}
         perf = _read_json(self.ws / "output" / "perf_report.json") or {}
         pending = [c.get("id") for c in perf.get("changes") or [] if isinstance(c, dict) and c.get("verdict") == "pending_spec"]
         if report.get("blocked") or pending:
@@ -2200,15 +2521,44 @@ class Dispatcher:
         def checks() -> list[CheckResult]:
             return [self.checks[name](self.ws) for name in ("gate_final", "judge_full", "delta_full")]
 
+        base = self._final_base()
         results = checks()
-        reverted = False
-        if not all(r.ok for r in results):
+        rollback: dict[str, Any] | None = None
+        legacy_reverted = False
+        if not all(r.ok for r in results) and base == "B0P":
+            commits = self._o2_commits(base)
+            fine = [] if self.events.count("o2_fine_rollback") else commits[:3]
+            for sha in fine:
+                cp = _git(self.ws, "revert", "--no-edit", sha)
+                if cp.returncode != 0:
+                    _git(self.ws, "revert", "--abort")
+                    break
+                self.events.append("o2_fine_rollback", task=spec.id, commit=sha,
+                                   failed=[r.summary for r in results if not r.ok])
+                results = checks()
+                if all(r.ok for r in results):
+                    rollback = {"baseline": base, "mode": "fine", "commits": fine[:fine.index(sha) + 1]}
+                    break
+            if not all(r.ok for r in results) and commits and not self.events.count("o2_reverted"):
+                _git(self.ws, "checkout", base, "--", "output")
+                _git(self.ws, "-c", "user.name=m2s-pipeline", "-c", "user.email=m2s@local",
+                     "commit", "-q", "-am", f"C1: revert O2 to {base}")
+                self.events.append("o2_reverted", task=spec.id, base=base, commits=commits,
+                                   failed=[r.summary for r in results if not r.ok])
+                results = checks()
+                if all(r.ok for r in results):
+                    rollback = {"baseline": base, "mode": "full", "commits": commits}
+            if rollback is not None:
+                rollback["reverted"] = self._mark_c1_rollback(base, rollback["commits"], rollback["mode"])
+        elif not all(r.ok for r in results) and base != "B0P":
+            # Legacy v2 workspace without B0P: the old single rollback to B0.
             head, b0 = _git(self.ws, "rev-parse", "HEAD").stdout.strip(), _git(self.ws, "rev-parse", "B0").stdout.strip()
             if head and b0 and head != b0 and not self.events.count("o_reverted"):
                 _git(self.ws, "checkout", "B0", "--", "output")
-                _git(self.ws, "-c", "user.name=m2s-pipeline", "-c", "user.email=m2s@local", "commit", "-q", "-am", "revert O: the final check failed")
+                _git(self.ws, "-c", "user.name=m2s-pipeline", "-c", "user.email=m2s@local",
+                     "commit", "-q", "-am", "revert O: the final check failed")
                 self.events.append("o_reverted", task=spec.id, failed=[r.summary for r in results if not r.ok])
-                reverted = True
+                legacy_reverted = True
                 results = checks()
         if not all(r.ok for r in results):
             return CheckResult("final", False, "final check failed: " + "; ".join(r.summary for r in results if not r.ok),
@@ -2219,14 +2569,19 @@ class Dispatcher:
                       *[f"- 留到最后的未决问题：{e['text']}" for e in self.events.all() if e["type"] == "open_issue"],
                       *[f"- 裁判强度：冻结时还有没补上的变异体 {e.get('ids')}" for e in self.events.all() if e["type"] == "strength_gaps_left"]]
         text = closing.final_report(self.ws, results=results, rulings=rulings.effective(self._ruling_entries()),
-                                    open_items=open_items, reverted=reverted)
+                                    open_items=open_items, reverted=rollback is not None or legacy_reverted, rollback=rollback)
         (self.ws / "output").mkdir(exist_ok=True)
         (self.ws / "output" / "final_report.md").write_text(text, encoding="utf-8")
         if (self.ws / ".git").is_dir():
-            _git(self.ws, "add", "-A", "output/final_report.md", "verification", "storage")
+            existing = [p for p in ("output/final_report.md", "output/perf_report.json", "verification", "storage", "perf")
+                        if (self.ws / p).exists()]
+            _git(self.ws, "add", "-A", *existing)
             _git(self.ws, "-c", "user.name=m2s-pipeline", "-c", "user.email=m2s@local", "commit", "-q", "-m", "C1: final report")
         return CheckResult("final", True, "gate(final), the judge and the delta tests pass; output/final_report.md written"
-                           + ("; the optimizer's changes were reverted" if reverted else ""))
+                           + (f"; the optimizer's changes were reverted (fine: {len(rollback['commits'])} commit(s), baseline {base})"
+                              if rollback and rollback.get("mode") == "fine" else
+                              f"; the optimizer's changes were reverted (full: back to {base})" if rollback else
+                              "; the optimizer's changes were reverted" if legacy_reverted else ""))
 
     def _act_archive(self, spec: TaskSpec) -> CheckResult:
         """C2 (v2 §4.15): the run's evidence goes to the evidence store, append-only."""

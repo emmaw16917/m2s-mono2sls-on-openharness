@@ -507,7 +507,7 @@ def run_coverage(functions: list[str] | None = None, mode: str = "auto", changed
 @mcp.tool()
 def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str] | None = None,
                     runtime: str = "auto", speculative_reads: list[str] | None = None,
-                    assets: str | None = None) -> str:
+                    assets: str | None = None, baseline_ref: str = "auto") -> str:
     """Fault-injection runs (verification/faults/*.json).
 
     Args:
@@ -515,7 +515,8 @@ def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str
             multiset, return value / thrown error / batchItemFailures,
             messages, table state) as verification/fault_baseline_<label>.json.
             "diff" reruns them, plus every test case of the functions
-            without scenario faults, on the baseline (git ref v0) and the
+            without scenario faults, on the baseline (git ref: B0P, then B0,
+            then v0) and the
             working tree and compares: H1 (a) same calls, (b) same
             externally visible outcome, (c) no emulated TransactionConflict
             (concurrent requests on one item) where the baseline had none.
@@ -531,11 +532,15 @@ def run_equivalence(mode: str = "record", label: str = "v0", functions: list[str
             are unchanged; the extra reads are reported, not hidden.
         assets: use the delta tests, "verification/delta" (v2 V3 records
             label "B0" on them).
+        baseline_ref: the git ref diff runs against; "auto" prefers B0P,
+            then B0, then v0. O1M passes "<owner commit>^" so a candidate is
+            compared with the state it was built on.
 
     Returns: JSON string {status: RECORDED|EQUIVALENT|DIFFERENT|..., runs,
         differences, infra_errors[, speculative_reads, extra_reads_total]}.
     """
-    return _verify_call(verify.run_equivalence, mode, label, functions, runtime, speculative_reads=speculative_reads, assets=assets)
+    return _verify_call(verify.run_equivalence, mode, label, functions, runtime,
+                        baseline_ref=baseline_ref, speculative_reads=speculative_reads, assets=assets)
 
 
 @mcp.tool()
@@ -612,8 +617,8 @@ def run_rie_verdict(benchmark: str, baseline: str = "HEAD", latencies: list[int]
 def measure_aws(candidate: str, ref: str = "HEAD", baseline_ref: str = "B0", load_cmd: str = "",
                 repeats: int = 2, keep: bool = False) -> str:
     """O (v3 M4/W4.7): measure one optimization candidate against B0 on real
-    AWS (PIPELINE_V3_PLAN.md §4.13). Off by default: M2S_AWS=1 is required and
-    a real run spends money -- a person approves that first.
+    AWS (PIPELINE_V3_PLAN.md §4.13). AWS is the default; M2S_AWS=0 opts out
+    (nothing is deployed). A real run spends money; the run initiator bears it.
 
     One stack per side (B0 kept, the candidate deleted unless keep), ABAB
     passes under the aws-load-client lock, CloudWatch invocation counts of the
@@ -640,8 +645,8 @@ def measure_aws(candidate: str, ref: str = "HEAD", baseline_ref: str = "B0", loa
 def calibrate_aws_noise(load_cmd: str = "", repeats: int = 3) -> str:
     """O (v3 M4/W4.7): measure B0 against B0 on AWS and write the observed
     spread as perf/aws_noise.json (relative_threshold), the noise floor
-    measure_aws uses. M2S_AWS=1 is required; it deploys B0's stack if absent
-    and keeps it. Returns: JSON string {status, relative_threshold, ...}.
+    measure_aws uses. AWS is the default (M2S_AWS=0 opts out); it deploys B0's
+    stack if absent and keeps it. Returns: JSON string {status, relative_threshold, ...}.
     """
     from coord import aws as aws_mod
 
@@ -657,8 +662,8 @@ def run_aws_verdict(benchmark: str, baseline: str = "HEAD", load_cmd: str = "", 
                     budget_usd: float = 0.0, proxy_better: bool = False, seed_cmd: str = "") -> str:
     """O (v3, PERF_OPTIMIZATION_DESIGN.md §2.2): one A/B for the current
     change -- the working tree against <baseline> -- measured on real AWS, and
-    the verdict from it. M2S_AWS=1 is required and a run spends money; a person
-    approves that first.
+    the verdict from it. AWS is the default; M2S_AWS=0 opts out. A run spends
+    money; the run initiator bears it.
 
     Primary dimensions: Lambda warm Duration and marginal cost per request
     (Lambda duration + requests + DynamoDB units + SQS; no API Gateway). Guards:

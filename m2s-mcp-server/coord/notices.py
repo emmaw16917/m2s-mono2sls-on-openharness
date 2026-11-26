@@ -30,7 +30,7 @@ from coord.locks import Locks
 
 IMPL_ROLES = {"m2s-architect", "m2s-architect-v1", "m2s-code-developer", "m2s-code-developer-v1",
               "m2s-sam-engineer", "m2s-sam-engineer-v1", "m2s-validator",
-              "m2s-perf-optimizer", "m2s-perf-optimizer-v1"}
+              "m2s-perf-triage", "m2s-perf-optimizer", "m2s-perf-optimizer-v1"}
 # v1 runs its own verifier role (m2s-verifier-v1); both count as the verify line.
 VERIFY_ROLES = {"m2s-verifier", "m2s-verifier-v1", "m2s-spec-annotator"}
 HANDLER_ROLE = "handler"

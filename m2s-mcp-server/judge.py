@@ -1842,6 +1842,15 @@ def _sha_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _sha_file_lf(path: Path) -> str:
+    """The same hash with CRLF normalised to LF (Windows core.autocrlf checkouts)."""
+    import hashlib
+    data = path.read_bytes()
+    if path.suffix.lower() in (".json", ".js", ".mjs", ".cjs", ".ts", ".py", ".md", ".txt", ".yaml", ".yml", ".csv"):
+        data = data.replace(b"\r\n", b"\n")
+    return hashlib.sha256(data).hexdigest()
+
+
 def judge_files(ws: Path | str) -> dict[str, str]:
     """judge/<rel> -> sha256 for every file under judge/ but the manifest."""
     jd = judge_dir(ws)
@@ -1874,7 +1883,19 @@ def judge_changes(ws: Path | str) -> dict[str, list[str]] | None:
     if m is None:
         return None
     now, then = judge_files(ws), m["files"]
-    return {"changed": sorted(p for p in now if p in then and now[p] != then[p]),
+    jd = judge_dir(ws)
+
+    def unchanged(p: str, expected: str) -> bool:
+        if now[p] == expected:
+            return True
+        # A checkout may have rewritten LF to CRLF without changing the judge.
+        rel = p[len(JUDGE_DIR) + 1:]
+        try:
+            return _sha_file_lf(jd / rel) == expected
+        except OSError:
+            return False
+
+    return {"changed": sorted(p for p in now if p in then and not unchanged(p, then[p])),
             "added": sorted(p for p in now if p not in then),
             "removed": sorted(p for p in then if p not in now)}
 

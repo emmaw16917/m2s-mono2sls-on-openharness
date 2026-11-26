@@ -1,7 +1,8 @@
 """W4.7: same-region AWS measurement of one optimization candidate
 (PIPELINE_V3_PLAN.md §4.13).
 
-    M2S_AWS=1 才启用；默认关闭时没有任何 AWS 调用（measure_aws 直接返回 DISABLED）。
+    默认启用（真实 AWS 实测）；M2S_AWS=0 / false / no / off 才关闭，关闭后没有任何
+    AWS 调用（measure_aws 直接返回 DISABLED）。费用由发起运行的人承担。
 
 一次测量：
   1. 两个栈：B0 与候选各一个（m2s-<ws>-b0 / m2s-<ws>-<candidate>），B0 的栈
@@ -18,7 +19,7 @@
   7. 费用：按 billed 时长/调用次数、DynamoDB 容量与 SQS 请求粗算，写进结果和
      perf/aws_costs.json。
 
-真实运行要花 AWS 费用：先在 M2S_AWS=1 下由人确认，再调用本工具。
+真实运行要花 AWS 费用：默认就是 AWS 模式；不想花钱时显式设置 M2S_AWS=0。
 """
 from __future__ import annotations
 
@@ -46,7 +47,11 @@ METRICS_DELAY_S = 90
 
 
 def enabled() -> bool:
-    return os.environ.get(ENV_FLAG, "").lower() in ("1", "true", "yes")
+    """AWS measurement is the default; only an explicit false disables it."""
+    value = os.environ.get(ENV_FLAG)
+    if value is None:
+        return True
+    return value.strip().lower() not in ("0", "false", "no", "off", "disabled")
 
 
 class MeasurementError(RuntimeError):
@@ -411,12 +416,12 @@ def measure_aws(ws: Path | str, candidate: str, *, ref: str | None = "HEAD", bas
                 baseline_label: str = "b0", load_cmd: str | None = None, repeats: int = 2, keep: bool = False,
                 seed_cmd: str | None = None, load_env: dict[str, str] | None = None,
                 backend: Backend | None = None, out_dir: Path | None = None) -> dict[str, Any]:
-    """Measure one candidate against the baseline on AWS (ABAB). Default off:
-    without M2S_AWS=1 it returns DISABLED before touching AWS. ref=None deploys
+    """Measure one candidate against the baseline on AWS (ABAB). AWS is the
+    default; M2S_AWS=0 returns DISABLED before touching AWS. ref=None deploys
     the working tree (the O candidate before it is committed)."""
     ws = Path(ws).resolve()
     if not enabled():
-        return {"status": "DISABLED", "note": f"{ENV_FLAG}=1 is required; a real run needs a person to approve the cost"}
+        return {"status": "DISABLED", "note": f"{ENV_FLAG}=0 disables the default AWS measurement"}
     if not load_cmd:
         return {"status": "ERROR", "error": "load_cmd is required: a command that reads M2S_AWS_TARGET and writes "
                                             "{'samples': [ms]} to $M2S_AWS_OUT"}
@@ -618,7 +623,7 @@ def calibrate_noise(ws: Path | str, *, load_cmd: str, repeats: int = 3, backend:
     """B0 against B0: the spread is the noise floor; write perf/aws_noise.json."""
     ws = Path(ws).resolve()
     if not enabled():
-        return {"status": "DISABLED", "note": f"{ENV_FLAG}=1 is required"}
+        return {"status": "DISABLED", "note": f"{ENV_FLAG}=0 disables the default AWS measurement"}
     backend = backend or AwsBackend()
     stack = _stack_name(ws, "b0")
     if not _stack_exists(backend, stack):

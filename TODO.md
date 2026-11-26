@@ -122,7 +122,28 @@
 
 ## 2026-11-26
 
-- [ ] C1 全量检查失败时精细回退：保留前面成功的 O 改动
+- [x] 优化线默认判决模式改为 AWS 实测
+  - 决策（2026-11-26）：O1M/O2 默认用 `run_aws_verdict`；只有显式 `M2S_AWS=0/false/no/off` 才关闭并退回 RIE/代理。没有 `M2S_AWS_LOAD_CMD` 时 O1M/O2 用 `report_blocked`，不静默退回本地。AWS 费用由发起运行的人承担。
+  - 实现：`coord/aws.enabled()` 默认 `True`；`coord/checks.s5_report` 改用同一判定；O1M/O2 的 prompt 默认生成 AWS 段（`M2S_AWS=0` 才生成 RIE 段）；`measure_aws`/`calibrate_aws_noise`/`run_aws_verdict` 的禁用文案改为 `M2S_AWS=0`。设计 §2.2、README、skill、O1/O2 角色说明、PIPELINE_V3_PLAN 同步。
+  - 测试：`test_coord_aws.py` 新增默认开启断言，原“默认关闭”用例改为显式 `M2S_AWS=0`；`test_s5_aws.py` 的关闭用例、`test_coord_units.py` 的本地 prompt 用例改为 `M2S_AWS=0`。
+
+- [x] 性能基准 id 全局唯一校验（2026-11-26 实测发现）
+  - 现象：O1 第一次写了 `books-list/scan-1000.json` 和 `search-books/scan-1000.json`，两个文件的 `id` 都是 `scan-1000`；提交基准后 O1 自己发现重名，把文件/id 改成 `books-scan-1000` / `search-scan-1000`，并在 `O1.json` 说明。
+  - 根因：`run_proxy_metrics` 用 `res[b["id"]]` 汇总结果、RIE/AWS 也按 id 选基准，所以 **id 必须全局唯一**；但 `load_benchmarks` 原来不校验，角色说明也没写这条不变量。不是 dispatcher 的 bug，是工具/文档的校验缺口；O1 的修正在任何候选引用这些基准之前完成，所以没有错误测量，但确实违反了“基准提交后不再改”。
+  - 修复：`load_benchmarks` 遇到重复 id 直接 `VerifyError` 并列出两个文件；O1 角色说明和设计 §8.7 明确“id 全局唯一、提交前先检查”；新增 `test_perf.py::test_duplicate_benchmark_ids_are_rejected`。
+  - 后续：O1 应在提交基准前做一次 id 唯一性检查；若提交后才发现且还没有候选引用，可做一次 schema 修正并在 `O1.json` 记录（当前实测就是这样处理的），但不作为常规路径。
+
+- [x] 冻结裁判的换行符比较（Windows `core.autocrlf`）
+  - 现象：候选 owner 的 `judge_unchanged` 报 8 个 `judge/cases/...` 变了；这些文件在 `git reset --hard B0` 时被 smudge 成 CRLF，而 manifest 记的是 LF blob。owner 自己的 commit 只有 `handler.js`，`git diff HEAD -- judge` 为空。
+  - 根因：`judge._sha_file` 直接哈希磁盘字节；仓库 `core.autocrlf=true` 时 checkout 的换行符与 manifest 不一致。
+  - 修复：`judge_changes` 对每个文件同时接受原始哈希和 CRLF→LF 归一化后的哈希；`_sha_file` 保持原始语义（`freeze_judge` 的现有 manifest 不受影响）。测试 `test_judge_reconcile` 增加 CRLF 重写后 `judge_changes` 仍为空的断言。
+  - 实测：修复后 `judge_changes` 对测试工作区返回 `changed/added/removed` 全空。
+
+- [x] 动态候选任务的 blocked 路由不再 KeyError
+  - 现象：O1C owner 报 blocked 时，`_flow_blocked` → `_route_target` → `Template.upstream("O1C-C1-owner")` 抛 `KeyError`，dispatcher 崩溃。
+  - 修复：`_route_target` 遇到不在模板里的动态任务直接返回 `None`（候选 owner 的 blocked 交给常规重试/升级，不按模板回炉路由）。新增 `test_route_target_ignores_dynamic_candidate_tasks`。
+
+- [x] C1 全量检查失败时精细回退：保留前面成功的 O 改动
   - 排序：本项在下面的 B0P/O1/O2 落地后实现；先让 B0P 版 C1 支持“O2 → B0P”的简单回退，再叠加精细回退。不要先按 B0/O 实现一套再迁移到 B0P，否则会重复改 C1、回退基线、commit 识别和报告同步。
   - 现状：`coord/dispatcher.py::_act_final_v2` 在 `gate_final` / `judge_full` / `delta_full` 任一失败时，执行 `git checkout B0 -- output` 并提交，把 B0 之后**所有** O 的 `output/` 改动一起回退；即使前面的 REQ 已单独通过并提交，也会被最后一个失败或改动间交互连累。只重跑一次全量检查，仍失败就升级给人。
   - 目标：优先保留已经通过全量检查的改动，而不是直接整体回 B0P（B0P 方案下的最终回退基线）。
@@ -138,8 +159,13 @@
     - 构造交互失败（两个 REQ 单独通过、合起来失败）：按策略回退到检查点或 B0P，报告准确；
     - `perf_report.json` / `O.json` / `verification/verdict_*` 与最终 `output/` 一致；没有残留的 `o_reverted` 误报。
   - 与 B0P 方案的关系：若采用下面的 `B0 → O1/P → B0P → O2 → C1`，C1 的**最终回退基线是 B0P**（不是 B0），绝不回退 O1 已纳入 B0P 的架构级优化；但 C1 失败时先按上面的精细回退，从最新 O2 commit 开始逐个回退并重跑全量检查，尽量保留前面成功的 O2 改动。只有精细回退找不到通过状态或超过预算时，才整体回退 O2 到 B0P；仍失败则升级给人。
+  - 完成（2026-11-26）：
+    - `_act_final_v2` 的基线改为 `B0P`（没有 B0P 的旧工作区回退 `B0`）；`_o2_commits` 只取 `B0P..HEAD` 中触及 `output/`、subject 以 `perf(` 开头的提交，排除 `perf: report` 和 `C1:`。
+    - 失败时从最新 O2 commit 开始逐个 `git revert --no-edit`，每退一个重跑 `gate_final`/`judge_full`/`delta_full`，通过即停（最多 3 个）；冲突则 abort 并直接走整体回退；否则 `git checkout B0P -- output` + 提交，再跑一次，仍失败升级。
+    - 回退后 `_mark_c1_rollback` 把 `perf_report.json` 对应改动改成 `reverted`/`reverted_by=C1`，在 `O2.json` 写 `c1_rollback`、`kept_before_c1`、`reverted_by_c1` 并调整 `kept`；`closing.final_report` 增加回退详情，并把报告分成 O1（B0→B0P）和 O2（B0P→final）两段。
+    - 测试：`tests/test_coord_o1_b0p.py::test_c1_fine_rollback_keeps_the_earlier_o2_commits`（3 个 kept，最后一个破坏检查；回退最后一个后前两个保留，报告一致）。
 
-- [ ] 采用 `B0 → O1/P → B0P → O2 → C1`；O1 用方式 B（owners 写最终候选，P 只测量/判决），O2 直接做局部改动
+- [x] 采用 `B0 → O1/P → B0P → O2 → C1`；O1 用方式 B（owners 写最终候选，P 只测量/判决），O2 直接做局部改动
   - 决策：
     - `B0`：纯迁移验收基线（当前 `tag_b0` 的产物），不包含 O1 的架构级性能改动。
     - `O1/P`：B0 之后的性能探索/测量阶段；O1 **不写**生产代码、blueprint、template、delta tests，只写 `perf/**` 和 `storage/stage_reports/O1.json`；候选由 A1/D1/I2c/I1 写最终版本。
@@ -202,6 +228,14 @@
     - O2 的 `s5_report` / `run_equivalence` 使用 B0P；C1 先精细回退 O2，失败再整体回退到 B0P；
     - O1 改测试会被 write_scope/check 拒绝；O1 不能改 judge；
     - 最终报告同时有 `B0 → B0P` 和 `B0P → final` 两段。
+  - 完成（2026-11-26）：
+    - **决策**：候选循环由 dispatcher 展开 `split: candidate` 族（不是 O1 自己 spawn）；每个候选建 `owner → O1M → accept` 三个任务并串行链接，最多 5 个候选；候选的 `owner` 字段只选 A1/D1/I1/I2 中一个，其他 owner 不运行。owner 写最终实现并提交 `perf(cand-<id>): ...`；O1M 只测一个候选；`perf_accept` 按 verdict 保留或 `git revert` 该 owner 提交。V2P/V3P 是独立任务；无 accepted 候选时 `b0p_judge` 直接 PASS，V3P 的 `start: recheck` + `b0p_verify_needed` 直接关闭，B0P 打到 B0 commit。
+    - **模板**：`v2-split.yaml` 增加 `O1`（`m2s-perf-triage`，scope 只有 `perf/**`+`O1.json`）、`O1C`（`split: candidate`）、`O1D`（barrier）、`V2P`（`b0p_judge`）、`V3P`（`m2s-verifier` MODE V3P，`start: recheck`）、`B0P`（`tag_b0p`）、`O2`（`m2s-perf-optimizer`，报告 `O2.json`）；`C1` deps 改为 `[O2]`，scope 加 `storage/**`/`perf/**`。
+    - **dispatcher**：`_expand_candidates`（owner 角色/scope/check、串行链、`O1C:*` 接线）、`_act_perf_accept`（kept 保留、其余 revert；写 `perf/candidate_results.json`）、`_act_b0p_judge`（无候选跳过；有候选跑全量 judge）、`_act_tag_b0p`（校验 verdict/judge_unchanged/gate/B0P 故障基线；无候选 tag B0 commit）；`Template.upstream` 把 candidate 族纳入 `--stop-after`。
+    - **检查/基线**：`s5_report` 优先 B0P（无则 B0/v0）；`verify.run_equivalence` 的 auto baseline 改为 `B0P > B0 > v0`；新增 `o1_report`、`o1_measure`、`b0p_verify_needed`；O2 角色、prompt 和 skill 的基线改 B0P。
+    - **角色/prompt**：新角色 `agents/m2s-perf-triage.md`（O1/O1M 合同）；A1/D1/I1/I2 角色增加 `MODE: candidate` 段；`m2s-verifier.md` 增加 `MODE: V3P`；`coord/prompts.py` 增加 O1/O2/candidate/O1M/V3P 摘要和候选注入；`README`/`notices` 加入新角色。
+    - **测试**：`tests/test_coord_o1_b0p.py`（DAG、候选展开、owner 提交范围、accept/revert、B0P 无候选/有候选、C1 精细回退）；`test_coord_units.py`（O2 prompt）、`test_coord_j1_perm.py`（O2 角色）、`test_coord_full_flow.py::test_v2_split_expands_f2_and_i1`（v2-split 全流程）同步。
+    - **GSI/数据模型候选**：由 A1 实现；裁判冻结后 `judge_unchanged` 拒绝改裁判；若必须改 judge 期望，候选不通过，按 TODO 的 pre-J6 人工流程处理，不在本轮自动接受。
   - 开放问题（实现前要定）：
     - O1 候选循环用 dispatcher action 还是任务族；最多几个候选/几轮；
     - 候选 owner 任务是否都跑一次，还是按目标只跑 A1/D1/I1/I2 中相关的一个；

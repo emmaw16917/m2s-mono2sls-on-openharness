@@ -64,8 +64,15 @@ def wired(monkeypatch):
     monkeypatch.setattr(aws, "METRICS_DELAY_S", 0)
 
 
-def test_disabled_by_default_and_touches_nothing(tmp_path: Path, monkeypatch):
+def test_aws_is_enabled_by_default(monkeypatch):
     monkeypatch.delenv("M2S_AWS", raising=False)
+    assert aws.enabled()
+    monkeypatch.setenv("M2S_AWS", "0")
+    assert not aws.enabled()
+
+
+def test_disabled_by_an_explicit_zero_and_touches_nothing(tmp_path: Path, monkeypatch):
+    monkeypatch.setenv("M2S_AWS", "0")
     backend = FakeBackend({})
     result = aws.measure_aws(tmp_path, "cand", load_cmd="true", backend=backend)
     assert result["status"] == "DISABLED" and backend.deployed == [] and backend.loads == []
