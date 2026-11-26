@@ -267,14 +267,16 @@
 
 <div class="wrap">
   <header class="hero">
-    <div class="eyebrow">M2S · v3 dispatcher · after M4</div>
+    <div class="eyebrow">M2S · v3 dispatcher · after M4 · O1/B0P/O2</div>
     <h1>一条单体从这里变成可交付的 Serverless 服务。</h1>
-    <p class="lede">这是 v3 调度器下 <code style="font-family:var(--mono);font-size:.92em">v2-split</code> 模板的完整形态：事实库、裁判、设计与实现、验证与收尾四条线并行推进，在 I1 之前汇合。调度器是确定性的 Python，agent 只是被它按任务派发的 <code style="font-family:var(--mono);font-size:.92em">oh -p</code> 进程；它们之间不直接对话，所有交流都落在文件、任务板、公告板、讨论室和裁定上。</p>
+    <p class="lede">这是 v3 调度器下 <code style="font-family:var(--mono);font-size:.92em">v2-split</code> 模板的完整形态：事实库、裁判、设计与实现、验证与收尾四条线并行推进，在 I1 之前汇合；B0 之后再加一段<strong>两基线优化</strong>——O1/P 先找架构级收益并冻结成 B0P，O2 再从 B0P 做局部优化。调度器是确定性的 Python，agent 只是被它按任务派发的 <code style="font-family:var(--mono);font-size:.92em">oh -p</code> 进程；它们之间不直接对话，所有交流都落在文件、任务板、公告板、讨论室和裁定上。</p>
     <div class="chips">
       <span class="chip">模板 <code>v2-split</code></span>
       <span class="chip">并发 <b>3 workers</b></span>
       <span class="chip">模型 <code>qwen3.8-flash</code></span>
       <span class="chip">拆分 <b>按包</b> ×3 族 · <b>按领域</b> ×2 族</span>
+      <span class="chip">优化 <b>B0 → O1/P → B0P → O2 → C1</b></span>
+      <span class="chip">判决默认 <b>AWS 实测</b></span>
       <span class="chip">M4 验收 <b>bookstore-m4 · airline-m4</b> 已到 C2</span>
     </div>
   </header>
@@ -282,11 +284,11 @@
   <section class="section">
     <div class="sec-head">
       <div class="sec-label">01 · pipeline</div>
-      <h2>四条线，和一个汇合点</h2>
-      <p class="sec-intro">列内箭头是依赖顺序，虚线是跨线交接。事实库线和裁判线共享左边两列；设计/实现线等缺口清单与裁判冻结，验证/收尾线等打包产物。</p>
+      <h2>四条线，加一段两基线优化</h2>
+      <p class="sec-intro">列内箭头是依赖顺序，虚线是跨线交接。事实库线和裁判线共享左边两列；设计/实现线等缺口清单与裁判冻结，验证/收尾线等打包产物。B0 之后优化段沿第 4 列继续：O1 出候选，dispatcher 串行派 owner 实现、O1M 测量、accept 保留/回退，复检后冻结为 B0P，O2 再在 B0P 上做局部优化。</p>
     </div>
     <figure class="fig fig-main">
-      <svg class="dg" viewBox="0 0 1040 1050" role="img" aria-label="v2-split 流水线：事实库线与裁判线并行，设计实现线在 A1 汇合，验证收尾线在 V1 汇合">
+      <svg class="dg" viewBox="0 0 1040 1480" role="img" aria-label="v2-split 流水线：事实库线与裁判线并行，设计实现线在 A1 汇合，验证收尾线在 V1 汇合；B0 之后是 O1/P 候选 → B0P → O2 的两基线优化段">
         <defs>
           <marker id="m-ink" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M0,0 L8,4 L0,8 z" class="marker"/>
@@ -330,12 +332,18 @@
         <path class="edge" d="M635,792 V808" marker-end="url(#m-ink)"/>
 
         <!-- edges: verify column -->
-        <path class="edge" d="M905,570 V586" marker-end="url(#m-ink)"/>
-        <path class="edge" d="M905,644 V660" marker-end="url(#m-ink)"/>
-        <path class="edge" d="M905,718 V734" marker-end="url(#m-ink)"/>
-        <path class="edge" d="M905,792 V808" marker-end="url(#m-ink)"/>
-        <path class="edge" d="M905,866 V882" marker-end="url(#m-ink)"/>
-        <path class="edge" d="M905,940 V956" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,570 V580" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,636 V646" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,702 V712" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,768 V778" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,834 V844" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,964 V990" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,1046 V1056" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,1112 V1122" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,1178 V1188" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,1244 V1254" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,1310 V1320" marker-end="url(#m-ink)"/>
+        <path class="edge" d="M905,1376 V1386" marker-end="url(#m-ink)"/>
 
         <!-- cross-line handoffs -->
         <path class="edge-cross" d="M230,172 H240" />
@@ -528,55 +536,106 @@
           <text x="990" y="562" class="badge" text-anchor="end">check_adapter</text>
         </g>
         <g>
-          <rect x="810" y="588" width="190" height="56" rx="8" class="box"/>
-          <rect x="810" y="588" width="4" height="56" rx="2" class="bar-verify"/>
-          <rect x="980" y="597" width="7" height="7" rx="1.5" class="dot-disp"/>
-          <text x="824" y="610" class="id">V2</text>
-          <text x="824" y="626" class="sub">目标上跑冻结裁判</text>
-          <text x="990" y="636" class="badge" text-anchor="end">run_judge</text>
+          <rect x="810" y="580" width="190" height="56" rx="8" class="box"/>
+          <rect x="810" y="580" width="4" height="56" rx="2" class="bar-verify"/>
+          <rect x="980" y="589" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="824" y="602" class="id">V2</text>
+          <text x="824" y="618" class="sub">目标上跑冻结裁判</text>
+          <text x="990" y="628" class="badge" text-anchor="end">run_judge</text>
         </g>
         <g>
-          <rect x="810" y="662" width="190" height="56" rx="8" class="box-a"/>
-          <rect x="810" y="662" width="4" height="56" rx="2" class="bar-verify"/>
-          <circle cx="983" cy="677" r="3.5" class="dot-agent"/>
-          <text x="824" y="684" class="id">V3</text>
-          <text x="824" y="700" class="sub">跑增量测试并分诊</text>
-          <text x="990" y="710" class="badge" text-anchor="end">verdict_delta</text>
+          <rect x="810" y="646" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="810" y="646" width="4" height="56" rx="2" class="bar-verify"/>
+          <circle cx="983" cy="661" r="3.5" class="dot-agent"/>
+          <text x="824" y="668" class="id">V3</text>
+          <text x="824" y="684" class="sub">跑增量测试并分诊</text>
+          <text x="990" y="694" class="badge" text-anchor="end">verdict_delta</text>
         </g>
         <g>
-          <rect x="810" y="736" width="190" height="56" rx="8" class="box"/>
-          <rect x="810" y="736" width="4" height="56" rx="2" class="bar-verify"/>
-          <rect x="980" y="745" width="7" height="7" rx="1.5" class="dot-disp"/>
-          <text x="824" y="758" class="id">B0</text>
-          <text x="824" y="774" class="sub">打 B0 + 阶段复查</text>
-          <text x="990" y="784" class="badge" text-anchor="end">tag_b0</text>
+          <rect x="810" y="712" width="190" height="56" rx="8" class="box"/>
+          <rect x="810" y="712" width="4" height="56" rx="2" class="bar-verify"/>
+          <rect x="980" y="721" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="824" y="734" class="id">B0</text>
+          <text x="824" y="750" class="sub">打 B0 + 阶段复查 · 纯迁移基线</text>
+          <text x="990" y="760" class="badge" text-anchor="end">tag_b0</text>
         </g>
         <g>
-          <rect x="810" y="810" width="190" height="56" rx="8" class="box-a"/>
-          <rect x="810" y="810" width="4" height="56" rx="2" class="bar-final"/>
-          <circle cx="983" cy="825" r="3.5" class="dot-agent"/>
-          <text x="824" y="832" class="id">O</text>
-          <text x="824" y="848" class="sub">性能优化 · 逐改动</text>
-          <text x="990" y="858" class="badge" text-anchor="end">AWS 实测默认关</text>
+          <rect x="810" y="778" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="810" y="778" width="4" height="56" rx="2" class="bar-final"/>
+          <circle cx="983" cy="793" r="3.5" class="dot-agent"/>
+          <text x="824" y="800" class="id">O1</text>
+          <text x="824" y="816" class="sub">架构级性能 triage · 只写 perf/**</text>
+          <text x="990" y="826" class="badge" text-anchor="end">o1_report</text>
         </g>
         <g>
-          <rect x="810" y="884" width="190" height="56" rx="8" class="box"/>
-          <rect x="810" y="884" width="4" height="56" rx="2" class="bar-final"/>
-          <rect x="980" y="893" width="7" height="7" rx="1.5" class="dot-disp"/>
-          <text x="824" y="906" class="id">C1</text>
-          <text x="824" y="922" class="sub">终局检查（gate+裁判+delta）</text>
-          <text x="990" y="932" class="badge" text-anchor="end">final_report</text>
+          <rect x="810" y="844" width="190" height="120" rx="8" class="box-a"/>
+          <rect x="810" y="844" width="4" height="120" rx="2" class="bar-final"/>
+          <rect x="980" y="853" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="824" y="864" class="id">O1C</text>
+          <text x="824" y="884" class="sub">逐候选串行 · 最多 5 个</text>
+          <text x="990" y="876" class="badge" text-anchor="end">split: candidate</text>
+          <text x="824" y="904" class="sub">owner · A1/D1/I1/I2 提交</text>
+          <text x="824" y="922" class="sub">O1M · 只测这一个候选</text>
+          <text x="824" y="940" class="sub">accept · kept / revert</text>
         </g>
         <g>
-          <rect x="810" y="958" width="190" height="56" rx="8" class="box"/>
-          <rect x="810" y="958" width="4" height="56" rx="2" class="bar-final"/>
-          <rect x="980" y="967" width="7" height="7" rx="1.5" class="dot-disp"/>
-          <text x="824" y="980" class="id">C2</text>
-          <text x="824" y="996" class="sub">归档运行</text>
-          <text x="990" y="1006" class="badge" text-anchor="end">evidence/</text>
+          <rect x="810" y="990" width="190" height="56" rx="8" class="box"/>
+          <rect x="810" y="990" width="4" height="56" rx="2" class="bar-final"/>
+          <rect x="980" y="999" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="824" y="1012" class="id">O1D</text>
+          <text x="824" y="1028" class="sub">候选屏障 · 等全部关闭</text>
+          <text x="990" y="1038" class="badge" text-anchor="end">O1C:*</text>
+        </g>
+        <g>
+          <rect x="810" y="1056" width="190" height="56" rx="8" class="box"/>
+          <rect x="810" y="1056" width="4" height="56" rx="2" class="bar-verify"/>
+          <rect x="980" y="1065" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="824" y="1078" class="id">V2P</text>
+          <text x="824" y="1094" class="sub">B0P 候选上跑全量裁判</text>
+          <text x="990" y="1104" class="badge" text-anchor="end">b0p_judge</text>
+        </g>
+        <g>
+          <rect x="810" y="1122" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="810" y="1122" width="4" height="56" rx="2" class="bar-verify"/>
+          <circle cx="983" cy="1137" r="3.5" class="dot-agent"/>
+          <text x="824" y="1144" class="id">V3P</text>
+          <text x="824" y="1160" class="sub">增量 / 等价 / 覆盖复检</text>
+          <text x="990" y="1170" class="badge" text-anchor="end">verdict_delta + eq</text>
+        </g>
+        <g>
+          <rect x="810" y="1188" width="190" height="56" rx="8" class="box"/>
+          <rect x="810" y="1188" width="4" height="56" rx="2" class="bar-final"/>
+          <rect x="980" y="1197" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="824" y="1210" class="id">B0P</text>
+          <text x="824" y="1226" class="sub">打 B0P = B0 + 已接受 O1</text>
+          <text x="990" y="1236" class="badge" text-anchor="end">tag_b0p</text>
+        </g>
+        <g>
+          <rect x="810" y="1254" width="190" height="56" rx="8" class="box-a"/>
+          <rect x="810" y="1254" width="4" height="56" rx="2" class="bar-final"/>
+          <circle cx="983" cy="1269" r="3.5" class="dot-agent"/>
+          <text x="824" y="1276" class="id">O2</text>
+          <text x="824" y="1292" class="sub">局部优化 · 代理初筛 → 判决</text>
+          <text x="990" y="1302" class="badge" text-anchor="end">AWS 实测（默认）</text>
+        </g>
+        <g>
+          <rect x="810" y="1320" width="190" height="56" rx="8" class="box"/>
+          <rect x="810" y="1320" width="4" height="56" rx="2" class="bar-final"/>
+          <rect x="980" y="1329" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="824" y="1342" class="id">C1</text>
+          <text x="824" y="1358" class="sub">终局检查 · 精细回退 O2</text>
+          <text x="990" y="1368" class="badge" text-anchor="end">final_report</text>
+        </g>
+        <g>
+          <rect x="810" y="1386" width="190" height="56" rx="8" class="box"/>
+          <rect x="810" y="1386" width="4" height="56" rx="2" class="bar-final"/>
+          <rect x="980" y="1395" width="7" height="7" rx="1.5" class="dot-disp"/>
+          <text x="824" y="1408" class="id">C2</text>
+          <text x="824" y="1424" class="sub">归档运行</text>
+          <text x="990" y="1434" class="badge" text-anchor="end">evidence/</text>
         </g>
       </svg>
-      <figcaption>读法：左起第 1 列是事实库线，第 2 列是裁判线，第 3 列是设计/实现线，第 4 列是验证/收尾线。<span style="font-family:var(--mono)">F2DONE</span> 是“F2 全部子任务关闭”的静态屏障，J1 在它之后展开。跨列的灰色虚线是真正约束下游的交接：缺口清单进入 A1，单体记录进入 D1，冻结裁判进入 I1，打包产物进入 V1。</figcaption>
+      <figcaption>读法：左起第 1 列是事实库线，第 2 列是裁判线，第 3 列是设计/实现线，第 4 列是验证/收尾线。<span style="font-family:var(--mono)">F2DONE</span> 是“F2 全部子任务关闭”的静态屏障，J1 在它之后展开。跨列的灰色虚线是真正约束下游的交接：缺口清单进入 A1，单体记录进入 D1，冻结裁判进入 I1，打包产物进入 V1。<strong>B0 之后是两基线优化段</strong>：O1 只写 <span style="font-family:var(--mono)">perf/**</span> 和候选计划，dispatcher 按候选串行展开 owner → O1M → accept；接受的候选经 V2P/V3P 复检后进 B0P，O2 再从 B0P 做局部改动，C1 失败时优先逐个回退 O2，绝不回退已进 B0P 的 O1。</figcaption>
       <div class="legend">
         <span><i class="lg-disp"></i>调度器动作（确定性 Python）</span>
         <span><i class="lg-agent"></i>agent 任务（<span style="font-family:var(--mono)">oh -p</span> worker）</span>
@@ -906,21 +965,31 @@
           <tr><td class="id">V1</td><td class="who"><span class="k kd">调度器</span></td><td>用裁判夹具经 adapter_map 翻译后校验目标的读语义：目标与单体回答同一批请求。</td><td class="out"><b>verification/check_adapter.json</b></td></tr>
           <tr><td class="id">V2</td><td class="who"><span class="k kd">调度器</span></td><td>在目标上跑冻结裁判（RIE + judge-run），逐 case、逐步、逐表比较。</td><td class="out"><b>verification/verdict_judge.json</b></td></tr>
           <tr><td class="id">V3</td><td class="who"><span class="k ka">agent</span></td><td>跑增量测试并分诊失败：代码错、测试错、还是不该判；产出 delta 判决与 B0 故障基线。</td><td class="out"><b>verdict_delta.json</b> · fault_baseline_B0.json<br>check: verdict_delta + judge_unchanged</td></tr>
-          <tr><td class="id">B0</td><td class="who"><span class="k kd">调度器</span></td><td>打 B0 标签（代码、裁判、资产）；异常处理者做一次阶段复查，确认可以进入优化。</td><td class="out"><b>tag B0</b> · 阶段复查 case</td></tr>
-          <tr><td class="id">O</td><td class="who"><span class="k ka">agent</span></td><td>逐改动优化：代理指标初筛 → RIE 判决 → kept / reverted；只有 <code>M2S_AWS=1</code> 且人确认费用时才做 AWS 实测。</td><td class="out"><b>perf_report.json</b> · perf/verdicts/**<br>check: s5_report + judge_unchanged</td></tr>
-          <tr><td class="id">C1</td><td class="who"><span class="k kd">调度器</span></td><td>终局检查：gate(final) + 全量裁判 + 全量增量测试；写最终报告。</td><td class="out"><b>output/final_report.md</b><br>check: final</td></tr>
+          <tr><td class="id">B0</td><td class="who"><span class="k kd">调度器</span></td><td>打 B0 标签（代码、裁判、资产）；异常处理者做一次阶段复查，确认可以进入优化。B0 是<strong>纯迁移基线</strong>，不含性能改动。</td><td class="out"><b>tag B0</b> · 阶段复查 case</td></tr>
+
+          <tr class="group"><td colspan="4">优化线（B0 → O1/P → B0P → O2）</td></tr>
+          <tr><td class="id">O1</td><td class="who"><span class="k ka">agent</span> m2s-perf-triage</td><td>架构级 triage：写 benchmark、测 B0 基线、给出候选清单与预期收益。<strong>只写 <code>perf/**</code> 与 <code>O1.json</code></strong>，不碰生产代码、模板、delta 测试或裁判。</td><td class="out"><b>perf/benchmarks/**</b> · perf/candidates.json · O1.json<br>check: o1_report + judge_unchanged</td></tr>
+          <tr><td class="id">O1C</td><td class="who"><span class="k kd">调度器</span> 展开 ×N 串行</td><td>逐候选展开 <code>owner → O1M → accept</code>：owner（A1/D1/I1/I2 之一）提交最终实现，O1M 只测这一个候选，accept 按判决保留或 <code>git revert</code>；一个候选失败不影响已接受部分。</td><td class="out"><b>perf/verdicts/**</b> · perf/candidate_results.json<br>check: candidate_scope + o1_measure</td></tr>
+          <tr><td class="id">O1D</td><td class="who"><span class="k kd">调度器</span></td><td>候选屏障：等 O1 和所有候选链关闭后才让复检开始。</td><td class="out"><b>deps: O1 + O1C:*</b></td></tr>
+          <tr><td class="id">V2P</td><td class="who"><span class="k kd">调度器</span></td><td>有 accepted 候选时，在 B0P 候选上重跑<strong>全量</strong>冻结裁判；没有候选则直接 PASS。</td><td class="out"><b>verification/verdict_judge.json</b><br>check: b0p_judge</td></tr>
+          <tr><td class="id">V3P</td><td class="who"><span class="k ka">agent</span> m2s-verifier</td><td>对 B0P 候选复检：全量 delta validate / equivalence / coverage，并写 B0P 故障基线；无候选时检查直接关闭（recheck）。</td><td class="out"><b>verdict_delta.json</b> · fault_baseline_B0P.json<br>check: verdict_delta + b0p_verify_needed</td></tr>
+          <tr><td class="id">B0P</td><td class="who"><span class="k kd">调度器</span></td><td>校验 V2P/V3P、<code>judge_unchanged</code>、gate 与 B0P 故障基线，打 B0P = B0 + 已接受的 O1 改动；无候选时 B0P 与 B0 同一 commit。</td><td class="out"><b>tag B0P</b> · O2 的新基线</td></tr>
+          <tr><td class="id">O2</td><td class="who"><span class="k ka">agent</span> m2s-perf-optimizer</td><td>从 B0P 做局部、语义保持的优化：代理指标初筛 → RIE/AWS 判决 → kept / reverted。<strong>默认 AWS 实测</strong>；只有 <code>M2S_AWS=0</code> 退回 RIE/代理。</td><td class="out"><b>perf_report.json</b> · O2.json · perf/verdicts/**<br>check: s5_report + judge_unchanged</td></tr>
+
+          <tr class="group"><td colspan="4">收尾线</td></tr>
+          <tr><td class="id">C1</td><td class="who"><span class="k kd">调度器</span></td><td>终局检查：gate(final) + 全量裁判 + 全量增量测试。失败时先逐个 revert 最新 O2 <code>perf(...)</code> 提交并重跑检查（最多 3 个），再整体 <code>checkout B0P -- output</code>；绝不回退 B0P 里的 O1。</td><td class="out"><b>output/final_report.md</b><br>check: final · 报告分 O1 / O2 两段</td></tr>
           <tr><td class="id">C2</td><td class="who"><span class="k kd">调度器</span></td><td>把运行归档为证据包（含 coord/ 与判决摘要），之后才允许拆工作区。</td><td class="out"><b>evidence/&lt;app&gt;/&lt;run&gt;/</b><br>check: archive_run</td></tr>
         </tbody>
       </table>
     </div>
-    <div class="note"><b>J2 全量重跑，但不是主要瓶颈。</b>J4 新增 <code>wb-*</code> 后，J2 会重新跑<strong>全部</strong> judge cases（旧的 + 新的），每条默认 3 遍；airline-m4 约 4–5 min/次。J2 的耗时远小于 J1/J4/A1/I1/O 的 LLM 工作和回炉轮数；全量重跑是为了 oracle/masks/coverage/inputs_sha 的一致性，不是遗漏的增量优化。</div>
+    <div class="note"><b>J2 全量重跑，但不是主要瓶颈。</b>J4 新增 <code>wb-*</code> 后，J2 会重新跑<strong>全部</strong> judge cases（旧的 + 新的），每条默认 3 遍；airline-m4 约 4–5 min/次。J2 的耗时远小于 J1/J4/A1/I1/O1/O2 的 LLM 工作和回炉轮数；全量重跑是为了 oracle/masks/coverage/inputs_sha 的一致性，不是遗漏的增量优化。</div>
   </section>
 
   <section class="section">
     <div class="sec-head">
       <div class="sec-label">05 · split</div>
-      <h2>两种并行粒度</h2>
-      <p class="sec-intro">拆分只改变“谁写哪块”，不改变每步的检查。子任务都是普通 agent 任务，只是 scope 更窄、函数列表更小；F2 的包任务共用一份文件，靠 <code>shared_write</code> + 跨进程文件锁并行；shared 子任务在所有子任务之后收口。</p>
+      <h2>三种拆分粒度</h2>
+      <p class="sec-intro">拆分只改变“谁写哪块”，不改变每步的检查。子任务都是普通 agent 任务，只是 scope 更窄、函数列表更小；F2 的包任务共用一份文件，靠 <code>shared_write</code> + 跨进程文件锁并行；shared 子任务在所有子任务之后收口。O1C 是串行候选链，不是并行族。</p>
     </div>
     <div class="t-wrap">
       <table>
@@ -933,10 +1002,11 @@
           <tr><td class="id">J1</td><td>按工作包</td><td><code>judge/cases/&lt;包&gt;/</code>，每个包只写自己的用例文件。</td><td>并行</td><td><code>J1-shared</code> 写 fixtures/identities/faults + 整份检查</td></tr>
           <tr><td class="id">D1</td><td>按领域</td><td><code>verification/delta/events/&lt;fn&gt;/</code> 与 <code>delta-&lt;领域&gt;-*</code> 故障场景。</td><td>并行</td><td>V3 全量跑</td></tr>
           <tr><td class="id">I1</td><td>按领域</td><td><code>output/lambdas/&lt;app&gt;/&lt;fn&gt;/</code>，每函数目录一个领域。</td><td>并行</td><td><code>I1-shared</code> 共享层</td></tr>
+          <tr><td class="id">O1C</td><td>按候选</td><td>每个候选一条 <code>owner → O1M → accept</code>；owner 只写自己的 scope（A1 蓝图、D1 测试、I1 代码、I2 模板）。</td><td><strong>串行</strong>（相对已接受基线逐个测）</td><td><code>accept</code> 保留或 <code>revert</code></td></tr>
         </tbody>
       </table>
     </div>
-    <div class="note">并行的上限是：3 个 worker 槽、scope 不重叠（或双方都把同一路径声明为 <code>shared_write</code>）、资源锁可用。F2 的包任务现在也并行：<code>analysis_report.json</code> 声明为 <code>shared_write</code>，三个 annotate 工具在 <code>storage/.analysis_report.lock</code> 下串行化读-改-写，<code>_save</code> 用 PID 唯一临时文件 + 原子替换。2026-11-24 的 coffee 真 LLM 实跑达到 3 路并发，F2 墙钟 54.6 min（串行约 117 min）。裁判冻结之后，任何拆分都不允许碰 <code>judge/</code>。</div>
+    <div class="note">并行的上限是：3 个 worker 槽、scope 不重叠（或双方都把同一路径声明为 <code>shared_write</code>）、资源锁可用。F2 的包任务现在也并行：<code>analysis_report.json</code> 声明为 <code>shared_write</code>，三个 annotate 工具在 <code>storage/.analysis_report.lock</code> 下串行化读-改-写，<code>_save</code> 用 PID 唯一临时文件 + 原子替换。2026-11-24 的 coffee 真 LLM 实跑达到 3 路并发，F2 墙钟 54.6 min（串行约 117 min）。裁判冻结之后，任何拆分都不允许碰 <code>judge/</code>。O1C 的候选链故意不并行：每个候选的收益要相对“B0 + 已接受的候选”测，而且 accept 会移动 HEAD，并行会互相污染基线。</div>
   </section>
 
   <section class="section">
@@ -955,15 +1025,20 @@
         <h3>F2 并行标注已实测</h3>
         <p>v2-split 的 F2 包任务改为并行：<code>storage/analysis_report.json</code> 声明为 <code>shared_write</code>，<code>annotate_*</code> 在 <code>storage/.analysis_report.lock</code> 下串行化每次读-改-写。<code>coffee-f2-par-1</code> 真 LLM 实跑（10 端点 / 4 包 / 3 worker）：全部包级与全局 <code>check_provenance</code> PASS，F2 墙钟 54.6 min（串行约 117 min，约 2.1×）。</p>
       </div>
+      <div class="card done">
+        <div class="kicker">done · 2026-11-27</div>
+        <h3>O1 → B0P → O2 已分三段实测</h3>
+        <p>O1 产出 6 个 benchmark、1 个候选（I1/R4）；O1M 用 20.4 min：judge PASS、delta 10/10、equivalence 15 次全部 EQUIVALENT、coverage 83/83，RIE 中位 128.6 → 64.8 ms，判决 kept。V2P judge PASS；V3P delta 13/13 并以 B0P 为基线；B0P 打在 <code>ec466b8</code>。O2 没有 kept 改动（<code>output/</code> 与 B0P 相同），C1 通过并写出分 O1 / O2 两段的终局报告。该轮测试用 <code>M2S_AWS=0</code> 走本地 RIE。</p>
+      </div>
       <div class="card next">
         <div class="kicker">next</div>
         <h3>两件事等人</h3>
-        <p><b>W4.7 真实 AWS 实测</b>：工具已就绪，默认关闭，运行前需要确认费用。<b>M5 对抗评审室</b>：触发条件已满足——同一 harness 下有两个应用归档，且 OpenHarness 刚升级（print 流带 usage）；M5 本身是评审流程，不是改 harness。</p>
+        <p><b>W4.7 真实 AWS 实测</b>：优化线现在默认 <code>run_aws_verdict</code>（只有 <code>M2S_AWS=0</code> 退回 RIE），还差默认模式下的完整真跑与费用确认。<b>M5 对抗评审室</b>：触发条件已满足——同一 harness 下有两个应用归档，且 OpenHarness 刚升级（print 流带 usage）；M5 本身是评审流程，不是改 harness。</p>
       </div>
     </div>
   </section>
 
   <footer>
-    按 <code>coord/templates/v2-split.yaml</code>、<code>coord/dispatcher.py</code>、2026-11-16 的 M4 归档与 2026-11-24 的 F2 并行实跑绘制。每个框的下排小字是任务的完成检查或关键产出。
+    按 <code>coord/templates/v2-split.yaml</code>、<code>coord/dispatcher.py</code>、2026-11-16 的 M4 归档、2026-11-24 的 F2 并行实跑与 2026-11-27 的 O1/B0P/O2 分段实跑绘制。每个框的下排小字是任务的完成检查或关键产出。
   </footer>
 </div>
