@@ -1,5 +1,5 @@
 """DynamoDB transaction-conflict emulation for the Python perf shim -- a port
-of tx-conflicts.js with the same rules (see there and PERF_OPTIMIZATION_DESIGN
+of tx-conflicts.js with the same rules (see there and PERF_OPTIMIZATION_DESIGN_v1.md
 §2.1 item 6). The newcomer is rejected, the ongoing request completes:
   - PutItem / UpdateItem / DeleteItem on an item of an ongoing
     TransactWriteItems -> TransactionConflictException;

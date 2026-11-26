@@ -1,4 +1,4 @@
-"""Optimization-line tools (PERF_OPTIMIZATION_DESIGN.md §2-§4, §8-§9):
+"""Optimization-line tools (PERF_OPTIMIZATION_DESIGN.md §2, §3, §5, §7, §8):
 run_proxy_metrics, run_rie_verdict, update_ledger.
 
 Benchmarks are written by m2s-perf-optimizer under WS/perf/benchmarks/
@@ -587,7 +587,7 @@ def _without_config(t: dict[str, Any]) -> dict[str, Any]:
 
 
 def run_config_verdict(workspace: str, baseline: str = "HEAD") -> dict[str, Any]:
-    """Tier-A verdict (PERF_OPTIMIZATION_DESIGN.md section 3.7) for a change
+    """Tier-A verdict (PERF_OPTIMIZATION_DESIGN.md §3.4) for a change
     that only sets Architectures in output/template.yaml. No code changed and
     the local RIE runs x86_64 either way, so validation, equivalence and RIE
     rounds cannot see any difference and are not run. Checked instead: only

@@ -53,8 +53,8 @@ TASK_SUMMARIES = {
     "I2c": "这一步是角色说明里的 STAGE_ID=I2c：用 MERGE 合并 part1 和 part2 生成 output/template.yaml（python \"{merge}\" template \"{ws}\"），"
            "然后自己跑 run_gate(phase=\"template\") 和 validate_sam 自查并修正合并后的模板。",
     "I3": "这一步是角色说明里的 S4：做一致性检查，写 output/consistency_report.json。",
-    "O": "在 B0 上做语义保持的性能改动（角色说明里的 S5，先读\"v2 流水线\"一节，它改变了基线和检查）。每个保留的改动单独提交到 WS 的 git；"
-         "写 output/perf_report.json。",
+    "O": "在 B0 上做语义保持的性能改动（按你的角色说明）。每个保留的改动单独提交到 WS 的 git；"
+         "写 output/perf_report.json，最后写 storage/stage_reports/O.json。",
 }
 
 # v2 role modes (PIPELINE_V2_PLAN.md): the role doc has a section per mode.

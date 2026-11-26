@@ -1,6 +1,6 @@
 ---
 name: m2s-performance-kb
-description: Serverless 迁移中常见性能反模式的参考规则（批量 API、依赖精简）。m2s-code-developer 写完代码后自我对照时加载；后续 m2s-perf-optimizer 落地后也会复用。
+description: Serverless 迁移中常见性能反模式的参考规则（批量 API、依赖精简）。m2s-code-developer 写完代码后自我对照时加载；v3 O 的判决框架见 m2s-perf-optimizer-kb。
 user-invocable: true
 disable-model-invocation: false
 ---
@@ -134,5 +134,5 @@ Lambda 的 INIT 阶段（模块加载 + 顶层代码执行）耗时跟依赖体�
 ## 3. 后续会补充的内容（占位，暂不适用于 S2 阶段）
 
 本地实测方法（`sam local invoke` 测 cold start、`sam local start-api` 测 E2E Latency 等）
-留给 `m2s-perf-optimizer` 落地时再补进这份文档——那部分需要完整的 `template.yaml`，S2 阶段
-用不上，暂不在这里展开。
+留在优化线的归档与设计文档里（`m2s-mcp-server/PERF_OPTIMIZATION_DESIGN_v1.md`、`PERF_OPTIMIZATION.md`）；
+v3 O 的判决框架见 `m2s-perf-optimizer-kb`，S2/I1 阶段用不上，暂不在这里展开。

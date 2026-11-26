@@ -2,7 +2,7 @@
   "version": 1,
   "generated_at": "2026-10-02",
   "source": "advisories of runs/{bookstore-v2,coffee-e0,shopping-cart-e0,ecommerce-e0,airline-booking-e0}/output/perf_report.json (bookstore-v1 superseded by v2)",
-  "format": "PERF_OPTIMIZATION_DESIGN.md section 9.4, plus app / advisory_ref / priority / prerequisites",
+  "format": "PERF_OPTIMIZATION_DESIGN_v1.md section 9.4, plus app / advisory_ref / priority / prerequisites",
   "priority_legend": {
     "P1": "semantic change confined to one handler; needs only the H1(a) same-call-multiset relaxation + full stage-A re-acceptance",
     "P2": "data-model / template change; architect re-issues the blueprint, then code-developer + sam-engineer",
@@ -604,7 +604,7 @@
     {
       "id": "V2-18",
       "app": "all",
-      "advisory_ref": "PERF_OPTIMIZATION_DESIGN section 12, appendix A.4",
+      "advisory_ref": "PERF_OPTIMIZATION_DESIGN_v1 section 12, appendix A.4",
       "priority": "P4",
       "source": "analysis",
       "target": {

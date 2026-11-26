@@ -513,7 +513,7 @@ A2 的检查项：
 | 输入 | B0、规则手册的性能部分、事实库中的数据访问信息 |
 | 输出 | - `perf/benchmarks/`：性能基准事件，改动前提交，之后不再修改；<br>- 规则扫描结果：每条规则的命中位置，命中 0 处也要记；<br>- 热点分析：串行深度、CPU、调用次数；<br>- 改动请求 `perf/requests/REQ-n.json`，每个请求标明"小范围"还是"架构" |
 | 反馈 | 架构类请求交给 O3；不允许做的改动只写成建议，附上诊断数据 |
-| 过程 | 执行者：agent `m2s-perf-optimizer`。KB：`m2s-performance-kb`。MCP 工具：`run_proxy_metrics` |
+| 过程 | 执行者：agent `m2s-perf-optimizer`。KB：`m2s-perf-optimizer-kb`（O 判决框架；`m2s-performance-kb` 给 I1 写代码时用）。MCP 工具：`run_proxy_metrics` |
 
 #### O2 小范围改动（只动实现轨迹）
 

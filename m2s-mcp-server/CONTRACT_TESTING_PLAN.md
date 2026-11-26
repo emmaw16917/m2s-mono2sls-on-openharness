@@ -47,7 +47,7 @@
 | 3.1 | verifier 出题规则：按 §0 的判断标准出题；白盒用例可以为了覆盖率去走特定分支，但断言只能写外部效果；故障一律按条目钉；遇到 `trace_arm` 时，按 SI 裁定写 `alternatives` 或者不出题 | `agents/m2s-verifier.md` |
 | 3.2 | code-developer：spec 里标为 `implementation-trace` 的条目只作参考，不必照抄；`contract` 条目必须满足 | `agents/m2s-code-developer.md` |
 | 3.3 | validator（S4）：静态复核只对照 `contract` 条目，`implementation-trace` 条目不算偏差 | `agents/m2s-validator.md` |
-| 3.4 | perf-optimizer：§6.2 加一行，删掉 `implementation-trace` 条目对应的冗余读属于允许的改动（仍然要过 H1 和判决）；修改请求新增 `spec_relaxation` 字段，用于在旧应用上申请放宽 | `agents/m2s-perf-optimizer.md`，`PERF_OPTIMIZATION_DESIGN.md` §6.2、§9.4、§12 |
+| 3.4 | perf-optimizer：§6.2 加一行，删掉 `implementation-trace` 条目对应的冗余读属于允许的改动（仍然要过 H1 和判决）；修改请求新增 `spec_relaxation` 字段，用于在旧应用上申请放宽 | `agents/m2s-perf-optimizer-v1.md`，`PERF_OPTIMIZATION_DESIGN_v1.md` §6.2、§9.4、§12 |
 
 ## 4. 已有工作区的处理（这次不批量迁移）
 
@@ -125,11 +125,11 @@
 
 | 文件 | 改动 |
 |---|---|
-| `PERF_OPTIMIZATION_DESIGN.md` | §6.2 加一行"spec 放宽申请"；§9.4 加 `spec_relaxation`；§12 把"修改请求派发"的一部分标为已落地 |
+| `PERF_OPTIMIZATION_DESIGN_v1.md` | §6.2 加一行"spec 放宽申请"；§9.4 加 `spec_relaxation`；§12 把"修改请求派发"的一部分标为已落地 |
 | `PIPELINE_REDESIGN.md` | §4.1 回炉规则加上 S5 → S1 → V1 → v0 → S5 这条路径及轮数限制 |
 | `perf.py` | `update_ledger` 认识 `pending_spec`，并统计 spec 的申请数、接受数、保留数 |
 | `gates.py` | gate(final) 检查：已接受的 SI 必须有对应的重判记录（kept 或 reverted），`pending_spec` 不能遗留到交付 |
-| `agents/m2s-perf-optimizer.md` | 申请的条件、格式、限制 |
+| `agents/m2s-perf-optimizer-v1.md` | 申请的条件、格式、限制 |
 | `agents/m2s-architect.md` | 怎样裁定 perf 申请；SI 里要写 `origin` 和 `class` |
 | `agents/m2s-verifier.md` | 针对 SI 的定向回炉（只改受影响的用例） |
 | `.openharness/skills/m2s-migrate/SKILL.md` | 编排：S5 之后，如果有 `pending_spec`，就走 7.1 的第 2–6 步 |

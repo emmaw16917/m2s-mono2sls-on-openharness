@@ -33,14 +33,14 @@ mcp__m2s-server__run_gate
 mcp__m2s-server__merge_blueprint_key
 mcp__m2s-server__annotate_entry_point   （只给 S0 用）
 mcp__m2s-server__annotate_global_middleware （只给 S0 用：填全局中间件给每个响应加的头）
-mcp__m2s-server__run_config_verdict      （只给 m2s-perf-optimizer 用：A 档配置改动）
+mcp__m2s-server__run_config_verdict      （只给 m2s-perf-optimizer-v1 用：A 档配置改动）
 mcp__m2s-server__check_provenance
 mcp__m2s-server__run_validate           （验证线；你在 V2 之后亲自调一次做复核）
 mcp__m2s-server__run_coverage           （只给 m2s-verifier 用）
-mcp__m2s-server__run_equivalence        （m2s-verifier、m2s-perf-optimizer 用）
-mcp__m2s-server__run_proxy_metrics      （只给 m2s-perf-optimizer 用）
-mcp__m2s-server__run_rie_verdict        （只给 m2s-perf-optimizer 用）
-mcp__m2s-server__update_ledger          （只给 m2s-perf-optimizer 用）
+mcp__m2s-server__run_equivalence        （m2s-verifier、m2s-perf-optimizer-v1 用）
+mcp__m2s-server__run_proxy_metrics      （只给 m2s-perf-optimizer-v1 用）
+mcp__m2s-server__run_rie_verdict        （只给 m2s-perf-optimizer-v1 用）
+mcp__m2s-server__update_ledger          （只给 m2s-perf-optimizer-v1 用）
 ```
 
 Agent 名精确契约（`subagent_type` 必须逐字符匹配，拼错不会报错，只会得到一个没有专属 system prompt 的通用 Agent）：
@@ -52,7 +52,7 @@ m2s-code-developer
 m2s-sam-engineer   （复用同一个定义 spawn 三次：STAGE_ID = S3a / S3b / S3c）
 m2s-validator
 m2s-verifier       （复用同一个定义 spawn 两次：STAGE_ID = V1 / V2）
-m2s-perf-optimizer （STAGE_ID = S5）
+m2s-perf-optimizer-v1 （STAGE_ID = S5）
 ```
 
 **关于 `mcp_auth`**：`WS` 下的 `m2s-server` 是本地 stdio MCP，不需要任何认证。已经用 `pre_tool_use` hook 把"对 m2s-server 调 mcp_auth"这一具体组合硬拦截了，但你自己和你 spawn 的子 Agent 都不应该主动调用 `mcp_auth`——不管是你自己还是任何子 Agent，看到 MCP 工具"连不上/需要认证"这类错觉时，直接重试调用目标工具本身，不要去配置认证。
@@ -80,7 +80,7 @@ V2  spawn m2s-verifier（STAGE_ID=V2：执行、失败分诊、白盒补测、�
         ↓ 你自己亲自 run_validate()（不带参数）复核，并读 WS/verification/verdict_A.json
     验收：gate(final) PASS 且 verdict_A.json 的 status 为 PASS → 在 WS 里打 git tag v0（见 §6）
         ↓
-S5  spawn m2s-perf-optimizer（在 v0 上做语义保持的性能改动；每个改动由工具判决，保留的改动逐个 commit）
+S5  spawn m2s-perf-optimizer-v1（在 v0 上做语义保持的性能改动；每个改动由工具判决，保留的改动逐个 commit）
         ↓
 阶段 6 最终检验：你亲自 gate(final) + run_validate()（不带参数，全量回归）→ 最终报告（§6）
 ```
@@ -246,11 +246,11 @@ git log --oneline -1 && git tag   # 确认 tag 存在
 打完 v0 之后，进入 S5 和阶段 6：
 
 **S5（性能优化）**：
-- spawn `m2s-perf-optimizer`（STAGE_ID=S5）。prompt 里只写 §2 规定的要素：WS、MONOLITH、任务摘要、网络错误重试提醒。它读的是 WS 里的 v0 和测试资产，你不用转述任何测试内容（§2 的禁令同样适用）。
+- spawn `m2s-perf-optimizer-v1`（STAGE_ID=S5）。prompt 里只写 §2 规定的要素：WS、MONOLITH、任务摘要、网络错误重试提醒。它读的是 WS 里的 v0 和测试资产，你不用转述任何测试内容（§2 的禁令同样适用）。
 - S5 报 `STAGE_BLOCKED` **不会让流水线失败**：它只表示"性能优化没有收敛"，交付的仍是最后一个通过验证的版本。
 - S5 结束后，`Read WS/output/perf_report.json` 和 `WS/storage/stage_reports/S5.json`，再用 `git -C "WS" log --oneline v0..HEAD` 核对：报告里每个 `kept`/`kept_inconclusive` 的改动，都要有对应的提交。
 
-**S5 之后的测试复核**（PERF_OPTIMIZATION_DESIGN §3.6，K15–K18）：`S5.json` 的 `blocked` 非空时做，**每轮 S5 只做一次**：
+**S5 之后的测试复核**（PERF_OPTIMIZATION_DESIGN_v1 §3.6，K15–K18）：`S5.json` 的 `blocked` 非空时做，**每轮 S5 只做一次**：
 1. spawn `m2s-verifier`（STAGE_ID=VR）。prompt 里写 WS、MONOLITH，以及"复核 S5.json 里 blocked 的改动"。
    - 这里可以写测试相关的内容：§2 的禁令只针对 S1–S4；
    - VR 只改 `verification/`。
@@ -259,7 +259,7 @@ git log --oneline -1 && git tag   # 确认 tag 存在
    - `run_validate()` 必须 PASS。
 3. 提交测试资产：`git -C "WS" add verification storage && git -C "WS" commit -m "verification: S5 test review (VR)"`。**v0 的 tag 不动**：v0 的代码没有变，S5 已经保留的改动也不能被算进 v0。
 4. VR 报告里结论是 `tests_fixed` / `cases_added` 的 REQ，交给 perf-optimizer 重新判决：
-   - spawn `m2s-perf-optimizer`（STAGE_ID=S5），prompt 里写明"重新判决模式"和这些 REQ 的 id；
+   - spawn `m2s-perf-optimizer-v1`（STAGE_ID=S5），prompt 里写明"重新判决模式"和这些 REQ 的 id；
    - 结论是 `tests_kept` / `unreachable` 的 REQ 不再判决，在最终回复里列出来。`tests_kept` 说明等价性检查漏掉了一种差异，要作为工具问题写明。
 5. 然后进入阶段 6。
 - VR 报 `STAGE_BLOCKED` 时，跳过第 3–4 步：被阻塞的改动保持回滚，在最终回复里写明原因，然后进入阶段 6。
@@ -273,7 +273,7 @@ git log --oneline -1 && git tag   # 确认 tag 存在
    - VS 完成后，亲自 `run_validate(ref="v0")`，必须全部通过（`not_applicable` 不算失败，但要在最终回复里列出）。**按档执行**（设计文档 §3.7）：不带 `data_model_change` 的（C 档）只验 SI `applies_to` 的函数，`run_validate(ref="v0", functions=[...])`；带 `data_model_change` 的（D 档）跑全量；
    - 然后提交测试资产：`git -C "WS" add verification storage && git -C "WS" commit -m "verification: spec relaxation (VS)"`。**v0 的 tag 不动**：此时 HEAD 已经含有 S5 之前保留的改动，把 v0 移过去会把它们算进 v0。新用例已经由上一步的 `run_validate(ref="v0")` 在 v0 的代码上验收过了，这次提交本身就是"测试已在 v0 上重新验收"的记录。不需要重录 `fault_baseline_v0.json`：工作区有自己的仓库时，`run_equivalence(diff)` 会现场重建基线版本；
    - 没通过：不移 tag，这些 REQ 在 `perf_report.json` 里改成 `spec_rejected`，原因写"测试调整后 v0 未通过"。
-4. spawn `m2s-perf-optimizer`（STAGE_ID=S5），prompt 写"重新判决模式"，列出被接受的 REQ 和对应的 SI 编号，以及被驳回的 REQ（这些只需要把 `verdict` 改成 `spec_rejected`）。
+4. spawn `m2s-perf-optimizer-v1`（STAGE_ID=S5），prompt 写"重新判决模式"，列出被接受的 REQ 和对应的 SI 编号，以及被驳回的 REQ（这些只需要把 `verdict` 改成 `spec_rejected`）。
 5. 之后的阶段 6 也按档：C 档 `run_gate(phase="final")` + 只对改过的函数 `run_validate(functions=[...])`；D 档 `run_gate(phase="final")` + 全量 `run_validate()`。
 6. 最终回复里单独列出"本次 spec 放宽"：每条 SI、对应的 REQ、判决结果。这些都属于"需人复核"。有 `new_attributes` 的，把 `backfill` 步骤原样列出，标为"部署前必须执行"。
 

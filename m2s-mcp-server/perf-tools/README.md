@@ -3,7 +3,7 @@
 这两个文件是 2026-09-23 测 `bookstore-oh` 本地代码阶段代理指标（`require()` 耗时、mock 调用
 执行耗时）时写的，从临时 scratch 目录搬进仓库保存，避免机器重启丢失。**不是 perf-optimizer
 的正式实现**，只是一份验证过可行的参考脚本——设计细节见
-`../PERF_OPTIMIZATION_DESIGN.md` §3 步骤 1、§4 第 5 条。
+`../PERF_OPTIMIZATION_DESIGN_v1.md` §3 步骤 1、§4 第 5 条。
 
 ## 文件
 
@@ -28,8 +28,8 @@
 2. 把 `output/lambdas/<domain>/<name>/handler.js` 复制进同一目录（改个不冲突的文件名）。
 3. `node run_one.js <复制后的文件名> api`（或 `sqs`，取决于 `trigger_type`）。
 
-2026-09-23 bookstore-oh 12 个 handler 的实测结果记在 `../PERF_OPTIMIZATION_DESIGN.md` §5
-"两个反模式的实测差异"里，不在这里重复。
+2026-09-23 bookstore-oh 12 个 handler 的实测结果记在 `../PERF_OPTIMIZATION_DESIGN_v1.md` 附录 A.1
+"两个反模式的实测差异"里，不在这里重复（v2 文档附录 A.1 保留了摘要）。
 
 ## 2026-09-23 新增：改写候选对比实验
 

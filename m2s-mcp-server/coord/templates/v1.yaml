@@ -115,7 +115,7 @@ tasks:
     check: []
 
   - id: S5
-    role: m2s-perf-optimizer
+    role: m2s-perf-optimizer-v1
     deps: [TAG_V0]
     scope: [output/**, perf/**, verification/results/**, verification/coverage/**,
             verification/fault_baseline_*.json, storage/stage_reports/S5.json]

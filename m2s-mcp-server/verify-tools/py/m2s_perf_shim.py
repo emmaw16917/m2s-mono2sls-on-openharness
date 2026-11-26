@@ -1,5 +1,5 @@
 """Optimization-line measurement shim for Python handlers -- the boto3 twin of
-perf-shim.js (PERF_OPTIMIZATION_DESIGN.md §2.1).
+perf-shim.js (PERF_OPTIMIZATION_DESIGN_v1.md §2.1).
 
 Imported at interpreter start (sitecustomize.py next to this file, on
 PYTHONPATH in an RIE container) or by m2s_perf_harness.py locally. It

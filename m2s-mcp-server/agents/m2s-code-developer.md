@@ -25,6 +25,7 @@ model: inherit
   - 按 blueprint 里该函数的 `notes` 和 `storage/DECISIONS.md` 指定的机制实现：幂等键、Pattern A 或 B、幂等表的环境变量、失败是吞掉还是上报；
   - 生产者要把幂等键放进消息体；
   - blueprint 没写清楚机制时，写 `report_blocked(reason, evidence, suspected_module="A1")`，指出这是 architect 的问题，**不要自己发明机制**。
+- 性能反模式：如果 blueprint 有 `perf_hints`，或者要写的是热路径/批处理函数，调用 `skill(name="m2s-performance-kb")` 对照批量 API 与依赖精简的写法。它只是写代码时的参考，不改变 gate 的判定范围。
 - **导航方式**：不要囫囵吞枣读整个单体源码。用 blueprint 每个函数的 `source_files` 字段 + `storage/symbol_table.json` 的行号定位，配合 `grep`/`glob`/`read_file` 精确定位到需要的函数体，再决定怎么改写。
 - **不要调用 `mcp_auth`**。
 - 写完代码后要用 `mcp__m2s-server__run_gate(phase="code")` 自查（见下方自查循环）——这一步 gate 只能检查 C1（目录名对不对得上 blueprint）和 C10（依赖文件卫生），因为这时候 I2 还没生成 `template.yaml`，`C3`/`C11`/`C12` 这些需要模板信息的检查要等 I2 阶段才会真正跑到，不代表你现在不用管代码质量。

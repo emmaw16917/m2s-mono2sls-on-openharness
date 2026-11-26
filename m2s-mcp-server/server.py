@@ -584,7 +584,7 @@ def run_rie_verdict(benchmark: str, baseline: str = "HEAD", latencies: list[int]
                     guard_benchmarks: list[str] | None = None) -> str:
     """Judge the working tree against <baseline> (a git ref, default HEAD =
     v0 plus the changes kept so far) on one benchmark, following
-    PERF_OPTIMIZATION_DESIGN.md §3: validity check, proxies for both
+    PERF_OPTIMIZATION_DESIGN.md §3.2: validity check, proxies for both
     versions, alternating RIE measurements (5 rounds of 1 cold + 30 warm
     invocations, CPU capped at MemorySize/1769) at 10ms simulated latency,
     and at 0/5/15ms too when a proxy or the 10ms run gets worse; then the

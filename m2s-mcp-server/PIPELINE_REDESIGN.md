@@ -3,7 +3,7 @@
 > 状态：设计稿，未实现。2026-09-24 根据讨论定稿，决策索引见附录 A。
 >
 > 配套文档：
-> - `PERF_OPTIMIZATION_DESIGN.md`：优化线本身的设计，包括判决规则、允许的改动范围、规则库、perf-optimizer 的定义；
+> - `PERF_OPTIMIZATION_DESIGN_v1.md`：v1 优化线本身的设计，包括判决规则、允许的改动范围、规则库、perf-optimizer 的定义（v3 的 O 设计见 `PERF_OPTIMIZATION_DESIGN.md`）；
 > - `PERF_OPTIMIZATION.md`：对照官方参考实现，以及支撑本设计的实验数据（测量层级 L0/L1/L2/L2′/L3 的定义见其 §1）。
 
 ## 0. 为什么要重构
@@ -122,7 +122,7 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | 消费者要保证**重投是幂等的** | `m2s-async-patterns-kb`（S2）、`m2s-sam-kb`（S3） | 例如按 `messageId` 或 `orderId` 用条件写入去重。`FunctionResponseTypes: [ReportBatchItemFailures]` 加上返回 `batchItemFailures` 只是其中一部分：它把重投范围从整批缩小到单条消息，但不能消除消息内部的重复 `ADD` |
 | 读路径上的 Scan **必须处理 `LastEvaluatedKey`** | `m2s-lambda-coding-kb`（S2） | 修的是数据超过 1MB 时结果出错的 bug，不是性能优化 |
 
-这些规则的效果由验证线（测试用例、故障注入）来检验，**不参与性能消融实验**（见 `PERF_OPTIMIZATION_DESIGN.md` §10.2）。
+这些规则的效果由验证线（测试用例、故障注入）来检验，**不参与性能消融实验**（见 `PERF_OPTIMIZATION_DESIGN_v1.md` §10.2）。
 
 **步骤 3 的落地情况（K13，2026-09-26）**：
 - **消费者幂等：必须遵守，已落地。**
@@ -217,7 +217,7 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
   - Node 的小版本不同。
   
   这些差别对语义检查影响很小，但验收报告仍要标注"**运行时检查在本机 Node 中完成，未在 Lambda 运行时中验证**"。
-- **性能判决**仍按 `PERF_OPTIMIZATION_DESIGN.md` §3.5 处理：改用代理指标，标注"低置信度"。
+- **性能判决**仍按 `PERF_OPTIMIZATION_DESIGN_v1.md` §3.5 处理：改用代理指标，标注"低置信度"。
 
 **以后的提速选项**：有 Docker 时，语义检查也在本机 Node 里跑（更快，不用启停容器），RIE 只用于性能判决，外加一次打包冒烟检查。
 启用之前，要先做一次对照实验，确认本机 Node 和 RIE 在语义检查上的结果一致。
@@ -267,7 +267,7 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | `verification/events/`、`verification/faults/` | 验证 agent | 测试事件和故障配置 |
 | `verification/coverage/`、`verification/fault_baseline_v0.json`、`verification/verdict_A.json` | 验证 MCP 工具 | 执行结果 |
 | 工作区 `.git`（tag `v0`，每个被保留的改动提交一次） | 主 Agent、perf-optimizer | v0 快照；补丁就是 `git diff` |
-| `output/perf_report.json` | perf-optimizer | 见 `PERF_OPTIMIZATION_DESIGN.md` §9 |
+| `output/perf_report.json` | perf-optimizer | 见 `PERF_OPTIMIZATION_DESIGN_v1.md` §9 |
 | `m2s-mcp-server/perf-rules/ledger.json`（**放在仓库里**，不在工作区） | perf-optimizer 追加 | 规则台账，跨应用积累 |
 
 ### 4.3 新增的 MCP 工具
@@ -280,7 +280,7 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 | `run_proxy_metrics` | 调用次数、顺序深度、`warm_cpu.js`、容量单位估算 | 仅需本机 Node |
 | `check_provenance` | 规格标注的出处机械检查（2.1） | 无 |
 | `annotate_entry_point` | spec-annotator 逐端点、逐字段写入规格标注，写入前校验结构和出处（2.1，K5） | 无 |
-| `run_rie_verdict` | 按 `PERF_OPTIMIZATION_DESIGN.md` §3 的规则，对改动前后做交替测量并给出判决 | Docker（RIE），没有本机降级 |
+| `run_rie_verdict` | 按 `PERF_OPTIMIZATION_DESIGN_v1.md` §3 的规则，对改动前后做交替测量并给出判决 | Docker（RIE），没有本机降级 |
 | `update_ledger` | 根据 `output/perf_report.json` 机械地更新 `perf-rules/ledger.json`（步骤 2 新增） | 无 |
 
 所有工具共同的要求：
@@ -340,7 +340,7 @@ v0 之后的改动，只经过了机械检查（`gate(final)`）和验证线的�
 
 | 编号 | 决策 | 所在章节 |
 |---|---|---|
-| D1 | 写两份文档；`PERF_OPTIMIZATION_DESIGN.md` 在原文件上重写 | — |
+| D1 | 写两份文档；优化线设计拆为 `PERF_OPTIMIZATION_DESIGN.md`（v2 O）与 `PERF_OPTIMIZATION_DESIGN_v1.md`（v1 归档） | — |
 | D4 | 先验收，存 v0，再做优化；每个被保留的改动都要重新过检查 | §1、§3.3 |
 | F1-1（已被 K3 修改） | 没有 Docker 时仍然算验收通过；运行时检查不再跳过，而是改在本机 Node 里跑 | §3.5 |
 | F2、H3 | 幂等和分页改为上游的正确性规则 | §2.4 |

@@ -79,10 +79,12 @@ def test_agent_definitions_include_the_split_v1_roles():
     harness stamp records both role files."""
     agents = harness._agents(harness.AGENTS_DIR, "model")
     assert {"m2s-verifier", "m2s-verifier-v1", "m2s-architect", "m2s-architect-v1",
-            "m2s-code-developer", "m2s-code-developer-v1", "m2s-sam-engineer", "m2s-sam-engineer-v1"} <= set(agents)
+            "m2s-code-developer", "m2s-code-developer-v1", "m2s-sam-engineer", "m2s-sam-engineer-v1",
+            "m2s-perf-optimizer", "m2s-perf-optimizer-v1"} <= set(agents)
     assert agents["m2s-verifier"]["file"] == "m2s-verifier.md"
     assert agents["m2s-verifier-v1"]["file"] == "m2s-verifier-v1.md"
     assert agents["m2s-architect-v1"]["file"] == "m2s-architect-v1.md"
+    assert agents["m2s-perf-optimizer-v1"]["file"] == "m2s-perf-optimizer-v1.md"
 
 
 def test_prompt_hash_changes_with_content(tmp_path: Path):

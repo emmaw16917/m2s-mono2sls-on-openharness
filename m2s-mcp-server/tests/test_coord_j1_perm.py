@@ -304,6 +304,39 @@ def test_sam_engineer_role_split_keeps_s3_and_sg_out_of_the_v2_prompt():
         assert roles == {"m2s-sam-engineer"}, (name, roles)
 
 
+def test_perf_optimizer_role_split_keeps_s5_out_of_the_v2_prompt():
+    """2026-11-26: m2s-perf-optimizer carries the v3 O flow (B0, O.json,
+    four correctness checks, submit_task/report_blocked, M2S_AWS); the v1 S5
+    protocol (v0, S5.json, STAGE signals, re-judge/review, spec relaxation)
+    lives in m2s-perf-optimizer-v1, which the v1 templates use."""
+    from coord import workers
+
+    v2 = workers.role_prompt("m2s-perf-optimizer")
+    v1 = workers.role_prompt("m2s-perf-optimizer-v1")
+    for token in ("v0", "S5.json", "STAGE_COMPLETE", "STAGE_BLOCKED", "VR", "VS", "SG", "主 Agent"):
+        assert token not in v2, token
+        assert token in v1, token
+    for token in ("B0", "O.json", "submit_task", "report_blocked", "M2S_AWS",
+                  "run_judge", "run_equivalence", "run_coverage", "m2s-perf-optimizer-kb"):
+        assert token in v2, token
+    assert "## 重新判决模式" in v1 and "## 申请放宽 spec" in v1
+    assert "## 重新判决模式" not in v2 and "## 申请放宽 spec" not in v2
+
+    fake_ws = Path("C:/nonexistent-ws")
+    for task_id, role in (("O", "m2s-perf-optimizer"), ("S5", "m2s-perf-optimizer-v1")):
+        job = WorkerJob(task_id, 1, role, fake_ws, fake_ws / "coord", workers.role_prompt(role),
+                        "do it", (), 10, 60.0)
+        system_prompt = worker_settings(job, [])["system_prompt"]
+        assert ("STAGE_COMPLETE" in system_prompt) == role.endswith("-v1")
+        assert ("B0" in system_prompt) == (role == "m2s-perf-optimizer")
+
+    for template in (load_template("v1"), load_template("v1-split")):
+        assert template.get("S5").role == "m2s-perf-optimizer-v1"
+    for name in ("v2", "v2-split"):
+        template = load_template(name)
+        assert template.get("O").role == "m2s-perf-optimizer", name
+
+
 def test_v1_spec_routing_resolves_the_v1_architect(tmp_path):
     """A v1 verification failure routed to "spec" finds S1 even though the v1
     template now uses m2s-architect-v1; the code/template routes find the v1

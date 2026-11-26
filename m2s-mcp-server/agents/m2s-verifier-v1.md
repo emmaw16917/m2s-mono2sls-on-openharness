@@ -286,7 +286,7 @@ spawn prompt 会列出 architect 新写的 SI 编号（`origin` 是 `perf-reques
 
 ## VR：复核 S5 被测试阻塞的改动
 
-S5（性能优化）有些改动没有保留，原因不在改动本身，而是测试（设计文档 PERF_OPTIMIZATION_DESIGN §3.6）：
+S5（性能优化）有些改动没有保留，原因不在改动本身，而是测试（设计文档 PERF_OPTIMIZATION_DESIGN_v1 §3.6）：
 - `blocked_by_test`：候选版本和 v0 等价（`run_equivalence` 在受检函数的全部用例上、故障固定在同一个操作上，结果一致），但某个用例失败了。这说明那个用例很可能依赖规格没有规定的东西；
 - `blocked_by_coverage`：改动的代码有几行没有被任何用例执行到。
 

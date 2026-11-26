@@ -55,7 +55,7 @@ def _rie_locked(fn):
 HERE = Path(__file__).resolve().parent
 VERIFY_TOOLS = HERE / "verify-tools"
 # Short root: sam build output under a long workspace path hits Windows
-# MAX_PATH inside node_modules (seen before, see PERF_OPTIMIZATION_DESIGN A.2).
+# MAX_PATH inside node_modules (seen before, see PERF_OPTIMIZATION_DESIGN_v1 A.2).
 TMP_ROOT = Path(os.environ.get("M2S_VERIFY_TMP", r"D:\tmp\m2sv"))
 DOCKER_BIN = r"C:\Program Files\Docker\Docker\resources\bin"
 REGION, ACCOUNT, STACK = "us-east-1", "000000000000", "m2sv"
